@@ -461,23 +461,23 @@ FOR_EACH_IR_GEN_TYPE(PUSH_BACK_RANGE_ir_gen_type);
   std::vector<IrGenTypeRollingRange> rolling_ranges_;
 };
 
-class DAGGenerator {
+class DefaultDAGGenerator final : public DAGGenerator {
  public:
-  DAGGenerator(
-      const DAGGenRequirement& requirement,
-      const adt::Stack<const DAGGenInstruction>& core_dag)
-    : ctx_(requirement, core_dag),
+  explicit DefaultDAGGenerator(const DAGGenRequirement& requirement)
+    : DAGGenerator(requirement),
       ir_gen_type_generator_(requirement.pick_probability) {}
 
   // Instructions generating sink nodes of DAG are put on the top of stack.
-  adt::Stack<const DAGGenInstruction> Generate() {
+  adt::Stack<const DAGGenInstruction> Generate(
+      const adt::Stack<const DAGGenInstruction>& core_dag) override {
+    DAGGenContext ctx(requirement_, core_dag);
     auto MakeInstruction = [&](int64_t num_core_sources, int64_t num_sources){
-      return MakeRandomInstruction(num_core_sources, num_sources);
+      return MakeRandomInstruction(ctx, num_core_sources, num_sources);
     };
-    for (int64_t i = 0; i < ctx_.requirement().max_instructions; ++i) {
-      ctx_.GenerateOneInstruction(MakeInstruction);
+    for (int64_t i = 0; i < requirement_.max_instructions; ++i) {
+      ctx.GenerateOneInstruction(MakeInstruction);
     }
-    return Reverse(ctx_.result_instructions());
+    return Reverse(ctx.result_instructions());
   }
 
  private:
@@ -491,30 +491,30 @@ class DAGGenerator {
   }
 
   const DAGGenInstruction MakeRandomInstruction(
+      const DAGGenContext& ctx,
       int64_t num_core_source_tensors,
       int64_t num_source_tensors) {
     PADDLE_ENFORCE_GE(num_core_source_tensors, 0);
     PADDLE_ENFORCE_GE(num_core_source_tensors, 0);
     PADDLE_ENFORCE_LE(num_core_source_tensors, num_source_tensors);
     const auto& ir_gen_type =
-      ir_gen_type_generator_.GetRandomIrGenType(num_core_source_tensors, num_source_tensors, ctx_.requirement());
+      ir_gen_type_generator_.GetRandomIrGenType(
+          num_core_source_tensors, num_source_tensors, requirement_);
     return GenerateDAGGenInstruction(
         ir_gen_type,
-        ctx_.requirement(),
+        requirement_,
         num_core_source_tensors,
         num_source_tensors);
   }
 
-  DAGGenContext ctx_;
   const IrGenTypeGenerator ir_gen_type_generator_;
 };
 
 }
 
-adt::Stack<const DAGGenInstruction> GenerateDAGInstructions(
-    const DAGGenRequirement& requirement,
-    const adt::Stack<const DAGGenInstruction>& core) {
-  return DAGGenerator(requirement, core).Generate();
+std::unique_ptr<DAGGenerator> MakeDefaultDAGGenerator(
+    const DAGGenRequirement& requirement) {
+  return std::make_unique<DefaultDAGGenerator>(requirement);
 }
 
 }

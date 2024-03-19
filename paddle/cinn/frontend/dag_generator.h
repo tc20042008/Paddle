@@ -7,9 +7,23 @@
 
 namespace cinn::frontend {
 
-// Instructions generating sink nodes of DAG are on put the top of stack.
-adt::Stack<const DAGGenInstruction> GenerateDAGInstructions(
-    const DAGGenRequirement& requirement,
-    const adt::Stack<const DAGGenInstruction>& core_instruction);
+class DAGGenerator {
+ public:
+  virtual ~DAGGenerator() = default;
+  DAGGenerator(const DAGGenerator&) = default;
+  DAGGenerator(DAGGenerator&&) = default;
+
+  // Instructions generating sink nodes of DAG are on put the top of stack.
+  virtual adt::Stack<const DAGGenInstruction> Generate(
+    const adt::Stack<const DAGGenInstruction>& core_instruction) = 0;
+
+ protected:
+  explicit DAGGenerator(const DAGGenRequirement& requirement)
+    : requirement_(requirement) {}
+  const DAGGenRequirement requirement_;
+};
+
+std::unique_ptr<DAGGenerator> MakeDefaultDAGGenerator(
+    const DAGGenRequirement& requirement);
 
 }

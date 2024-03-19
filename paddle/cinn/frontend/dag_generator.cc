@@ -290,13 +290,13 @@ const DAGGenInstruction GenerateDAGGenInstruction(
 class ConstDAGGenInstructions {
  public:
   ConstDAGGenInstructions(
-      std::stack<DAGGenInstruction>&& instructions)
-    : instructions_(std::move(instructions)),
+      const adt::Stack<const DAGGenInstruction>& instructions)
+    : instructions_(instructions),
       current_num_source_tensors_(0) {}
   ConstDAGGenInstructions(const ConstDAGGenInstructions&) = delete;
   ConstDAGGenInstructions(ConstDAGGenInstructions&&) = delete;
 
-  const std::stack<DAGGenInstruction>& instructions() const {
+  const adt::Stack<const DAGGenInstruction>& instructions() const {
     return instructions_;
   }
 
@@ -312,7 +312,7 @@ class ConstDAGGenInstructions {
   }
 
  protected:
-  std::stack<DAGGenInstruction> instructions_;
+  adt::Stack<const DAGGenInstruction> instructions_;
   int64_t current_num_source_tensors_;
 };
 
@@ -323,7 +323,7 @@ class MutDAGGenInstructions {
   MutDAGGenInstructions(const MutDAGGenInstructions&) = delete;
   MutDAGGenInstructions(MutDAGGenInstructions&&) = delete;
 
-  const std::stack<DAGGenInstruction>& instructions() const {
+  const adt::Stack<const DAGGenInstruction>& instructions() const {
     return instructions_;
   }
 
@@ -337,28 +337,27 @@ class MutDAGGenInstructions {
   }
 
  protected:
-  std::stack<DAGGenInstruction> instructions_;
+  adt::Stack<const DAGGenInstruction> instructions_;
   int64_t current_num_source_tensors_;
 };
 
 class DAGGenContext {
  public:
   explicit DAGGenContext(
-      const DAGGenRequirement& requirement_val,
-      std::stack<DAGGenInstruction>&& core_dag_gen_instructions_val)
-    : requirement(requirement_val),
-      num_remainder_instructions(requirement_val.max_instructions),
-      core_dag_gen_instructions(std::move(core_dag_gen_instructions_val)) {}
+      const DAGGenRequirement& requirement,
+      const adt::Stack<const DAGGenInstruction>& core_dag_gen_instructions)
+    : requirement_(requirement),
+      core_dag_gen_instructions_(core_dag_gen_instructions) {}
   DAGGenContext(const DAGGenContext&) = delete;
   DAGGenContext(DAGGenContext&&) = delete;
 
   template <typename ConverterT>
   void GenerateOneInstruction(const ConverterT& Converter) {
-    core_dag_gen_instructions.TryPop();
+    core_dag_gen_instructions_.TryPop();
     int64_t num_core_source_tensors =
-        core_dag_gen_instructions.current_num_source_tensors();
+        core_dag_gen_instructions_.current_num_source_tensors();
     int64_t num_source_tensors =
-        result_dag_gen_instructions.current_num_source_tensors();
+        result_dag_gen_instructions_.current_num_source_tensors();
     const DAGGenInstruction new_instruction =
         Converter(num_core_source_tensors, num_source_tensors);
     const bool is_valid = [&]{
@@ -366,15 +365,22 @@ class DAGGenContext {
             new_instruction, num_core_source_tensors, num_source_tensors);
     }();
     if (is_valid) {
-      result_dag_gen_instructions.Push(new_instruction);
+      result_dag_gen_instructions_.Push(new_instruction);
     }
   }
 
+  const DAGGenRequirement& requirement() const {
+    return requirement_;
+  }
+
+  const adt::Stack<const DAGGenInstruction>& result_instructions() const {
+    return result_dag_gen_instructions_.instructions();
+  }
+
  private:
-  const DAGGenRequirement requirement;
-  int64_t num_remainder_instructions;
-  ConstDAGGenInstructions core_dag_gen_instructions;
-  MutDAGGenInstructions result_dag_gen_instructions;
+  const DAGGenRequirement requirement_;
+  ConstDAGGenInstructions core_dag_gen_instructions_;
+  MutDAGGenInstructions result_dag_gen_instructions_;
 };
 
 class DAGGenTypeGenerator {
@@ -459,27 +465,25 @@ class DAGGenerator {
  public:
   DAGGenerator(
       const DAGGenRequirement& requirement,
-      std::stack<DAGGenInstruction>&& core_dag)
-    : ctx_(requirement, std::move(core_dag)),
+      const adt::Stack<const DAGGenInstruction>& core_dag)
+    : ctx_(requirement, core_dag),
       dag_gen_type_generator_(requirement.pick_probability) {}
 
-  // Instructions generating sinks are on the top of stack.
-  std::stack<DAGGenInstruction> Generate() {
-    const int64_t max_instructions = ctx_.requirement.max_instructions;
-    int64_t* remainder = &ctx_.num_remainder_instructions;
+  // Instructions generating sink nodes of DAG are put on the top of stack.
+  adt::Stack<const DAGGenInstruction> Generate() {
     auto MakeInstruction = [&](int64_t num_core_sources, int64_t num_sources){
       return MakeRandomInstruction(num_core_sources, num_sources);
     };
-    for (; *remainder > 0; --*remainder) {
+    for (int64_t i = 0; i < ctx_.requirement().max_instructions; ++i) {
       ctx_.GenerateOneInstruction(MakeInstruction);
     }
-    return Reverse(ctx_.result_dag_gen_instructions.instructions());
+    return Reverse(ctx_.result_instructions());
   }
 
  private:
-  std::stack<DAGGenInstruction> Reverse(
-      const std::stack<DAGGenInstruction>& stack) {
-    std::stack<DAGGenInstruction> reversed;
+  adt::Stack<const DAGGenInstruction> Reverse(
+      const adt::Stack<const DAGGenInstruction>& stack) {
+    adt::Stack<const DAGGenInstruction> reversed;
     for (auto s = stack; !s.empty(); s.pop()) {
       reversed.push(s.top());
     }
@@ -493,10 +497,10 @@ class DAGGenerator {
     PADDLE_ENFORCE_GE(num_core_source_tensors, 0);
     PADDLE_ENFORCE_LE(num_core_source_tensors, num_source_tensors);
     const auto& dag_gen_type =
-      dag_gen_type_generator_.GetRandomDAGGenType(num_core_source_tensors, num_source_tensors, ctx_.requirement);
+      dag_gen_type_generator_.GetRandomDAGGenType(num_core_source_tensors, num_source_tensors, ctx_.requirement());
     return GenerateDAGGenInstruction(
         dag_gen_type,
-        ctx_.requirement,
+        ctx_.requirement(),
         num_core_source_tensors,
         num_source_tensors);
   }
@@ -507,9 +511,9 @@ class DAGGenerator {
 
 }
 
-std::stack<DAGGenInstruction> GenerateDAGInstructions(
+adt::Stack<const DAGGenInstruction> GenerateDAGInstructions(
     const DAGGenRequirement& requirement,
-    const std::stack<DAGGenInstruction>& core) {
+    const adt::Stack<const DAGGenInstruction>& core) {
   return DAGGenerator(requirement, core).Generate();
 }
 

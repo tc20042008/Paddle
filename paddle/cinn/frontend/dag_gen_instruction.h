@@ -50,13 +50,8 @@ using MarkFinalSourceTensorGenInstruction =
 // Generate sinks before sources.
 // Generate DAG reversely by DAGGenInstruction.
 struct DAGGenInstruction final : public DAGGenType<DAGGenInstruction> {
-
-#define DEFINE_DAG_GEN_INSTRUCTION_CONSTRUCTOR(dag_gen_type)            \
-  DAGGenInstruction(const dag_gen_type<DAGGenInstruction>& alternative) \
-    : DAGGenType<DAGGenInstruction>(alternative) {}
-FOR_EACH_DAG_GEN_TYPE(DEFINE_DAG_GEN_INSTRUCTION_CONSTRUCTOR);
-#undef DEFINE_DAG_GEN_INSTRUCTION_CONSTRUCTOR
-
+  using DAGGenType<DAGGenInstruction>::DAGGenType;
+  
   const DAGGenType<DAGGenInstruction>& variant() const {
     return static_cast<const DAGGenType<DAGGenInstruction>&>(*this);
   }

@@ -12,7 +12,7 @@ gather_srcs(
   program_pass.cc
   optimize.cc)
 
-gather_srcs(group_pattern_util SRCS group_pattern_util.cc)
+gather_srcs(group_pattern_util SRCS group_pattern_util.cc dag_generator.cc)
 
 if(NOT WITH_CUDA)
   cinn_cc_test(

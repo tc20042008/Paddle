@@ -2,7 +2,7 @@
 
 #include <string>
 #include "paddle/common/enforce.h"
-#include "paddle/cinn/frontend/dag_gen_type.h"
+#include "paddle/cinn/frontend/ir_gen_type.h"
 
 namespace cinn::frontend {
 

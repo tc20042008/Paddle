@@ -1,6 +1,6 @@
 #pragma once
 
-#include "paddle/cinn/frontend/dag_gen_type.h"
+#include "paddle/cinn/frontend/ir_gen_type.h"
 
 namespace cinn::frontend {
 
@@ -49,11 +49,11 @@ using MarkFinalSourceTensorGenInstruction =
 
 // Generate sinks before sources.
 // Generate DAG reversely by DAGGenInstruction.
-struct DAGGenInstruction final : public DAGGenType<DAGGenInstruction> {
-  using DAGGenType<DAGGenInstruction>::DAGGenType;
+struct DAGGenInstruction final : public IrGenType<DAGGenInstruction> {
+  using IrGenType<DAGGenInstruction>::IrGenType;
   
-  const DAGGenType<DAGGenInstruction>& variant() const {
-    return static_cast<const DAGGenType<DAGGenInstruction>&>(*this);
+  const IrGenType<DAGGenInstruction>& variant() const {
+    return static_cast<const IrGenType<DAGGenInstruction>&>(*this);
   }
 };
 

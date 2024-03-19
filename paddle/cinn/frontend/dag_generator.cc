@@ -62,7 +62,7 @@ bool IsValidNumSourceTensorsImpl(
 }
 
 bool IsValidNumSourceTensors(
-    const DAGGenType<std::monostate>& type,
+    const IrGenType<std::monostate>& type,
     int64_t num_core_source_tensors,
     int64_t num_source_tensors,
     const DAGGenRequirement& requirement) {
@@ -277,7 +277,7 @@ const DAGGenInstruction GenerateDAGGenInstructionImpl(
 }
 
 const DAGGenInstruction GenerateDAGGenInstruction(
-    const DAGGenType<std::monostate>& type, 
+    const IrGenType<std::monostate>& type, 
     const DAGGenRequirement& requirement,
     int64_t num_core_source_tensors,
     int64_t num_source_tensors) {
@@ -383,27 +383,27 @@ class DAGGenContext {
   MutDAGGenInstructions result_dag_gen_instructions_;
 };
 
-class DAGGenTypeGenerator {
+class IrGenTypeGenerator {
  public:
-  explicit DAGGenTypeGenerator(const DAGGenTypePickProbability& pick_probability) 
-    : rolling_ranges_(DAGGenTypeGenerator::MakeRollingRange(pick_probability)) {}
+  explicit IrGenTypeGenerator(const DAGGenTypePickProbability& pick_probability) 
+    : rolling_ranges_(IrGenTypeGenerator::MakeRollingRange(pick_probability)) {}
 
-  DAGGenType<std::monostate> GetRandomDAGGenType(
+  IrGenType<std::monostate> GetRandomIrGenType(
       int64_t num_core_source_tensors,
       int64_t num_source_tensors,
       const DAGGenRequirement& requirement) const {
-    auto IsValidNumSources = [&](const auto& dag_gen_type) {
+    auto IsValidNumSources = [&](const auto& ir_gen_type) {
       return IsValidNumSourceTensors(
-          dag_gen_type,
+          ir_gen_type,
           num_core_source_tensors,
           num_source_tensors,
           requirement);
     };
-    auto Roll = [&]()-> std::optional<DAGGenType<std::monostate>> {
+    auto Roll = [&]()-> std::optional<IrGenType<std::monostate>> {
       size_t random_int = GetRandomInt(0, RollingLimit());
-      for (const auto& [start, end, dag_gen_type] : rolling_ranges_) {
-        if (!IsValidNumSources(dag_gen_type)) continue;
-        if (random_int >= start && random_int < end) return dag_gen_type;
+      for (const auto& [start, end, ir_gen_type] : rolling_ranges_) {
+        if (!IsValidNumSources(ir_gen_type)) continue;
+        if (random_int >= start && random_int < end) return ir_gen_type;
       }
       return std::nullopt;
     };
@@ -415,42 +415,42 @@ class DAGGenTypeGenerator {
   }
 
  private:
-  struct DAGGenTypeRollingRange {
+  struct IrGenTypeRollingRange {
     size_t start;
     size_t end;
-    DAGGenType<std::monostate> dag_gen_type;
+    IrGenType<std::monostate> ir_gen_type;
   };
-  static std::vector<DAGGenTypeRollingRange> MakeRollingRange(
+  static std::vector<IrGenTypeRollingRange> MakeRollingRange(
       const DAGGenTypePickProbability& pick_probability) {
     const size_t total_weight = GetTotalWeight(pick_probability);
-    std::vector<DAGGenTypeRollingRange> ret;
+    std::vector<IrGenTypeRollingRange> ret;
     size_t start = 0;
-    auto GetRange = [&](const auto& dag_gen_type) {
+    auto GetRange = [&](const auto& ir_gen_type) {
       size_t current_start = start;
       size_t current_end = current_start;
-      float weight = GetWeight(dag_gen_type, pick_probability);
+      float weight = GetWeight(ir_gen_type, pick_probability);
       current_end += weight * RollingLimit() / total_weight;
       start = current_end;
-      return DAGGenTypeRollingRange{
+      return IrGenTypeRollingRange{
         .start = current_start,
         .end = current_end,
-        .dag_gen_type = dag_gen_type,
+        .ir_gen_type = ir_gen_type,
       };
     };
-#define PUSH_BACK_RANGE_DAG_GEN_TYPE(dag_gen_type)            \
-    ret.push_back(GetRange(dag_gen_type<std::monostate>{}));  \
-FOR_EACH_DAG_GEN_TYPE(PUSH_BACK_RANGE_DAG_GEN_TYPE);
-#undef PUSH_BACK_RANGE_DAG_GEN_TYPE
+#define PUSH_BACK_RANGE_ir_gen_type(ir_gen_type)            \
+    ret.push_back(GetRange(ir_gen_type<std::monostate>{}));  \
+FOR_EACH_IR_GEN_TYPE(PUSH_BACK_RANGE_ir_gen_type);
+#undef PUSH_BACK_RANGE_ir_gen_type
     return ret;
   }
 
   static float GetTotalWeight(
       const DAGGenTypePickProbability& pick_probability) {
     float total = 0;
-#define PUSH_BACK_RANGE_DAG_GEN_TYPE(dag_gen_type)            \
-    total += GetWeight(dag_gen_type<std::monostate>{}, pick_probability);  \
-FOR_EACH_DAG_GEN_TYPE(PUSH_BACK_RANGE_DAG_GEN_TYPE);
-#undef PUSH_BACK_RANGE_DAG_GEN_TYPE
+#define PUSH_BACK_RANGE_ir_gen_type(ir_gen_type)            \
+    total += GetWeight(ir_gen_type<std::monostate>{}, pick_probability);  \
+FOR_EACH_IR_GEN_TYPE(PUSH_BACK_RANGE_ir_gen_type);
+#undef PUSH_BACK_RANGE_ir_gen_type
     return total;
   }
 
@@ -458,7 +458,7 @@ FOR_EACH_DAG_GEN_TYPE(PUSH_BACK_RANGE_DAG_GEN_TYPE);
     return 10000;
   }
 
-  std::vector<DAGGenTypeRollingRange> rolling_ranges_;
+  std::vector<IrGenTypeRollingRange> rolling_ranges_;
 };
 
 class DAGGenerator {
@@ -467,7 +467,7 @@ class DAGGenerator {
       const DAGGenRequirement& requirement,
       const adt::Stack<const DAGGenInstruction>& core_dag)
     : ctx_(requirement, core_dag),
-      dag_gen_type_generator_(requirement.pick_probability) {}
+      ir_gen_type_generator_(requirement.pick_probability) {}
 
   // Instructions generating sink nodes of DAG are put on the top of stack.
   adt::Stack<const DAGGenInstruction> Generate() {
@@ -496,17 +496,17 @@ class DAGGenerator {
     PADDLE_ENFORCE_GE(num_core_source_tensors, 0);
     PADDLE_ENFORCE_GE(num_core_source_tensors, 0);
     PADDLE_ENFORCE_LE(num_core_source_tensors, num_source_tensors);
-    const auto& dag_gen_type =
-      dag_gen_type_generator_.GetRandomDAGGenType(num_core_source_tensors, num_source_tensors, ctx_.requirement());
+    const auto& ir_gen_type =
+      ir_gen_type_generator_.GetRandomIrGenType(num_core_source_tensors, num_source_tensors, ctx_.requirement());
     return GenerateDAGGenInstruction(
-        dag_gen_type,
+        ir_gen_type,
         ctx_.requirement(),
         num_core_source_tensors,
         num_source_tensors);
   }
 
   DAGGenContext ctx_;
-  const DAGGenTypeGenerator dag_gen_type_generator_;
+  const IrGenTypeGenerator ir_gen_type_generator_;
 };
 
 }

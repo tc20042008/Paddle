@@ -4,7 +4,7 @@
 
 namespace cinn::frontend {
 
-#define FOR_EACH_DAG_GEN_TYPE(_macro)   \
+#define FOR_EACH_IR_GEN_TYPE(_macro)   \
   _macro(Nope)                          \
   _macro(AddSinkTensor)                 \
   _macro(AddUnaryUpstreamOp)            \
@@ -13,15 +13,15 @@ namespace cinn::frontend {
   _macro(AddBinaryCloneUpstream)        \
   _macro(MarkFinalSourceTensor)
 
-#define DECLARE_DAG_GEN_TYPE(dag_gen_type) \
+#define DECLARE_IR_GEN_TYPE(ir_gen_type) \
 template <typename T>                      \
-struct dag_gen_type {                      \
+struct ir_gen_type {                      \
 };
-FOR_EACH_DAG_GEN_TYPE(DECLARE_DAG_GEN_TYPE);
-#undef DECLARE_DAG_GEN_TYPE
+FOR_EACH_IR_GEN_TYPE(DECLARE_IR_GEN_TYPE);
+#undef DECLARE_IR_GEN_TYPE
 
 template <typename T>
-using DAGGenType =
+using IrGenType =
     std::variant<Nope<T>,
                  AddSinkTensor<T>,
                  AddUnaryUpstreamOp<T>,

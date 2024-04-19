@@ -22,9 +22,61 @@ from unit_test_case_spec import (
     GenerateRandomUnitTestCaseSpec,
     GetAblatedUnitTestCaseSpec
 )
-import os
-import sys
-import time
+import datetime
+
+content_head = """
+import unittest
+import numpy as np
+import paddle
+
+
+class CINNCosSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        tensor1 = x
+"""
+
+content_body = """
+class TestCinnCos(unittest.TestCase):
+    def setUp(self):
+        paddle.seed(2024)
+        self.prepare_data()
+
+    def prepare_data(self):
+"""
+
+content_tail = """
+        self.x.stop_gradient = True
+
+    def apply_to_static(self, net, use_cinn, input_spec=None):
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.build_cinn_pass = use_cinn
+        return paddle.jit.to_static(
+            net,
+            input_spec=input_spec,
+            build_strategy=build_strategy,
+            full_graph=True,
+        )
+
+    def train(self, use_cinn):
+        net = CINNCosSubGraphNet()
+        net.eval()
+        net = self.apply_to_static(net, use_cinn)
+        out = net(self.x)
+        return out
+
+    def test_train(self):
+        cinn_out = self.train(use_cinn=True)
+        dy_out = self.train(use_cinn=False)
+
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-6)
+
+
+if __name__ == '__main__':
+    unittest.main()
+"""
 
 def GenerateUnitTestCaseSpec(
     unit_test_case_requirement: UnitTestCaseRequirement
@@ -33,7 +85,18 @@ def GenerateUnitTestCaseSpec(
         requirement=unit_test_case_requirement
     )
 
-def get_content():
+def modify_assert_line(text):
+    lines = text.split("\n")
+    text = ""
+    for line in lines:
+        if line.startswith("assert"):
+            parts = line.split(" ")
+            parts[1] = "tuple(" + parts[1] + ")"
+            line = " ".join(parts)
+        text += line + "\n"
+    return text
+
+if __name__ == '__main__':
     unit_test_case_requirement=UnitTestCaseRequirement(
         dag_gen_requirement=dag_generator.DAGGenRequirement(
             min_num_sources=0,
@@ -54,113 +117,75 @@ def get_content():
     )
 
     # numpy_gen = NumpyGenerator()
-    # script = numpy_gen.Generate(unit_test_case_spec.patched_instruction_code_gen_spec)
 
     paddle_eager_gen = PaddleEagerGenerator()
-    script = paddle_eager_gen.Generate(unit_test_case_spec.patched_instruction_code_gen_spec)
+    # script = numpy_gen.Generate(unit_test_case_spec.patched_instruction_code_gen_spec)
     # print("import numpy")
     # print(script.file_content)
-    return script.file_content
 
-counter = 0
+    script = paddle_eager_gen.Generate(unit_test_case_spec.patched_instruction_code_gen_spec)
+    # print("import paddle")
+    # print(script.file_content)
+    net_content = modify_assert_line(script.file_content)
 
-def check_file_existence(directory, filename):
-    """
-    Check if the specified file exists in the given directory.
+    outpu_dir = "/home/aistudio/data"
+    current_datetime = datetime.datetime.now()
+    curr_time = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+    with open(outpu_dir + "/" + curr_time + "_content.py", "w") as f:
+        f.write(net_content)
 
-    Args:
-    - directory (str): The directory to search for the file.
-    - filename (str): The name of the file to check for.
-
-    Returns:
-    - bool: True if the file exists, False otherwise.
-    """
-    file_path = os.path.join(directory, filename)
-    return os.path.isfile(file_path)
-
-def count_python_files(directory):
-    """
-    Count the number of Python files in the specified directory.
-
-    Args:
-    - directory (str): The directory to search for Python files.
-
-    Returns:
-    - int: The number of Python files in the directory.
-    """
-    python_files = [file for file in os.listdir(directory) if file.endswith(".py")]
-    return len(python_files)
-
-def generate_test_cases_until_file_exists(directory, flag_file, max_python_files):
-    """
-    Continuously generate test cases until the specified file exists.
-    
-    Args:
-    - directory (str): The directory to search for Python files.
-    - flag_file (str): The name of the file to check for existence.
-    - max_python_files (int): The maximum number of Python files allowed before pausing.
-
-    Returns:
-    - None
-    """
-    while not check_file_existence(directory, flag_file):
-        python_file_count = count_python_files(directory)
-
-        if python_file_count < max_python_files:
-            print("py", python_file_count)
-            gen(directory)  # Call your existing gen() function to generate test cases
-            time.sleep(0.05)
-        else:
-            time.sleep(0.05)
-
-def modify_assert_line(text):
-    lines = text.split("\n")
-    text = ""
+    lines = net_content.strip().split('\n')
+    input_shape = None
     for line in lines:
-        if line.startswith("assert"):
-            parts = line.split(" ")
-            parts[1] = "tuple(" + parts[1] + ")"
-            line = " ".join(parts)
-        text += line + "\n"
-    return text
-
-def gen(path):
-    # Placeholder for the gen() function. Implement your test case generation logic here.
-    # print("Generating test case...")
-    global counter
-    while True:
-        file_name = os.path.join(path, f"test_case_b_{counter}.py")
-        counter += 1
-        if not os.path.isfile(file_name):
+        if line.startswith('tensor1'):
+            start_index = line.find("((")
+            end_index = line.find("))")
+            if start_index != -1 and end_index != -1:
+                input_shape = line[start_index + 2:end_index]
             break
-    print("gen", counter-1)
+
+    out_tensor_name = None
+    for line in reversed(lines):
+        if not line.startswith('assert'):
+            out_tensor_name = line.split()[0]
+            break
+
+    # current_datetime = datetime.datetime.now()
+    file_name = outpu_dir + "/" + curr_time + "_testcase.py"
     with open(file_name, "w") as f:
-        f.write("import paddle")
-        f.write(modify_assert_line(get_content()))
-        # f.write("import numpy")
-        # f.write(get_content())
+        f.write(content_head)
+        for line in lines:
+            if not line.startswith('tensor1 '):
+                f.write("        " + line + "\n")
+        f.write("        return " + out_tensor_name + "\n\n")
+        f.write(content_body)
+        f.write('        self.x = paddle.uniform([' + input_shape + '], dtype="float32", min=-0.5, max=0.5)')
+        f.write(content_tail)
 
-def process_arguments():
-    if len(sys.argv) < 4:
-        arg_dir = "/dev/shm/test"
-        arg_flag = "stop"
-        arg_max = 10
-    else:
-        arg_dir = sys.argv[1]
-        arg_flag = sys.argv[2]
-        arg_max = int(sys.argv[3])
 
-    return arg_dir, arg_flag, arg_max
-
-def main():
-    directory, flag_file, max_python_files = process_arguments()
-    print("dir:", directory)
-    print("flag:", flag_file)
-    print("max:", max_python_files)
-
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    generate_test_cases_until_file_exists(directory, flag_file, max_python_files)
-
-if __name__ == "__main__":
-    main()
+#    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
+#        instructions=unit_test_case_spec.instructions,
+#        requirement=unit_test_case_requirement,
+#        bottom_up_ablation_size=-1,
+#        component_ablation_size=-1,
+#    )
+#    print("#", "*"*80)
+#    print("# full ablated")
+#    print("#", "*"*80)
+#    script = numpy_gen.Generate(ablated_unit_test_case_spec.patched_instruction_code_gen_spec)
+#    print("import paddle")
+#    print(script.file_content)
+#
+#
+#    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
+#        instructions=unit_test_case_spec.instructions,
+#        requirement=unit_test_case_requirement,
+#        bottom_up_ablation_size=len(unit_test_case_spec.instructions)/2,
+#        component_ablation_size=-1,
+#    )
+#    print("#", "*"*80)
+#    print("# half ablated")
+#    print("#", "*"*80)
+#    script = numpy_gen.Generate(ablated_unit_test_case_spec.patched_instruction_code_gen_spec)
+#    print("import paddle")
+#    print(script.file_content)

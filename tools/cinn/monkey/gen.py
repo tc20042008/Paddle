@@ -23,23 +23,33 @@ from unit_test_case_spec import (
     GetAblatedUnitTestCaseSpec
 )
 import datetime
+import os
+import sys
+import time
 
 content_head = """
+import os
+os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
+os.environ['FLAGS_group_schedule_tiling_first'] = '1'
+os.environ['FLAGS_prim_all'] = 'true'
+os.environ['FLAGS_prim_enable_dynamic'] = '1'
+os.environ['FLAGS_print_ir'] = '1'
+os.environ['FLAGS_enable_pir_api'] = '1'
+os.environ['FLAGS_cinn_bucket_compile'] = '1'
+
 import unittest
 import numpy as np
 import paddle
 
 
-class CINNCosSubGraphNet(paddle.nn.Layer):
+class CinnMonkeyNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x):
-        tensor1 = x
 """
 
 content_body = """
-class TestCinnCos(unittest.TestCase):
+class TestCinnMonkey(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.prepare_data()
@@ -48,8 +58,6 @@ class TestCinnCos(unittest.TestCase):
 """
 
 content_tail = """
-        self.x.stop_gradient = True
-
     def apply_to_static(self, net, use_cinn, input_spec=None):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.build_cinn_pass = use_cinn
@@ -61,10 +69,12 @@ content_tail = """
         )
 
     def train(self, use_cinn):
-        net = CINNCosSubGraphNet()
+        net = CinnMonkeyNet()
         net.eval()
         net = self.apply_to_static(net, use_cinn)
-        out = net(self.x)
+"""
+
+content_main = """
         return out
 
     def test_train(self):
@@ -85,18 +95,34 @@ def GenerateUnitTestCaseSpec(
         requirement=unit_test_case_requirement
     )
 
-def modify_assert_line(text):
-    lines = text.split("\n")
-    text = ""
-    for line in lines:
-        if line.startswith("assert"):
-            parts = line.split(" ")
-            parts[1] = "tuple(" + parts[1] + ")"
-            line = " ".join(parts)
-        text += line + "\n"
-    return text
+def generate_content_neck(tensors_list):
+    num_tensors = len(tensors_list)
+    forward_function = "    def forward(self"
+    for i in range(num_tensors):
+        forward_function += f", x{i+1}"
+    forward_function += "):\n"
 
-if __name__ == '__main__':
+    for i, tensor_name in enumerate(tensors_list):
+        forward_function += f"        {tensor_name} = x{i+1}\n"
+    forward_function += "\n"
+
+    return forward_function
+
+def generate_content_prepare(shape_list):
+    content = ''
+    for i, shape in enumerate(shape_list):
+        content += f'        self.x{i+1} = paddle.uniform([{shape}], dtype="float32", min=-0.5, max=0.5)\n'
+        content += f'        self.x{i+1}.stop_gradient = True\n'
+    return content
+
+def generate_content_train(num):
+    content = '        out = net('
+    for i in range(num):
+        content += f'self.x{i+1}, '
+    content = content[:-2] + ')'
+    return content
+
+def get_content_and_write(dir):
     unit_test_case_requirement=UnitTestCaseRequirement(
         dag_gen_requirement=dag_generator.DAGGenRequirement(
             min_num_sources=0,
@@ -126,66 +152,123 @@ if __name__ == '__main__':
     script = paddle_eager_gen.Generate(unit_test_case_spec.patched_instruction_code_gen_spec)
     # print("import paddle")
     # print(script.file_content)
-    net_content = modify_assert_line(script.file_content)
+    lines = script.file_content.strip().split('\n')
 
-    outpu_dir = "/home/aistudio/data"
-    current_datetime = datetime.datetime.now()
-    curr_time = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
-    with open(outpu_dir + "/" + curr_time + "_content.py", "w") as f:
-        f.write(net_content)
-
-    lines = net_content.strip().split('\n')
-    input_shape = None
+    input_names = []
+    input_shapes = []
+    net_lines = []
+    is_input_line = True
     for line in lines:
-        if line.startswith('tensor1'):
-            start_index = line.find("((")
-            end_index = line.find("))")
-            if start_index != -1 and end_index != -1:
-                input_shape = line[start_index + 2:end_index]
-            break
+        if is_input_line:
+            if line.startswith('#'):
+                is_input_line = False
+                net_lines.append(line)
+            if line.startswith('tensor'):
+                input_names.append(line.split()[0])
+                start_index = line.find("((")
+                end_index = line.find("))")
+                if start_index != -1 and end_index != -1:
+                    input_shapes.append(line[start_index + 2:end_index])
+        else:
+            net_lines.append(line)
 
     out_tensor_name = None
-    for line in reversed(lines):
+    for line in reversed(net_lines):
         if not line.startswith('assert'):
             out_tensor_name = line.split()[0]
             break
 
-    # current_datetime = datetime.datetime.now()
-    file_name = outpu_dir + "/" + curr_time + "_testcase.py"
+    # dir = "/home/aistudio/data"
+    # dir = "/dev/shm/test"
+    current_datetime = datetime.datetime.now()
+    curr_time = current_datetime.strftime("%Y-%m-%d_%H-%M-%S-%f")
+    file_name = dir + "/testcase_" + curr_time + ".py"
     with open(file_name, "w") as f:
         f.write(content_head)
-        for line in lines:
-            if not line.startswith('tensor1 '):
-                f.write("        " + line + "\n")
+        f.write(generate_content_neck(input_names))
+        for line in net_lines:
+            if line.startswith("assert"):
+                parts = line.split(" ")
+                parts[1] = "tuple(" + parts[1] + ")"
+                line = " ".join(parts)
+            f.write("        " + line + "\n")
         f.write("        return " + out_tensor_name + "\n\n")
         f.write(content_body)
-        f.write('        self.x = paddle.uniform([' + input_shape + '], dtype="float32", min=-0.5, max=0.5)')
+        f.write(generate_content_prepare(input_shapes))
         f.write(content_tail)
+        f.write(generate_content_train(len(input_names)))
+        f.write(content_main)
 
+def check_file_existence(directory, filename):
+    """
+    Check if the specified file exists in the given directory.
 
-#    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
-#        instructions=unit_test_case_spec.instructions,
-#        requirement=unit_test_case_requirement,
-#        bottom_up_ablation_size=-1,
-#        component_ablation_size=-1,
-#    )
-#    print("#", "*"*80)
-#    print("# full ablated")
-#    print("#", "*"*80)
-#    script = numpy_gen.Generate(ablated_unit_test_case_spec.patched_instruction_code_gen_spec)
-#    print("import paddle")
-#    print(script.file_content)
-#
-#
-#    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
-#        instructions=unit_test_case_spec.instructions,
-#        requirement=unit_test_case_requirement,
-#        bottom_up_ablation_size=len(unit_test_case_spec.instructions)/2,
-#        component_ablation_size=-1,
-#    )
-#    print("#", "*"*80)
-#    print("# half ablated")
-#    print("#", "*"*80)
-#    script = numpy_gen.Generate(ablated_unit_test_case_spec.patched_instruction_code_gen_spec)
-#    print("import paddle")
-#    print(script.file_content)
+    Args:
+    - directory (str): The directory to search for the file.
+    - filename (str): The name of the file to check for.
+
+    Returns:
+    - bool: True if the file exists, False otherwise.
+    """
+    file_path = os.path.join(directory, filename)
+    return os.path.isfile(file_path)
+
+def count_python_files(directory):
+    """
+    Count the number of Python files in the specified directory.
+
+    Args:
+    - directory (str): The directory to search for Python files.
+
+    Returns:
+    - int: The number of Python files in the directory.
+    """
+    python_files = [file for file in os.listdir(directory) if file.endswith(".py")]
+    return len(python_files)
+
+def generate_test_cases_until_file_exists(directory, flag_file, max_python_files):
+    """
+    Continuously generate test cases until the specified file exists.
+    
+    Args:
+    - directory (str): The directory to search for Python files.
+    - flag_file (str): The name of the file to check for existence.
+    - max_python_files (int): The maximum number of Python files allowed before pausing.
+
+    Returns:
+    - None
+    """
+    while not check_file_existence(directory, flag_file):
+        python_file_count = count_python_files(directory)
+
+        if python_file_count < max_python_files:
+            print("py", python_file_count)
+            get_content_and_write(directory)
+            # time.sleep(0.05)
+        else:
+            time.sleep(0.5)
+
+def process_arguments():
+    if len(sys.argv) < 4:
+        arg_dir = "/dev/shm/test"
+        arg_flag = "stop"
+        arg_max = 10
+    else:
+        arg_dir = sys.argv[1]
+        arg_flag = sys.argv[2]
+        arg_max = int(sys.argv[3])
+
+    return arg_dir, arg_flag, arg_max
+
+def main():
+    directory, flag_file, max_python_files = process_arguments()
+    print("dir:", directory)
+    print("flag:", flag_file)
+    print("max:", max_python_files)
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    generate_test_cases_until_file_exists(directory, flag_file, max_python_files)
+
+if __name__ == "__main__":
+    main()

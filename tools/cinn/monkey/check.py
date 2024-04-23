@@ -26,7 +26,7 @@ def process_py_files_until_file_exists(directory, flag_file):
             for py_file in py_files:
                 file_path = os.path.join(directory, py_file)
                 try:
-                    subprocess.run(["python", file_path], check=True)
+                    subprocess.run(["python", file_path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     # print("rm")
                     os.remove(file_path)
                 except subprocess.CalledProcessError:

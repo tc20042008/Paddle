@@ -126,7 +126,8 @@ CUfunction CUDAModule::GetFunction(int device_id,
     jit_options[4] = CU_JIT_GENERATE_LINE_INFO;
     jit_opt_vals[4] = reinterpret_cast<void*>(value);
 
-    if (runtime::CanUseNvccCompiler()) {
+    bool use_nvcc_compiler = false;
+    if (use_nvcc_compiler) {
       CUDA_DRIVER_CALL(
           cuModuleLoad(&module_per_card_[device_id], data_.c_str()));
     } else {

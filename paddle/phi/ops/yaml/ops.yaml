@@ -242,6 +242,15 @@
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : ap_id_placeholder
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
+  kernel :
+    func : ap_id_placeholder
+
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)
   output: Tensor(out)

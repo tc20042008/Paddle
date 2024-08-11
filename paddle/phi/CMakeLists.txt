@@ -149,6 +149,7 @@ if(WITH_GPU)
     phi_gpu ${PHI_BUILD_TYPE}
     SRCS ${PHI_GPU_SRCS}
     DEPS ${PHI_DEPS} phi_core)
+  target_link_libraries(phi_gpu ${CUDA_NVRTC_LIB} ${CUDA_LIBRARIES} cuda cudnn)
 elseif(WITH_ROCM)
   hip_library(
     phi_core ${PHI_BUILD_TYPE}

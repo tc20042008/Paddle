@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
+
 namespace ap {
 
 const int kCUDAMaxCards{8};

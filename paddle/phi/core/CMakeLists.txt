@@ -40,4 +40,6 @@ collect_srcs(
   utils/type_info.cc
   pexpr/anf.cc
   pexpr/cps.cc
+  pexpr/core.cc
+  pexpr/core_expr_util.cc
   pexpr/pexpr_util.cc)

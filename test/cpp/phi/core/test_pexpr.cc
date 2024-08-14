@@ -18,6 +18,8 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/pexpr/anf_builder.h"
+#include "paddle/phi/core/pexpr/core_expr_builder.h"
+#include "paddle/phi/core/pexpr/core_expr_util.h"
 #include "paddle/phi/core/pexpr/cps_builder.h"
 #include "paddle/phi/core/pexpr/pexpr_util.h"
 
@@ -58,6 +60,47 @@ TEST(CpsExpr, ConvertAnfExprToCpsExpr) {
                                                              cps.Var("return"),
                                                          }))}))}))}));
   ASSERT_EQ(cps_expr, expected);
+}
+
+TEST(CpsExpr, ConvertAnfExprToCoreExpr) {
+  auto anf = AnfExprBuilder();
+  AnfExpr anf_expr = anf.Let(
+      {
+          anf.Bind("a", anf.Call(anf.Var("op0"), {})),
+          anf.Bind("b", anf.Call(anf.Var("op1"), {})),
+          anf.Bind("c", anf.Call(anf.Var("op2"), {})),
+      },
+      anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b"), anf.Var("c")}));
+  const auto& opt_anf_expr =
+      AnfExpr::ParseFromJsonString(anf_expr.DumpToJsonString());
+  ASSERT_TRUE(opt_anf_expr.has_value());
+  anf_expr = opt_anf_expr.value();
+  CoreExpr core_expr = ConvertAnfExprToCoreExpr(anf_expr);
+  CoreExprBuilder core{};
+  using Var = tVar<std::string>;
+  CoreExpr expected = core.ComposedCall(
+      core.Lambda(
+          {Var{"a"}},
+          core.ComposedCall(
+              core.Lambda({Var{"b"}},
+                          core.ComposedCall(
+                              core.Lambda({Var{"c"}},
+                                          core.ComposedCall(
+                                              core.Var("__builtin_identity__"),
+                                              core.Var("list"),
+                                              {
+                                                  core.Var("a"),
+                                                  core.Var("b"),
+                                                  core.Var("c"),
+                                              })),
+                              core.Var("op2"),
+                              {})),
+              core.Var("op1"),
+              {})),
+      core.Var("op0"),
+      {});
+  ASSERT_EQ(core_expr, expected);
+  LOG(ERROR) << "\n" << core_expr;
 }
 
 }  // namespace pexpr::tests

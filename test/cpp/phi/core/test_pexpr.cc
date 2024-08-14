@@ -37,6 +37,10 @@ TEST(pexpr, ConvertAnfExprToCoreExpr) {
   ASSERT_TRUE(opt_anf_expr.has_value());
   anf_expr = opt_anf_expr.value();
   CoreExpr core_expr = ConvertAnfExprToCoreExpr(anf_expr);
+  const auto& opt_core_expr =
+      CoreExpr::ParseFromJsonString(core_expr.DumpToJsonString());
+  ASSERT_TRUE(opt_core_expr.has_value());
+  core_expr = opt_core_expr.value();
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
   CoreExpr expected = core.ComposedCall(

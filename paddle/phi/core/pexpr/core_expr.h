@@ -65,6 +65,9 @@ struct CoreExpr : public CoreExprBase {
   }
 
   std::string ToSExpression() const;
+  std::string DumpToJsonString();
+  static std::optional<CoreExpr> ParseFromJsonString(
+      const std::string& json_str);
 
  private:
   struct CompareFunctor {

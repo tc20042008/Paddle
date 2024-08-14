@@ -1,6 +1,7 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
 add_subdirectory(distributed)
+add_subdirectory(pexpr)
 
 if(WITH_GPU)
   proto_library(external_error_proto SRCS external_error.proto)
@@ -37,7 +38,4 @@ collect_srcs(
   kernel_factory.cc
   kernel_registry.cc
   tensor_utils.cc
-  utils/type_info.cc
-  pexpr/anf.cc
-  pexpr/core_expr.cc
-  pexpr/core_expr_util.cc)
+  utils/type_info.cc)

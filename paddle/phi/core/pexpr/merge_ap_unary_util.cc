@@ -12,15 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/core/pexpr/merge_ap_unary_util.h"
 
-#include "paddle/phi/core/pexpr/anf.h"
-#include "paddle/phi/core/pexpr/core_expr.h"
-
-namespace pexpr {
-
-CoreExpr Inline(const CoreExpr&);
-
-CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr&);
-
-}  // namespace pexpr
+namespace pexpr {}

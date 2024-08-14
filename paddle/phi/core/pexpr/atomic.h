@@ -40,7 +40,7 @@ struct Lambda {
   std::shared_ptr<Expr> body;
 
   bool operator==(const Lambda& other) const {
-    return (this->args == other.args) && (*this->body == *body);
+    return (this->args == other.args) && (*this->body == *other.body);
   }
 };
 

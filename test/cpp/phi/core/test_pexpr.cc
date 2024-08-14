@@ -23,7 +23,63 @@
 
 namespace pexpr::tests {
 
-TEST(pexpr, ConvertAnfExprToCoreExpr) {
+TEST(CoreExpr, operator_eq_0) {
+  CoreExprBuilder core{};
+  using Var = tVar<std::string>;
+  CoreExpr lhs =
+      core.ComposedCall(core.Lambda({Var{"c"}},
+                                    core.ComposedCall(core.Var(kBuiltinId),
+                                                      core.Var("list"),
+                                                      {
+                                                          core.Var("a"),
+                                                          core.Var("b"),
+                                                          core.Var("c"),
+                                                      })),
+                        core.Var("op2"),
+                        {});
+  CoreExpr rhs = core.ComposedCall(core.Var(kBuiltinId),
+                                   core.Var("list"),
+                                   {
+                                       core.Var("a"),
+                                       core.Var("a"),
+                                       core.Var("c"),
+                                   });
+  ASSERT_FALSE(lhs == rhs);
+}
+
+TEST(CoreExpr, operator_eq_1) {
+  CoreExprBuilder core{};
+  using Var = tVar<std::string>;
+  CoreExpr lhs = core.ComposedCall(
+      core.Lambda(
+          {Var{"b"}},
+          core.ComposedCall(core.Lambda({Var{"c"}},
+                                        core.ComposedCall(core.Var(kBuiltinId),
+                                                          core.Var("list"),
+                                                          {
+                                                              core.Var("a"),
+                                                              core.Var("b"),
+                                                              core.Var("c"),
+                                                          })),
+                            core.Var("op2"),
+                            {})),
+      core.Var("op1"),
+      {});
+  CoreExpr rhs =
+      core.ComposedCall(core.Lambda({Var{"c"}},
+                                    core.ComposedCall(core.Var(kBuiltinId),
+                                                      core.Var("list"),
+                                                      {
+                                                          core.Var("a"),
+                                                          core.Var("a"),
+                                                          core.Var("c"),
+                                                      })),
+                        core.Var("op2"),
+                        {});
+  ASSERT_FALSE(lhs == rhs);
+}
+
+TEST(CoreExpr, ConvertAnfExprToCoreExpr) {
   auto anf = AnfExprBuilder();
   AnfExpr anf_expr = anf.Let(
       {
@@ -44,28 +100,98 @@ TEST(pexpr, ConvertAnfExprToCoreExpr) {
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
   CoreExpr expected = core.ComposedCall(
-      core.Lambda(
-          {Var{"a"}},
-          core.ComposedCall(
-              core.Lambda({Var{"b"}},
-                          core.ComposedCall(
-                              core.Lambda({Var{"c"}},
-                                          core.ComposedCall(
-                                              core.Var("__builtin_identity__"),
-                                              core.Var("list"),
-                                              {
-                                                  core.Var("a"),
-                                                  core.Var("b"),
-                                                  core.Var("c"),
-                                              })),
-                              core.Var("op2"),
-                              {})),
-              core.Var("op1"),
-              {})),
+      core.Lambda({Var{"a"}},
+                  core.ComposedCall(
+                      core.Lambda({Var{"b"}},
+                                  core.ComposedCall(
+                                      core.Lambda({Var{"c"}},
+                                                  core.ComposedCall(
+                                                      core.Var(kBuiltinId),
+                                                      core.Var("list"),
+                                                      {
+                                                          core.Var("a"),
+                                                          core.Var("b"),
+                                                          core.Var("c"),
+                                                      })),
+                                      core.Var("op2"),
+                                      {})),
+                      core.Var("op1"),
+                      {})),
       core.Var("op0"),
       {});
   ASSERT_EQ(core_expr, expected);
-  LOG(ERROR) << "\n" << core_expr;
+}
+
+TEST(CoreExpr, InlineBuiltinId) {
+  auto anf = AnfExprBuilder();
+  AnfExpr anf_expr = anf.Let(
+      {
+          anf.Bind("a", anf.Call(anf.Var("op0"), {})),
+          anf.Bind("b", anf.Call(anf.Var(kBuiltinId), {anf.Var("a")})),
+          anf.Bind("c", anf.Call(anf.Var("op2"), {})),
+      },
+      anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b"), anf.Var("c")}));
+  CoreExpr core_expr = ConvertAnfExprToCoreExpr(anf_expr);
+  core_expr = Inline(core_expr);
+  CoreExprBuilder core{};
+  using Var = tVar<std::string>;
+  CoreExpr expected = core.ComposedCall(
+      core.Lambda(
+          {Var{"a"}},
+          core.ComposedCall(core.Lambda({Var{"c"}},
+                                        core.ComposedCall(core.Var(kBuiltinId),
+                                                          core.Var("list"),
+                                                          {
+                                                              core.Var("a"),
+                                                              core.Var("a"),
+                                                              core.Var("c"),
+                                                          })),
+                            core.Var("op2"),
+                            {})),
+      core.Var("op0"),
+      {});
+  ASSERT_EQ(core_expr, expected);
+}
+
+TEST(CoreExpr, InlineInnerLambda) {
+  using Var = tVar<std::string>;
+  auto anf = AnfExprBuilder();
+  AnfExpr anf_expr = anf.Let(
+      {
+          anf.Bind("a", anf.Call(anf.Var("op0"), {})),
+          anf.Bind(
+              "b",
+              anf.Call(anf.Lambda({Var{"tmp"}}, anf.Int64(0)), {anf.Var("a")})),
+          anf.Bind("c", anf.Call(anf.Var("op2"), {})),
+      },
+      anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b"), anf.Var("c")}));
+  CoreExpr core_expr = ConvertAnfExprToCoreExpr(anf_expr);
+  core_expr = Inline(core_expr);
+  CoreExprBuilder core{};
+  CoreExpr expected = core.ComposedCall(
+      core.Lambda({Var{"a"}},
+                  core.ComposedCall(
+                      core.Lambda({Var{"b"}},
+                                  core.ComposedCall(
+                                      core.Lambda({Var{"c"}},
+                                                  core.ComposedCall(
+                                                      core.Var(kBuiltinId),
+                                                      core.Var("list"),
+                                                      {
+                                                          core.Var("a"),
+                                                          core.Var("b"),
+                                                          core.Var("c"),
+                                                      })),
+                                      core.Var("op2"),
+                                      {})),
+                      core.Lambda({},
+                                  core.ComposedCall(core.Var(kBuiltinId),
+                                                    core.Var(kBuiltinId),
+                                                    {core.Int64(0)})),
+                      {})),
+      core.Var("op0"),
+      {});
+  ASSERT_EQ(core_expr, expected);
 }
 
 }  // namespace pexpr::tests

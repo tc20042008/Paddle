@@ -21,6 +21,8 @@
 
 namespace pexpr {
 
+const char kBuiltinId[] = "__builtin_identity__";
+
 namespace {
 
 std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {

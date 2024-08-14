@@ -66,6 +66,11 @@ cc_test(
   SRCS test_tensor_array.cc
   DEPS phi common)
 
+cc_test(
+  test_pexpr
+  SRCS test_pexpr.cc
+  DEPS phi common)
+
 if(WITH_GPU)
   nv_test(
     test_mixed_vector

@@ -37,4 +37,7 @@ collect_srcs(
   kernel_factory.cc
   kernel_registry.cc
   tensor_utils.cc
-  utils/type_info.cc)
+  utils/type_info.cc
+  pexpr/anf.cc
+  pexpr/cps.cc
+  pexpr/pexpr_util.cc)

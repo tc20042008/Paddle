@@ -12,72 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/gpu/ap_cuda_jit_util.h"
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"
 #include "jitify.hpp"  // NOLINT
-#include "paddle/common/enforce.h"
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/impl/activation_grad_impl.h"
-#include "paddle/phi/kernels/impl/activation_impl.h"
-
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
+#include "paddle/common/enforce.h"
 
 namespace ap {
-
-const int kCUDAMaxCards{8};
-
-/**
- * The CUDA module, helps to compile CUDA codes and fetch symbols.
- * Currently, it is a wrapper of NVRTC.
- */
-class CUDAModule {
- public:
-  enum class Kind {
-    PTX = 0,
-    CUBIN = 1,
-  };
-
-  CUDAModule(const std::string& data, Kind kind);
-
-  void LaunchKernel(int device_id,
-                    const std::string& func_name,
-                    dim3 gridDim,
-                    dim3 blockDim,
-                    void** args,
-                    size_t share_memory_size = 0,
-                    CUstream stream = nullptr);
-
-  //! Get a function.
-  CUfunction GetFunction(int device_id, const std::string& func_name);
-
-  //! Get a function by CudaGetDevice
-  CUfunction GetFunction(const std::string& func_name);
-
-  //! Get a global variable.
-  CUdeviceptr GetGlobal(int device_id, const std::string& name, size_t nbytes);
-
-  ~CUDAModule();
-
- private:
-  //! The input data.
-  std::string data_;
-  //! Kind of the input.
-  Kind kind_;
-  //! To make parallel, we prepare one module for each card.
-  std::vector<CUmodule> module_per_card_{kCUDAMaxCards, nullptr};
-  std::string cuda_source_;
-  std::mutex mutex_;
-
-  CUdevice device_;
-  CUcontext context_;
-  int num_devices_{0};
-};
 
 CUDAModule::CUDAModule(const std::string& data, Kind kind)
     : data_(data), kind_(kind) {
@@ -261,67 +205,6 @@ JitSafeHeaderGenerator::JitSafeHeaderGenerator() {
     headers_.emplace_back(pair.second.data());
   }
 }
-
-/**
- * An helper class to call NVRTC. Input CUDA device source code, get PTX string.
- */
-class Compiler {
- public:
-  Compiler();
-
-  /**
-   * Compile the \p code and get PTX string.
-   * @param code The CUDA source code.
-   * @param include_headers Whether to include the headers of CUDA and CINN
-   * runtime modules.
-   * @return Compiled PTX code string.
-   */
-  std::string operator()(const std::string& code, bool include_headers = true);
-
-  /** Compile into cubin or not
-   * @return Compile into cubin or not.
-   */
-  bool compile_to_cubin();
-
- private:
-  /**
-   * Get the directories of CUDA's header files.
-   * @return list of header file directories.
-   */
-  std::vector<std::string> FindCUDAIncludePaths();
-
-  /**
-   * Get the directories of CINN runtime's header files.
-   * @return list of header file directories.
-   */
-  std::vector<std::string> FindCINNRuntimeIncludePaths();
-
-  /**
-   * Compile CUDA source code and get PTX or CUBIN.
-   * @param code source code string.
-   * @return PTX or CUBIN string.
-   */
-  std::string CompileCudaSource(const std::string& code, bool include_headers);
-
-  /**
-   * whether to compile the source code into cubin, only works with cuda version
-   * > 11.1
-   */
-  bool compile_to_cubin_{false};
-
-  // compile with nvcc
-  std::string CompileWithNvcc(const std::string&);
-
-  // compile to ptx
-  void CompileToPtx();
-  // compile to cubin
-  void CompileToCubin();
-  std::string GetDeviceArch();
-
-  std::string ReadFile(const std::string&, std::ios_base::openmode);
-
-  std::string prefix_name_{""};
-};
 
 static bool TryLocatePath(const std::string& path) {
   struct stat st;
@@ -598,75 +481,3 @@ std::string Compiler::ReadFile(const std::string& file_name,
 }
 
 }  // namespace ap
-
-namespace cinn::runtime::cuda {
-
-template <typename T, typename Context>
-void ApIdPlaceholderKernel(const Context& dev_ctx,
-                           const phi::DenseTensor& x,
-                           phi::DenseTensor* out) {
-  auto generate_ptx = [] {
-    ap::Compiler compiler;
-
-    std::string source_code = R"(
-  #include <cstdint>
-  #define CINN_WITH_CUDA
-
-  extern "C" __global__
-  void relu(const float* input, const int num, float* output) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-   if (idx < num) {
-      output[idx] = input[idx] > 0 ? input[idx] : 0;
-    }
-  }
-  )";
-
-    auto ptx = compiler(source_code);
-    CHECK(!ptx.empty());
-    return ptx;
-  };
-
-  auto ptx = generate_ptx();
-
-  ap::CUDAModule cuda_module(ptx, ap::CUDAModule::Kind::PTX);
-  int size = x.numel();
-  dim3 blocks_per_grid(1);
-  dim3 threads_per_block(100);
-  const void* x_data = x.data();
-  void* out_data = out->data();
-  void* args[] = {&x_data, &size, &out_data};
-  cuda_module.LaunchKernel(0, "relu", blocks_per_grid, threads_per_block, args);
-}
-
-}  // namespace cinn::runtime::cuda
-
-namespace phi {
-
-template <typename T, typename Context>
-void ApIdPlaceholderKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-  cinn::runtime::cuda::ApIdPlaceholderKernel<T, Context>(dev_ctx, x, out);
-}
-
-}  // namespace phi
-
-#ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(ap_id_placeholder,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ApIdPlaceholderKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-#else
-PD_REGISTER_KERNEL(ap_id_placeholder,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ApIdPlaceholderKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-#endif

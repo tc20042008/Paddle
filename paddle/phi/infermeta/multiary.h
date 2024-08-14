@@ -134,6 +134,11 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void ApUnaryInferMeta(const std::vector<const MetaTensor*>& xs,
+                      int num_outputs,
+                      std::vector<MetaTensor*> outs,
+                      MetaConfig config = MetaConfig());
+
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config);

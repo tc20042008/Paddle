@@ -459,6 +459,21 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   out->set_dtype(x[0]->dtype());
 }
 
+void ApUnaryInferMeta(const std::vector<const MetaTensor*>& xs,
+                      int num_outputs,
+                      std::vector<MetaTensor*> outs,
+                      MetaConfig config) {
+  PADDLE_ENFORCE_GT(
+      xs.size(),
+      0,
+      phi::errors::InvalidArgument(
+          "At least 1 input is required. current number out inputs: %d",
+          xs.size()));
+  for (auto* out : outs) {
+    out->share_meta(*xs[0]);
+  }
+}
+
 // TODO(YuanRisheng) This InferMeta is used in Fluid
 //                   and will be deleted in the future.
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,

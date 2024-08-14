@@ -194,4 +194,59 @@ TEST(CoreExpr, InlineInnerLambda) {
   ASSERT_EQ(core_expr, expected);
 }
 
+TEST(CoreExpr, ReplaceLambdaArgName) {
+  using Var = tVar<std::string>;
+  CoreExprBuilder core{};
+  CoreExpr core_expr = core.ComposedCall(
+      core.Lambda({Var{"a"}},
+                  core.ComposedCall(
+                      core.Lambda({Var{"b"}},
+                                  core.ComposedCall(
+                                      core.Lambda({Var{"c"}},
+                                                  core.ComposedCall(
+                                                      core.Var(kBuiltinId),
+                                                      core.Var("list"),
+                                                      {
+                                                          core.Var("a"),
+                                                          core.Var("b"),
+                                                          core.Var("c"),
+                                                      })),
+                                      core.Var("op2"),
+                                      {})),
+                      core.Lambda({},
+                                  core.ComposedCall(core.Var(kBuiltinId),
+                                                    core.Var(kBuiltinId),
+                                                    {core.Int64(0)})),
+                      {})),
+      core.Var("op0"),
+      {});
+  CoreExpr replaced =
+      ReplaceLambdaArgName(core_expr, "c", []() { return std::string("d"); });
+
+  CoreExpr expected = core.ComposedCall(
+      core.Lambda({Var{"a"}},
+                  core.ComposedCall(
+                      core.Lambda({Var{"b"}},
+                                  core.ComposedCall(
+                                      core.Lambda({Var{"d"}},
+                                                  core.ComposedCall(
+                                                      core.Var(kBuiltinId),
+                                                      core.Var("list"),
+                                                      {
+                                                          core.Var("a"),
+                                                          core.Var("b"),
+                                                          core.Var("d"),
+                                                      })),
+                                      core.Var("op2"),
+                                      {})),
+                      core.Lambda({},
+                                  core.ComposedCall(core.Var(kBuiltinId),
+                                                    core.Var(kBuiltinId),
+                                                    {core.Int64(0)})),
+                      {})),
+      core.Var("op0"),
+      {});
+  ASSERT_EQ(replaced, expected);
+}
+
 }  // namespace pexpr::tests

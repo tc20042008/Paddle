@@ -19,6 +19,11 @@
 
 namespace pexpr {
 
+CoreExpr ReplaceLambdaArgName(
+    const CoreExpr& core_expr,
+    const std::string& pattern_arg_name,
+    const std::function<std::string()>& UniqueVarNameGetter);
+
 CoreExpr Inline(const CoreExpr&);
 
 CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr&);

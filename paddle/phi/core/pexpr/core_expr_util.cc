@@ -76,6 +76,79 @@ CoreExpr Replace(const CoreExpr& core_expr,
       });
 }
 
+bool LambdaArgsContains(const Lambda<CoreExpr>& lambda, const auto& var) {
+  for (const auto& arg : lambda.args) {
+    if (arg.value() == var) {
+      return true;
+    }
+  }
+  return false;
+}
+
+Atomic<CoreExpr> ReplaceLambdaArgNameAtomic(
+    const Atomic<CoreExpr>& atomic_expr,
+    const std::string& pattern_arg_name,
+    const std::function<std::string()>& UniqueVarNameGetter) {
+  return atomic_expr.Match(
+      [&](const Lambda<CoreExpr>& lambda) -> Atomic<CoreExpr> {
+        const auto& body = ReplaceLambdaArgName(
+            *lambda.body, pattern_arg_name, UniqueVarNameGetter);
+        CoreExprBuilder core{};
+        if (!LambdaArgsContains(lambda, pattern_arg_name)) {
+          return core.Lambda(lambda.args, body);
+        }
+        const auto& replacement_arg_name = UniqueVarNameGetter();
+        std::vector<tVar<std::string>> new_args;
+        new_args.reserve(lambda.args.size());
+        for (const auto& arg : lambda.args) {
+          if (arg.value() == pattern_arg_name) {
+            new_args.emplace_back(replacement_arg_name);
+          } else {
+            new_args.emplace_back(arg);
+          }
+        }
+        tVar<std::string> pattern(pattern_arg_name);
+        tVar<std::string> replacement(replacement_arg_name);
+        return core.Lambda(new_args, Replace(body, pattern, replacement));
+      },
+      [&](const auto& expr) -> Atomic<CoreExpr> { return expr; });
+}
+
+CoreExpr ReplaceLambdaArgNameComposedCallChildren(
+    const ComposedCall<CoreExpr>& core_expr,
+    const std::string& pattern_arg_name,
+    const std::function<std::string()>& UniqueVarNameGetter) {
+  const auto& outter_func = ReplaceLambdaArgNameAtomic(
+      core_expr.outter_func, pattern_arg_name, UniqueVarNameGetter);
+  const auto& inner_func = ReplaceLambdaArgNameAtomic(
+      core_expr.inner_func, pattern_arg_name, UniqueVarNameGetter);
+  std::vector<Atomic<CoreExpr>> args;
+  args.reserve(core_expr.args.size());
+  for (const auto& arg : core_expr.args) {
+    args.push_back(
+        ReplaceLambdaArgNameAtomic(arg, pattern_arg_name, UniqueVarNameGetter));
+  }
+  return CoreExprBuilder().ComposedCall(outter_func, inner_func, args);
+}
+
+}  // namespace
+
+CoreExpr ReplaceLambdaArgName(
+    const CoreExpr& core_expr,
+    const std::string& pattern_arg_name,
+    const std::function<std::string()>& UniqueVarNameGetter) {
+  return core_expr.Match(
+      [&](const Atomic<CoreExpr>& atomic_expr) -> CoreExpr {
+        return ReplaceLambdaArgNameAtomic(
+            atomic_expr, pattern_arg_name, UniqueVarNameGetter);
+      },
+      [&](const ComposedCall<CoreExpr>& composed_call) -> CoreExpr {
+        return ReplaceLambdaArgNameComposedCallChildren(
+            composed_call, pattern_arg_name, UniqueVarNameGetter);
+      });
+}
+namespace {
+
 std::optional<CoreExpr> TryInlineBuiltinId(
     const ComposedCall<CoreExpr>& composed_call) {
   if (!composed_call.outter_func.Has<Lambda<CoreExpr>>()) {

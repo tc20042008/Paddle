@@ -27,7 +27,7 @@ namespace {
 CoreExpr Replace(const CoreExpr& core_expr,
                  const tVar<std::string>& pattern_var,
                  const tVar<std::string>& replacement) {
-  const auto& ret = core_expr.Match(
+  return core_expr.Match(
       [&](const Atomic<CoreExpr>& atomic_expr) -> CoreExpr {
         return atomic_expr.Match(
             [&](const Lambda<CoreExpr>& lambda) -> Atomic<CoreExpr> {
@@ -74,11 +74,6 @@ CoreExpr Replace(const CoreExpr& core_expr,
             new_inner_func.Get<Atomic<CoreExpr>>(),
             new_args);
       });
-  LOG(ERROR) << "origin:\n"
-             << core_expr << "\npattern: " << pattern_var.value()
-             << ", replacement: " << replacement.value() << "\nret:\n"
-             << ret;
-  return ret;
 }
 
 std::optional<CoreExpr> TryInlineBuiltinId(

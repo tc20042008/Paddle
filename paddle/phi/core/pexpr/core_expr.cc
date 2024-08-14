@@ -28,9 +28,7 @@ namespace {
 std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {
   return core_expr.Match(
       [](const tVar<std::string>& var) { return var.value(); },
-      [](const bool c) {
-        return c ? std::string("#t") : std::string("#false");
-      },
+      [](const bool c) { return c ? std::string("#t") : std::string("#f"); },
       [](const int64_t c) { return std::to_string(c); },
       [](const std::string& str) {
         std::ostringstream ss;

@@ -83,7 +83,7 @@ struct CoreExpr : public CoreExprBase {
   };
 };
 
-extern const char[] kBuiltinId;
+extern const char kBuiltinId[];
 
 }  // namespace pexpr
 

@@ -72,8 +72,8 @@ struct CoreExpr : public CoreExprBase {
                     const Atomic<CoreExpr>& rhs) const {
       return lhs == rhs;
     }
-    bool operator()(const Call<CoreExpr>& lhs,
-                    const Call<CoreExpr>& rhs) const {
+    bool operator()(const ComposedCall<CoreExpr>& lhs,
+                    const ComposedCall<CoreExpr>& rhs) const {
       return lhs == rhs;
     }
     bool operator()(const auto& lhs, const auto& rhs) const { return false; }

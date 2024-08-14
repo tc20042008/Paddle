@@ -139,13 +139,11 @@ struct AnfExprToCoreExprConverter {
     for (const auto& arg : anf_expr.args) {
       core_args.push_back(InterpretAtomic(arg, env, interpreter));
     }
-    return LazyCoreVal([inner_func,
-                        core_args](const Atomic<CoreExpr>& continuation) {
-      std::vector<Atomic<CoreExpr>> args{core_args.begin(), core_args.end()};
-      args.push_back(continuation);
-      CoreExprBuilder core{};
-      return core.ComposedCall(continuation, inner_func, args);
-    });
+    return LazyCoreVal(
+        [inner_func, core_args](const Atomic<CoreExpr>& continuation) {
+          CoreExprBuilder core{};
+          return core.ComposedCall(continuation, inner_func, core_args);
+        });
   }
   value_type InterpretIf(const If<AnfExpr>& anf_expr,
                          const std::shared_ptr<env_type>& env,

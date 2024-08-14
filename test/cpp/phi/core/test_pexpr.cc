@@ -20,49 +20,10 @@
 #include "paddle/phi/core/pexpr/anf_builder.h"
 #include "paddle/phi/core/pexpr/core_expr_builder.h"
 #include "paddle/phi/core/pexpr/core_expr_util.h"
-#include "paddle/phi/core/pexpr/cps_builder.h"
-#include "paddle/phi/core/pexpr/pexpr_util.h"
 
 namespace pexpr::tests {
 
-TEST(CpsExpr, ConvertAnfExprToCpsExpr) {
-  auto anf = AnfExprBuilder();
-  AnfExpr anf_expr = anf.Let(
-      {
-          anf.Bind("a", anf.Call(anf.Var("op0"), {})),
-          anf.Bind("b", anf.Call(anf.Var("op1"), {})),
-          anf.Bind("c", anf.Call(anf.Var("op2"), {})),
-      },
-      anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b"), anf.Var("c")}));
-  const auto& opt_anf_expr =
-      AnfExpr::ParseFromJsonString(anf_expr.DumpToJsonString());
-  ASSERT_TRUE(opt_anf_expr.has_value());
-  anf_expr = opt_anf_expr.value();
-  CpsExpr cps_expr = ConvertAnfExprToCpsExpr(anf_expr);
-  CpsExprBuilder cps{};
-  using Var = tVar<std::string>;
-  CpsExpr expected = cps.Lambda(
-      {Var{"return"}},
-      cps.Call(
-          cps.Var("op0"),
-          {cps.Lambda(
-              {Var{"a"}},
-              cps.Call(cps.Var("op1"),
-                       {cps.Lambda(
-                           {Var{"b"}},
-                           cps.Call(cps.Var("op2"),
-                                    {cps.Lambda({Var{"c"}},
-                                                cps.Call(cps.Var("list"),
-                                                         {
-                                                             cps.Var("a"),
-                                                             cps.Var("b"),
-                                                             cps.Var("c"),
-                                                             cps.Var("return"),
-                                                         }))}))}))}));
-  ASSERT_EQ(cps_expr, expected);
-}
-
-TEST(CpsExpr, ConvertAnfExprToCoreExpr) {
+TEST(pexpr, ConvertAnfExprToCoreExpr) {
   auto anf = AnfExprBuilder();
   AnfExpr anf_expr = anf.Let(
       {

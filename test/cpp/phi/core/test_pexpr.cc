@@ -21,6 +21,7 @@
 #include "paddle/phi/core/pexpr/anf_expr_util.h"
 #include "paddle/phi/core/pexpr/core_expr_builder.h"
 #include "paddle/phi/core/pexpr/core_expr_util.h"
+#include "paddle/phi/core/pexpr/index_expr_builder.h"
 #include "paddle/phi/core/pexpr/lambda_expr_builder.h"
 
 namespace pexpr::tests {
@@ -259,7 +260,9 @@ TEST(LambdaExprBuilder, Let) {
           anf.Bind("b", anf.Call(anf.Var("op1"), {})),
       },
       anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b")}));
-  LambdaExprBuilder lmbd;
+  size_t seq_no = 0;
+  const auto& GenSeqNo = [&]() { return seq_no++; };
+  LambdaExprBuilder lmbd(GenSeqNo);
   AnfExpr lmbd_expr = lmbd.Let([](auto& ctx) {
     ctx.Var("a") = ctx.Call("op0");
     ctx.Var("b") = ctx.Call("op1");
@@ -277,7 +280,9 @@ TEST(LambdaExprBuilder, LetTmpVar) {
           anf.Bind("__lambda_expr_tmp0", anf.Call(anf.Var("op0"), {})),
       },
       anf.Call(anf.Var("list"), {anf.Var("__lambda_expr_tmp0")}));
-  LambdaExprBuilder lmbd;
+  size_t seq_no = 0;
+  const auto& GenSeqNo = [&]() { return seq_no++; };
+  LambdaExprBuilder lmbd(GenSeqNo);
   AnfExpr lmbd_expr =
       lmbd.Let([](auto& ctx) { return ctx.Call("list", ctx.Call("op0")); });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
@@ -292,11 +297,50 @@ TEST(LambdaExprBuilder, Lambda) {
           anf.Bind("__lambda_expr_tmp0", anf.Call(anf.Var("op0"), {})),
       },
       anf.Call(anf.Var("list"), {anf.Var("__lambda_expr_tmp0")}));
-  LambdaExprBuilder lmbd;
+  size_t seq_no0 = 0;
+  const auto& GenSeqNo0 = [&]() { return seq_no0++; };
+  LambdaExprBuilder lmbd(GenSeqNo0);
   AnfExpr lmbd_expr =
       lmbd.Let([](auto& ctx) { return ctx.Call("list", ctx.Call("op0")); });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
   const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
+  ASSERT_EQ(core_expr, expected);
+}
+
+TEST(IndexExprBuilder, Lambda) {
+  size_t seq_no0 = 0;
+  const auto& GenSeqNo0 = [&]() { return seq_no0++; };
+  IndexExprBuilder builder(GenSeqNo0);
+  AnfExpr idx_expr = builder.IndexLambda(
+      {"in_shape0", "in_shape1"},
+      {"in_data0", "in_data1"},
+      {"out_shape0"},
+      {"out_data0"},
+      {"i", "j"},
+      [](auto& ctx) {
+        return ctx.MakeTensorIndexes(
+            ctx.InputTensorIndexes(ctx.IndexList(ctx.Var("i"), ctx.Var("j"))),
+            ctx.OutputTensorIndexes(ctx.IndexList(ctx.Var("i"), ctx.Var("j"))));
+      });
+  size_t seq_no1 = 0;
+  const auto& GenSeqNo1 = [&]() { return seq_no1++; };
+  LambdaExprBuilder lmbd(GenSeqNo1);
+  AnfExpr lmbd_expr = lmbd.NestedLambda(
+      {{"in_shape0", "in_shape1"},
+       {"in_data0", "in_data1"},
+       {"out_shape0"},
+       {"out_data0"},
+       {"i", "j"}},
+      [](auto& ctx) {
+        return ctx.Call(
+            kMakeTensorIndexes,
+            ctx.Call(kInputTensorIndexes,
+                     ctx.Call(kIndexList, ctx.Var("i"), ctx.Var("j"))),
+            ctx.Call(kOutputTensorIndexes,
+                     ctx.Call(kIndexList, ctx.Var("i"), ctx.Var("j"))));
+      });
+  const auto& core_expr = ConvertAnfExprToCoreExpr(idx_expr);
+  const auto& expected = ConvertAnfExprToCoreExpr(lmbd_expr);
   ASSERT_EQ(core_expr, expected);
 }
 

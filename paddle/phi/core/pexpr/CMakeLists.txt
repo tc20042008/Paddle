@@ -4,5 +4,6 @@ collect_srcs(
   anf_expr.cc
   core_expr.cc
   s_expr.cc
+  index_expr_constants.cc
   anf_expr_util.cc
   core_expr_util.cc)

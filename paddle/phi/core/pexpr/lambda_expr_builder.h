@@ -42,9 +42,12 @@ class LetVar {
 
 class LetContext : public AtomicExprBuilder<AnfExpr> {
  public:
-  LetContext() {}
+  explicit LetContext(const std::function<size_t()>& SeqNoGenerator)
+      : SeqNoGenerator_(SeqNoGenerator) {}
   LetContext(const LetContext&) = delete;
   LetContext(LetContext&&) = delete;
+
+  using var_type = LetVar;
 
   LetVar& Var(const std::string& name) {
     auto iter = let_var_storage_.find(name);
@@ -67,6 +70,15 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
   template <typename... Args>
   AnfExpr Call(const std::string& f, Args&&... args) {
     return CallImpl(f, std::vector<CallArg>{CallArg{args}...});
+  }
+
+  AnfExpr Call(const std::string& f, const std::vector<LetVar>& vars) {
+    std::vector<CallArg> args;
+    args.reserve(vars.size());
+    for (const auto& var : vars) {
+      args.emplace_back(var);
+    }
+    return CallImpl(f, args);
   }
 
   const std::vector<Bind<AnfExpr>>& bindings() { return bindings_; }
@@ -120,13 +132,13 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
   }
 
   std::string GetTmpVarName() {
-    static std::atomic<size_t> seq_no;
     static const std::string prefix = "__lambda_expr_tmp";
-    return prefix + std::to_string(seq_no++);
+    return prefix + std::to_string(SeqNoGenerator_());
   }
 
   std::unordered_map<std::string, std::unique_ptr<LetVar>> let_var_storage_;
   std::vector<Bind<AnfExpr>> bindings_;
+  std::function<size_t()> SeqNoGenerator_;
 };
 
 inline LetVar& LetVar::operator=(const AnfExpr& anf_val) {
@@ -136,7 +148,9 @@ inline LetVar& LetVar::operator=(const AnfExpr& anf_val) {
 
 class LambdaExprBuilder {
  public:
-  LambdaExprBuilder() {}
+  LambdaExprBuilder() : SeqNoGenerator_(&LambdaExprBuilder::GenSeqNo) {}
+  explicit LambdaExprBuilder(const std::function<size_t()>& SeqNoGenerator)
+      : SeqNoGenerator_(SeqNoGenerator) {}
   LambdaExprBuilder(const LambdaExprBuilder&) = delete;
   LambdaExprBuilder(LambdaExprBuilder&&) = delete;
 
@@ -144,28 +158,46 @@ class LambdaExprBuilder {
       const std::vector<std::vector<std::string>>& multi_layer_args,
       const std::function<AnfExpr(LetContext&)>& GetBody) {
     AnfExpr anf_expr = Let(GetBody);
+    AnfExpr lambda_or_body = anf_expr.Match(
+        [&](const pexpr::Let<AnfExpr>& let) {
+          if (let.bindings.empty()) {
+            return *let.body;
+          } else {
+            anf_expr;
+          }
+        },
+        [&](const auto&) { return anf_expr; });
     if (multi_layer_args.empty()) {
-      return anf_.Lambda({}, anf_expr);
+      return anf_.Lambda({}, lambda_or_body);
     }
     for (int i = multi_layer_args.size() - 1; i >= 0; --i) {
-      anf_expr = anf_.Lambda(MakeLambdaArgs(multi_layer_args.at(i)), anf_expr);
+      lambda_or_body =
+          anf_.Lambda(MakeLambdaArgs(multi_layer_args.at(i)), lambda_or_body);
     }
-    return anf_expr;
+    return lambda_or_body;
   }
 
   AnfExpr Lambda(const std::vector<std::string>& args,
                  const std::function<AnfExpr(LetContext&)>& GetBody) {
     AnfExpr anf_expr = Let(GetBody);
-    return anf_.Lambda(MakeLambdaArgs(args), anf_expr);
+    AnfExpr lambda_or_body = anf_expr.Match(
+        [&](const pexpr::Let<AnfExpr>& let) {
+          if (let.bindings.empty()) {
+            return *let.body;
+          } else {
+            anf_expr;
+          }
+        },
+        [&](const auto&) { return anf_expr; });
+    return anf_.Lambda(MakeLambdaArgs(args), lambda_or_body);
   }
 
   AnfExpr Let(const std::function<AnfExpr(LetContext&)>& GetBody) {
-    LetContext let_ctx{};
+    LetContext let_ctx{SeqNoGenerator_};
     AnfExpr ret = GetBody(let_ctx);
     return anf_.Let(let_ctx.bindings(), ret);
   }
 
- private:
   std::vector<tVar<std::string>> MakeLambdaArgs(
       const std::vector<std::string>& args) {
     std::vector<tVar<std::string>> lambda_args;
@@ -175,6 +207,14 @@ class LambdaExprBuilder {
     }
     return lambda_args;
   }
+
+ private:
+  static size_t GenSeqNo() {
+    static std::atomic<int64_t> seq_no(0);
+    return seq_no++;
+  }
+
+  std::function<size_t()> SeqNoGenerator_;
   AnfExprBuilder anf_;
 };
 

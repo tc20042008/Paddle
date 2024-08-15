@@ -17,7 +17,8 @@
 #include "gtest/gtest.h"
 
 #include "paddle/common/errors.h"
-#include "paddle/phi/core/pexpr/anf_builder.h"
+#include "paddle/phi/core/pexpr/anf_expr_builder.h"
+#include "paddle/phi/core/pexpr/anf_expr_util.h"
 #include "paddle/phi/core/pexpr/core_expr_builder.h"
 #include "paddle/phi/core/pexpr/core_expr_util.h"
 

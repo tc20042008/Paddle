@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/pexpr/anf.h"
+#include "paddle/phi/core/pexpr/anf_expr.h"
 #include "paddle/phi/core/pexpr/atomic_builder.h"
 
 namespace pexpr {

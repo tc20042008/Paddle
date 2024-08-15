@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/pexpr/anf.h"
-#include "paddle/phi/core/pexpr/anf_builder.h"
+#include "paddle/phi/core/pexpr/anf_expr.h"
+#include "paddle/phi/core/pexpr/anf_expr_builder.h"
 
 #include <unordered_map>
 #include "nlohmann/json.hpp"

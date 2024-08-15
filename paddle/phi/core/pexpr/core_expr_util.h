@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/pexpr/anf.h"
+#include "paddle/phi/core/pexpr/anf_expr.h"
 #include "paddle/phi/core/pexpr/core_expr.h"
 
 namespace pexpr {
@@ -25,7 +25,5 @@ CoreExpr ReplaceLambdaArgName(
     const std::function<std::string()>& UniqueVarNameGetter);
 
 CoreExpr Inline(const CoreExpr&);
-
-CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr&);
 
 }  // namespace pexpr

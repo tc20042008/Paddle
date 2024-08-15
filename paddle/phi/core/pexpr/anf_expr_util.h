@@ -19,12 +19,6 @@
 
 namespace pexpr {
 
-CoreExpr HorizontalMergeApUnaryLambda(
-    const CoreExpr& lhs,
-    const std::vector<int64_t>& lhs_input_slices,
-    const std::vector<int64_t>& lhs_output_slices,
-    const const CoreExpr& rhs,
-    const std::vector<int64_t>& rhs_input_slices,
-    const std::vector<int64_t>& rhs_output_slices);
+CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr&);
 
 }  // namespace pexpr

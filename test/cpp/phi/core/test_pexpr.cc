@@ -21,6 +21,7 @@
 #include "paddle/phi/core/pexpr/anf_expr_util.h"
 #include "paddle/phi/core/pexpr/core_expr_builder.h"
 #include "paddle/phi/core/pexpr/core_expr_util.h"
+#include "paddle/phi/core/pexpr/lambda_expr_builder.h"
 
 namespace pexpr::tests {
 
@@ -248,6 +249,55 @@ TEST(CoreExpr, ReplaceLambdaArgName) {
       core.Var("op0"),
       {});
   ASSERT_EQ(replaced, expected);
+}
+
+TEST(LambdaExprBuilder, Let) {
+  auto anf = AnfExprBuilder();
+  AnfExpr anf_expr = anf.Let(
+      {
+          anf.Bind("a", anf.Call(anf.Var("op0"), {})),
+          anf.Bind("b", anf.Call(anf.Var("op1"), {})),
+      },
+      anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b")}));
+  LambdaExprBuilder lmbd;
+  AnfExpr lmbd_expr = lmbd.Let([](auto& ctx) {
+    ctx.Var("a") = ctx.Call("op0");
+    ctx.Var("b") = ctx.Call("op1");
+    return ctx.Call("list", ctx.Var("a"), ctx.Var("b"));
+  });
+  const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
+  const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
+  ASSERT_EQ(core_expr, expected);
+}
+
+TEST(LambdaExprBuilder, LetTmpVar) {
+  auto anf = AnfExprBuilder();
+  AnfExpr anf_expr = anf.Let(
+      {
+          anf.Bind("__lambda_expr_tmp0", anf.Call(anf.Var("op0"), {})),
+      },
+      anf.Call(anf.Var("list"), {anf.Var("__lambda_expr_tmp0")}));
+  LambdaExprBuilder lmbd;
+  AnfExpr lmbd_expr =
+      lmbd.Let([](auto& ctx) { return ctx.Call("list", ctx.Call("op0")); });
+  const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
+  const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
+  ASSERT_EQ(core_expr, expected);
+}
+
+TEST(LambdaExprBuilder, Lambda) {
+  auto anf = AnfExprBuilder();
+  AnfExpr anf_expr = anf.Let(
+      {
+          anf.Bind("__lambda_expr_tmp0", anf.Call(anf.Var("op0"), {})),
+      },
+      anf.Call(anf.Var("list"), {anf.Var("__lambda_expr_tmp0")}));
+  LambdaExprBuilder lmbd;
+  AnfExpr lmbd_expr =
+      lmbd.Let([](auto& ctx) { return ctx.Call("list", ctx.Call("op0")); });
+  const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
+  const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
+  ASSERT_EQ(core_expr, expected);
 }
 
 }  // namespace pexpr::tests

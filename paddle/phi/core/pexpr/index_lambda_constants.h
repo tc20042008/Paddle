@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/pexpr/index_expr_constants.h"
+#pragma once
 
 namespace pexpr {
 
-extern const char kMakeTensorIndexes[] = "MakeTensorIndexes";
-extern const char kInputTensorIndexes[] = "InputTensorIndexes";
-extern const char kOutputTensorIndexes[] = "OutputTensorIndexes";
-extern const char kIndexList[] = "IndexList";
-extern const char kBroadcastIndexMask[] = "BroadcastIndexMask";
-extern const char kIndexDot[] = "IndexDot";
-extern const char kIndexUnDot[] = "IndexUnDot";
+extern const char kMakeTensorIndexes[];
+extern const char kInputTensorIndexes[];
+extern const char kOutputTensorIndexes[];
+extern const char kIndexList[];
+extern const char kBroadcastIndexMask[];
+extern const char kIndexDot[];
+extern const char kIndexUnDot[];
 
-extern const char kIntArrayLikeIndexes[] = "kIntArrayLikeIndexes";
-extern const char kUnsupported[] = "kUnsupported";
-extern const char kNothing[] = "kNothing";
+extern const char kIntArrayLikeIndexes[];
+extern const char kUndefined[];
+extern const char kNothing[];
 
 }  // namespace pexpr

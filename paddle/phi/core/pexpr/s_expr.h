@@ -27,13 +27,16 @@ struct SExpr;
 
 // (outter_func (inner_func [args]))
 template <typename Expr>
-struct SList {
+struct SListImpl {
   adt::List<Expr> children;
 
-  bool operator==(const SList& other) const {
+  bool operator==(const SListImpl& other) const {
     return this->children == other.children;
   }
 };
+
+template <typename Expr>
+DEFINE_ADT_RC(SList, const SListImpl<Expr>);
 
 // s expression
 // expr := aexpr | ([expr])
@@ -41,39 +44,9 @@ using SExprBase = std::variant<Atomic<SExpr>, SList<SExpr>>;
 
 struct SExpr : public SExprBase {
   using SExprBase::SExprBase;
-
-  DEFINE_MATCH_METHOD();
-
-  const SExprBase& variant() const {
-    return reinterpret_cast<const SExprBase&>(*this);
-  }
-
-  template <typename T>
-  bool Has() const {
-    return std::holds_alternative<T>(variant());
-  }
-
-  template <typename T>
-  const T& Get() const {
-    return std::get<T>(variant());
-  }
-
-  bool operator==(const SExpr& other) const {
-    return std::visit(CompareFunctor{}, this->variant(), other.variant());
-  }
+  DEFINE_ADT_VARIANT_METHODS(SExprBase);
 
   std::string ToSExpression() const;
-
- private:
-  struct CompareFunctor {
-    bool operator()(const Atomic<SExpr>& lhs, const Atomic<SExpr>& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const SList<SExpr>& lhs, const SList<SExpr>& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const auto& lhs, const auto& rhs) const { return false; }
-  };
 };
 
 }  // namespace pexpr

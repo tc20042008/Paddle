@@ -160,10 +160,10 @@ class LambdaExprBuilder {
     AnfExpr anf_expr = Let(GetBody);
     AnfExpr lambda_or_body = anf_expr.Match(
         [&](const pexpr::Let<AnfExpr>& let) {
-          if (let.bindings.empty()) {
-            return *let.body;
+          if (let->bindings.empty()) {
+            return *let->body;
           } else {
-            anf_expr;
+            return anf_expr;
           }
         },
         [&](const auto&) { return anf_expr; });
@@ -182,10 +182,10 @@ class LambdaExprBuilder {
     AnfExpr anf_expr = Let(GetBody);
     AnfExpr lambda_or_body = anf_expr.Match(
         [&](const pexpr::Let<AnfExpr>& let) {
-          if (let.bindings.empty()) {
-            return *let.body;
+          if (let->bindings.empty()) {
+            return *let->body;
           } else {
-            anf_expr;
+            return anf_expr;
           }
         },
         [&](const auto&) { return anf_expr; });

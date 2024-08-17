@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/common/overloaded.h"
 
 namespace cinn {
 namespace adt {
@@ -37,6 +38,76 @@ constexpr decltype(auto) operator>>(std::variant<Ts...> const& v,
                                     match<Fs...> const& match) {
   return std::visit(match, v);
 }
+
+template <typename T>
+struct Rc {
+ public:
+  Rc(const Rc&) = default;
+  Rc(Rc&&) = default;
+  Rc& operator=(const Rc&) = default;
+  Rc& operator=(Rc&&) = default;
+
+  Rc() : data_(std::make_shared<T>()) {}
+
+  template <
+      typename Arg,
+      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, Rc>, bool> = true>
+  explicit Rc(Arg&& arg) : data_(new T{std::forward<Arg>(arg)}) {}
+
+  template <typename Arg0, typename Arg1, typename... Args>
+  Rc(Arg0&& arg0, Arg1&& arg1, Args&&... args)
+      : data_(new T{std::forward<Arg0>(arg0),
+                    std::forward<Arg1>(arg1),
+                    std::forward<Args>(args)...}) {}
+
+  T* operator->() { return data_.get(); }
+  const T* operator->() const { return data_.get(); }
+
+  T& operator*() { return *data_; }
+  const T& operator*() const { return *data_; }
+
+  bool operator==(const Rc& other) const {
+    if (other.data_.get() == this->data_.get()) {
+      return true;
+    }
+    return *other.data_ == *this->data_;
+  }
+
+ private:
+  std::shared_ptr<T> data_;
+};
+
+#define DEFINE_ADT_RC(class_name, ...)                      \
+  struct class_name : public ::cinn::adt::Rc<__VA_ARGS__> { \
+    using ::cinn::adt::Rc<__VA_ARGS__>::Rc;                 \
+  };
+
+#define DEFINE_ADT_VARIANT_METHODS(...)                                \
+  DEFINE_MATCH_METHOD();                                               \
+  const __VA_ARGS__& variant() const {                                 \
+    return reinterpret_cast<const __VA_ARGS__&>(*this);                \
+  }                                                                    \
+  template <typename T>                                                \
+  bool Has() const {                                                   \
+    return std::holds_alternative<T>(variant());                       \
+  }                                                                    \
+  template <typename T>                                                \
+  const T& Get() const {                                               \
+    return std::get<T>(variant());                                     \
+  }                                                                    \
+  bool operator==(const __VA_ARGS__& other) const {                    \
+    return std::visit(                                                 \
+        [](const auto& lhs, const auto& rhs) {                         \
+          if constexpr (std::is_same_v<std::decay_t<decltype(lhs)>,    \
+                                       std::decay_t<decltype(rhs)>>) { \
+            return lhs == rhs;                                         \
+          } else {                                                     \
+            return false;                                              \
+          }                                                            \
+        },                                                             \
+        this->variant(),                                               \
+        other);                                                        \
+  }
 
 template <typename... Ts>
 class Union {

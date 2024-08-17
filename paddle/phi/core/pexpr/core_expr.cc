@@ -42,14 +42,14 @@ std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {
         std::ostringstream ss;
         ss << "(lambda [";
         int i = 0;
-        for (const auto& arg : lambda.args) {
+        for (const auto& arg : lambda->args) {
           if (i++ > 0) {
             ss << " ";
           }
           ss << arg.value();
         }
         ss << "] ";
-        ss << lambda.body->ToSExpression();
+        ss << lambda->body->ToSExpression();
         ss << ")";
         return ss.str();
       });
@@ -59,10 +59,10 @@ std::string ComposedCallExprToSExpression(
     const ComposedCall<CoreExpr>& core_expr) {
   std::ostringstream ss;
   ss << "(";
-  ss << AtomicExprToSExpression(core_expr.outter_func);
+  ss << AtomicExprToSExpression(core_expr->outter_func);
   ss << " ";
-  ss << AtomicExprToSExpression(core_expr.inner_func);
-  for (const auto& arg : core_expr.args) {
+  ss << AtomicExprToSExpression(core_expr->inner_func);
+  for (const auto& arg : core_expr->args) {
     ss << " ";
     ss << AtomicExprToSExpression(arg);
   }
@@ -163,12 +163,12 @@ Json ConvertAtomicCoreExprToJson(const Atomic<CoreExpr>& atomic_expr) {
         j["type"] = GetJsonNodeType<Lambda<CoreExpr>>();
         j["args"] = [&] {
           Json j_args = Json::array();
-          for (const auto& arg : lambda.args) {
+          for (const auto& arg : lambda->args) {
             j_args.push_back(arg.value());
           }
           return j_args;
         }();
-        j["body"] = ConvertCoreExprToJson(*lambda.body);
+        j["body"] = ConvertCoreExprToJson(*lambda->body);
         return j;
       });
 }
@@ -181,11 +181,11 @@ Json ConvertCoreExprToJson(const CoreExpr& core_expr) {
       [&](const ComposedCall<CoreExpr>& call_expr) {
         Json j;
         j["type"] = GetJsonNodeType<ComposedCall<CoreExpr>>();
-        j["outter_func"] = ConvertAtomicCoreExprToJson(call_expr.outter_func);
-        j["inner_func"] = ConvertAtomicCoreExprToJson(call_expr.inner_func);
+        j["outter_func"] = ConvertAtomicCoreExprToJson(call_expr->outter_func);
+        j["inner_func"] = ConvertAtomicCoreExprToJson(call_expr->inner_func);
         j["args"] = [&] {
           Json j_args = Json::array();
-          for (const auto& arg : call_expr.args) {
+          for (const auto& arg : call_expr->args) {
             j_args.push_back(ConvertAtomicCoreExprToJson(arg));
           }
           return j_args;

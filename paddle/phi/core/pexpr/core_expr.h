@@ -26,16 +26,19 @@ struct CoreExpr;
 
 // (outter_func (inner_func [args]))
 template <typename Expr>
-struct ComposedCall {
+struct ComposedCallImpl {
   Atomic<Expr> outter_func;
   Atomic<Expr> inner_func;
   std::vector<Atomic<Expr>> args;
 
-  bool operator==(const ComposedCall& other) const {
+  bool operator==(const ComposedCallImpl& other) const {
     return (this->outter_func == other.outter_func) &&
            (this->inner_func == other.inner_func) && (this->args == other.args);
   }
 };
+
+template <typename Expr>
+DEFINE_ADT_RC(ComposedCall, const ComposedCallImpl<Expr>);
 
 // core expr
 // expr := aexpr | (aexpr (aexpr [aexpr]))
@@ -43,44 +46,12 @@ using CoreExprBase = std::variant<Atomic<CoreExpr>, ComposedCall<CoreExpr>>;
 
 struct CoreExpr : public CoreExprBase {
   using CoreExprBase::CoreExprBase;
-
-  DEFINE_MATCH_METHOD();
-
-  const CoreExprBase& variant() const {
-    return reinterpret_cast<const CoreExprBase&>(*this);
-  }
-
-  template <typename T>
-  bool Has() const {
-    return std::holds_alternative<T>(variant());
-  }
-
-  template <typename T>
-  const T& Get() const {
-    return std::get<T>(variant());
-  }
-
-  bool operator==(const CoreExpr& other) const {
-    return std::visit(CompareFunctor{}, this->variant(), other.variant());
-  }
+  DEFINE_ADT_VARIANT_METHODS(CoreExprBase);
 
   std::string ToSExpression() const;
   std::string DumpToJsonString();
   static std::optional<CoreExpr> ParseFromJsonString(
       const std::string& json_str);
-
- private:
-  struct CompareFunctor {
-    bool operator()(const Atomic<CoreExpr>& lhs,
-                    const Atomic<CoreExpr>& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const ComposedCall<CoreExpr>& lhs,
-                    const ComposedCall<CoreExpr>& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const auto& lhs, const auto& rhs) const { return false; }
-  };
 };
 
 extern const char kBuiltinId[];

@@ -38,14 +38,14 @@ std::string AtomicExprToSExpression(const Atomic<SExpr>& s_expr) {
         std::ostringstream ss;
         ss << "(lambda [";
         int i = 0;
-        for (const auto& arg : lambda.args) {
+        for (const auto& arg : lambda->args) {
           if (i++ > 0) {
             ss << " ";
           }
           ss << arg.value();
         }
         ss << "] ";
-        ss << lambda.body->ToSExpression();
+        ss << lambda->body->ToSExpression();
         ss << ")";
         return ss.str();
       });
@@ -55,7 +55,7 @@ std::string SListExprToSExpression(const SList<SExpr>& s_expr) {
   std::ostringstream ss;
   int i = 0;
   ss << "(";
-  for (const auto& child : *s_expr.children) {
+  for (const auto& child : *s_expr->children) {
     if (i++ > 0) {
       ss << " ";
     }

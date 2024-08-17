@@ -15,17 +15,17 @@
 #pragma once
 
 #include "paddle/common/enforce.h"
-#include "paddle/phi/core/pexpr/index_expr_constants.h"
+#include "paddle/phi/core/pexpr/index_lambda_constants.h"
 #include "paddle/phi/core/pexpr/lambda_expr_builder.h"
 
 namespace pexpr {
 
-class IndexExprBuilder;
+class IndexLambdaBuilder;
 
-class IndexExprBuildContext {
+class IndexLambdaBuildContext {
  public:
-  IndexExprBuildContext(const IndexExprBuildContext&) = delete;
-  IndexExprBuildContext(IndexExprBuildContext&&) = delete;
+  IndexLambdaBuildContext(const IndexLambdaBuildContext&) = delete;
+  IndexLambdaBuildContext(IndexLambdaBuildContext&&) = delete;
 
   using var_type = LetVar;
 
@@ -85,14 +85,14 @@ class IndexExprBuildContext {
     return AnfExprBuilder().Var(kIntArrayLikeIndexes);
   }
 
-  AnfExpr Unsupported() { return AnfExprBuilder().Var(kUnsupported); }
+  AnfExpr Undefined() { return AnfExprBuilder().Var(kUndefined); }
 
   AnfExpr Nothing() { return AnfExprBuilder().Var(kNothing); }
 
  private:
-  friend class IndexExprBuilder;
+  friend class IndexLambdaBuilder;
 
-  explicit IndexExprBuildContext(LetContext* let_ctx) : let_ctx_(let_ctx) {}
+  explicit IndexLambdaBuildContext(LetContext* let_ctx) : let_ctx_(let_ctx) {}
 
   std::vector<tVar<std::string>> MakeLambdaArgs(
       const std::vector<std::string>& args) {
@@ -107,13 +107,13 @@ class IndexExprBuildContext {
   LetContext* let_ctx_;
 };
 
-class IndexExprBuilder {
+class IndexLambdaBuilder {
  public:
-  IndexExprBuilder() : lmbd_builder_() {}
-  explicit IndexExprBuilder(const std::function<size_t()>& SeqNoGenerator)
+  IndexLambdaBuilder() : lmbd_builder_() {}
+  explicit IndexLambdaBuilder(const std::function<size_t()>& SeqNoGenerator)
       : lmbd_builder_(SeqNoGenerator) {}
-  IndexExprBuilder(const IndexExprBuilder&) = delete;
-  IndexExprBuilder(IndexExprBuilder&&) = delete;
+  IndexLambdaBuilder(const IndexLambdaBuilder&) = delete;
+  IndexLambdaBuilder(IndexLambdaBuilder&&) = delete;
 
   AnfExpr IndexLambda(
       const std::vector<std::string>& in_shape_vars,
@@ -121,7 +121,7 @@ class IndexExprBuilder {
       const std::vector<std::string>& out_shape_vars,
       const std::vector<std::string>& out_data_vars,
       const std::vector<std::string>& index_vars,
-      const std::function<AnfExpr(IndexExprBuildContext&)> GetBody) {
+      const std::function<AnfExpr(IndexLambdaBuildContext&)> GetBody) {
     PADDLE_ENFORCE_EQ(
         in_shape_vars.size(),
         in_data_vars.size(),
@@ -137,15 +137,16 @@ class IndexExprBuilder {
                                      out_shape_vars.size(),
                                      out_data_vars.size()));
 
-    return lmbd_builder_.NestedLambda({in_shape_vars,
-                                       in_data_vars,
-                                       out_shape_vars,
-                                       out_data_vars,
-                                       index_vars},
-                                      [&](auto& let_context) {
-                                        IndexExprBuildContext ctx(&let_context);
-                                        return GetBody(ctx);
-                                      });
+    return lmbd_builder_.NestedLambda(
+        {in_shape_vars,
+         in_data_vars,
+         out_shape_vars,
+         out_data_vars,
+         index_vars},
+        [&](auto& let_context) {
+          IndexLambdaBuildContext ctx(&let_context);
+          return GetBody(ctx);
+        });
   }
 
  private:

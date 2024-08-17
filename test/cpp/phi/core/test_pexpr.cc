@@ -21,7 +21,7 @@
 #include "paddle/phi/core/pexpr/anf_expr_util.h"
 #include "paddle/phi/core/pexpr/core_expr_builder.h"
 #include "paddle/phi/core/pexpr/core_expr_util.h"
-#include "paddle/phi/core/pexpr/index_expr_builder.h"
+#include "paddle/phi/core/pexpr/index_lambda_builder.h"
 #include "paddle/phi/core/pexpr/lambda_expr_builder.h"
 
 namespace pexpr::tests {
@@ -307,10 +307,10 @@ TEST(LambdaExprBuilder, Lambda) {
   ASSERT_EQ(core_expr, expected);
 }
 
-TEST(IndexExprBuilder, Lambda) {
+TEST(IndexLambdaBuilder, Lambda) {
   size_t seq_no0 = 0;
   const auto& GenSeqNo0 = [&]() { return seq_no0++; };
-  IndexExprBuilder builder(GenSeqNo0);
+  IndexLambdaBuilder builder(GenSeqNo0);
   AnfExpr idx_expr = builder.IndexLambda(
       {"in_shape0", "in_shape1"},
       {"in_data0", "in_data1"},

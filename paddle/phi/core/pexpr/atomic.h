@@ -16,6 +16,7 @@
 
 #include <functional>
 #include <optional>
+#include <type_traits>
 #include <vector>
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/common/overloaded.h"
@@ -35,14 +36,17 @@ struct PrimitiveOp {
 };
 
 template <typename Expr>
-struct Lambda {
+struct LambdaImpl {
   std::vector<tVar<std::string>> args;
   std::shared_ptr<Expr> body;
 
-  bool operator==(const Lambda& other) const {
+  bool operator==(const LambdaImpl& other) const {
     return (this->args == other.args) && (*this->body == *other.body);
   }
 };
+
+template <typename Expr>
+DEFINE_ADT_RC(Lambda, const LambdaImpl<Expr>);
 
 // aexpr := Var | CONST | (lambda [VAR] expr)
 
@@ -57,58 +61,20 @@ using AtomicBase = std::variant<tVar<std::string>,
 template <typename Expr>
 struct Atomic : public AtomicBase<Expr> {
   using AtomicBase<Expr>::AtomicBase;
-
-  DEFINE_MATCH_METHOD();
-
-  const AtomicBase<Expr>& variant() const {
-    return reinterpret_cast<const AtomicBase<Expr>&>(*this);
-  }
-
-  template <typename T>
-  bool Has() const {
-    return std::holds_alternative<T>(variant());
-  }
-
-  template <typename T>
-  const T& Get() const {
-    return std::get<T>(variant());
-  }
-
-  bool operator==(const Atomic& other) const {
-    return std::visit(CompareFunctor{}, this->variant(), other.variant());
-  }
-
- private:
-  struct CompareFunctor {
-    bool operator()(const tVar<std::string>& lhs,
-                    const tVar<std::string>& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const bool lhs, const bool rhs) const { return lhs == rhs; }
-    bool operator()(const int64_t lhs, const int64_t rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const std::string& lhs, const std::string& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const PrimitiveOp& lhs, const PrimitiveOp& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const Lambda<Expr>& lhs, const Lambda<Expr>& rhs) const {
-      return lhs == rhs;
-    }
-    bool operator()(const auto& lhs, const auto& rhs) const { return false; }
-  };
+  DEFINE_ADT_VARIANT_METHODS(AtomicBase<Expr>);
 };
 
 template <typename Expr>
-struct Call {
+struct CallImpl {
   Atomic<Expr> func;
   std::vector<Atomic<Expr>> args;
 
-  bool operator==(const Call& other) const {
+  bool operator==(const CallImpl& other) const {
     return (this->func == other.func) && (this->args == other.args);
   }
 };
+
+template <typename Expr>
+DEFINE_ADT_RC(Call, const CallImpl<Expr>);
 
 }  // namespace pexpr

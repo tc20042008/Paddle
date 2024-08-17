@@ -105,17 +105,17 @@ struct AnfExprToCoreExprConverter {
     return CoreVal(core_.PrimitiveOp(c));
   }
   value_type ConvertLambda(const Lambda<AnfExpr>& anf_expr) {
-    const auto& core_body_val = Convert(*anf_expr.body);
+    const auto& core_body_val = Convert(*anf_expr->body);
     LazyCoreExpr lazy_core_expr = TryWrapperToLazyCoreExpr(core_body_val);
     CoreExpr core_body = lazy_core_expr(core_.Var(kBuiltinId));
-    return CoreVal(core_.Lambda(anf_expr.args, core_body));
+    return CoreVal(core_.Lambda(anf_expr->args, core_body));
   }
 
   value_type ConvertCall(const Call<AnfExpr>& anf_expr) {
-    const auto& inner_func = ConvertAtomicToAtomic(anf_expr.func);
+    const auto& inner_func = ConvertAtomicToAtomic(anf_expr->func);
     std::vector<Atomic<CoreExpr>> core_args{};
-    core_args.reserve(anf_expr.args.size());
-    for (const auto& arg : anf_expr.args) {
+    core_args.reserve(anf_expr->args.size());
+    for (const auto& arg : anf_expr->args) {
       core_args.push_back(ConvertAtomicToAtomic(arg));
     }
     return LazyCoreVal(
@@ -125,14 +125,14 @@ struct AnfExprToCoreExprConverter {
         });
   }
   value_type ConvertIf(const If<AnfExpr>& anf_expr) {
-    const Atomic<CoreExpr>& core_cond = ConvertAtomicToAtomic(anf_expr.cond);
+    const Atomic<CoreExpr>& core_cond = ConvertAtomicToAtomic(anf_expr->cond);
     const auto& MakeZeroArgLambda = [](const auto& expr_ptr) {
       return AnfExprBuilder().Lambda({}, *expr_ptr);
     };
     const Atomic<CoreExpr>& core_true_expr =
-        ConvertAtomicToAtomic(MakeZeroArgLambda(anf_expr.true_expr));
+        ConvertAtomicToAtomic(MakeZeroArgLambda(anf_expr->true_expr));
     const Atomic<CoreExpr>& core_false_expr =
-        ConvertAtomicToAtomic(MakeZeroArgLambda(anf_expr.false_expr));
+        ConvertAtomicToAtomic(MakeZeroArgLambda(anf_expr->false_expr));
     return LazyCoreVal([=](const Atomic<CoreExpr>& continuation) {
       CoreExprBuilder core{};
       return core.ComposedCall(continuation,
@@ -143,12 +143,12 @@ struct AnfExprToCoreExprConverter {
   value_type ConvertLet(const Let<AnfExpr>& anf_expr) {
     std::vector<std::string> symbol_names;
     std::vector<LazyCoreExpr> lazy_core_exprs;
-    lazy_core_exprs.reserve(anf_expr.bindings.size());
-    for (const auto& binding : anf_expr.bindings) {
+    lazy_core_exprs.reserve(anf_expr->bindings.size());
+    for (const auto& binding : anf_expr->bindings) {
       symbol_names.push_back(binding.var.value());
       lazy_core_exprs.push_back(ConvertCombinedToLazyCoreExpr(binding.val));
     }
-    value_type body_val = Convert(*anf_expr.body);
+    value_type body_val = Convert(*anf_expr->body);
     LazyCoreExpr body_lazy_core_expr = TryWrapperToLazyCoreExpr(body_val);
     lazy_core_exprs.push_back(body_lazy_core_expr);
     PADDLE_ENFORCE_EQ(

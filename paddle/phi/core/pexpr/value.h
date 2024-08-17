@@ -84,10 +84,13 @@ class Environment {
 };
 
 template <typename Expr, typename CustomT>
-struct Closure {
+struct ClosureImpl {
   Lambda<Expr> lambda;
   std::shared_ptr<Environment<Expr, CustomT>> environment;
 };
+
+template <typename Expr, typename CustomT>
+DEFINE_ADT_RC(Closure, const ClosureImpl<Expr, CustomT>);
 
 template <typename Expr, typename CustomT>
 using ValueBase = std::variant<CustomT,

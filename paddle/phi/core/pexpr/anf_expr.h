@@ -22,11 +22,20 @@
 namespace pexpr {
 
 template <typename Expr>
-struct If {
+struct IfImpl {
   Atomic<Expr> cond;
   std::shared_ptr<Expr> true_expr;
   std::shared_ptr<Expr> false_expr;
+
+  bool operator==(const IfImpl& other) const {
+    return (this->cond == other.cond) &&
+           (*this->true_expr == *other.false_expr) &&
+           (*this->false_expr == *other.false_expr);
+  }
 };
+
+template <typename Expr>
+DEFINE_ADT_RC(If, const IfImpl<Expr>);
 
 template <typename Expr>
 using CombinedBase = std::variant<Call<Expr>, If<Expr>>;
@@ -34,35 +43,31 @@ using CombinedBase = std::variant<Call<Expr>, If<Expr>>;
 template <typename Expr>
 struct Combined : public CombinedBase<Expr> {
   using CombinedBase<Expr>::CombinedBase;
-
-  DEFINE_MATCH_METHOD();
-
-  const CombinedBase<Expr>& variant() const {
-    return reinterpret_cast<const CombinedBase<Expr>&>(*this);
-  }
-
-  template <typename T>
-  bool Has() const {
-    return std::holds_alternative<T>(variant());
-  }
-
-  template <typename T>
-  const T& Get() const {
-    return std::get<T>(variant());
-  }
+  DEFINE_ADT_VARIANT_METHODS(CombinedBase<Expr>);
 };
 
 template <typename Expr>
 struct Bind {
   tVar<std::string> var;
   Combined<Expr> val;
+
+  bool operator==(const Bind& other) const {
+    return this->var == other.var && this->val == other.val;
+  }
 };
 
 template <typename Expr>
-struct Let {
+struct LetImpl {
   std::vector<Bind<Expr>> bindings;
   std::shared_ptr<Expr> body;
+
+  bool operator==(const LetImpl& other) const {
+    return this->bindings == other.bindings && *this->body == *other.body;
+  }
 };
+
+template <typename Expr>
+DEFINE_ADT_RC(Let, const LetImpl<Expr>);
 
 struct AnfExpr;
 
@@ -74,24 +79,10 @@ using AnfExprBase =
 // A-norm form
 struct AnfExpr : public AnfExprBase {
   using AnfExprBase::AnfExprBase;
-
-  DEFINE_MATCH_METHOD();
-
-  const AnfExprBase& variant() const {
-    return reinterpret_cast<const AnfExprBase&>(*this);
-  }
-
-  template <typename T>
-  bool Has() const {
-    return std::holds_alternative<T>(variant());
-  }
-
-  template <typename T>
-  const T& Get() const {
-    return std::get<T>(variant());
-  }
+  DEFINE_ADT_VARIANT_METHODS(AnfExprBase);
 
   std::string DumpToJsonString();
+  std::string DumpToJsonString(int indent);
   static std::optional<AnfExpr> ParseFromJsonString(
       const std::string& json_str);
 };

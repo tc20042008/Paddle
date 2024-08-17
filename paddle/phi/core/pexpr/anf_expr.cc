@@ -66,7 +66,7 @@ Json ConvertAtomicAnfExprToJson(const Atomic<AnfExpr>& atomic_expr) {
           }
           return j_args;
         }());
-        j.push_back(ConvertAnfExprToJson(*lambda->body));
+        j.push_back(ConvertAnfExprToJson(lambda->body));
         return j;
       });
 }
@@ -85,8 +85,8 @@ Json ConvertCombinedAnfExprToJson(const Combined<AnfExpr>& combined_expr) {
         Json j;
         j.push_back(kIf);
         j.push_back(ConvertAtomicAnfExprToJson(if_expr->cond));
-        j.push_back(ConvertAnfExprToJson(*if_expr->true_expr));
-        j.push_back(ConvertAnfExprToJson(*if_expr->false_expr));
+        j.push_back(ConvertAnfExprToJson(if_expr->true_expr));
+        j.push_back(ConvertAnfExprToJson(if_expr->false_expr));
         return j;
       });
 }
@@ -104,7 +104,7 @@ Json ConvertLetAnfExprToJson(const Let<AnfExpr>& let_expr) {
   for (const auto& binding : let_expr->bindings) {
     j.push_back(ConvertBindingAnfExprToJson(binding));
   }
-  j.push_back(ConvertAnfExprToJson(*let_expr->body));
+  j.push_back(ConvertAnfExprToJson(let_expr->body));
   return j;
 }
 

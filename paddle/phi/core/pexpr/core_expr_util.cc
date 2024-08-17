@@ -36,7 +36,7 @@ CoreExpr Replace(const CoreExpr& core_expr,
                 }
               }
               CoreExpr new_body =
-                  Replace(*lambda->body, pattern_var, replacement);
+                  Replace(lambda->body, pattern_var, replacement);
               return CoreExprBuilder().Lambda(lambda->args, new_body);
             },
             [&](const tVar<std::string>& var) -> Atomic<CoreExpr> {
@@ -91,7 +91,7 @@ Atomic<CoreExpr> ReplaceLambdaArgNameAtomic(
   return atomic_expr.Match(
       [&](const Lambda<CoreExpr>& lambda) -> Atomic<CoreExpr> {
         const auto& body = ReplaceLambdaArgName(
-            *lambda->body, pattern_arg_name, UniqueVarNameGetter);
+            lambda->body, pattern_arg_name, UniqueVarNameGetter);
         CoreExprBuilder core{};
         if (!LambdaArgsContains(lambda, pattern_arg_name)) {
           return core.Lambda(lambda->args, body);
@@ -170,7 +170,7 @@ std::optional<CoreExpr> TryInlineBuiltinId(
   }
   const auto& pattern_var = outter_func->args.at(0);
   const auto& replacement = composed_call->args.at(0).Get<tVar<std::string>>();
-  return Replace(*outter_func->body, pattern_var, replacement);
+  return Replace(outter_func->body, pattern_var, replacement);
 }
 
 std::optional<int> GetVarArgIndex(const ComposedCall<CoreExpr>& composed_call) {
@@ -203,7 +203,7 @@ ComposedCall<CoreExpr> TryInlineInnerLambdaArg(
     call_args.push_back(composed_call->args.at(i));
   }
   const auto& inner_func_body =
-      Replace(*origin_inner_func->body,
+      Replace(origin_inner_func->body,
               origin_inner_func->args.at(arg_idx),
               composed_call->args.at(arg_idx).Get<tVar<std::string>>());
   CoreExprBuilder core{};
@@ -234,7 +234,7 @@ std::optional<CoreExpr> TryInlineInnerLambda(
 Atomic<CoreExpr> InlineAtomic(const Atomic<CoreExpr>& atomic_expr) {
   return atomic_expr.Match(
       [&](const Lambda<CoreExpr>& lambda) -> Atomic<CoreExpr> {
-        return CoreExprBuilder().Lambda(lambda->args, Inline(*lambda->body));
+        return CoreExprBuilder().Lambda(lambda->args, Inline(lambda->body));
       },
       [&](const auto& expr) -> Atomic<CoreExpr> { return expr; });
 }

@@ -49,7 +49,7 @@ std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {
           ss << arg.value();
         }
         ss << "] ";
-        ss << lambda->body->ToSExpression();
+        ss << lambda->body.ToSExpression();
         ss << ")";
         return ss.str();
       });
@@ -168,7 +168,7 @@ Json ConvertAtomicCoreExprToJson(const Atomic<CoreExpr>& atomic_expr) {
           }
           return j_args;
         }();
-        j["body"] = ConvertCoreExprToJson(*lambda->body);
+        j["body"] = ConvertCoreExprToJson(lambda->body);
         return j;
       });
 }

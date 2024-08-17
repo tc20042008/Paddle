@@ -38,10 +38,10 @@ struct PrimitiveOp {
 template <typename Expr>
 struct LambdaImpl {
   std::vector<tVar<std::string>> args;
-  std::shared_ptr<Expr> body;
+  Expr body;
 
   bool operator==(const LambdaImpl& other) const {
-    return (this->args == other.args) && (*this->body == *other.body);
+    return (this->args == other.args) && (this->body == other.body);
   }
 };
 

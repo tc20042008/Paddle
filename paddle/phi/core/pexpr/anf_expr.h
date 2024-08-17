@@ -24,13 +24,13 @@ namespace pexpr {
 template <typename Expr>
 struct IfImpl {
   Atomic<Expr> cond;
-  std::shared_ptr<Expr> true_expr;
-  std::shared_ptr<Expr> false_expr;
+  Expr true_expr;
+  Expr false_expr;
 
   bool operator==(const IfImpl& other) const {
     return (this->cond == other.cond) &&
-           (*this->true_expr == *other.false_expr) &&
-           (*this->false_expr == *other.false_expr);
+           (this->true_expr == other.false_expr) &&
+           (this->false_expr == other.false_expr);
   }
 };
 
@@ -59,10 +59,10 @@ struct Bind {
 template <typename Expr>
 struct LetImpl {
   std::vector<Bind<Expr>> bindings;
-  std::shared_ptr<Expr> body;
+  Expr body;
 
   bool operator==(const LetImpl& other) const {
-    return this->bindings == other.bindings && *this->body == *other.body;
+    return this->bindings == other.bindings && this->body == other.body;
   }
 };
 

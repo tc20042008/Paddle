@@ -39,8 +39,7 @@ class AtomicExprBuilder {
 
   Atomic<Expr> Lambda(const std::vector<tVar<std::string>>& args,
                       const Expr& body) {
-    return Atomic<Expr>{
-        pexpr::Lambda<Expr>{args, std::make_shared<Expr>(body)}};
+    return Atomic<Expr>{pexpr::Lambda<Expr>{args, body}};
   }
 
  private:

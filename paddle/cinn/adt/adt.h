@@ -42,16 +42,18 @@ constexpr decltype(auto) operator>>(std::variant<Ts...> const& v,
 template <typename T>
 struct Rc {
  public:
+  Rc() : data_(std::make_shared<T>()) {}
+  explicit Rc(const std::shared_ptr<T>& data) : data_(data) {}
   Rc(const Rc&) = default;
   Rc(Rc&&) = default;
   Rc& operator=(const Rc&) = default;
   Rc& operator=(Rc&&) = default;
 
-  Rc() : data_(std::make_shared<T>()) {}
-
-  template <
-      typename Arg,
-      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, Rc>, bool> = true>
+  template <typename Arg,
+            std::enable_if_t<
+                !std::is_same_v<std::decay_t<Arg>, Rc> &&
+                    !std::is_same_v<std::decay_t<Arg>, std::shared_ptr<T>>,
+                bool> = true>
   explicit Rc(Arg&& arg) : data_(new T{std::forward<Arg>(arg)}) {}
 
   template <typename Arg0, typename Arg1, typename... Args>

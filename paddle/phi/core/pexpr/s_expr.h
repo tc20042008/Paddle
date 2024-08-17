@@ -28,7 +28,7 @@ struct SExpr;
 // (outter_func (inner_func [args]))
 template <typename Expr>
 struct SListImpl {
-  adt::List<Expr> children;
+  std::vector<Expr> children;
 
   bool operator==(const SListImpl& other) const {
     return this->children == other.children;

@@ -33,8 +33,7 @@ class AnfExprBuilder : public AtomicExprBuilder<AnfExpr> {
   Combined<AnfExpr> If(const Atomic<AnfExpr>& c,
                        const AnfExpr& t,
                        const AnfExpr& f) {
-    return Combined<AnfExpr>{pexpr::If<AnfExpr>{
-        c, std::make_shared<AnfExpr>(t), std::make_shared<AnfExpr>(f)}};
+    return Combined<AnfExpr>{pexpr::If<AnfExpr>{c, t, f}};
   }
 
   pexpr::Bind<AnfExpr> Bind(const std::string& var,
@@ -44,7 +43,7 @@ class AnfExprBuilder : public AtomicExprBuilder<AnfExpr> {
 
   pexpr::Let<AnfExpr> Let(const std::vector<pexpr::Bind<AnfExpr>>& assigns,
                           const AnfExpr& body) {
-    return pexpr::Let<AnfExpr>{assigns, std::make_shared<AnfExpr>(body)};
+    return pexpr::Let<AnfExpr>{assigns, body};
   }
 
   AnfExpr operator()(const Atomic<AnfExpr>& atomic) { return AnfExpr{atomic}; }

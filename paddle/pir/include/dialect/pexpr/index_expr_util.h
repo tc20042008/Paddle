@@ -12,6 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/pexpr/merge_ap_unary_util.h"
+#pragma once
+#include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr.h"
 
-namespace pexpr {}
+namespace pexpr {
+
+Maybe<int64_t> IndexTupleExprGetRank(const IndexTupleExpr& expr);
+
+Maybe<symbol::DimExpr> IndexExprGetRange(const IndexExpr& index_expr);
+
+Maybe<adt::List<symbol::DimExpr>> IndexTupleExprGetRanges(
+    const IndexTupleExpr& expr);
+
+}  // namespace pexpr

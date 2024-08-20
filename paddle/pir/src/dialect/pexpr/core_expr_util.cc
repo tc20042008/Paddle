@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/pexpr/core_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_util.h"
 #include <atomic>
 #include "paddle/common/enforce.h"
-#include "paddle/phi/core/pexpr/anf_expr_builder.h"
-#include "paddle/phi/core/pexpr/core_expr_builder.h"
-#include "paddle/phi/core/pexpr/value.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/value.h"
 
 namespace pexpr {
 

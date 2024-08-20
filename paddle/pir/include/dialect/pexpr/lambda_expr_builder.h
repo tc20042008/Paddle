@@ -15,8 +15,8 @@
 #pragma once
 #include <atomic>
 #include "paddle/common/enforce.h"
-#include "paddle/phi/core/pexpr/anf_expr_builder.h"
-#include "paddle/phi/core/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr.h"
 
 namespace pexpr {
 
@@ -175,6 +175,15 @@ class LambdaExprBuilder {
           anf_.Lambda(MakeLambdaArgs(multi_layer_args.at(i)), lambda_or_body);
     }
     return lambda_or_body;
+  }
+
+  AnfExpr Lambda(const std::vector<std::string>& args,
+                 const std::function<LetVar(LetContext&)>& GetBody) {
+    std::function<AnfExpr(LetContext&)> GetAnfExprBody =
+        [&](LetContext& ctx) -> AnfExpr {
+      return Atomic<AnfExpr>{tVar<std::string>{GetBody(ctx).name()}};
+    };
+    return Lambda(args, GetAnfExprBody);
   }
 
   AnfExpr Lambda(const std::vector<std::string>& args,

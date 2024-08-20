@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>
 #include "nlohmann/json.hpp"
-#include "paddle/phi/core/pexpr/core_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
 
 namespace pexpr {
 
 const char kBuiltinId[] = "__builtin_identity__";
+const char kIf[] = "if";
 
 namespace {
 

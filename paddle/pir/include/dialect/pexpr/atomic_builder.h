@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/pexpr/atomic.h"
+#include "paddle/pir/include/dialect/pexpr/atomic.h"
 
 namespace pexpr {
 

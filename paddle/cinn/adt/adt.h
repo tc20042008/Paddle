@@ -97,6 +97,9 @@ struct Rc {
   const T& Get() const {                                               \
     return std::get<T>(variant());                                     \
   }                                                                    \
+  bool operator!=(const __VA_ARGS__& other) const {                    \
+    return !(*this == other);                                          \
+  }                                                                    \
   bool operator==(const __VA_ARGS__& other) const {                    \
     return std::visit(                                                 \
         [](const auto& lhs, const auto& rhs) {                         \

@@ -14,16 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/core/pexpr/anf_expr.h"
-#include "paddle/phi/core/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr.h"
 
 namespace pexpr {
 
-CoreExpr ReplaceLambdaArgName(
-    const CoreExpr& core_expr,
-    const std::string& pattern_arg_name,
-    const std::function<std::string()>& UniqueVarNameGetter);
-
-CoreExpr Inline(const CoreExpr&);
+CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr&);
 
 }  // namespace pexpr

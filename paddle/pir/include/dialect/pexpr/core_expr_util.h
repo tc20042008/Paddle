@@ -14,17 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/core/pexpr/anf_expr.h"
-#include "paddle/phi/core/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr.h"
 
 namespace pexpr {
 
-CoreExpr HorizontalMergeApUnaryLambda(
-    const CoreExpr& lhs,
-    const std::vector<int64_t>& lhs_input_slices,
-    const std::vector<int64_t>& lhs_output_slices,
-    const const CoreExpr& rhs,
-    const std::vector<int64_t>& rhs_input_slices,
-    const std::vector<int64_t>& rhs_output_slices);
+CoreExpr ReplaceLambdaArgName(
+    const CoreExpr& core_expr,
+    const std::string& pattern_arg_name,
+    const std::function<std::string()>& UniqueVarNameGetter);
+
+CoreExpr Inline(const CoreExpr&);
 
 }  // namespace pexpr

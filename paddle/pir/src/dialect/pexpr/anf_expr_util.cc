@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/pexpr/anf_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
 #include <atomic>
 #include "paddle/common/enforce.h"
-#include "paddle/phi/core/pexpr/anf_expr_builder.h"
-#include "paddle/phi/core/pexpr/core_expr_builder.h"
-#include "paddle/phi/core/pexpr/core_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_util.h"
 
 namespace pexpr {
 
@@ -240,7 +240,22 @@ CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr& anf_expr) {
   AnfExprToCoreExprConverter converter{};
   MaybeLazyCoreExpr ret_val = converter.Convert(anf_expr);
   const auto& lazy_core_expr = TryWrapperToLazyCoreExpr(ret_val);
-  return lazy_core_expr(CoreExprBuilder().Var(kBuiltinId));
+  CoreExpr ret = lazy_core_expr(CoreExprBuilder().Var(kBuiltinId));
+  return ret.Match(
+      [&](const Atomic<CoreExpr>&) -> CoreExpr { return ret; },
+      [&](const ComposedCall<CoreExpr>& composed_call) -> CoreExpr {
+        Atomic<CoreExpr> identity{tVar<std::string>{kBuiltinId}};
+        if (composed_call->outter_func != identity) {
+          return composed_call;
+        }
+        if (composed_call->inner_func != identity) {
+          return composed_call;
+        }
+        if (composed_call->args.size() != 1) {
+          return composed_call;
+        }
+        return composed_call->args.at(0);
+      });
 }
 
 }  // namespace pexpr

@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include <variant>
 #include "paddle/cinn/adt/adt.h"
 
 namespace pexpr {
 
-struct Undefined : public std::monostate {
-  using std::monostate::monostate;
-};
+namespace adt = ::cinn::adt;
 
 struct Nothing : public std::monostate {
   using std::monostate::monostate;
@@ -37,5 +36,19 @@ struct DisjointUnionImpl {
 
 template <typename T>
 DEFINE_ADT_RC(DisjointUnion, const DisjointUnionImpl<T>);
+
+template <typename T0, typename T1>
+using EitherImpl = std::variant<T0, T1>;
+
+template <typename T0, typename T1>
+struct Either : public EitherImpl<T0, T1> {
+  using EitherImpl<T0, T1>::EitherImpl;
+  DEFINE_ADT_VARIANT_METHODS(EitherImpl<T0, T1>);
+};
+
+template <typename T>
+struct Maybe : public Either<T, Nothing> {
+  using Either<T, Nothing>::Either;
+};
 
 }  // namespace pexpr

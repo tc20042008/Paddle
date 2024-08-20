@@ -18,50 +18,43 @@
 #include <optional>
 #include <ostream>
 #include <vector>
-#include "paddle/phi/core/pexpr/atomic.h"
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/pir/include/dialect/pexpr/atomic.h"
 
 namespace pexpr {
 
-struct CoreExpr;
+struct SExpr;
 
 // (outter_func (inner_func [args]))
 template <typename Expr>
-struct ComposedCallImpl {
-  Atomic<Expr> outter_func;
-  Atomic<Expr> inner_func;
-  std::vector<Atomic<Expr>> args;
+struct SListImpl {
+  std::vector<Expr> children;
 
-  bool operator==(const ComposedCallImpl& other) const {
-    return (this->outter_func == other.outter_func) &&
-           (this->inner_func == other.inner_func) && (this->args == other.args);
+  bool operator==(const SListImpl& other) const {
+    return this->children == other.children;
   }
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(ComposedCall, const ComposedCallImpl<Expr>);
+DEFINE_ADT_RC(SList, const SListImpl<Expr>);
 
-// core expr
-// expr := aexpr | (aexpr (aexpr [aexpr]))
-using CoreExprBase = std::variant<Atomic<CoreExpr>, ComposedCall<CoreExpr>>;
+// s expression
+// expr := aexpr | ([expr])
+using SExprBase = std::variant<Atomic<SExpr>, SList<SExpr>>;
 
-struct CoreExpr : public CoreExprBase {
-  using CoreExprBase::CoreExprBase;
-  DEFINE_ADT_VARIANT_METHODS(CoreExprBase);
+struct SExpr : public SExprBase {
+  using SExprBase::SExprBase;
+  DEFINE_ADT_VARIANT_METHODS(SExprBase);
 
   std::string ToSExpression() const;
-  std::string DumpToJsonString();
-  static std::optional<CoreExpr> ParseFromJsonString(
-      const std::string& json_str);
 };
-
-extern const char kBuiltinId[];
 
 }  // namespace pexpr
 
 namespace std {
 
 inline std::ostream& operator<<(std::ostream& os,
-                                const pexpr::CoreExpr& core_expr) {
+                                const pexpr::SExpr& core_expr) {
   return os << core_expr.ToSExpression();
 }
 

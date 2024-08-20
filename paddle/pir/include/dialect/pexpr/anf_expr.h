@@ -17,7 +17,7 @@
 #include <functional>
 #include <optional>
 #include <vector>
-#include "paddle/phi/core/pexpr/atomic.h"
+#include "paddle/pir/include/dialect/pexpr/atomic.h"
 
 namespace pexpr {
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/pexpr/s_expr.h"
+#include "paddle/pir/include/dialect/pexpr/s_expr.h"
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>

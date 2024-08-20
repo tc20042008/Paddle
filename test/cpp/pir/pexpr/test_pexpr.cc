@@ -17,12 +17,11 @@
 #include "gtest/gtest.h"
 
 #include "paddle/common/errors.h"
-#include "paddle/phi/core/pexpr/anf_expr_builder.h"
-#include "paddle/phi/core/pexpr/anf_expr_util.h"
-#include "paddle/phi/core/pexpr/core_expr_builder.h"
-#include "paddle/phi/core/pexpr/core_expr_util.h"
-#include "paddle/phi/core/pexpr/index_lambda_builder.h"
-#include "paddle/phi/core/pexpr/lambda_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
 
 namespace pexpr::tests {
 
@@ -304,43 +303,6 @@ TEST(LambdaExprBuilder, Lambda) {
       lmbd.Let([](auto& ctx) { return ctx.Call("list", ctx.Call("op0")); });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
   const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
-  ASSERT_EQ(core_expr, expected);
-}
-
-TEST(IndexLambdaBuilder, Lambda) {
-  size_t seq_no0 = 0;
-  const auto& GenSeqNo0 = [&]() { return seq_no0++; };
-  IndexLambdaBuilder builder(GenSeqNo0);
-  AnfExpr idx_expr = builder.IndexLambda(
-      {"in_shape0", "in_shape1"},
-      {"in_data0", "in_data1"},
-      {"out_shape0"},
-      {"out_data0"},
-      {"i", "j"},
-      [](auto& ctx) {
-        return ctx.MakeTensorIndexes(
-            ctx.InputTensorIndexes(ctx.IndexList(ctx.Var("i"), ctx.Var("j"))),
-            ctx.OutputTensorIndexes(ctx.IndexList(ctx.Var("i"), ctx.Var("j"))));
-      });
-  size_t seq_no1 = 0;
-  const auto& GenSeqNo1 = [&]() { return seq_no1++; };
-  LambdaExprBuilder lmbd(GenSeqNo1);
-  AnfExpr lmbd_expr = lmbd.NestedLambda(
-      {{"in_shape0", "in_shape1"},
-       {"in_data0", "in_data1"},
-       {"out_shape0"},
-       {"out_data0"},
-       {"i", "j"}},
-      [](auto& ctx) {
-        return ctx.Call(
-            kMakeTensorIndexes,
-            ctx.Call(kInputTensorIndexes,
-                     ctx.Call(kIndexList, ctx.Var("i"), ctx.Var("j"))),
-            ctx.Call(kOutputTensorIndexes,
-                     ctx.Call(kIndexList, ctx.Var("i"), ctx.Var("j"))));
-      });
-  const auto& core_expr = ConvertAnfExprToCoreExpr(idx_expr);
-  const auto& expected = ConvertAnfExprToCoreExpr(lmbd_expr);
   ASSERT_EQ(core_expr, expected);
 }
 

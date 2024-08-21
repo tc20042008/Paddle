@@ -37,7 +37,8 @@ namespace dialect {
 using DenseTensorType = paddle::dialect::DenseTensorType;
 
 const char* GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
-const char* FusionOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
+const char* FusionOp::attributes_name[FusionOp::attributes_num] = {
+    "group_info"};
 const char* ConcatOp::attributes_name[ConcatOp::attributes_num] = {"axis"};
 const char* SplitOp::attributes_name[SplitOp::attributes_num] = {
     "num_or_sections", "axis"};

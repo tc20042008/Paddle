@@ -1517,6 +1517,10 @@ PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
                          false,
                          "whether dump symbolic dims into pir py code.");
 
+PHI_DEFINE_EXPORTED_bool(cinn_enable_ap,
+                         false,
+                         "whether enable abstract pass.");
+
 /**
  * Using PIR API in Python
  * Name: enable_pir_api

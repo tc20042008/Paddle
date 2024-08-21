@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 

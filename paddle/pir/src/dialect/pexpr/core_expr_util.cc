@@ -48,7 +48,7 @@ CoreExpr Replace(const CoreExpr& core_expr,
             },
             [&](const auto& expr) -> Atomic<CoreExpr> { return expr; });
       },
-      [&](const ComposedCall<CoreExpr>& composed_call) -> CoreExpr {
+      [&](const ComposedCallAtomic<CoreExpr>& composed_call) -> CoreExpr {
         const auto& new_outter_func =
             Replace(composed_call->outter_func, pattern_var, replacement);
         if (!new_outter_func.Has<Atomic<CoreExpr>>()) {
@@ -68,14 +68,15 @@ CoreExpr Replace(const CoreExpr& core_expr,
           }
           new_args.push_back(new_arg.Get<Atomic<CoreExpr>>());
         }
-        return CoreExprBuilder().ComposedCall(
+        return CoreExprBuilder().ComposedCallAtomic(
             new_outter_func.Get<Atomic<CoreExpr>>(),
             new_inner_func.Get<Atomic<CoreExpr>>(),
             new_args);
       });
 }
 
-bool LambdaArgsContains(const Lambda<CoreExpr>& lambda, const auto& var) {
+bool LambdaArgsContains(const Lambda<CoreExpr>& lambda,
+                        const std::string& var) {
   for (const auto& arg : lambda->args) {
     if (arg.value() == var) {
       return true;
@@ -114,7 +115,7 @@ Atomic<CoreExpr> ReplaceLambdaArgNameAtomic(
 }
 
 CoreExpr ReplaceLambdaArgNameComposedCallChildren(
-    const ComposedCall<CoreExpr>& core_expr,
+    const ComposedCallAtomic<CoreExpr>& core_expr,
     const std::string& pattern_arg_name,
     const std::function<std::string()>& UniqueVarNameGetter) {
   const auto& outter_func = ReplaceLambdaArgNameAtomic(
@@ -127,7 +128,7 @@ CoreExpr ReplaceLambdaArgNameComposedCallChildren(
     args.push_back(
         ReplaceLambdaArgNameAtomic(arg, pattern_arg_name, UniqueVarNameGetter));
   }
-  return CoreExprBuilder().ComposedCall(outter_func, inner_func, args);
+  return CoreExprBuilder().ComposedCallAtomic(outter_func, inner_func, args);
 }
 
 }  // namespace
@@ -141,7 +142,7 @@ CoreExpr ReplaceLambdaArgName(
         return ReplaceLambdaArgNameAtomic(
             atomic_expr, pattern_arg_name, UniqueVarNameGetter);
       },
-      [&](const ComposedCall<CoreExpr>& composed_call) -> CoreExpr {
+      [&](const ComposedCallAtomic<CoreExpr>& composed_call) -> CoreExpr {
         return ReplaceLambdaArgNameComposedCallChildren(
             composed_call, pattern_arg_name, UniqueVarNameGetter);
       });
@@ -149,7 +150,7 @@ CoreExpr ReplaceLambdaArgName(
 namespace {
 
 std::optional<CoreExpr> TryInlineBuiltinId(
-    const ComposedCall<CoreExpr>& composed_call) {
+    const ComposedCallAtomic<CoreExpr>& composed_call) {
   if (!composed_call->outter_func.Has<Lambda<CoreExpr>>()) {
     return std::nullopt;
   }
@@ -173,7 +174,8 @@ std::optional<CoreExpr> TryInlineBuiltinId(
   return Replace(outter_func->body, pattern_var, replacement);
 }
 
-std::optional<int> GetVarArgIndex(const ComposedCall<CoreExpr>& composed_call) {
+std::optional<int> GetVarArgIndex(
+    const ComposedCallAtomic<CoreExpr>& composed_call) {
   for (int i = 0; i < composed_call->args.size(); ++i) {
     if (composed_call->args.at(i).Has<tVar<std::string>>()) {
       return i;
@@ -182,8 +184,8 @@ std::optional<int> GetVarArgIndex(const ComposedCall<CoreExpr>& composed_call) {
   return std::nullopt;
 }
 
-ComposedCall<CoreExpr> TryInlineInnerLambdaArg(
-    const ComposedCall<CoreExpr>& composed_call, int arg_idx) {
+ComposedCallAtomic<CoreExpr> TryInlineInnerLambdaArg(
+    const ComposedCallAtomic<CoreExpr>& composed_call, int arg_idx) {
   const auto& origin_inner_func =
       composed_call->inner_func.Get<Lambda<CoreExpr>>();
   std::vector<tVar<std::string>> inner_func_args;
@@ -208,11 +210,12 @@ ComposedCall<CoreExpr> TryInlineInnerLambdaArg(
               composed_call->args.at(arg_idx).Get<tVar<std::string>>());
   CoreExprBuilder core{};
   const auto& inner_func = core.Lambda(inner_func_args, inner_func_body);
-  return core.ComposedCall(composed_call->outter_func, inner_func, call_args);
+  return core.ComposedCallAtomic(
+      composed_call->outter_func, inner_func, call_args);
 }
 
 std::optional<CoreExpr> TryInlineInnerLambda(
-    const ComposedCall<CoreExpr>& composed_call) {
+    const ComposedCallAtomic<CoreExpr>& composed_call) {
   if (!composed_call->inner_func.Has<Lambda<CoreExpr>>()) {
     return std::nullopt;
   }
@@ -223,7 +226,7 @@ std::optional<CoreExpr> TryInlineInnerLambda(
   if (!GetVarArgIndex(composed_call).has_value()) {
     return std::nullopt;
   }
-  ComposedCall<CoreExpr> ret_composed_call = composed_call;
+  ComposedCallAtomic<CoreExpr> ret_composed_call = composed_call;
   while (const auto& opt_var_arg_index = GetVarArgIndex(ret_composed_call)) {
     ret_composed_call =
         TryInlineInnerLambdaArg(ret_composed_call, opt_var_arg_index.value());
@@ -239,8 +242,8 @@ Atomic<CoreExpr> InlineAtomic(const Atomic<CoreExpr>& atomic_expr) {
       [&](const auto& expr) -> Atomic<CoreExpr> { return expr; });
 }
 
-ComposedCall<CoreExpr> InlineComposedCallChildren(
-    const ComposedCall<CoreExpr>& composed_call) {
+ComposedCallAtomic<CoreExpr> InlineComposedCallChildren(
+    const ComposedCallAtomic<CoreExpr>& composed_call) {
   const auto& outter_func = InlineAtomic(composed_call->outter_func);
   const auto& inner_func = InlineAtomic(composed_call->inner_func);
   std::vector<Atomic<CoreExpr>> args;
@@ -248,7 +251,7 @@ ComposedCall<CoreExpr> InlineComposedCallChildren(
   for (const auto& arg : composed_call->args) {
     args.push_back(InlineAtomic(arg));
   }
-  return CoreExprBuilder().ComposedCall(outter_func, inner_func, args);
+  return CoreExprBuilder().ComposedCallAtomic(outter_func, inner_func, args);
 }
 
 }  // namespace
@@ -258,7 +261,7 @@ CoreExpr Inline(const CoreExpr& core_expr) {
       [&](const Atomic<CoreExpr>& atomic_expr) -> CoreExpr {
         return InlineAtomic(atomic_expr);
       },
-      [&](const ComposedCall<CoreExpr>& composed_call) -> CoreExpr {
+      [&](const ComposedCallAtomic<CoreExpr>& composed_call) -> CoreExpr {
         const auto& new_composed_call =
             InlineComposedCallChildren(composed_call);
         if (const auto& ret = TryInlineBuiltinId(new_composed_call)) {

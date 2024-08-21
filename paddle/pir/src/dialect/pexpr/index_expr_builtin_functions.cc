@@ -332,28 +332,37 @@ Result<Val> MakeIndexTupleExprReshape(const InterpretFuncType<Val>& Interpret,
   const auto& opt_shape = TryGetDimExprList(args.at(0));
   const auto& opt_expr =
       TryGetConcretIndexExprValue<IndexTupleExpr>(args.at(1));
+  const auto& Make = [&](const adt::List<symbol::DimExpr>& shape,
+                         const IndexTupleExpr& expr) -> Result<Val> {
+    if (ContainsNegative(shape)) {
+      return InvalidArgumentError{
+          "dims in argument `shape` have negative integer"};
+    }
+    const auto& opt_ranges = IndexTupleExprGetRanges(expr);
+    if (opt_ranges.Has<Nothing>()) {
+      return InvalidArgumentError{
+          "argument `index_tuple_expr` is not a ranked IndexTupleExpr"};
+    }
+    if (!ProductEqual(shape, opt_ranges.Get<adt::List<symbol::DimExpr>>())) {
+      return InvalidArgumentError{
+          "product of argument `shape` does not equal to elements of "
+          "`index_tuple_expr`"};
+    }
+    return expr.Match(
+        [&](const IndexTupleExprReshape<IndexTupleExpr>& reshape) -> Val {
+          return IndexExprValue{
+              IndexTupleExpr{IndexTupleExprReshape<IndexTupleExpr>{
+                  shape, reshape->index_tuple_expr}}};
+        },
+        [&](const auto&) -> Val {
+          return IndexExprValue{IndexTupleExpr{
+              IndexTupleExprReshape<IndexTupleExpr>{shape, expr}}};
+        });
+  };
   return std::visit(
       ::common::Overloaded{
           [&](const adt::List<symbol::DimExpr>& shape,
-              const IndexTupleExpr& expr) -> Result<Val> {
-            if (ContainsNegative(shape)) {
-              return InvalidArgumentError{
-                  "dims in argument `shape` have negative integer"};
-            }
-            const auto& opt_ranges = IndexTupleExprGetRanges(expr);
-            if (opt_ranges.Has<Nothing>()) {
-              return InvalidArgumentError{
-                  "argument `index_tuple_expr` is not a ranked IndexTupleExpr"};
-            }
-            if (!ProductEqual(shape,
-                              opt_ranges.Get<adt::List<symbol::DimExpr>>())) {
-              return InvalidArgumentError{
-                  "product of argument `shape` does not equal to elements of "
-                  "`index_tuple_expr`"};
-            }
-            return IndexExprValue{IndexTupleExpr{
-                IndexTupleExprReshape<IndexTupleExpr>{shape, expr}}};
-          },
+              const IndexTupleExpr& expr) -> Result<Val> { Make(shape, expr); },
           [](const auto&, const auto&) -> Result<Val> {
             return InvalidArgumentError{
                 "wrong argument type for IndexTupleExprReshape"};

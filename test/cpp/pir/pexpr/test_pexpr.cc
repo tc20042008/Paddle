@@ -28,56 +28,56 @@ namespace pexpr::tests {
 TEST(CoreExpr, operator_eq_0) {
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
-  CoreExpr lhs =
-      core.ComposedCall(core.Lambda({Var{"c"}},
-                                    core.ComposedCall(core.Var(kBuiltinId),
-                                                      core.Var("list"),
-                                                      {
-                                                          core.Var("a"),
-                                                          core.Var("b"),
-                                                          core.Var("c"),
-                                                      })),
-                        core.Var("op2"),
-                        {});
-  CoreExpr rhs = core.ComposedCall(core.Var(kBuiltinId),
-                                   core.Var("list"),
-                                   {
-                                       core.Var("a"),
-                                       core.Var("a"),
-                                       core.Var("c"),
-                                   });
+  CoreExpr lhs = core.ComposedCallAtomic(
+      core.Lambda({Var{"c"}},
+                  core.ComposedCallAtomic(core.Var(kBuiltinId),
+                                          core.Var("list"),
+                                          {
+                                              core.Var("a"),
+                                              core.Var("b"),
+                                              core.Var("c"),
+                                          })),
+      core.Var("op2"),
+      {});
+  CoreExpr rhs = core.ComposedCallAtomic(core.Var(kBuiltinId),
+                                         core.Var("list"),
+                                         {
+                                             core.Var("a"),
+                                             core.Var("a"),
+                                             core.Var("c"),
+                                         });
   ASSERT_FALSE(lhs == rhs);
 }
 
 TEST(CoreExpr, operator_eq_1) {
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
-  CoreExpr lhs = core.ComposedCall(
-      core.Lambda(
-          {Var{"b"}},
-          core.ComposedCall(core.Lambda({Var{"c"}},
-                                        core.ComposedCall(core.Var(kBuiltinId),
+  CoreExpr lhs = core.ComposedCallAtomic(
+      core.Lambda({Var{"b"}},
+                  core.ComposedCallAtomic(
+                      core.Lambda({Var{"c"}},
+                                  core.ComposedCallAtomic(core.Var(kBuiltinId),
                                                           core.Var("list"),
                                                           {
                                                               core.Var("a"),
                                                               core.Var("b"),
                                                               core.Var("c"),
                                                           })),
-                            core.Var("op2"),
-                            {})),
+                      core.Var("op2"),
+                      {})),
       core.Var("op1"),
       {});
-  CoreExpr rhs =
-      core.ComposedCall(core.Lambda({Var{"c"}},
-                                    core.ComposedCall(core.Var(kBuiltinId),
-                                                      core.Var("list"),
-                                                      {
-                                                          core.Var("a"),
-                                                          core.Var("a"),
-                                                          core.Var("c"),
-                                                      })),
-                        core.Var("op2"),
-                        {});
+  CoreExpr rhs = core.ComposedCallAtomic(
+      core.Lambda({Var{"c"}},
+                  core.ComposedCallAtomic(core.Var(kBuiltinId),
+                                          core.Var("list"),
+                                          {
+                                              core.Var("a"),
+                                              core.Var("a"),
+                                              core.Var("c"),
+                                          })),
+      core.Var("op2"),
+      {});
   ASSERT_FALSE(lhs == rhs);
 }
 
@@ -101,13 +101,13 @@ TEST(CoreExpr, ConvertAnfExprToCoreExpr) {
   core_expr = opt_core_expr.value();
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
-  CoreExpr expected = core.ComposedCall(
+  CoreExpr expected = core.ComposedCallAtomic(
       core.Lambda({Var{"a"}},
-                  core.ComposedCall(
+                  core.ComposedCallAtomic(
                       core.Lambda({Var{"b"}},
-                                  core.ComposedCall(
+                                  core.ComposedCallAtomic(
                                       core.Lambda({Var{"c"}},
-                                                  core.ComposedCall(
+                                                  core.ComposedCallAtomic(
                                                       core.Var(kBuiltinId),
                                                       core.Var("list"),
                                                       {
@@ -137,19 +137,19 @@ TEST(CoreExpr, InlineBuiltinId) {
   core_expr = Inline(core_expr);
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
-  CoreExpr expected = core.ComposedCall(
-      core.Lambda(
-          {Var{"a"}},
-          core.ComposedCall(core.Lambda({Var{"c"}},
-                                        core.ComposedCall(core.Var(kBuiltinId),
+  CoreExpr expected = core.ComposedCallAtomic(
+      core.Lambda({Var{"a"}},
+                  core.ComposedCallAtomic(
+                      core.Lambda({Var{"c"}},
+                                  core.ComposedCallAtomic(core.Var(kBuiltinId),
                                                           core.Var("list"),
                                                           {
                                                               core.Var("a"),
                                                               core.Var("a"),
                                                               core.Var("c"),
                                                           })),
-                            core.Var("op2"),
-                            {})),
+                      core.Var("op2"),
+                      {})),
       core.Var("op0"),
       {});
   ASSERT_EQ(core_expr, expected);
@@ -170,13 +170,13 @@ TEST(CoreExpr, InlineInnerLambda) {
   CoreExpr core_expr = ConvertAnfExprToCoreExpr(anf_expr);
   core_expr = Inline(core_expr);
   CoreExprBuilder core{};
-  CoreExpr expected = core.ComposedCall(
+  CoreExpr expected = core.ComposedCallAtomic(
       core.Lambda({Var{"a"}},
-                  core.ComposedCall(
+                  core.ComposedCallAtomic(
                       core.Lambda({Var{"b"}},
-                                  core.ComposedCall(
+                                  core.ComposedCallAtomic(
                                       core.Lambda({Var{"c"}},
-                                                  core.ComposedCall(
+                                                  core.ComposedCallAtomic(
                                                       core.Var(kBuiltinId),
                                                       core.Var("list"),
                                                       {
@@ -187,9 +187,9 @@ TEST(CoreExpr, InlineInnerLambda) {
                                       core.Var("op2"),
                                       {})),
                       core.Lambda({},
-                                  core.ComposedCall(core.Var(kBuiltinId),
-                                                    core.Var(kBuiltinId),
-                                                    {core.Int64(0)})),
+                                  core.ComposedCallAtomic(core.Var(kBuiltinId),
+                                                          core.Var(kBuiltinId),
+                                                          {core.Int64(0)})),
                       {})),
       core.Var("op0"),
       {});
@@ -199,13 +199,13 @@ TEST(CoreExpr, InlineInnerLambda) {
 TEST(CoreExpr, ReplaceLambdaArgName) {
   using Var = tVar<std::string>;
   CoreExprBuilder core{};
-  CoreExpr core_expr = core.ComposedCall(
+  CoreExpr core_expr = core.ComposedCallAtomic(
       core.Lambda({Var{"a"}},
-                  core.ComposedCall(
+                  core.ComposedCallAtomic(
                       core.Lambda({Var{"b"}},
-                                  core.ComposedCall(
+                                  core.ComposedCallAtomic(
                                       core.Lambda({Var{"c"}},
-                                                  core.ComposedCall(
+                                                  core.ComposedCallAtomic(
                                                       core.Var(kBuiltinId),
                                                       core.Var("list"),
                                                       {
@@ -216,22 +216,22 @@ TEST(CoreExpr, ReplaceLambdaArgName) {
                                       core.Var("op2"),
                                       {})),
                       core.Lambda({},
-                                  core.ComposedCall(core.Var(kBuiltinId),
-                                                    core.Var(kBuiltinId),
-                                                    {core.Int64(0)})),
+                                  core.ComposedCallAtomic(core.Var(kBuiltinId),
+                                                          core.Var(kBuiltinId),
+                                                          {core.Int64(0)})),
                       {})),
       core.Var("op0"),
       {});
   CoreExpr replaced =
       ReplaceLambdaArgName(core_expr, "c", []() { return std::string("d"); });
 
-  CoreExpr expected = core.ComposedCall(
+  CoreExpr expected = core.ComposedCallAtomic(
       core.Lambda({Var{"a"}},
-                  core.ComposedCall(
+                  core.ComposedCallAtomic(
                       core.Lambda({Var{"b"}},
-                                  core.ComposedCall(
+                                  core.ComposedCallAtomic(
                                       core.Lambda({Var{"d"}},
-                                                  core.ComposedCall(
+                                                  core.ComposedCallAtomic(
                                                       core.Var(kBuiltinId),
                                                       core.Var("list"),
                                                       {
@@ -242,9 +242,9 @@ TEST(CoreExpr, ReplaceLambdaArgName) {
                                       core.Var("op2"),
                                       {})),
                       core.Lambda({},
-                                  core.ComposedCall(core.Var(kBuiltinId),
-                                                    core.Var(kBuiltinId),
-                                                    {core.Int64(0)})),
+                                  core.ComposedCallAtomic(core.Var(kBuiltinId),
+                                                          core.Var(kBuiltinId),
+                                                          {core.Int64(0)})),
                       {})),
       core.Var("op0"),
       {});

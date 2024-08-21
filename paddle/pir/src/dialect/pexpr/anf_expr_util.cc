@@ -23,8 +23,8 @@ namespace pexpr {
 
 namespace {
 
-using LazyCoreExpr =
-    std::function<ComposedCall<CoreExpr>(const Atomic<CoreExpr>& continuation)>;
+using LazyCoreExpr = std::function<ComposedCallAtomic<CoreExpr>(
+    const Atomic<CoreExpr>& continuation)>;
 
 using MaybeLazyCoreExprBase = std::variant<CoreExpr, LazyCoreExpr>;
 
@@ -121,7 +121,7 @@ struct AnfExprToCoreExprConverter {
     return LazyCoreVal(
         [inner_func, core_args](const Atomic<CoreExpr>& continuation) {
           CoreExprBuilder core{};
-          return core.ComposedCall(continuation, inner_func, core_args);
+          return core.ComposedCallAtomic(continuation, inner_func, core_args);
         });
   }
   value_type ConvertIf(const If<AnfExpr>& anf_expr) {
@@ -135,9 +135,10 @@ struct AnfExprToCoreExprConverter {
         ConvertAtomicToAtomic(MakeZeroArgLambda(anf_expr->false_expr));
     return LazyCoreVal([=](const Atomic<CoreExpr>& continuation) {
       CoreExprBuilder core{};
-      return core.ComposedCall(continuation,
-                               core.Var("if"),
-                               {core_cond, core_true_expr, core_false_expr});
+      return core.ComposedCallAtomic(
+          continuation,
+          core.Var("if"),
+          {core_cond, core_true_expr, core_false_expr});
     });
   }
   value_type ConvertLet(const Let<AnfExpr>& anf_expr) {
@@ -229,7 +230,8 @@ LazyCoreExpr TryWrapperToLazyCoreExpr(
         const Atomic<CoreExpr> val = core_expr.Get<Atomic<CoreExpr>>();
         return LazyCoreExpr([val](const Atomic<CoreExpr>& continuation) {
           CoreExprBuilder core{};
-          return core.ComposedCall(continuation, core.Var(kBuiltinId), {val});
+          return core.ComposedCallAtomic(
+              continuation, core.Var(kBuiltinId), {val});
         });
       });
 }
@@ -243,7 +245,7 @@ CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr& anf_expr) {
   CoreExpr ret = lazy_core_expr(CoreExprBuilder().Var(kBuiltinId));
   return ret.Match(
       [&](const Atomic<CoreExpr>&) -> CoreExpr { return ret; },
-      [&](const ComposedCall<CoreExpr>& composed_call) -> CoreExpr {
+      [&](const ComposedCallAtomic<CoreExpr>& composed_call) -> CoreExpr {
         Atomic<CoreExpr> identity{tVar<std::string>{kBuiltinId}};
         if (composed_call->outter_func != identity) {
           return composed_call;

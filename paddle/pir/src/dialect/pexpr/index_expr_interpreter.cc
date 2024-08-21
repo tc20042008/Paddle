@@ -38,7 +38,7 @@ class IndexExprInterpreterImpl {
         [&](const Atomic<CoreExpr>& atomic) {
           return InterpretAtomic(atomic, env);
         },
-        [&](const ComposedCall<CoreExpr>& composed_call) {
+        [&](const ComposedCallAtomic<CoreExpr>& composed_call) {
           return InterpretComposedCall(composed_call, env);
         });
   }
@@ -64,8 +64,9 @@ class IndexExprInterpreterImpl {
         [&](const auto& val) -> Result<Val> { return Val{val}; });
   }
 
-  Result<Val> InterpretComposedCall(const ComposedCall<CoreExpr>& composed_call,
-                                    const std::shared_ptr<Env>& env) {
+  Result<Val> InterpretComposedCall(
+      const ComposedCallAtomic<CoreExpr>& composed_call,
+      const std::shared_ptr<Env>& env) {
     Result<Val> inner_func = InterpretAtomic(composed_call->inner_func, env);
     if (inner_func.Has<Error>()) {
       return inner_func.Get<Error>();

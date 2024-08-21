@@ -25,11 +25,11 @@ class CoreExprBuilder : public AtomicExprBuilder<CoreExpr> {
   CoreExprBuilder(const CoreExprBuilder&) = delete;
   CoreExprBuilder(CoreExprBuilder&&) = delete;
 
-  pexpr::ComposedCall<CoreExpr> ComposedCall(
+  pexpr::ComposedCallAtomic<CoreExpr> ComposedCallAtomic(
       const Atomic<CoreExpr>& outter_func,
       const Atomic<CoreExpr>& inner_func,
       const std::vector<Atomic<CoreExpr>>& args) {
-    return pexpr::ComposedCall<CoreExpr>{outter_func, inner_func, args};
+    return pexpr::ComposedCallAtomic<CoreExpr>{outter_func, inner_func, args};
   }
 
  private:

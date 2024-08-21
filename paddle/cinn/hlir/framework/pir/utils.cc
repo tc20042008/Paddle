@@ -38,6 +38,7 @@
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
+COMMON_DECLARE_bool(cinn_enable_ap);
 
 namespace cinn {
 namespace hlir {
@@ -100,7 +101,12 @@ class OpTransInfo {
       std::unordered_map<std::string, std::unordered_set<std::string>>;
 
  public:
-  OpTransInfo() {}
+  OpTransInfo() {
+    if (FLAGS_cinn_enable_ap) {
+      default_deny_ops_.merge(
+          std::unordered_set<std::string>{"sum", "min", "max", "all", "any"});
+    }
+  }
 
   const DeParamCondT& deny_param_cond() const { return deny_param_cond_; }
   bool IsDeniedByDefault(const std::string& op_name) const {

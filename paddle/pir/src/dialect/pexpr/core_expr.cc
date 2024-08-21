@@ -57,7 +57,7 @@ std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {
 }
 
 std::string ComposedCallExprToSExpression(
-    const ComposedCall<CoreExpr>& core_expr) {
+    const ComposedCallAtomic<CoreExpr>& core_expr) {
   std::ostringstream ss;
   ss << "(";
   ss << AtomicExprToSExpression(core_expr->outter_func);
@@ -78,7 +78,7 @@ std::string CoreExpr::ToSExpression() const {
       [&](const Atomic<CoreExpr>& core_expr) {
         return AtomicExprToSExpression(core_expr);
       },
-      [&](const ComposedCall<CoreExpr>& core_expr) {
+      [&](const ComposedCallAtomic<CoreExpr>& core_expr) {
         return ComposedCallExprToSExpression(core_expr);
       });
 }
@@ -121,7 +121,7 @@ std::string GetJsonNodeType<Lambda<CoreExpr>>() {
 }
 
 template <>
-std::string GetJsonNodeType<ComposedCall<CoreExpr>>() {
+std::string GetJsonNodeType<ComposedCallAtomic<CoreExpr>>() {
   return "composed_call";
 }
 
@@ -179,9 +179,9 @@ Json ConvertCoreExprToJson(const CoreExpr& core_expr) {
       [&](const Atomic<CoreExpr>& atomic_expr) {
         return ConvertAtomicCoreExprToJson(atomic_expr);
       },
-      [&](const ComposedCall<CoreExpr>& call_expr) {
+      [&](const ComposedCallAtomic<CoreExpr>& call_expr) {
         Json j;
-        j["type"] = GetJsonNodeType<ComposedCall<CoreExpr>>();
+        j["type"] = GetJsonNodeType<ComposedCallAtomic<CoreExpr>>();
         j["outter_func"] = ConvertAtomicCoreExprToJson(call_expr->outter_func);
         j["inner_func"] = ConvertAtomicCoreExprToJson(call_expr->inner_func);
         j["args"] = [&] {
@@ -308,7 +308,7 @@ std::optional<CoreExpr> ParseJsonToCoreExpr<Lambda<CoreExpr>>(
 }
 
 template <>
-std::optional<CoreExpr> ParseJsonToCoreExpr<ComposedCall<CoreExpr>>(
+std::optional<CoreExpr> ParseJsonToCoreExpr<ComposedCallAtomic<CoreExpr>>(
     const Json& j_obj) {
   if (!j_obj.is_object()) {
     return std::nullopt;
@@ -352,7 +352,8 @@ std::optional<CoreExpr> ParseJsonToCoreExpr<ComposedCall<CoreExpr>>(
   }
   const auto& outter_fn = outter_func.value().Get<Atomic<CoreExpr>>();
   const auto& inner_fn = inner_func.value().Get<Atomic<CoreExpr>>();
-  return CoreExpr{CoreExprBuilder().ComposedCall(outter_fn, inner_fn, args)};
+  return CoreExpr{
+      CoreExprBuilder().ComposedCallAtomic(outter_fn, inner_fn, args)};
 }
 
 std::optional<JsonParseFuncType> GetJsonParseFunc(const std::string& type) {
@@ -365,8 +366,8 @@ std::optional<JsonParseFuncType> GetJsonParseFunc(const std::string& type) {
       {GetJsonNodeType<PrimitiveOp>(), &ParseJsonToCoreExpr<PrimitiveOp>},
       {GetJsonNodeType<Lambda<CoreExpr>>(),
        &ParseJsonToCoreExpr<Lambda<CoreExpr>>},
-      {GetJsonNodeType<ComposedCall<CoreExpr>>(),
-       &ParseJsonToCoreExpr<ComposedCall<CoreExpr>>},
+      {GetJsonNodeType<ComposedCallAtomic<CoreExpr>>(),
+       &ParseJsonToCoreExpr<ComposedCallAtomic<CoreExpr>>},
   };
   const auto& iter = map.find(type);
   if (iter == map.end()) {

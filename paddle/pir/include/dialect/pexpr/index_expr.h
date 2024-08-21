@@ -28,12 +28,12 @@ struct UndefinedIndexExpr : public std::monostate {
 
 struct PtrGetItemImpl {
   std::string ptr_var_name;
-  std::shared_ptr<IndexTupleExpr> index_tuple_expr;
+  std::shared_ptr<IndexTupleExpr> indexes_expr;
   symbol::DimExpr range;
 
   bool operator==(const PtrGetItemImpl& other) const {
     return (other.ptr_var_name == this->ptr_var_name) &&
-           other.index_tuple_expr == this->index_tuple_expr &&
+           other.indexes_expr == this->indexes_expr &&
            other.range == this->range;
   }
 };
@@ -144,11 +144,11 @@ DEFINE_ADT_RC(IndexTupleExprDomain, const IndexTupleExprDomainImpl);
 template <typename Expr>
 struct IndexTupleExprPermuteImpl {
   adt::List<int64_t> perms;
-  Expr index_tuple_expr;
+  Expr indexes_expr;
 
   bool operator==(const IndexTupleExprPermuteImpl& other) const {
     return other.perms == this->perms &&
-           other.index_tuple_expr == this->index_tuple_expr;
+           other.indexes_expr == this->indexes_expr;
   }
 };
 
@@ -158,11 +158,11 @@ DEFINE_ADT_RC(IndexTupleExprPermute, const IndexTupleExprPermuteImpl<Expr>);
 template <typename Expr>
 struct IndexTupleExprReshapeImpl {
   adt::List<symbol::DimExpr> shape;
-  Expr index_tuple_expr;
+  Expr indexes_expr;
 
   bool operator==(const IndexTupleExprReshapeImpl& other) const {
     return other.shape == this->shape &&
-           other.index_tuple_expr == this->index_tuple_expr;
+           other.indexes_expr == this->indexes_expr;
   }
 };
 template <typename Expr>
@@ -171,11 +171,11 @@ DEFINE_ADT_RC(IndexTupleExprReshape, const IndexTupleExprReshapeImpl<Expr>);
 template <typename Expr>
 struct IndexTupleExprTransformImpl {
   adt::List<IndexExpr> index_exprs;
-  Expr index_tuple_expr;
+  Expr indexes_expr;
 
   bool operator==(const IndexTupleExprTransformImpl& other) const {
     return other.index_exprs == this->index_exprs &&
-           other.index_tuple_expr == this->index_tuple_expr;
+           other.indexes_expr == this->indexes_expr;
   }
 };
 template <typename Expr>

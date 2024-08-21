@@ -72,12 +72,11 @@ Result<Val> MakePtrGetItem(const InterpretFuncType<Val>& Interpret,
   return std::visit(
       ::common::Overloaded{
           [&](const std::string& ptr_var_name,
-              const IndexTupleExpr& index_tuple_expr,
+              const IndexTupleExpr& indexes_expr,
               const symbol::DimExpr& dim_expr) -> Result<Val> {
-            return PtrGetItem{
-                ptr_var_name,
-                std::make_shared<IndexTupleExpr>(index_tuple_expr),
-                dim_expr};
+            return PtrGetItem{ptr_var_name,
+                              std::make_shared<IndexTupleExpr>(indexes_expr),
+                              dim_expr};
           },
           [&](const auto&, const auto&, const auto&) -> Result<Val> {
             return InvalidArgumentError{"wrong argument type for PtrGetItem"};
@@ -280,13 +279,13 @@ Result<Val> MakeIndexTupleExprPermute(const InterpretFuncType<Val>& Interpret,
             const auto& rank = IndexTupleExprGetRank(expr);
             if (!rank.Has<int64_t>()) {
               return InvalidArgumentError{
-                  "wrong index_tuple_expr argument for IndexTupleExprPermute"};
+                  "wrong indexes_expr argument for IndexTupleExprPermute"};
             }
             if (rank.Get<int64_t>() != perms->size()) {
               return InvalidArgumentError{std::string(
                   "the rank of perms does not equal to the rank of "
-                  "index_tuple_expr. rank(perm): " +
-                  std::to_string(perms->size()) + ", rank(index_tuple_expr): " +
+                  "indexes_expr. rank(perm): " +
+                  std::to_string(perms->size()) + ", rank(indexes_expr): " +
                   std::to_string(rank.Get<int64_t>()))};
             }
             return IndexExprValue{IndexTupleExpr{
@@ -341,18 +340,18 @@ Result<Val> MakeIndexTupleExprReshape(const InterpretFuncType<Val>& Interpret,
     const auto& opt_ranges = IndexTupleExprGetRanges(expr);
     if (opt_ranges.Has<Nothing>()) {
       return InvalidArgumentError{
-          "argument `index_tuple_expr` is not a ranked IndexTupleExpr"};
+          "argument `indexes_expr` is not a ranked IndexTupleExpr"};
     }
     if (!ProductEqual(shape, opt_ranges.Get<adt::List<symbol::DimExpr>>())) {
       return InvalidArgumentError{
           "product of argument `shape` does not equal to elements of "
-          "`index_tuple_expr`"};
+          "`indexes_expr`"};
     }
     return expr.Match(
         [&](const IndexTupleExprReshape<IndexTupleExpr>& reshape) -> Val {
           return IndexExprValue{
               IndexTupleExpr{IndexTupleExprReshape<IndexTupleExpr>{
-                  shape, reshape->index_tuple_expr}}};
+                  shape, reshape->indexes_expr}}};
         },
         [&](const auto&) -> Val {
           return IndexExprValue{IndexTupleExpr{
@@ -384,14 +383,14 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
         "The first argument of IndexTupleExprTransform must be a "
         "IndexTupleExpr."};
   }
-  const auto& index_tuple_expr = opt_expr.Get<IndexTupleExpr>();
-  const auto& opt_rank = IndexTupleExprGetRank(index_tuple_expr);
+  const auto& indexes_expr = opt_expr.Get<IndexTupleExpr>();
+  const auto& opt_rank = IndexTupleExprGetRank(indexes_expr);
   if (!opt_rank.Has<int64_t>()) {
     return TypeError{
         "The first argument of IndexTupleExprTransform must be a ranked "
         "IndexTupleExpr."};
   }
-  const auto& opt_dim_exprs = IndexTupleExprGetRanges(index_tuple_expr);
+  const auto& opt_dim_exprs = IndexTupleExprGetRanges(indexes_expr);
   if (!opt_dim_exprs.Has<adt::List<symbol::DimExpr>>()) {
     return RuntimeError{"error occured where calling IndexTupleExprGetDims"};
   }
@@ -430,7 +429,7 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
     transform_index_exprs->push_back(ret_index_expr.Get<IndexExpr>());
   }
   return IndexTupleExprTransform<IndexTupleExpr>{transform_index_exprs,
-                                                 index_tuple_expr};
+                                                 indexes_expr};
 }
 
 Result<Val> MakeOpIndexTupleExprSignature(
@@ -459,36 +458,36 @@ Result<Val> MakeOpIndexTupleExprSignature(
 
 Result<Val> MakeInIndexTupleExprSignature(
     const InterpretFuncType<Val>& Interpret, const std::vector<Val>& args) {
-  adt::List<IndexTupleExpr> index_tuple_exprs;
-  index_tuple_exprs->reserve(args.size());
+  adt::List<IndexTupleExpr> indexes_exprs;
+  indexes_exprs->reserve(args.size());
   for (const auto& arg : args) {
-    const auto& maybe_index_tuple_expr =
+    const auto& maybe_indexes_expr =
         TryGetConcretIndexExprValue<IndexTupleExpr>(arg);
-    if (!maybe_index_tuple_expr.Has<IndexTupleExpr>()) {
+    if (!maybe_indexes_expr.Has<IndexTupleExpr>()) {
       return InvalidArgumentError{
           "only arguments of `IndexTupleExpr` type is valid for "
           "InIndexTupleExprSignature"};
     }
-    index_tuple_exprs->push_back(maybe_index_tuple_expr.Get<IndexTupleExpr>());
+    indexes_exprs->push_back(maybe_indexes_expr.Get<IndexTupleExpr>());
   }
-  return InIndexTupleExprSignature{index_tuple_exprs};
+  return InIndexTupleExprSignature{indexes_exprs};
 }
 
 Result<Val> MakeOutIndexTupleExprSignature(
     const InterpretFuncType<Val>& Interpret, const std::vector<Val>& args) {
-  adt::List<IndexTupleExpr> index_tuple_exprs;
-  index_tuple_exprs->reserve(args.size());
+  adt::List<IndexTupleExpr> indexes_exprs;
+  indexes_exprs->reserve(args.size());
   for (const auto& arg : args) {
-    const auto& maybe_index_tuple_expr =
+    const auto& maybe_indexes_expr =
         TryGetConcretIndexExprValue<IndexTupleExpr>(arg);
-    if (!maybe_index_tuple_expr.Has<IndexTupleExpr>()) {
+    if (!maybe_indexes_expr.Has<IndexTupleExpr>()) {
       return InvalidArgumentError{
           "only arguments of `IndexTupleExpr` type is valid for "
           "OutIndexTupleExprSignature"};
     }
-    index_tuple_exprs->push_back(maybe_index_tuple_expr.Get<IndexTupleExpr>());
+    indexes_exprs->push_back(maybe_indexes_expr.Get<IndexTupleExpr>());
   }
-  return OutIndexTupleExprSignature{index_tuple_exprs};
+  return OutIndexTupleExprSignature{indexes_exprs};
 }
 
 }  // namespace pexpr::index_expr

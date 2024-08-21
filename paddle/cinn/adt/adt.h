@@ -365,5 +365,92 @@ inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
   return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
 }
 
+struct Nothing : public std::monostate {
+  using std::monostate::monostate;
+};
+
+template <typename T0, typename T1>
+using EitherImpl = std::variant<T0, T1>;
+
+template <typename T0, typename T1>
+struct Either : public EitherImpl<T0, T1> {
+  using EitherImpl<T0, T1>::EitherImpl;
+  DEFINE_ADT_VARIANT_METHODS(EitherImpl<T0, T1>);
+};
+
+template <typename T>
+struct Maybe : public Either<T, Nothing> {
+  using Either<T, Nothing>::Either;
+};
+
+namespace errors {
+
+struct RuntimeError {
+  std::string msg;
+
+  bool operator==(const RuntimeError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
+struct InvalidArgumentError {
+  std::string msg;
+
+  bool operator==(const InvalidArgumentError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
+struct AttributeError {
+  std::string msg;
+
+  bool operator==(const AttributeError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
+struct NameError {
+  std::string msg;
+
+  bool operator==(const NameError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
+struct TypeError {
+  std::string msg;
+
+  bool operator==(const TypeError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
+struct SyntaxError {
+  std::string msg;
+
+  bool operator==(const SyntaxError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
+using ErrorBase = std::variant<RuntimeError,
+                               InvalidArgumentError,
+                               AttributeError,
+                               NameError,
+                               TypeError,
+                               SyntaxError>;
+
+struct [[nodiscard]] Error : public ErrorBase {
+  using ErrorBase::ErrorBase;
+  DEFINE_ADT_VARIANT_METHODS(ErrorBase);
+};
+
+}  // namespace errors
+
+template <typename T>
+struct [[nodiscard]] Result : public Either<T, errors::Error> {
+  using Either<T, errors::Error>::Either;
+};
+
 }  // namespace adt
 }  // namespace cinn

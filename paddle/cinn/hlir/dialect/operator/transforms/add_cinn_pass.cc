@@ -45,6 +45,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/single_op_fallback_to_phi.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_fusion_op_to_ap_unary_prototype_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
@@ -60,6 +61,7 @@ COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
 COMMON_DECLARE_bool(enable_fusion_fallback);
+COMMON_DECLARE_bool(enable_ap);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
@@ -212,11 +214,15 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   } else {
-    pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+    if (FLAGS_enable_ap) {
+      pass_manager->AddPass(
+          cinn::dialect::ir::CreateLowerFusionOpToApUnaryPrototypePass());
+    } else {
+      pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+    }
   }
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-
   pass_manager->Run(program);
 }
 

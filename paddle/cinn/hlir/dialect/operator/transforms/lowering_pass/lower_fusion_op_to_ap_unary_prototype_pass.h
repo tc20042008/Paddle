@@ -13,29 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include <variant>
-#include "paddle/cinn/adt/adt.h"
 
-namespace pexpr {
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
-namespace adt = ::cinn::adt;
+namespace cinn::dialect::ir {
 
-using Nothing = adt::Nothing;
+std::unique_ptr<::pir::Pass> CreateLowerFusionOpToApUnaryPrototypePass();
 
-template <typename T>
-using Maybe = adt::Maybe<T>;
-
-template <typename T>
-struct DisjointUnionImpl {
-  T lhs;
-  T rhs;
-
-  bool operator==(const DisjointUnionImpl& other) const {
-    return (other.lhs == this->lhs) && (other.rhs == this->rhs);
-  }
-};
-
-template <typename T>
-DEFINE_ADT_RC(DisjointUnion, const DisjointUnionImpl<T>);
-
-}  // namespace pexpr
+}  // namespace cinn::dialect::ir

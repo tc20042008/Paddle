@@ -13,29 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include <variant>
-#include "paddle/cinn/adt/adt.h"
 
 namespace pexpr {
 
-namespace adt = ::cinn::adt;
-
-using Nothing = adt::Nothing;
-
-template <typename T>
-using Maybe = adt::Maybe<T>;
-
-template <typename T>
-struct DisjointUnionImpl {
-  T lhs;
-  T rhs;
-
-  bool operator==(const DisjointUnionImpl& other) const {
-    return (other.lhs == this->lhs) && (other.rhs == this->rhs);
-  }
+struct IndexLambda : public Lambda<CoreExpr> {
+  using Lambda<CoreExpr>::Lambda;
 };
-
-template <typename T>
-DEFINE_ADT_RC(DisjointUnion, const DisjointUnionImpl<T>);
 
 }  // namespace pexpr

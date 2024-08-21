@@ -17,22 +17,35 @@
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/index_lambda.h"
+
+namespace pir {
+
+class Operation;
+
+}
 
 namespace ap {
 
 struct TrivialFusionDescriptorImpl {
-  std::vector<int64_t> anchorable_out_indexes;
-  std::unordered_map<const Operator*, pexpr::Lambda<pexpr::CoreExpr>>
+  template <typename T>
+  using AnchorableOutIdxTo = std::vector<std::optional<T>>;
+
+  using LoopIndexesExprConverters = std::vector<pexpr::IndexLambda>;
+
+  AnchorableOutIdxTo<LoopIndexesExprConverters> loop_indexes_expr_converters;
+  std::unordered_map<const pir::Operation*, pexpr::IndexLambda>
       op2custom_index_lambda;
 
   bool operator==(const TrivialFusionDescriptorImpl& other) const {
-    return other.anchorable_out_indexes == this->anchorable_out_indexes &&
+    return other.loop_indexes_expr_converters ==
+               this->loop_indexes_expr_converters &&
            other.op2custom_index_lambda == this->op2custom_index_lambda;
   }
 };
 DEFINE_ADT_RC(TrivialFusionDescriptor, const TrivialFusionDescriptorImpl);
 
-using FusionDescriptorImpl = std::vairant<TrivialFusionDescriptor>;
+using FusionDescriptorImpl = std::variant<TrivialFusionDescriptor>;
 
 struct FusionDescriptor : public FusionDescriptorImpl {
   using FusionDescriptorImpl::FusionDescriptorImpl;

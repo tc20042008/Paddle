@@ -24,18 +24,18 @@
 namespace pexpr::index_expr {
 
 struct InIndexTupleExprSignature {
-  adt::List<IndexTupleExpr> in_index_tuple_exprs;
+  adt::List<IndexTupleExpr> in_indexes_exprs;
 
   bool operator==(const InIndexTupleExprSignature& other) const {
-    return other.in_index_tuple_exprs == this->in_index_tuple_exprs;
+    return other.in_indexes_exprs == this->in_indexes_exprs;
   }
 };
 
 struct OutIndexTupleExprSignature {
-  adt::List<IndexTupleExpr> out_index_tuple_exprs;
+  adt::List<IndexTupleExpr> out_indexes_exprs;
 
   bool operator==(const OutIndexTupleExprSignature& other) const {
-    return other.out_index_tuple_exprs == this->out_index_tuple_exprs;
+    return other.out_indexes_exprs == this->out_indexes_exprs;
   }
 };
 

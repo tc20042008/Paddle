@@ -86,7 +86,7 @@ Maybe<adt::List<symbol::DimExpr>> IndexTupleExprGetRanges(
       [](const IndexTupleExprPermute<IndexTupleExpr>& perm)
           -> Maybe<adt::List<symbol::DimExpr>> {
         const auto& opt_origin_dim_exprs =
-            IndexTupleExprGetRanges(perm->index_tuple_expr);
+            IndexTupleExprGetRanges(perm->indexes_expr);
         if (opt_origin_dim_exprs.Has<Nothing>()) {
           return Nothing{};
         }

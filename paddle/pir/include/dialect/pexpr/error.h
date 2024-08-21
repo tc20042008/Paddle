@@ -18,69 +18,15 @@
 
 namespace pexpr {
 
-struct RuntimeError {
-  std::string msg;
-
-  bool operator==(const RuntimeError& other) const {
-    return other.msg == this->msg;
-  }
-};
-
-struct InvalidArgumentError {
-  std::string msg;
-
-  bool operator==(const InvalidArgumentError& other) const {
-    return other.msg == this->msg;
-  }
-};
-
-struct AttributeError {
-  std::string msg;
-
-  bool operator==(const AttributeError& other) const {
-    return other.msg == this->msg;
-  }
-};
-
-struct NameError {
-  std::string msg;
-
-  bool operator==(const NameError& other) const {
-    return other.msg == this->msg;
-  }
-};
-
-struct TypeError {
-  std::string msg;
-
-  bool operator==(const TypeError& other) const {
-    return other.msg == this->msg;
-  }
-};
-
-struct SyntaxError {
-  std::string msg;
-
-  bool operator==(const SyntaxError& other) const {
-    return other.msg == this->msg;
-  }
-};
-
-using ErrorBase = std::variant<RuntimeError,
-                               InvalidArgumentError,
-                               AttributeError,
-                               NameError,
-                               TypeError,
-                               SyntaxError>;
-
-struct [[nodiscard]] Error : public ErrorBase {
-  using ErrorBase::ErrorBase;
-  DEFINE_ADT_VARIANT_METHODS(ErrorBase);
-};
+using adt::errors::AttributeError;
+using adt::errors::Error;
+using adt::errors::InvalidArgumentError;
+using adt::errors::NameError;
+using adt::errors::RuntimeError;
+using adt::errors::SyntaxError;
+using adt::errors::TypeError;
 
 template <typename T>
-struct [[nodiscard]] Result : public Either<T, Error> {
-  using Either<T, Error>::Either;
-};
+using Result = adt::Result<T>;
 
 }  // namespace pexpr

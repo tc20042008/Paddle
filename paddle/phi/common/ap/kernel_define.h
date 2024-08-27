@@ -21,6 +21,7 @@ namespace ap {
 template <typename T>
 struct ArgType {};
 
+// only for disable cpplint complaints
 #define __BOOL bool
 #define __CHAR char
 #define __FLOAT float

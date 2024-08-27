@@ -23,7 +23,6 @@ namespace pexpr {
 namespace {
 
 static const char kString[] = "str";
-static const char kPrimitiveOp[] = "op";
 static const char kLambda[] = "lambda";
 static const char kIf[] = "if";
 static const char kLet[] = "let";
@@ -49,11 +48,6 @@ Json ConvertAtomicAnfExprToJson(const Atomic<AnfExpr>& atomic_expr) {
       [&](const std::string& c) {
         Json j;
         j[kString] = c;
-        return j;
-      },
-      [&](const PrimitiveOp& c) {
-        Json j;
-        j[kPrimitiveOp] = c.op_name;
         return j;
       },
       [&](const Lambda<AnfExpr>& lambda) {
@@ -172,24 +166,6 @@ std::optional<AnfExpr> ParseJsonToAnfExpr<std::string>(const Json& j_obj) {
   }
   auto c = j_obj[kString].get<std::string>();
   return AnfExpr{AnfExprBuilder().String(c)};
-}
-
-template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<PrimitiveOp>(const Json& j_obj) {
-  if (!j_obj.is_object()) {
-    return std::nullopt;
-  }
-  if (j_obj.size() != 1) {
-    return std::nullopt;
-  }
-  if (!j_obj.contains(kPrimitiveOp)) {
-    return std::nullopt;
-  }
-  if (!j_obj[kPrimitiveOp].is_string()) {
-    return std::nullopt;
-  }
-  auto c = j_obj[kPrimitiveOp].get<std::string>();
-  return AnfExpr{AnfExprBuilder().PrimitiveOp(PrimitiveOp{c})};
 }
 
 template <>
@@ -333,7 +309,6 @@ const std::vector<JsonParseFuncType>& GetJsonParseFuncs() {
       &ParseJsonToAnfExpr<bool>,
       &ParseJsonToAnfExpr<int64_t>,
       &ParseJsonToAnfExpr<std::string>,
-      &ParseJsonToAnfExpr<PrimitiveOp>,
   };
   return vec;
 }

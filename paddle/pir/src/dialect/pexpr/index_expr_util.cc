@@ -70,6 +70,47 @@ Maybe<symbol::DimExpr> IndexExprGetRange(const IndexExpr& index_expr) {
       });
 }
 
+Maybe<symbol::DimExpr> IndexExprGetDomain(const IndexExpr& index_expr) {
+  return index_expr.Match(
+      [](const UndefinedIndexExpr&) -> Maybe<symbol::DimExpr> {
+        return Nothing{};
+      },
+      [](const PtrGetItem& ptr_get_item) -> Maybe<symbol::DimExpr> {
+        return ptr_get_item->range;
+      },
+      [](const IndexExprDomain& domain) -> Maybe<symbol::DimExpr> {
+        return domain->range;
+      },
+      [](const IndexExprBroadcastMask<IndexExpr>& mask)
+          -> Maybe<symbol::DimExpr> {
+        return IndexExprGetDomain(mask->index_expr);
+      },
+      [](const IndexExprSlice<IndexExpr>& index_slice)
+          -> Maybe<symbol::DimExpr> {
+        return IndexExprGetDomain(index_slice->index_expr);
+      },
+      [](const IndexExprAffine<IndexExpr>& index_affine)
+          -> Maybe<symbol::DimExpr> {
+        return IndexExprGetDomain(index_slice->index_expr);
+      },
+      [](const DisjointUnion<IndexExpr>& union_expr) -> Maybe<symbol::DimExpr> {
+        const auto& lhs = IndexExprGetDomain(union_expr->lhs);
+        const auto& rhs = IndexExprGetDomain(union_expr->rhs);
+        const auto& pattern_match = ::common::Overloaded{
+            [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+              if (lhs == rhs) {
+                return Maybe<symbol::DimExpr>{lhs};
+              } else {
+                return Maybe<symbol::DimExpr>{Nothing{}};
+              }
+            },
+            [&](const auto&, const auto&) {
+              return Maybe<symbol::DimExpr>{Nothing{}};
+            }};
+        return std::visit(pattern_match, lhs.variant(), rhs.variant());
+      });
+}
+
 Maybe<adt::List<symbol::DimExpr>> IndexTupleExprGetRanges(
     const IndexTupleExpr& expr) {
   return expr.Match(

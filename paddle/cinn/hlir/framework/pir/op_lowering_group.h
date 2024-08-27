@@ -30,10 +30,6 @@
 
 namespace cinn {
 
-namespace adt {
-class MapExprCtx;
-}  // namespace adt
-
 namespace hlir {
 namespace framework {
 namespace pir {
@@ -114,28 +110,10 @@ class OpLoweringGroup {
     return this->output_ops_;
   }
 
-  std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
-    PADDLE_ENFORCE_NOT_NULL(
-        map_expr_ctx_,
-        ::common::errors::Unavailable("Required map_expr_ctx_ != nullptr."));
-    return map_expr_ctx_;
-  }
-
-  const adt::MapExprCtx& map_expr_ctx() const {
-    PADDLE_ENFORCE_NOT_NULL(
-        map_expr_ctx_,
-        ::common::errors::Unavailable("Required map_expr_ctx_ != nullptr."));
-    return *map_expr_ctx_;
-  }
-
   void set_value_to_shape_or_data_exprs(
       const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&
           value_to_shape_or_data_exprs) {
     value_to_shape_or_data_exprs_ = value_to_shape_or_data_exprs;
-  }
-
-  void set_map_expr_ctx(const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
-    map_expr_ctx_ = map_expr_ctx;
   }
 
   const std::string& group_id() const { return this->group_id_; }
@@ -228,7 +206,6 @@ class OpLoweringGroup {
   std::vector<int64_t> loop_ranges_;
   std::vector<symbol::DimExpr> loop_ranges_expr_;
 
-  std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_exprs_;
 };

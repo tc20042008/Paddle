@@ -25,6 +25,7 @@ using adt::errors::NameError;
 using adt::errors::RuntimeError;
 using adt::errors::SyntaxError;
 using adt::errors::TypeError;
+using adt::errors::ValueError;
 
 template <typename T>
 using Result = adt::Result<T>;

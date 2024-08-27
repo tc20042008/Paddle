@@ -35,8 +35,6 @@ class AtomicExprBuilder {
 
   Atomic<Expr> String(const std::string& str) { return Atomic<Expr>{str}; }
 
-  Atomic<Expr> PrimitiveOp(const PrimitiveOp& c) { return Atomic<Expr>{c}; }
-
   Atomic<Expr> Lambda(const std::vector<tVar<std::string>>& args,
                       const Expr& body) {
     return Atomic<Expr>{pexpr::Lambda<Expr>{args, body}};

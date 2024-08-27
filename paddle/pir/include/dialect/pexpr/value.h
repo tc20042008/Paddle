@@ -22,6 +22,8 @@
 
 namespace pexpr {
 
+using adt::Nothing;
+
 template <typename CustomT>
 class Value;
 
@@ -62,7 +64,7 @@ struct Frame {
     return frame_obj->find(var) != frame_obj->end();
   }
 
-  void Destory() { frame_obj->clear(); }
+  void ClearFrame() { frame_obj->clear(); }
 
   Object<ValueT> frame_obj;
 };
@@ -92,9 +94,9 @@ class Environment {
     return frame_.Set(var, val);
   }
 
-  void Destory() {
+  void ClearFrame() {
     parent_ = nullptr;
-    frame_.Destory();
+    frame_.ClearFrame();
   }
 
  private:
@@ -124,13 +126,28 @@ class Environment {
 };
 
 template <typename ValueT>
-struct ClosureImpl {
+struct NaiveClosureImpl {
   Lambda<CoreExpr> lambda;
   std::shared_ptr<Environment<ValueT>> environment;
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(Closure, const ClosureImpl<ValueT>);
+DEFINE_ADT_RC(NaiveClosure, const NaiveClosureImpl<ValueT>);
+
+template <typename ValueT>
+struct MethodClosureImpl {
+  ValueT obj;
+  ValueT func;
+};
+
+template <typename ValueT>
+DEFINE_ADT_RC(MethodClosure, const MethodClosureImpl<ValueT>);
+
+using ClosureImpl = std::variant<NaiveClosure, MethodClosure>;
+struct Closure : public ClosureImpl {
+  using ClosureImpl::ClosureImpl;
+  DEFINE_ADT_VARIANT_METHODS(ClosureImpl);
+};
 
 template <typename ValueT>
 using InterpretFuncType = std::function<Result<ValueT>(
@@ -169,6 +186,7 @@ const char* GetBuiltinTypeName(const Value<CustomT>& val) {
       [](const adt::List<ValueT>& list) -> const char* { return "list"; },
       [](const Object<ValueT>& obj) -> const char* { return "object"; },
       [](const Closure<ValueT>& closure) -> const char* { return "closure"; },
+      [](const Method<ValueT>& closure) -> const char* { return "method"; },
       [](const BuiltinFuncType<ValueT>& closure) -> const char* {
         return "builtin_function";
       },
@@ -212,19 +230,22 @@ template <typename ValueT>
 class EnvironmentManager {
  public:
   EnvironmentManager() {}
-  ~EnvironmentManager() {
-    for (const auto& weak_env : weak_envs_) {
-      if (auto env = weak_env.lock()) {
-        env->Destory();
-      }
-    }
-  }
+  ~EnvironmentManager() { ClearAllFrames(); }
 
   template <typename T>
   std::shared_ptr<Environment<ValueT>> New(T&& arg) {
     auto ptr = Environment<ValueT>::New(std::forward<T>(arg));
     weak_envs_.push_back(ptr);
     return ptr;
+  }
+
+  void ClearAllFrames() {
+    for (const auto& weak_env : weak_envs_) {
+      if (auto env = weak_env.lock()) {
+        env->ClearFrame();
+      }
+    }
+    weak_envs_.clear();
   }
 
  private:

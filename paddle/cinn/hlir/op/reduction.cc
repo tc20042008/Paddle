@@ -18,7 +18,6 @@
 #include <iostream>
 #include <vector>
 
-#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/pe/broadcast.h"
@@ -29,8 +28,6 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/flags.h"
-
-PD_DECLARE_bool(cinn_enable_map_expr);
 
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
@@ -174,7 +171,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
       *ret = CINNValuePack{cinn_values};
     };
     auto reductionComputeNvHygon = [&] {
-      if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler) {
+      if (!FLAGS_cinn_new_group_scheduler) {
         if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
           VLOG(3) << "Do Two Step Block Reduce Compute!";
           auto res = gpu_reduce_with_last_axis_func(

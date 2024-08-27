@@ -26,25 +26,46 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   FusionOpPattern(
       ::pir::IrContext* context,
-      const adt::Maybe<ap::FusionDescriptor>* maybe_fusion_descriptor)
+      const std::unordered_map<const pir::Operation*, ap::FusionDescriptor>*
+          op2fusion_descriptor)
       : pir::OpRewritePattern<cinn::dialect::FusionOp>(context),
-        maybe_fusion_descriptor_(maybe_fusion_descriptor) {}
+        op2fusion_descriptor_(op2fusion_descriptor) {}
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
-    if (maybe_fusion_descriptor_->Has<pexpr::Nothing>()) {
+    const auto& opt_fusion_descriptor =
+        [&]() -> std::optional<ap::FusionDescriptor> {
+      const auto& iter = op2fusion_descriptor_->find(fusion_op);
+      if (iter == op2fusion_descriptor_->end()) {
+        return std::nullopt;
+      }
+      return iter->second;
+    }();
+    if (!opt_fusion_descriptor.has_value()) {
       return false;
     }
-    return false;
+    TODO return false;
   }
 
  private:
-  const adt::Maybe<ap::FusionDescriptor>*
-      maybe_fusion_descriptor_;  // not owned
+  const std::unordered_map<const pir::Operation*, ap::FusionDescriptor>*
+      op2fusion_descriptor_;  // not owned
 };
 
-adt::Maybe<ap::FusionDescriptor> GetFusionDescriptor(const pir::Operation* op) {
-  return pexpr::Nothing{};
+std::unordered_map<const pir::Operation*, ap::FusionDescriptor>
+GetOp2FusionDescriptor(pir::Operation* op) {
+  std::unordered_map<const pir::Operation*, ap::FusionDescriptor> ret;
+  op->Walk([&](pir::Operation* op) {
+    if (!op->isa<cinn::dialect::FusionOp>()) {
+      return;
+    }
+    const auto& opt_fusion_descriptor =
+        GetFusionDescriptor(op->dyn_cast<cinn::dialect::FusionOp>());
+    if (opt_fusion_descriptor.has_value()) {
+      ret[op] = opt_fusion_descriptor.value();
+    }
+  });
+  return ret;
 }
 
 class LowerFusionOpToApUnaryPrototypePass : public pir::PatternRewritePass {
@@ -65,13 +86,14 @@ class LowerFusionOpToApUnaryPrototypePass : public pir::PatternRewritePass {
     if (op->isa<pir::ModuleOp>()) {
       VLOG(5) << "start to pre-analysis all fusion ops in ModuleOp with static "
                  "shape mode.";
-      fusion_descriptor_ = GetFusionDescriptor(op);
+      fusion_descriptor_ = GetOp2FusionDescriptor(op);
     }
     return op->num_regions() > 0;
   }
 
  private:
-  mutable adt::Maybe<ap::FusionDescriptor> fusion_descriptor_;
+  mutable std::unordered_map<const pir::Operation*, ap::FusionDescriptor>
+      op2fusion_descriptor_;
 };
 
 }  // namespace

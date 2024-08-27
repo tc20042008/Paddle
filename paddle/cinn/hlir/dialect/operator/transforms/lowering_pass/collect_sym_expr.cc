@@ -37,9 +37,9 @@ bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
 }
 
 template <typename DoEachT>
-void VisitEachInputValue(const OpLoweringGroupPtr& group,
+void VisitEachInputValue(const std::vector<::pir::Operation*>& ops,
                          const DoEachT& DoEach) {
-  for (pir::Value value : GetBlockOutsideInput(group->ops())) {
+  for (pir::Value value : GetBlockOutsideInput(ops)) {
     DoEach(value);
   }
 }
@@ -89,12 +89,12 @@ void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
 
 std::unordered_map<symbol::DimExpr, symbol::DimExpr>
 CollectSubstituteDimExprMap(
-    const OpLoweringGroupPtr& group,
+    const std::vector<::pir::Operation*>& ops,
     pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map;
   std::unordered_set<std::string> base_dim_expr_set;
 
-  VisitEachInputValue(group, [&](::pir::Value value) {
+  VisitEachInputValue(ops, [&](::pir::Value value) {
     auto& shape_or_data = shape_analysis.GetShapeOrDataForValue(value);
     VisitEachDimExpr(shape_or_data, [&](const symbol::DimExpr& dim_expr) {
       if (IsComplicatedDimExpr(dim_expr) &&
@@ -166,10 +166,10 @@ void InferSymbolicShapeForOperation(
 }
 
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-GetGroupValue2Shape(const OpLoweringGroupPtr& group,
+GetGroupValue2Shape(const std::vector<::pir::Operation*>& ops,
                     pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
-  for (auto op : group->ops()) {
+  for (auto op : ops) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
       if (operand && value2shape.find(operand) == value2shape.end()) {
@@ -196,19 +196,19 @@ namespace cinn::dialect::ir::details {
 
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
-    const OpLoweringGroupPtr& group,
+    const std::vector<::pir::Operation*>& ops,
     pir::ShapeConstraintIRAnalysis& global_shape_analysis) {  // NOLINT
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
-      CollectSubstituteDimExprMap(group, global_shape_analysis);
+      CollectSubstituteDimExprMap(ops, global_shape_analysis);
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
   if (dim_expr_map.size() == 0) {
-    return GetGroupValue2Shape(group, global_shape_analysis);
+    return GetGroupValue2Shape(ops, global_shape_analysis);
   }
 
   pir::ShapeConstraintIRAnalysis local_shape_analysis({});
 
   // process input values.
-  VisitEachInputValue(group, [&](::pir::Value value) {
+  VisitEachInputValue(ops, [&](::pir::Value value) {
     auto new_shape_expr = TrySubstitute(
         global_shape_analysis.GetShapeOrDataForValue(value), dim_expr_map);
     local_shape_analysis.SetShapeOrDataForValue(value, new_shape_expr);
@@ -217,7 +217,7 @@ CreateGroupShapeOrDataExprs(
   });
 
   // process the result values of each op.
-  for (auto* op : group->ops()) {
+  for (auto* op : ops) {
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
       if (result && !value2shape.count(result)) {
@@ -227,8 +227,6 @@ CreateGroupShapeOrDataExprs(
       }
     }
   }
-  VLOG(5) << group.get()
-          << " value_to_shape_or_data_exprs.size() : " << value2shape.size();
   return value2shape;
 }
 

@@ -167,6 +167,24 @@ namespace phi {
     }                                                                     \
   }
 
+#define PD_SPECIALIZE_KernelCallHelper_FOR_RAW_CONST_ATTRIBUTE_REF()      \
+  template <typename... Tail>                                             \
+  struct KernelCallHelper<const ::pir::Attribute&, Tail...> {             \
+    template <int dev_ctx_idx,                                            \
+              int in_idx,                                                 \
+              int attr_idx,                                               \
+              int out_idx,                                                \
+              typename... PreviousArgs>                                   \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {     \
+      static_assert(out_idx == 0,                                         \
+                    "Kernel's Attributes should appear before Outputs."); \
+      const auto& arg = ctx->AttrAt(attr_idx);                            \
+      KernelCallHelper<Tail...>::                                         \
+          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
+              ctx, pargs..., arg);                                        \
+    }                                                                     \
+  }
+
 #define PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(attr_type) \
   template <typename... Tail>                                             \
   struct KernelCallHelper<const attr_type&, Tail...> {                    \
@@ -351,6 +369,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
+  PD_SPECIALIZE_KernelCallHelper_FOR_RAW_CONST_ATTRIBUTE_REF();
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
   PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_SCALAR(Scalar);
   PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_INTARRAY(IntArray);

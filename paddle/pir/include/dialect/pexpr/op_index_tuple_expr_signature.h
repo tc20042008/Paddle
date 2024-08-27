@@ -13,17 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
-#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/op_signature.h"
 
-namespace cinn::dialect::ir::details {
-using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
-using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
+namespace pexpr::index_expr {
 
-std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-CreateGroupShapeOrDataExprs(
-    const std::vector<::pir::Operation*>& ops,
-    pir::ShapeConstraintIRAnalysis& shape_analysis  // NOLINT
-);
+using InIndexTupleExprSignature = InputSignature<IndexTupleExpr>;
+using OutIndexTupleExprSignature = OutputSignature<IndexTupleExpr>;
+using OpIndexTupleExprSignature = OpSignature<IndexTupleExpr>;
 
-}  // namespace cinn::dialect::ir::details
+}  // namespace pexpr::index_expr

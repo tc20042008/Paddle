@@ -87,20 +87,24 @@ Result<Val> BuiltinApply(const InterpretFuncType<Val>& Interpret,
                                 "takes 2 arguments, but " +
                                 std::to_string(args.size()) + "were given."};
   }
-  if (!args.at(0).template Has<Closure<Val>>()) {
-    return InvalidArgumentError{
-        std::string() + "the second arguments must be closure, " +
-        GetBuiltinTypeName(args.at(0)) + " were given."};
-  }
-  const Closure<Val>& closure = args.at(0).template Get<Closure<Val>>();
-  if (!args.at(1).template Has<adt::List<Val>>()) {
-    return InvalidArgumentError{
-        std::string() + "the second arguments must be list, " +
-        GetBuiltinTypeName(args.at(1)) + " were given."};
-  }
-  const adt::List<Val>& args_list = args.at(1).template Get<adt::List<Val>>();
-  const std::vector<Val> closure_args{args_list->begin(), args_list->end()};
-  return Interpret(closure, closure_args);
+  const auto& pattern_match = ::common::Overloaded{
+      [&](const Closure<Val>& closure, const adt::List<Val>& arg_list)
+          -> Result<Val> { return Interpret(closure, args_list->vector()); },
+      [&](const BuiltinFuncType<Val>& builtin_func,
+          const adt::List<Val>& arg_list) -> Result<Val> {
+        return builtin_func(Interpret, arg_list->vector());
+      },
+      [&](const auto&, const auto&) -> Result<Val> {
+        if (!args.at(1).template Has<adt::List<Val>>()) {
+          return InvalidArgumentError{
+              std::string() + "the second arguments must be list, " +
+              GetBuiltinTypeName(args.at(1)) + " were given."};
+        }
+        return InvalidArgumentError{
+            std::string() + "the second arguments must be a function, " +
+            GetBuiltinTypeName(args.at(0)) + " were given."};
+      }};
+  return std::visit(pattern_match, args.at(0).varaint(), args.at(1).variant());
 }
 
 }  // namespace pexpr

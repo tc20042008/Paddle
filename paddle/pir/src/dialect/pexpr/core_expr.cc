@@ -36,9 +36,6 @@ std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {
         ss << std::quoted(str);
         return ss.str();
       },
-      [](const PrimitiveOp& op) {
-        return std::string("(op ") + op.op_name + ")";
-      },
       [](const Lambda<CoreExpr>& lambda) {
         std::ostringstream ss;
         ss << "(lambda [";
@@ -111,11 +108,6 @@ std::string GetJsonNodeType<std::string>() {
 }
 
 template <>
-std::string GetJsonNodeType<PrimitiveOp>() {
-  return "op";
-}
-
-template <>
 std::string GetJsonNodeType<Lambda<CoreExpr>>() {
   return "lambda";
 }
@@ -151,12 +143,6 @@ Json ConvertAtomicCoreExprToJson(const Atomic<CoreExpr>& atomic_expr) {
         Json j;
         j["type"] = GetJsonNodeType<std::string>();
         j["data"] = c;
-        return j;
-      },
-      [&](const PrimitiveOp& c) {
-        Json j;
-        j["type"] = GetJsonNodeType<PrimitiveOp>();
-        j["data"] = c.op_name;
         return j;
       },
       [&](const Lambda<CoreExpr>& lambda) {
@@ -264,21 +250,6 @@ std::optional<CoreExpr> ParseJsonToCoreExpr<std::string>(const Json& j_obj) {
 }
 
 template <>
-std::optional<CoreExpr> ParseJsonToCoreExpr<PrimitiveOp>(const Json& j_obj) {
-  if (!j_obj.is_object()) {
-    return std::nullopt;
-  }
-  if (!j_obj.contains("data")) {
-    return std::nullopt;
-  }
-  if (!j_obj["data"].is_string()) {
-    return std::nullopt;
-  }
-  auto c = j_obj["data"].get<std::string>();
-  return CoreExpr{CoreExprBuilder().PrimitiveOp(PrimitiveOp{c})};
-}
-
-template <>
 std::optional<CoreExpr> ParseJsonToCoreExpr<Lambda<CoreExpr>>(
     const Json& j_obj) {
   if (!j_obj.is_object()) {
@@ -363,7 +334,6 @@ std::optional<JsonParseFuncType> GetJsonParseFunc(const std::string& type) {
       {GetJsonNodeType<bool>(), &ParseJsonToCoreExpr<bool>},
       {GetJsonNodeType<int64_t>(), &ParseJsonToCoreExpr<int64_t>},
       {GetJsonNodeType<std::string>(), &ParseJsonToCoreExpr<std::string>},
-      {GetJsonNodeType<PrimitiveOp>(), &ParseJsonToCoreExpr<PrimitiveOp>},
       {GetJsonNodeType<Lambda<CoreExpr>>(),
        &ParseJsonToCoreExpr<Lambda<CoreExpr>>},
       {GetJsonNodeType<ComposedCallAtomic<CoreExpr>>(),

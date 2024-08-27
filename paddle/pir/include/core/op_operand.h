@@ -64,7 +64,18 @@ class IR_API OpOperand {
 
   friend Operation;
 
+  size_t GetHashValue() const { return reinterpret_cast<size_t>(impl_); }
+
  private:
   detail::OpOperandImpl *impl_{nullptr};
 };
 }  // namespace pir
+
+namespace std {
+template <>
+struct hash<pir::OpOperand> {
+  std::size_t operator()(const pir::OpOperand &obj) const {
+    return obj.GetHashValue();
+  }
+};
+}  // namespace std

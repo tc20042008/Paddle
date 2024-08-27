@@ -82,7 +82,6 @@ struct AnfExprToCoreExprConverter {
         [&](bool c) { return ConvertBool(c); },
         [&](int64_t c) { return ConvertInt64(c); },
         [&](const std::string& c) { return ConvertString(c); },
-        [&](const PrimitiveOp& c) { return ConvertPrimitiveOp(c); },
         [&](const Lambda<AnfExpr>& lambda) { return ConvertLambda(lambda); });
   }
 
@@ -100,9 +99,6 @@ struct AnfExprToCoreExprConverter {
   value_type ConvertInt64(const int64_t c) { return CoreVal(core_.Int64(c)); }
   value_type ConvertString(const std::string& c) {
     return CoreVal(core_.String(c));
-  }
-  value_type ConvertPrimitiveOp(const PrimitiveOp& c) {
-    return CoreVal(core_.PrimitiveOp(c));
   }
   value_type ConvertLambda(const Lambda<AnfExpr>& anf_expr) {
     const auto& core_body_val = Convert(anf_expr->body);

@@ -31,13 +31,13 @@ class IndexExprInterpreter {
   IndexExprInterpreter(IndexExprInterpreter&&) = delete;
 
   Result<Val> operator()(const Lambda<CoreExpr>& lambda,
-                         const std::vector<Val>& args);
+                         const std::vector<Val>& args) const;
 
   Result<Val> operator()(
       const std::unordered_map<std::string, BuiltinFuncType<Val>>&
           global_functions,
       const Lambda<CoreExpr>& lambda,
-      const std::vector<Val>& args);
+      const std::vector<Val>& args) const;
 
  private:
   std::shared_ptr<EnvMgr> env_mgr_;

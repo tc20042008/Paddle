@@ -17,37 +17,12 @@
 #include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 #include "paddle/pir/include/dialect/pexpr/value.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pexpr::index_expr {
-
-struct InIndexTupleExprSignature {
-  adt::List<IndexTupleExpr> in_indexes_exprs;
-
-  bool operator==(const InIndexTupleExprSignature& other) const {
-    return other.in_indexes_exprs == this->in_indexes_exprs;
-  }
-};
-
-struct OutIndexTupleExprSignature {
-  adt::List<IndexTupleExpr> out_indexes_exprs;
-
-  bool operator==(const OutIndexTupleExprSignature& other) const {
-    return other.out_indexes_exprs == this->out_indexes_exprs;
-  }
-};
-
-struct OpIndexTupleExprSignature {
-  InIndexTupleExprSignature in_signature;
-  OutIndexTupleExprSignature out_signature;
-
-  bool operator==(const OpIndexTupleExprSignature& other) const {
-    return other.in_signature == this->in_signature &&
-           other.out_signature == this->out_signature;
-  }
-};
 
 template <typename Val>
 using IndexExprValueBase = std::variant<symbol::DimExpr,

@@ -26,19 +26,6 @@
 namespace cinn {
 namespace adt {
 
-template <class... Ts>
-struct match : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts>
-match(Ts...) -> match<Ts...>;
-
-template <typename... Ts, typename... Fs>
-constexpr decltype(auto) operator>>(std::variant<Ts...> const& v,
-                                    match<Fs...> const& match) {
-  return std::visit(match, v);
-}
-
 template <typename T>
 struct Rc {
  public:
@@ -113,71 +100,6 @@ struct Rc {
         this->variant(),                                               \
         other);                                                        \
   }
-
-template <typename... Ts>
-class Union {
- public:
-  Union(const Union&) = default;
-  Union(Union&&) = default;
-
-  template <
-      typename Arg,
-      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, Union>, bool> = true>
-  explicit Union(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}
-
-  template <typename... Fs>
-  auto operator>>(match<Fs...> const& match) const {
-    return variant_ >> match;
-  }
-
-  template <typename __T>
-  const __T& Get() const {
-    return std::get<__T>(variant_);
-  }
-
-  template <typename __T>
-  bool Has() const {
-    return std::holds_alternative<__T>(variant_);
-  }
-
-  const std::variant<Ts...>& variant() const { return variant_; }
-
- private:
-  std::variant<Ts...> variant_;
-};
-
-template <typename... Ts>
-class Tuple {
- public:
-  Tuple(const Tuple&) = default;
-  Tuple(Tuple&&) = default;
-  Tuple& operator=(const Tuple&) = default;
-  Tuple& operator=(Tuple&&) = default;
-
-  template <typename... Args>
-  explicit Tuple(Args&&... args)
-      : tuple_(
-            std::make_shared<std::tuple<Ts...>>(std::forward<Args>(args)...)) {}
-
-  const std::tuple<Ts...>& tuple() const { return *tuple_; }
-  std::tuple<Ts...>* mut_tuple() { return &*tuple_; }
-
-  template <std::size_t I>
-  const auto& Get() const {
-    return std::get<I>(*tuple_);
-  }
-
- protected:
-  std::shared_ptr<std::tuple<Ts...>> tuple_;
-};
-
-template <typename T>
-bool TupleEqual(const T& lhs, const T& rhs) {
-  if (&lhs.tuple() == &rhs.tuple()) {
-    return true;
-  }
-  return lhs.tuple() == rhs.tuple();
-}
 
 template <typename T>
 class List final {
@@ -254,118 +176,25 @@ class List final {
     T value_;                                                               \
   };
 
-#define DEFINE_ADT_UNION(class_name, ...)                                      \
-  class class_name final {                                                     \
-   public:                                                                     \
-    class_name(const class_name&) = default;                                   \
-    class_name(class_name&&) = default;                                        \
-    class_name& operator=(const class_name& other) = default;                  \
-    class_name& operator=(class_name&& other) = default;                       \
-                                                                               \
-    template <typename Arg,                                                    \
-              std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, class_name>, \
-                               bool> = true>                                   \
-    class_name(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}                \
-                                                                               \
-    template <typename __T>                                                    \
-    const __T& Get() const {                                                   \
-      return std::get<__T>(variant_);                                          \
-    }                                                                          \
-                                                                               \
-    template <typename __T>                                                    \
-    bool Has() const {                                                         \
-      return std::holds_alternative<__T>(variant_);                            \
-    }                                                                          \
-                                                                               \
-    template <typename __T>                                                    \
-    auto Visit(const __T& visitor) const {                                     \
-      return std::visit(visitor, variant_);                                    \
-    }                                                                          \
-                                                                               \
-    template <typename... Fs>                                                  \
-    auto operator>>(match<Fs...> const& match) const {                         \
-      return variant_ >> match;                                                \
-    }                                                                          \
-                                                                               \
-    const std::variant<__VA_ARGS__>& variant() const { return variant_; }      \
-                                                                               \
-   private:                                                                    \
-    std::variant<__VA_ARGS__> variant_;                                        \
-  }
-
-template <typename UnionT>
-bool UnionEqual(const UnionT& lhs, const UnionT& rhs) {
-  if (&lhs == &rhs) {
-    return true;
-  }
-  return std::visit(
-      [](auto&& lhs, auto&& rhs) {
-        if constexpr (std::is_same<std::decay_t<decltype(lhs)>,
-                                   std::decay_t<decltype(rhs)>>::value) {
-          return lhs == rhs;
-        } else {
-          return false;
-        }
-      },
-      lhs.variant(),
-      rhs.variant());
-}
-
-#define DEFINE_ADT_UNARY(name)    \
-  template <typename T>           \
-  struct name : public Tuple<T> { \
-    using Tuple<T>::Tuple;        \
-  }
-
-#define DEFINE_ADT_BINARY(name)        \
-  template <typename T0, typename T1>  \
-  struct name : public Tuple<T0, T1> { \
-    using Tuple<T0, T1>::Tuple;        \
-  }
-
-#define OVERLOAD_OPERATOR_EQ_NE(type, function)              \
-  inline bool operator==(const type& lhs, const type& rhs) { \
-    return function(lhs, rhs);                               \
-  }                                                          \
-  inline bool operator!=(const type& lhs, const type& rhs) { \
-    return !(lhs == rhs);                                    \
-  }
-
-template <typename T>
-std::size_t TagHashValue(const T& tag) {
-  return std::hash<std::decay_t<decltype(tag.value())>>()(tag.value());
-}
-
-#define OVERRIDE_TAG_GET_HASH_VALUE(cls) \
-  inline std::size_t GetHashValue(const cls& tag) { return TagHashValue(tag); }
-
-#define OVERRIDE_UNION_GET_HASH_VALUE(cls)                                     \
-  inline std::size_t GetHashValue(const cls& union_obj) {                      \
-    return std::visit([](const auto& impl) { return GetHashValueImpl(impl); }, \
-                      union_obj.variant());                                    \
-  }
-
-using Name = std::string;
-
 // Undefined = {}
-struct Undefined final {
-  bool operator==(const Undefined&) const { return true; }
-  bool operator!=(const Undefined&) const { return false; }
+struct Undefined final : public std::monostate {
+  using std::monostate::monostate;
 };
 
 // Ok = {}
-struct Ok final {
-  bool operator==(const Ok&) const { return true; }
-  bool operator!=(const Ok&) const { return false; }
+struct Ok final : public std::monostate {
+  using std::monostate::monostate;
 };
-
-#define ADT_TODO() PADDLE_THROW(phi::errors::Fatal("TODO"))
 
 inline std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
   return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
 }
 
 struct Nothing : public std::monostate {
+  using std::monostate::monostate;
+};
+
+struct IdentityFunc : public std::monostate {
   using std::monostate::monostate;
 };
 
@@ -417,6 +246,14 @@ struct NameError {
   }
 };
 
+struct ValueError {
+  std::string msg;
+
+  bool operator==(const ValueError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
 struct TypeError {
   std::string msg;
 
@@ -437,6 +274,7 @@ using ErrorBase = std::variant<RuntimeError,
                                InvalidArgumentError,
                                AttributeError,
                                NameError,
+                               ValueError,
                                TypeError,
                                SyntaxError>;
 
@@ -450,7 +288,20 @@ struct [[nodiscard]] Error : public ErrorBase {
 template <typename T>
 struct [[nodiscard]] Result : public Either<T, errors::Error> {
   using Either<T, errors::Error>::Either;
+
+  bool HasError() const { return Has<errors::Error>(); }
+
+  bool HasOkValue() const { return !HasError(); }
+
+  const errors::Error& GetError() const { return Get<errors::Error>(); }
+
+  const T& GetOkValue() const { return Get<T>(); }
 };
+
+#define ADT_RETURN_IF_ERROR(result) \
+  if (result.HasError()) {          \
+    return result.GetError();       \
+  }
 
 }  // namespace adt
 }  // namespace cinn

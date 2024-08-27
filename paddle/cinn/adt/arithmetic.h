@@ -18,42 +18,28 @@
 
 namespace cinn::adt {
 
-DEFINE_ADT_UNARY(Negative);
-template <typename T>
-using Neg = Negative<T>;
-DEFINE_ADT_UNARY(Reciprocal);
-DEFINE_ADT_BINARY(Add);
-DEFINE_ADT_BINARY(Sub);
-DEFINE_ADT_BINARY(Mul);
-DEFINE_ADT_BINARY(Div);
-DEFINE_ADT_BINARY(Mod);
+#define DEFINE_ADT_ARITHMETIC(op) \
+  template <typename T>           \
+  struct op##Impl {               \
+    T lhs;                        \
+    T rhs;                        \
+  };                              \
+  template <typename T>           \
+  DEFINE_ADT_RC(op, op##Impl<T>);
+
+DEFINE_ADT_ARITHMETIC(Add);
+DEFINE_ADT_ARITHMETIC(Sub);
+DEFINE_ADT_ARITHMETIC(Mul);
+DEFINE_ADT_ARITHMETIC(Div);
+DEFINE_ADT_ARITHMETIC(Mod);
 
 template <typename T>
-struct Sum final {
-  List<T> operands;
+using ArithmeticImpl = std::variant<Add<T>, Sub<T>, Mul<T>, Div<T>, Mod<T>>;
 
-  const Sum& tuple() const { return *this; }
+template <typename T>
+struct Arithmetic : public ArithmeticImpl<T> {
+  using ArithmeticImpl<T>::ArithmeticImpl;
+  DEFINE_ADT_VARIANT_METHODS(ArithmeticImpl<T>);
 };
 
-template <typename T>
-struct Product final {
-  List<T> operands;
-
-  const Product& tuple() const { return *this; }
-};
-
-// Arithmetic T = Neg T
-//              | Add T T
-//              | Sub T T
-//              | Mul T T
-//              | Div T T
-//              | Mod T T
-template <typename ValueT>
-DEFINE_ADT_UNION(Arithmetic,
-                 Neg<ValueT>,
-                 Add<ValueT, ValueT>,
-                 Sub<ValueT, ValueT>,
-                 Mul<ValueT, ValueT>,
-                 Div<ValueT, ValueT>,
-                 Mod<ValueT, ValueT>);
 }  // namespace cinn::adt

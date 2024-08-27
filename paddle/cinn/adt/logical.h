@@ -19,29 +19,51 @@
 
 namespace cinn::adt {
 
-DEFINE_ADT_BINARY(EQ);
-DEFINE_ADT_BINARY(LT);
-DEFINE_ADT_BINARY(GT);
-DEFINE_ADT_BINARY(NE);
-DEFINE_ADT_BINARY(GE);
-DEFINE_ADT_BINARY(LE);
-DEFINE_ADT_BINARY(And);
-DEFINE_ADT_BINARY(Or);
-DEFINE_ADT_UNARY(Not);
+#define DEFINE_ADT_COMPARE(op) \
+  template <typename T>        \
+  struct op##Impl {            \
+    T lhs;                     \
+    T rhs;                     \
+  };                           \
+  template <typename T>        \
+  DEFINE_ADT_RC(op, op##Impl<T>);
 
-template <typename ValueT>
-DEFINE_ADT_UNION(Compare,
-                 EQ<ValueT, ValueT>,
-                 LT<ValueT, ValueT>,
-                 GT<ValueT, ValueT>,
-                 NE<ValueT, ValueT>,
-                 GE<ValueT, ValueT>,
-                 LE<ValueT, ValueT>);
+DEFINE_ADT_COMPARE(EQ);
+DEFINE_ADT_COMPARE(LT);
+DEFINE_ADT_COMPARE(GT);
+DEFINE_ADT_COMPARE(NE);
+DEFINE_ADT_COMPARE(GE);
+DEFINE_ADT_COMPARE(LE);
+
+DEFINE_ADT_COMPARE(And);
+DEFINE_ADT_COMPARE(Or);
 
 template <typename T>
-DEFINE_ADT_UNION(LogicalOp, And<T, T>, Or<T, T>, Not<T>);
+struct NotImpl {
+  T operand;
+};
+template <typename T>
+DEFINE_ADT_RC(Not, NotImpl<T>);
 
-template <typename ValueT>
-using Logical = Tree<LogicalOp, Compare<ValueT>>;
+template <typename T>
+using CompareOpImpl = std::variant<EQ<T>, LT<T>, GT<T>, NE<T>, GE<T>, LE<T>, >;
+template <typename T>
+struct CompareOp : public CompareOpImpl<T> {
+  using CompareOpImpl<T>::CompareOpImpl;
+  DEFINE_ADT_VARIANT_METHODS(CompareOpImpl<T>);
+};
+
+template <typename T>
+using LogicalOpImpl = std::variant<And<T>, Or<T>, Not<T>>;
+template <typename T>
+struct LogicalOp : public LogicalOpImpl<T> {
+  using LogicalOpImpl<T>::LogicalOpImpl;
+  DEFINE_ADT_VARIANT_METHODS(LogicalOpImpl<T>);
+};
+
+template <typename T>
+struct Logical : public Tree<LogicalOp, CompareOp<T>> {
+  using Tree<LogicalOp, CompareOp<T>>::Tree;
+};
 
 }  // namespace cinn::adt

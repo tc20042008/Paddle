@@ -31,9 +31,6 @@ std::string AtomicExprToSExpression(const Atomic<SExpr>& s_expr) {
         ss << std::quoted(str);
         return ss.str();
       },
-      [](const PrimitiveOp& op) {
-        return std::string("(op ") + op.op_name + ")";
-      },
       [](const Lambda<SExpr>& lambda) {
         std::ostringstream ss;
         ss << "(lambda [";

@@ -15,7 +15,6 @@
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
 
 #include <stack>
-#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -117,7 +116,6 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     op->stmts = new_stmts;
   }
 
-  std::unordered_map<std::string, ir::Expr> collection_name_map_expr;
   std::vector<Expr> let_list;
   std::vector<Expr> stmts_list;
   bool is_inner_store;

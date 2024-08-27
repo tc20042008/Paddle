@@ -17,7 +17,6 @@
 #include <iostream>
 
 #include "absl/types/optional.h"
-#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/op.h"

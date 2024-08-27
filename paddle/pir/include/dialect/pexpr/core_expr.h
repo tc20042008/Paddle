@@ -92,9 +92,6 @@ inline size_t GetHashValue(const Atomic<CoreExpr>& atomic) {
       [](const std::string& val) -> size_t {
         return std::hash<std::string>()(val);
       },
-      [](const PrimitiveOp& val) -> size_t {
-        return std::hash<std::string>()(val.op_name);
-      },
       [](const Lambda<CoreExpr>& lambda) -> size_t {
         return GetHashValue(lambda);
       });

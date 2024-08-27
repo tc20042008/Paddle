@@ -108,26 +108,6 @@ PD_DEFINE_string(
     StringFromEnv("FLAGS_cinn_custom_call_deny_ops", ""),
     "a blacklist of op are denied by MarkCustomCallOps pass, separated by ;");
 
-PD_DEFINE_bool(cinn_enable_map_expr,
-               BoolFromEnv("FLAGS_cinn_enable_map_expr", false),
-               "It controls whether to use cinn with map_expr");
-
-PD_DEFINE_bool(cinn_enable_map_expr_schedule,
-               BoolFromEnv("FLAGS_cinn_enable_map_expr_schedule", false),
-               "It controls whether to schedule by map_expr");
-
-PD_DEFINE_bool(cinn_enable_map_expr_inline,
-               BoolFromEnv("FLAGS_cinn_enable_map_expr_inline", false),
-               "It controls whether to inline by map_expr");
-
-PD_DEFINE_bool(cinn_enable_map_expr_dynamic_shape,
-               BoolFromEnv("FLAGS_cinn_enable_map_expr_dynamic_shape", false),
-               "It controls whether map_expr uses dynamic_shape");
-
-PD_DEFINE_bool(cinn_enable_map_expr_index_detail,
-               BoolFromEnv("FLAGS_cinn_enable_map_expr_index_detail", false),
-               "It controls whether to display detail tensor index");
-
 PD_DEFINE_bool(
     cinn_use_custom_call,
     BoolFromEnv("FLAGS_cinn_use_custom_call", true),

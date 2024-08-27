@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 
-#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
@@ -25,7 +24,6 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
 
-PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::dialect::ir::details {
@@ -144,9 +142,6 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
   // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
   // so a mapping is required.
   UpdateGroupShapeOrDataExprs(group);
-  if (FLAGS_cinn_enable_map_expr) {
-    cinn::adt::TryGenerateMapExprFromGroup(group);
-  }
   // Rebuild other informations
   // TODO(zhangyuqin1998): Do we need group.master_ops?
   return group;
@@ -155,8 +150,11 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
 void UpdateGroupShapeOrDataExprs(OpLoweringGroupPtr group) {
   auto& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(group->GetParentProgram());
-  group->set_value_to_shape_or_data_exprs(
-      CreateGroupShapeOrDataExprs(group, shape_analysis));
+  const auto& value2shape =
+      CreateGroupShapeOrDataExprs(group->ops(), shape_analysis);
+  VLOG(5) << group.get()
+          << " value_to_shape_or_data_exprs.size() : " << value2shape.size();
+  group->set_value_to_shape_or_data_exprs(value2shape);
 }
 
 }  // namespace cinn::dialect::ir::details

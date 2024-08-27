@@ -2,7 +2,6 @@ if(WITH_TESTING)
   cinn_cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest common)
 endif()
 
-add_subdirectory(adt)
 add_subdirectory(ast_gen_ius)
 add_subdirectory(auto_schedule)
 add_subdirectory(common)

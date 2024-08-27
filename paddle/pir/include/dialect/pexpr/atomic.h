@@ -27,14 +27,6 @@ namespace pexpr {
 
 DEFINE_ADT_TAG(tVar);
 
-struct PrimitiveOp {
-  std::string op_name;
-
-  bool operator==(const PrimitiveOp& other) const {
-    return this->op_name == other.op_name;
-  }
-};
-
 template <typename Expr>
 struct LambdaImpl {
   std::vector<tVar<std::string>> args;
@@ -51,12 +43,8 @@ DEFINE_ADT_RC(Lambda, const LambdaImpl<Expr>);
 // aexpr := Var | CONST | (lambda [VAR] expr)
 
 template <typename Expr>
-using AtomicBase = std::variant<tVar<std::string>,
-                                bool,
-                                int64_t,
-                                std::string,
-                                PrimitiveOp,
-                                Lambda<Expr>>;
+using AtomicBase =
+    std::variant<tVar<std::string>, bool, int64_t, std::string, Lambda<Expr>>;
 
 template <typename Expr>
 struct Atomic : public AtomicBase<Expr> {

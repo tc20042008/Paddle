@@ -73,6 +73,10 @@ class TopoWalker final {
     }
   }
 
+  TopoWalker GetReversed() const {
+    return TopoWalker(this->VisitNextNodes, this->VisitPrevNodes);
+  }
+
   NodesVisitorType VisitPrevNodes;
   NodesVisitorType VisitNextNodes;
 };

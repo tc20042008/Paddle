@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 
 namespace pexpr {
@@ -21,6 +22,8 @@ namespace pexpr {
 Maybe<int64_t> IndexTupleExprGetRank(const IndexTupleExpr& expr);
 
 Maybe<symbol::DimExpr> IndexExprGetRange(const IndexExpr& index_expr);
+
+Maybe<symbol::DimExpr> IndexExprGetDomain(const IndexExpr& index_expr);
 
 Maybe<adt::List<symbol::DimExpr>> IndexTupleExprGetRanges(
     const IndexTupleExpr& expr);

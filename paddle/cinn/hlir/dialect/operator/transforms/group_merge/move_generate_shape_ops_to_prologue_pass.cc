@@ -18,7 +18,6 @@
 
 #include <unordered_map>
 
-#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"

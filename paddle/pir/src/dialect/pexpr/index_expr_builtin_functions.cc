@@ -16,6 +16,7 @@
 #include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_value.h"
+#include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
 
 namespace pexpr::index_expr {
 
@@ -86,6 +87,15 @@ Result<Val> MakePtrGetItem(const InterpretFuncType<Val>& Interpret,
       opt_dim_expr.variant());
 }
 
+namespace {
+
+template <typename T>
+Result<Val> ConvertResult(const T& result) {
+  return result.Match([](const auto& impl) -> Result<Val> { return impl; });
+}
+
+}  // namespace
+
 Result<Val> MakeIndexExprBroadcastMask(const InterpretFuncType<Val>& Interpret,
                                        const std::vector<Val>& args) {
   if (args.size() != 2) {
@@ -95,18 +105,17 @@ Result<Val> MakeIndexExprBroadcastMask(const InterpretFuncType<Val>& Interpret,
   }
   const auto& opt_arg0 = TryGetDimExpr(args.at(0));
   const auto& opt_arg1 = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
-  return std::visit(
-      ::common::Overloaded{
-          [&](const symbol::DimExpr& dim_expr,
-              const IndexExpr& index_expr) -> Result<Val> {
-            return IndexExprBroadcastMask<IndexExpr>{dim_expr, index_expr};
-          },
-          [&](const auto&, const auto&) -> Result<Val> {
-            return InvalidArgumentError{
-                "wrong argument type for IndexExprBroadcastMask"};
-          }},
-      opt_arg0.variant(),
-      opt_arg1.variant());
+  ValidIndexExprBuilder builder{};
+  const auto& pattern_match = ::common::Overloaded{
+      [&](const symbol::DimExpr& dim_expr,
+          const IndexExpr& index_expr) -> Result<Val> {
+        return ConvertResult(builder.BroadcastMask(dim_expr, index_expr));
+      },
+      [&](const auto&, const auto&) -> Result<Val> {
+        return InvalidArgumentError{
+            "wrong argument type for IndexExprBroadcastMask"};
+      }};
+  return std::visit(pattern_match, opt_arg0.variant(), opt_arg1.variant());
 }
 
 Result<Val> MakeSlice(const InterpretFuncType<Val>& Interpret,
@@ -118,19 +127,19 @@ Result<Val> MakeSlice(const InterpretFuncType<Val>& Interpret,
   const auto& opt_start = TryGetDimExpr(args.at(0));
   const auto& opt_stop = TryGetDimExpr(args.at(1));
   const auto& opt_step = TryGetDimExpr(args.at(1));
-  return std::visit(
-      ::common::Overloaded{
-          [](const symbol::DimExpr& start,
-             const symbol::DimExpr& stop,
-             const symbol::DimExpr& step) -> Result<Val> {
-            return Val{IndexExprValue{Slice{start, stop, step}}};
-          },
-          [](const auto&, const auto&, const auto&) -> Result<Val> {
-            return InvalidArgumentError{"wrong argument type for Slice"};
-          }},
-      opt_start.variant(),
-      opt_stop.variant(),
-      opt_step.variant());
+  const auto& pattern_match = ::common::Overloaded{
+      [](const symbol::DimExpr& start,
+         const symbol::DimExpr& stop,
+         const symbol::DimExpr& step) -> Result<Val> {
+        return Val{IndexExprValue{Slice{start, stop, step}}};
+      },
+      [](const auto&, const auto&, const auto&) -> Result<Val> {
+        return InvalidArgumentError{"wrong argument type for Slice"};
+      }};
+  return std::visit(pattern_match,
+                    opt_start.variant(),
+                    opt_stop.variant(),
+                    opt_step.variant());
 }
 
 Result<Val> MakeIndexExprSlice(const InterpretFuncType<Val>& Interpret,
@@ -143,21 +152,20 @@ Result<Val> MakeIndexExprSlice(const InterpretFuncType<Val>& Interpret,
   const auto& opt_range = TryGetDimExpr(args.at(1));
   const auto& opt_index_expr =
       TryGetConcretIndexExprValue<IndexExpr>(args.at(2));
-  return std::visit(
-      ::common::Overloaded{
-          [](const Slice& slice,
-             const symbol::DimExpr& range,
-             const IndexExpr& expr) -> Result<Val> {
-            return IndexExprValue{
-                IndexExpr{IndexExprSlice<IndexExpr>{slice, range, expr}}};
-          },
-          [](const auto&, const auto&, const auto&) -> Result<Val> {
-            return InvalidArgumentError{
-                "wrong argument type for IndexExprSlice"};
-          }},
-      opt_slice.variant(),
-      opt_range.variant(),
-      opt_index_expr.variant());
+  ValidIndexExprBuilder builder{};
+  const auto& pattern_match = ::common::Overloaded{
+      [](const Slice& slice,
+         const symbol::DimExpr& range,
+         const IndexExpr& expr) -> Result<Val> {
+        return ConvertResult(builder.Slice(slice, range, expr));
+      },
+      [](const auto&, const auto&, const auto&) -> Result<Val> {
+        return InvalidArgumentError{"wrong argument type for IndexExprSlice"};
+      }};
+  return std::visit(pattern_match,
+                    opt_slice.variant(),
+                    opt_range.variant(),
+                    opt_index_expr.variant());
 }
 
 Result<Val> MakeIndexExprAffine(const InterpretFuncType<Val>& Interpret,
@@ -170,13 +178,13 @@ Result<Val> MakeIndexExprAffine(const InterpretFuncType<Val>& Interpret,
   const auto& opt_range = TryGetDimExpr(args.at(1));
   const auto& opt_index_expr =
       TryGetConcretIndexExprValue<IndexExpr>(args.at(2));
+  ValidIndexExprBuilder builder{};
   return std::visit(
       ::common::Overloaded{
           [](const Slice& slice,
              const symbol::DimExpr& range,
              const IndexExpr& index_expr) -> Result<Val> {
-            return IndexExprValue{IndexExpr{
-                IndexExprAffine<IndexExpr>{slice, range, index_expr}}};
+            return ConvertResult(builder.Affine(slice, range, index_expr));
           },
           [](const auto&, const auto&, const auto&) -> Result<Val> {
             return InvalidArgumentError{
@@ -191,11 +199,11 @@ Result<Val> MakeDisjointUnion(const InterpretFuncType<Val>& Interpret,
                               const std::vector<Val>& args) {
   const auto& opt_lhs = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
   const auto& opt_rhs = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
+  ValidIndexExprBuilder builder{};
   return std::visit(
       ::common::Overloaded{
           [](const IndexExpr& lhs, const IndexExpr& rhs) -> Result<Val> {
-            return IndexExprValue{
-                IndexExpr{DisjointUnion<IndexExpr>{lhs, rhs}}};
+            return ConvertResult(builder.DisjointUnion(lhs, rhs));
           },
           [](const auto&, const auto&) -> Result<Val> {
             return InvalidArgumentError{
@@ -243,24 +251,6 @@ inline Maybe<adt::List<symbol::DimExpr>> TryGetDimExprList(const Val& val) {
 
 Result<Val> MakeIndexTupleExprPermute(const InterpretFuncType<Val>& Interpret,
                                       const std::vector<Val>& args) {
-  const auto& IsValidPerm = [](const auto& perms) {
-    std::vector<bool> idx2touched(perms->size(), false);
-    for (int64_t perm : *perms) {
-      if (perm < 0) {
-        return false;
-      }
-      if (perm >= perms->size()) {
-        return false;
-      }
-      idx2touched[perm] = true;
-    }
-    for (bool touched : idx2touched) {
-      if (!touched) {
-        return false;
-      }
-    }
-    return true;
-  };
   if (args.size() != 2) {
     return TypeError{
         std::string("IndexTupleExprPermute takes 2 arguments but ") +
@@ -269,60 +259,22 @@ Result<Val> MakeIndexTupleExprPermute(const InterpretFuncType<Val>& Interpret,
   const auto& opt_perms = TryGetInt64List(args.at(0));
   const auto& opt_expr =
       TryGetConcretIndexExprValue<IndexTupleExpr>(args.at(1));
-  return std::visit(
-      ::common::Overloaded{
-          [&](const adt::List<int64_t>& perms,
-              const IndexTupleExpr& expr) -> Result<Val> {
-            if (!IsValidPerm(perms)) {
-              return InvalidArgumentError{"argument `perms` is not valid"};
-            }
-            const auto& rank = IndexTupleExprGetRank(expr);
-            if (!rank.Has<int64_t>()) {
-              return InvalidArgumentError{
-                  "wrong indexes_expr argument for IndexTupleExprPermute"};
-            }
-            if (rank.Get<int64_t>() != perms->size()) {
-              return InvalidArgumentError{std::string(
-                  "the rank of perms does not equal to the rank of "
-                  "indexes_expr. rank(perm): " +
-                  std::to_string(perms->size()) + ", rank(indexes_expr): " +
-                  std::to_string(rank.Get<int64_t>()))};
-            }
-            return IndexExprValue{IndexTupleExpr{
-                IndexTupleExprPermute<IndexTupleExpr>{perms, expr}}};
-          },
-          [](const auto&, const auto&) -> Result<Val> {
-            return InvalidArgumentError{
-                "wrong argument type for IndexTupleExprPermute"};
-          }},
-      opt_perms.variant(),
-      opt_expr.variant());
+  ValidIndexExprBuilder builder{};
+  return std::visit(::common::Overloaded{
+                        [&](const adt::List<int64_t>& perms,
+                            const IndexTupleExpr& expr) -> Result<Val> {
+                          return ConvertResult(builder.Permute(perms, expr));
+                        },
+                        [](const auto&, const auto&) -> Result<Val> {
+                          return InvalidArgumentError{
+                              "wrong argument type for IndexTupleExprPermute"};
+                        }},
+                    opt_perms.variant(),
+                    opt_expr.variant());
 }
 
 Result<Val> MakeIndexTupleExprReshape(const InterpretFuncType<Val>& Interpret,
                                       const std::vector<Val>& args) {
-  const auto& ContainsNegative = [](const auto& shape) {
-    for (const auto& dim : *shape) {
-      if (!dim.template Has<int64_t>()) {
-        continue;
-      }
-      if (dim.template Get<int64_t>() < 0) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  const auto& Product = [](const auto& dim_exprs) -> symbol::DimExpr {
-    symbol::DimExpr ret_expr{1};
-    for (const auto& dim : *dim_exprs) {
-      ret_expr = ret_expr * dim;
-    }
-    return ret_expr;
-  };
-  const auto& ProductEqual = [&](const auto& lhs, const auto& rhs) {
-    return Product(lhs) == Product(rhs);
-  };
   if (args.size() != 2) {
     return TypeError{
         std::string("IndexTupleExprReshape takes 2 arguments but ") +
@@ -331,43 +283,18 @@ Result<Val> MakeIndexTupleExprReshape(const InterpretFuncType<Val>& Interpret,
   const auto& opt_shape = TryGetDimExprList(args.at(0));
   const auto& opt_expr =
       TryGetConcretIndexExprValue<IndexTupleExpr>(args.at(1));
-  const auto& Make = [&](const adt::List<symbol::DimExpr>& shape,
-                         const IndexTupleExpr& expr) -> Result<Val> {
-    if (ContainsNegative(shape)) {
-      return InvalidArgumentError{
-          "dims in argument `shape` have negative integer"};
-    }
-    const auto& opt_ranges = IndexTupleExprGetRanges(expr);
-    if (opt_ranges.Has<Nothing>()) {
-      return InvalidArgumentError{
-          "argument `indexes_expr` is not a ranked IndexTupleExpr"};
-    }
-    if (!ProductEqual(shape, opt_ranges.Get<adt::List<symbol::DimExpr>>())) {
-      return InvalidArgumentError{
-          "product of argument `shape` does not equal to elements of "
-          "`indexes_expr`"};
-    }
-    return expr.Match(
-        [&](const IndexTupleExprReshape<IndexTupleExpr>& reshape) -> Val {
-          return IndexExprValue{
-              IndexTupleExpr{IndexTupleExprReshape<IndexTupleExpr>{
-                  shape, reshape->indexes_expr}}};
-        },
-        [&](const auto&) -> Val {
-          return IndexExprValue{IndexTupleExpr{
-              IndexTupleExprReshape<IndexTupleExpr>{shape, expr}}};
-        });
-  };
-  return std::visit(
-      ::common::Overloaded{
-          [&](const adt::List<symbol::DimExpr>& shape,
-              const IndexTupleExpr& expr) -> Result<Val> { Make(shape, expr); },
-          [](const auto&, const auto&) -> Result<Val> {
-            return InvalidArgumentError{
-                "wrong argument type for IndexTupleExprReshape"};
-          }},
-      opt_shape.variant(),
-      opt_expr.variant());
+  ValidIndexExprBuilder builder{};
+  return std::visit(::common::Overloaded{
+                        [&](const adt::List<symbol::DimExpr>& shape,
+                            const IndexTupleExpr& expr) -> Result<Val> {
+                          return ConvertResult(builder.Reshape(shape, expr));
+                        },
+                        [](const auto&, const auto&) -> Result<Val> {
+                          return InvalidArgumentError{
+                              "wrong argument type for IndexTupleExprReshape"};
+                        }},
+                    opt_shape.variant(),
+                    opt_expr.variant());
 }
 
 Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
@@ -428,8 +355,8 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
     }
     transform_index_exprs->push_back(ret_index_expr.Get<IndexExpr>());
   }
-  return IndexTupleExprTransform<IndexTupleExpr>{transform_index_exprs,
-                                                 indexes_expr};
+  ValidIndexExprBuilder builder{};
+  return ConvertResult(builder.Transform(transform_index_exprs, indexes_expr));
 }
 
 Result<Val> MakeOpIndexTupleExprSignature(

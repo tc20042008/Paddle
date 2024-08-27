@@ -13,17 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
-#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/cinn/adt/adt.h"
 
-namespace cinn::dialect::ir::details {
-using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
-using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
+namespace ap {
 
-std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-CreateGroupShapeOrDataExprs(
-    const std::vector<::pir::Operation*>& ops,
-    pir::ShapeConstraintIRAnalysis& shape_analysis  // NOLINT
-);
+using adt = ::cinn::adt;
 
-}  // namespace cinn::dialect::ir::details
+}

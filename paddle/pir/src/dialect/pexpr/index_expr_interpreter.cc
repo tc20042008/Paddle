@@ -21,7 +21,7 @@ namespace pexpr::index_expr {
 
 class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
  public:
-  explicit IndexExprInterpreterImpl(EnvMgr* env_mgr)
+  explicit IndexExprInterpreterImpl(const std::shared_ptr<EnvMgr>& env_mgr)
       : CoreExprInterpreter<Val>(env_mgr, MakeBuiltinFrame()) {}
   IndexExprInterpreterImpl(const IndexExprInterpreterImpl&) = delete;
   IndexExprInterpreterImpl(IndexExprInterpreterImpl&&) = delete;
@@ -68,12 +68,12 @@ class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
 
 IndexExprInterpreter::IndexExprInterpreter()
     : env_mgr_(std::make_shared<EnvMgr>()),
-      impl_(std::make_unique<IndexExprInterpreterImpl>(env_mgr_.get())) {}
+      impl_(std::make_unique<IndexExprInterpreterImpl>(env_mgr_)) {}
 
 IndexExprInterpreter::IndexExprInterpreter(
     const std::shared_ptr<EnvMgr>& env_mgr)
     : env_mgr_(env_mgr),
-      impl_(std::make_unique<IndexExprInterpreterImpl>(env_mgr.get())) {}
+      impl_(std::make_unique<IndexExprInterpreterImpl>(env_mgr)) {}
 
 Result<Val> IndexExprInterpreter::operator()(
     const Lambda<CoreExpr>& lambda, const std::vector<Val>& args) const {

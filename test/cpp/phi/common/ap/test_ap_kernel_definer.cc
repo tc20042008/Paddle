@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/ap/define_ctx_value.h"
 #include "paddle/phi/common/ap/kernel_definer_interpreter.h"
@@ -38,6 +39,12 @@ TEST(KernelDefine, ArgType) {
   KernelDefinerInterpreter interpreter;
   DefinerCtx<Val> ctx{DefinerRawCtx{}, pexpr::Object<Val>{}};
   const Result<Val>& ret = interpreter(lambda, ctx);
+  if (ret.HasError()) {
+    LOG(ERROR) << "lambda\n"
+               << pexpr::CoreExpr{lambda}.ToSExpression() << std::endl;
+    LOG(ERROR) << "error-type: " << ret.GetError().class_name()
+               << ", error-msg: " << ret.GetError().msg() << std::endl;
+  }
   ASSERT_TRUE(ret.HasOkValue());
   const Result<ArgType>& opt_arg_type =
       CastToCustomValue<ArgType>(ret.GetOkValue());

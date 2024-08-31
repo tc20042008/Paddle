@@ -18,13 +18,13 @@
 
 namespace ap::kernel_dispatch {
 
-class DispatcherInterpreter : public pexpr::CoreExprInterpreter<Val> {
+class KernelDispatcherInterpreter : public pexpr::CoreExprInterpreter<Val> {
  public:
-  DispatcherInterpreter()
-      : env_mgr_(std::make_shared<EnvMgr>()),
-        CoreExprInterpreter<Val>(env_mgr_.get(), MakeBuiltinFrame()) {}
-  DispatcherInterpreter(const DispatcherInterpreter&) = delete;
-  DispatcherInterpreter(DispatcherInterpreter&&) = delete;
+  KernelDispatcherInterpreter()
+      : CoreExprInterpreter<Val>(std::make_shared<EnvMgr>(),
+                                 MakeBuiltinFrame()) {}
+  KernelDispatcherInterpreter(const KernelDispatcherInterpreter&) = delete;
+  KernelDispatcherInterpreter(KernelDispatcherInterpreter&&) = delete;
 
   adt::Result<Val> operator()(const pexpr::Lambda<pexpr::CoreExpr>& lambda,
                               const Val& ctx) {
@@ -43,8 +43,6 @@ class DispatcherInterpreter : public pexpr::CoreExprInterpreter<Val> {
   static pexpr::Object<Val> InitBuiltins() {
     return pexpr::Object<Val>{std::unordered_map<std::string, Val>{}};
   }
-
-  std::shared_ptr<EnvMgr> env_mgr_;
 };
 
 }  // namespace ap::kernel_dispatch

@@ -63,44 +63,6 @@ Result<adt::Ok> DispatchRawContextImpl<Val>::LaunchCudaKernel(
 
 namespace {
 
-template <typename T>
-const char* GetCustomValueTypeNameImpl();
-
-#define SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(type) \
-  template <>                                            \
-  const char* GetCustomValueTypeNameImpl<type>() {       \
-    return #type;                                        \
-  }
-
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(ArgType);
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(CppValue);
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(ConstTensor<Val>);
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(MutableTensor<Val>);
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(DispatchRawContext<Val>);
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(DispatchContext<Val>);
-
-const char* GetCustomValueTypeName(const CustomValue& value) {
-  return value.Match([](const auto& impl) {
-    return GetCustomValueTypeNameImpl<std::decay_t<decltype(impl)>>();
-  });
-}
-
-template <typename T>
-Result<T> CastToCustomValue(const Val& value) {
-  if (!value.Has<CustomValue>()) {
-    return TypeError{std::string() + "cast failed. expected type: " +
-                     GetCustomValueTypeNameImpl<T>() +
-                     ", actual type: " + GetBuiltinTypeName(value)};
-  }
-  const auto& custom_value = value.Get<CustomValue>();
-  if (!custom_value.Has<T>()) {
-    return TypeError{std::string() + "cast failed. expected type: " +
-                     GetCustomValueTypeNameImpl<T>() +
-                     ", actual type: " + GetCustomValueTypeName(custom_value)};
-  }
-  return custom_value.Get<T>();
-}
-
 template <typename DstT, typename SrcT>
 Result<Val> StaticCast(DstT arg_type, const SrcT cpp_value) {
   if constexpr (std::is_pointer_v<typename DstT::type>) {

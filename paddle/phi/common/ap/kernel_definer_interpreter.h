@@ -22,8 +22,8 @@ namespace ap::kernel_define {
 class KernelDefinerInterpreter : public pexpr::CoreExprInterpreter<Val> {
  public:
   KernelDefinerInterpreter()
-      : env_mgr_(std::make_shared<EnvMgr>()),
-        CoreExprInterpreter<Val>(env_mgr_.get(), MakeBuiltinFrame()) {}
+      : CoreExprInterpreter<Val>(std::make_shared<EnvMgr>(),
+                                 MakeBuiltinFrame()) {}
   KernelDefinerInterpreter(const KernelDefinerInterpreter&) = delete;
   KernelDefinerInterpreter(KernelDefinerInterpreter&&) = delete;
 
@@ -43,9 +43,6 @@ class KernelDefinerInterpreter : public pexpr::CoreExprInterpreter<Val> {
   static pexpr::Object<Val> InitBuiltins() {
     return pexpr::Object<Val>{std::unordered_map<std::string, Val>{}};
   }
-
- private:
-  std::shared_ptr<EnvMgr> env_mgr_;
 };
 
 }  // namespace ap::kernel_define

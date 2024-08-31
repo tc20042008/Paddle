@@ -27,11 +27,13 @@ class LetVar {
   LetVar(const LetVar&) = default;
   LetVar(LetVar&&) = default;
 
+  LetVar& operator=(const LetVar& let_var);
   LetVar& operator=(const AnfExpr& anf_val);
 
   const std::string& name() const { return name_; }
 
   LetVar& Attr(const std::string& atttr_name);
+  LetVar& At(int64_t idx);
 
   template <typename... Args>
   AnfExpr Call(Args&&... args);
@@ -167,6 +169,12 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
   std::function<size_t()> SeqNoGenerator_;
 };
 
+inline LetVar& LetVar::operator=(const LetVar& let_var) {
+  AnfExprBuilder anf{};
+  return *this = anf.Call(tVar<std::string>{kBuiltinId},
+                          {tVar<std::string>{let_var.name()}});
+}
+
 inline LetVar& LetVar::operator=(const AnfExpr& anf_val) {
   let_ctx_->AddBinding(name_, anf_val);
   return *this;
@@ -174,8 +182,16 @@ inline LetVar& LetVar::operator=(const AnfExpr& anf_val) {
 
 inline LetVar& LetVar::Attr(const std::string& atttr_name) {
   AnfExprBuilder anf{};
-  AnfExpr anf_expr = anf.Call(tVar<std::string>{kBuiltinGetAttr},
-                              {Atomic<AnfExpr>{tVar<std::string>{atttr_name}}});
+  AnfExpr anf_expr =
+      anf.Call(tVar<std::string>{kBuiltinGetAttr},
+               {tVar<std::string>{name()}, anf.String(atttr_name)});
+  return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
+}
+
+inline LetVar& LetVar::At(int64_t idx) {
+  AnfExprBuilder anf{};
+  AnfExpr anf_expr = anf.Call(tVar<std::string>{kBuiltinGetItem},
+                              {tVar<std::string>{name()}, anf.Int64(idx)});
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 

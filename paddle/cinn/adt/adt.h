@@ -220,6 +220,8 @@ struct RuntimeError {
   bool operator==(const RuntimeError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "RuntimeError"; }
 };
 
 struct InvalidArgumentError {
@@ -228,6 +230,8 @@ struct InvalidArgumentError {
   bool operator==(const InvalidArgumentError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "InvalidArgumentError"; }
 };
 
 struct AttributeError {
@@ -236,6 +240,8 @@ struct AttributeError {
   bool operator==(const AttributeError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "AttributeError"; }
 };
 
 struct NameError {
@@ -244,6 +250,8 @@ struct NameError {
   bool operator==(const NameError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "NameError"; }
 };
 
 struct ValueError {
@@ -252,6 +260,8 @@ struct ValueError {
   bool operator==(const ValueError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "ValueError"; }
 };
 
 struct TypeError {
@@ -260,6 +270,8 @@ struct TypeError {
   bool operator==(const TypeError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "TypeError"; }
 };
 
 struct IndexError {
@@ -268,6 +280,8 @@ struct IndexError {
   bool operator==(const IndexError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "IndexError"; }
 };
 
 struct SyntaxError {
@@ -276,6 +290,8 @@ struct SyntaxError {
   bool operator==(const SyntaxError& other) const {
     return other.msg == this->msg;
   }
+
+  const char* class_name() const { return "IndexError"; }
 };
 
 using ErrorBase = std::variant<RuntimeError,
@@ -290,6 +306,15 @@ using ErrorBase = std::variant<RuntimeError,
 struct [[nodiscard]] Error : public ErrorBase {
   using ErrorBase::ErrorBase;
   DEFINE_ADT_VARIANT_METHODS(ErrorBase);
+
+  const char* class_name() const {
+    return Match([](const auto& impl) { return impl.class_name(); });
+  }
+
+  const std::string& msg() const {
+    return Match(
+        [](const auto& impl) -> const std::string& { return impl.msg; });
+  }
 };
 
 }  // namespace errors

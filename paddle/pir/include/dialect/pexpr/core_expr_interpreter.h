@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
@@ -27,7 +28,7 @@ class CoreExprInterpreter {
  public:
   using EnvMgr = EnvironmentManager<ValueT>;
   using Env = Environment<ValueT>;
-  explicit CoreExprInterpreter(EnvMgr* env_mgr,
+  explicit CoreExprInterpreter(const std::shared_ptr<EnvMgr>& env_mgr,
                                const Frame<ValueT>& builtin_frame_val)
       : env_mgr_(env_mgr),
         builtin_frame_(MergeFrame(MakeBuiltinFrame(), builtin_frame_val)) {}
@@ -168,7 +169,7 @@ class CoreExprInterpreter {
   }
 
  protected:
-  EnvMgr* env_mgr_;
+  std::shared_ptr<EnvMgr> env_mgr_;
   Frame<ValueT> builtin_frame_;
 
  private:

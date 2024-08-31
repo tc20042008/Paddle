@@ -22,8 +22,8 @@ template <typename Val>
 Result<Val> BuiltinIf(const InterpretFuncType<Val>& Interpret,
                       const std::vector<Val>& args) {
   if (args.size() != 3) {
-    return InvalidArgumentError{std::string("`if` takes 3 arguments, but ") +
-                                std::to_string(args.size()) + "were given."};
+    return TypeError{std::string("`if` takes 3 arguments, but ") +
+                     std::to_string(args.size()) + "were given."};
   }
   const auto& cond = args.at(0);
   Result<bool> select_true_branch_res = cond.Match(
@@ -38,7 +38,7 @@ Result<Val> BuiltinIf(const InterpretFuncType<Val>& Interpret,
       [&](const Closure<Val>& closure) -> Result<bool> { return true; },
       [&](const BuiltinFuncType<Val>& closure) -> Result<bool> { return true; },
       [&](const auto&) -> Result<bool> {
-        return InvalidArgumentError{"index expr could not be a condition"};
+        return TypeError{"index expr could not be a condition"};
       });
   if (select_true_branch_res.Has<Error>()) {
     return select_true_branch_res.Get<Error>();
@@ -63,9 +63,8 @@ template <typename Val>
 Result<Val> BuiltinIdentity(const InterpretFuncType<Val>& Interpret,
                             const std::vector<Val>& args) {
   if (args.size() != 1) {
-    return InvalidArgumentError{std::string(kBuiltinId) +
-                                "takes 1 argument, but " +
-                                std::to_string(args.size()) + "were given."};
+    return TypeError{std::string(kBuiltinId) + "takes 1 argument, but " +
+                     std::to_string(args.size()) + "were given."};
   }
   return args.at(0);
 }
@@ -75,36 +74,60 @@ Result<Val> BuiltinList(const InterpretFuncType<Val>& Interpret,
                         const std::vector<Val>& args) {
   adt::List<Val> l;
   l->reserve(args.size());
-  l->assign(args.begin(), args.end());
+  for (const auto& arg : args) {
+    l->emplace_back(arg);
+  }
   return Val{l};
+}
+
+template <typename Val>
+Result<Val> BuiltinGetAttr(const InterpretFuncType<Val>& Interpret,
+                           const std::vector<Val>& args) {
+  if (args.size() != 2) {
+    return TypeError{std::string(kBuiltinGetAttr) + " takes 2 argument, but " +
+                     std::to_string(args.size()) + "were given."};
+  }
+  if (!args.at(1).template Has<std::string>()) {
+    return TypeError{"attr_name must be a string"};
+  }
+  return ValueGetAttr(args.at(0), args.at(1).template Get<std::string>());
+}
+
+template <typename Val>
+Result<Val> BuiltinGetItem(const InterpretFuncType<Val>& Interpret,
+                           const std::vector<Val>& args) {
+  if (args.size() != 2) {
+    return TypeError{std::string(kBuiltinGetItem) + " takes 2 argument, but " +
+                     std::to_string(args.size()) + "were given."};
+  }
+  return ValueGetItem(args.at(0), args.at(1));
 }
 
 template <typename Val>
 Result<Val> BuiltinApply(const InterpretFuncType<Val>& Interpret,
                          const std::vector<Val>& args) {
   if (args.size() != 2) {
-    return InvalidArgumentError{std::string(kBuiltinId) +
-                                "takes 2 arguments, but " +
-                                std::to_string(args.size()) + "were given."};
+    return TypeError{std::string(kBuiltinId) + "takes 2 arguments, but " +
+                     std::to_string(args.size()) + "were given."};
   }
   const auto& pattern_match = ::common::Overloaded{
       [&](const Closure<Val>& closure, const adt::List<Val>& arg_list)
-          -> Result<Val> { return Interpret(closure, args_list->vector()); },
+          -> Result<Val> { return Interpret(closure, arg_list.vector()); },
       [&](const BuiltinFuncType<Val>& builtin_func,
           const adt::List<Val>& arg_list) -> Result<Val> {
-        return builtin_func(Interpret, arg_list->vector());
+        return builtin_func(Interpret, arg_list.vector());
       },
       [&](const auto&, const auto&) -> Result<Val> {
         if (!args.at(1).template Has<adt::List<Val>>()) {
-          return InvalidArgumentError{
-              std::string() + "the second arguments must be list, " +
-              GetBuiltinTypeName(args.at(1)) + " were given."};
+          return TypeError{std::string() +
+                           "the second arguments must be list, " +
+                           GetBuiltinTypeName(args.at(1)) + " were given."};
         }
-        return InvalidArgumentError{
-            std::string() + "the second arguments must be a function, " +
-            GetBuiltinTypeName(args.at(0)) + " were given."};
+        return TypeError{std::string() +
+                         "the second arguments must be a function, " +
+                         GetBuiltinTypeName(args.at(0)) + " were given."};
       }};
-  return std::visit(pattern_match, args.at(0).varaint(), args.at(1).variant());
+  return std::visit(pattern_match, args.at(0).variant(), args.at(1).variant());
 }
 
 }  // namespace pexpr

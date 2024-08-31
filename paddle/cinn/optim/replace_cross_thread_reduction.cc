@@ -160,7 +160,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   template <typename OpT>
   void ReplaceByReduceExternCall(ir::Expr* store,
                                  const ir::ReduceMethod& method) {
-    std::visit(cinn::adt::match{
+    std::visit(::common::Overloaded{
                    [&](const ir::NoneReduceMethod&) {
                      ReplaceByContinuousReduceExternCall<OpT>(store, false);
                    },

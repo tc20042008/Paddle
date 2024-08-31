@@ -14,17 +14,19 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/op_result.h"
 #include "paddle/pir/include/core/operation.h"
-#include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_closure.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace ap {
 
-using adt = ::cinn::adt;
+namespace adt = ::cinn::adt;
 
 }
 
@@ -51,8 +53,31 @@ struct OpOutArg {
   pir::Value value;
   size_t index;
 
+  bool operator==(const OpOutArg& other) const {
+    return other.value == this->value && other.index == this->index;
+  }
+
+  std::size_t GetHashValue() const {
+    return adt::hash_combine(std::hash<pir::Value>()(value), index);
+  }
+
   static std::optional<OpOutArg> MakeFromValue(pir::Value);
 };
+
+}  // namespace ap
+
+namespace std {
+
+template <>
+struct hash<ap::OpOutArg> {
+  std::size_t operator()(const ap::OpOutArg& out_arg) const {
+    return out_arg.GetHashValue();
+  }
+};
+
+}  // namespace std
+
+namespace ap {
 
 using OpArgImpl = std::variant<OpInArg, OpOutArg>;
 
@@ -84,20 +109,41 @@ namespace ap {
 
 template <typename T>
 struct OpArgToImpl {
-  std::unordered_map<const ap::OpArg, const T> data;
+  std::unordered_map<ap::OpArg, const T> data;
+
+  bool operator==(const OpArgToImpl& other) const {
+    return other.data == this->data;
+  }
 };
 
 template <typename T>
-DEFINE_ADT_RC(OpArgTo, OpArgToImpl);
+DEFINE_ADT_RC(OpArgTo, OpArgToImpl<T>);
+
+using OpOrArgImpl = std::variant<OpInArg, OpOutArg, pir::Operation*>;
+
+struct OpOrArg : public OpOrArgImpl {
+  using OpOrArgImpl::OpOrArgImpl;
+  DEFINE_ADT_VARIANT_METHODS(OpOrArgImpl);
+
+  size_t GetHashValue() const {
+    return Match([](const auto& impl) {
+      return std::hash<std::decay_t<decltype(impl)>>()(impl);
+    });
+  }
+};
 
 struct OpArg2OpIndexesExprSignature {
-  OpArgTo<OpIndexTupleExprSignature> in_arg2signature;
-  OpArgTo<OpIndexTupleExprSignature> out_arg2signature;
+  OpArgTo<pexpr::OpIndexTupleExprSignature> in_arg2signature;
+  OpArgTo<pexpr::OpIndexTupleExprSignature> out_arg2signature;
 };
 
 struct Op2Anchor2IndexesExprSignatureImpl {
   std::unordered_map<pir::Operation*, OpArg2OpIndexesExprSignature>
       op2sigatures;
+
+  bool operator==(const Op2Anchor2IndexesExprSignatureImpl& other) const {
+    return &other == this;
+  }
 
   bool IsReachable(const OpOrArg& src, const OpOrArg& dst) const;
 };
@@ -107,7 +153,8 @@ DEFINE_ADT_RC(Op2Anchor2IndexesExprSignature,
 struct TrivialFusionDescriptorImpl {
   Op2Anchor2IndexesExprSignature op2anchor2indexes_expr_signature;
   // the input indexes_expr of YieldOp is loop indexes_expr.
-  OpArgTo<pexpr::RecordableIndexClosure> yield_op_arg2custom_index_lambda;
+  OpArgTo<pexpr::index_expr::RecordableIndexClosure>
+      yield_op_arg2custom_index_lambda;
 
   bool operator==(const TrivialFusionDescriptorImpl& other) const {
     return other.yield_op_arg2custom_index_lambda ==
@@ -125,6 +172,6 @@ struct FusionDescriptor : public FusionDescriptorImpl {
 
 adt::Result<FusionDescriptor> GetFusionDescriptor(
     const cinn::dialect::FusionOp& op,
-    ShapeConstraintIRAnalysis* shape_analysis);
+    pir::ShapeConstraintIRAnalysis* shape_analysis);
 
 }  // namespace ap

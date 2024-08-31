@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 
-namespace pexpr::index_expr {
+namespace pexpr {
 
 template <typename T>
 struct InputSignature {
@@ -24,7 +24,7 @@ struct InputSignature {
   bool operator==(const InputSignature& other) const {
     return other.descriptors == this->descriptors;
   }
-}
+};
 
 template <typename T>
 struct OutputSignature {
@@ -33,17 +33,17 @@ struct OutputSignature {
   bool operator==(const OutputSignature& other) const {
     return other.descriptors == this->descriptors;
   }
-}
+};
 
 template <typename T>
 struct OpSignature {
   InputSignature<T> in_signature;
   OutputSignature<T> out_signature;
 
-  bool operator==(const OpIndexTupleExprSignature& other) const {
+  bool operator==(const OpSignature& other) const {
     return other.in_signature == this->in_signature &&
            other.out_signature == this->out_signature;
   }
 };
 
-}  // namespace pexpr::index_expr
+}  // namespace pexpr

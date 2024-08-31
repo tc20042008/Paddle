@@ -91,7 +91,7 @@ Maybe<symbol::DimExpr> IndexExprGetDomain(const IndexExpr& index_expr) {
       },
       [](const IndexExprAffine<IndexExpr>& index_affine)
           -> Maybe<symbol::DimExpr> {
-        return IndexExprGetDomain(index_slice->index_expr);
+        return IndexExprGetDomain(index_affine->index_expr);
       },
       [](const DisjointUnion<IndexExpr>& union_expr) -> Maybe<symbol::DimExpr> {
         const auto& lhs = IndexExprGetDomain(union_expr->lhs);

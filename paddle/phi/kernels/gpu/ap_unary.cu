@@ -75,6 +75,10 @@ template <typename T, typename Context>
 void ApUnaryKernel(const Context& dev_ctx,
                    const std::vector<const DenseTensor*>& xs,
                    int num_outputs,
+                   const std::string& kernel_definer_lambda,
+                   const std::string& define_ctx_maker_lambda,
+                   const std::string& kernel_dispatcher_lambda,
+                   const std::string& dispatch_ctx_maker_lambda,
                    std::vector<DenseTensor*> outs) {
   PADDLE_ENFORCE_GT(
       xs.size(),

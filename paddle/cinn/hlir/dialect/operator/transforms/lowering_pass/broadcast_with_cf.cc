@@ -352,22 +352,23 @@ pir::Operation* CreateConditionBlock(
             .Get<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
     const auto& [lhs_eq_rhs_cond, lhs_eq_one_cond, rhs_eq_one_cond] =
         BroadcastableToCondValue(
-            branch.Get<0>(), ShapeOrDataDimExprs4Value, group_inputs, builder);
+            branch->cond, ShapeOrDataDimExprs4Value, group_inputs, builder);
 
     // lhs == rhs
     auto lhs_eq_rhs_cond_op = builder.Build<paddle::dialect::IfOp>(
         lhs_eq_rhs_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_rhs_block = lhs_eq_rhs_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
-    auto* lhs_eq_rhs_block_op = CreateConditionBlock(branch.Get<1>(),
-                                                     origin_group,
-                                                     ShapeOrDataDimExprs4Value,
-                                                     value_to_dim_expr_idx,
-                                                     group_inputs,
-                                                     output_types,
-                                                     builder,
-                                                     &lhs_eq_rhs_block,
-                                                     group_map);
+    auto* lhs_eq_rhs_block_op =
+        CreateConditionBlock(branch->cstr_lhs_eq_rhs_branch,
+                             origin_group,
+                             ShapeOrDataDimExprs4Value,
+                             value_to_dim_expr_idx,
+                             group_inputs,
+                             output_types,
+                             builder,
+                             &lhs_eq_rhs_block,
+                             group_map);
     InsertYieldOpForCondBlock(lhs_eq_rhs_block_op, builder);
 
     pir::Block& lhs_not_eq_rhs_block = lhs_eq_rhs_cond_op.false_block();
@@ -378,29 +379,31 @@ pir::Operation* CreateConditionBlock(
         lhs_eq_one_cond, std::vector<pir::Type>{output_types});
     pir::Block& lhs_eq_one_block = lhs_eq_one_cond_op.true_block();
     builder.SetInsertionPointToBlockEnd(&lhs_eq_one_block);
-    auto* lhs_eq_one_block_op = CreateConditionBlock(branch.Get<2>(),
-                                                     origin_group,
-                                                     ShapeOrDataDimExprs4Value,
-                                                     value_to_dim_expr_idx,
-                                                     group_inputs,
-                                                     output_types,
-                                                     builder,
-                                                     &lhs_eq_one_block,
-                                                     group_map);
+    auto* lhs_eq_one_block_op =
+        CreateConditionBlock(branch->cstr_lhs_eq_one_branch,
+                             origin_group,
+                             ShapeOrDataDimExprs4Value,
+                             value_to_dim_expr_idx,
+                             group_inputs,
+                             output_types,
+                             builder,
+                             &lhs_eq_one_block,
+                             group_map);
     InsertYieldOpForCondBlock(lhs_eq_one_block_op, builder);
 
     // lhs != rhs && rhs == 1
     pir::Block& rhs_eq_one_block = lhs_eq_one_cond_op.false_block();
     builder.SetInsertionPointToBlockEnd(&rhs_eq_one_block);
-    auto* rhs_eq_one_block_op = CreateConditionBlock(branch.Get<3>(),
-                                                     origin_group,
-                                                     ShapeOrDataDimExprs4Value,
-                                                     value_to_dim_expr_idx,
-                                                     group_inputs,
-                                                     output_types,
-                                                     builder,
-                                                     &rhs_eq_one_block,
-                                                     group_map);
+    auto* rhs_eq_one_block_op =
+        CreateConditionBlock(branch->cstr_rhs_eq_one_branch,
+                             origin_group,
+                             ShapeOrDataDimExprs4Value,
+                             value_to_dim_expr_idx,
+                             group_inputs,
+                             output_types,
+                             builder,
+                             &rhs_eq_one_block,
+                             group_map);
     InsertYieldOpForCondBlock(rhs_eq_one_block_op, builder);
 
     builder.SetInsertionPointToBlockEnd(&lhs_not_eq_rhs_block);

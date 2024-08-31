@@ -32,8 +32,8 @@ class BfsWalker final {
   using NodesVisitorType =
       std::function<void(NodeType, const NodeHandlerType&)>;
 
-  BfsWalker(const NodesVisitorType& VisitNextNodes)
-      : VisitNextNodes_(VisitNextNodes) {}
+  BfsWalker(const NodesVisitorType& VisitNextNodesVal)
+      : VisitNextNodes(VisitNextNodesVal) {}
 
   void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
     std::array<NodeType, 1> nodes{node};
@@ -59,12 +59,11 @@ class BfsWalker final {
       NodeType node = node_queue.front();
       node_queue.pop();
       NodeHandler(node);
-      VisitNextNodes_(node, TryEnqueueNode);
+      VisitNextNodes(node, TryEnqueueNode);
     }
   }
 
- private:
-  NodesVisitorType VisitNextNodes_;
+  NodesVisitorType VisitNextNodes;
 };
 
 }  // namespace common

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/value.h"
@@ -27,8 +28,9 @@ class CoreExprInterpreter {
   using EnvMgr = EnvironmentManager<ValueT>;
   using Env = Environment<ValueT>;
   explicit CoreExprInterpreter(EnvMgr* env_mgr,
-                               const Frame<ValueT>& builtin_frame)
-      : env_mgr_(env_mgr), builtin_frame_(builtin_frame) {}
+                               const Frame<ValueT>& builtin_frame_val)
+      : env_mgr_(env_mgr),
+        builtin_frame_(MergeFrame(MakeBuiltinFrame(), builtin_frame_val)) {}
   CoreExprInterpreter(const CoreExprInterpreter&) = delete;
   CoreExprInterpreter(CoreExprInterpreter&&) = delete;
 
@@ -71,46 +73,40 @@ class CoreExprInterpreter {
   Result<ValueT> InterpretComposedCall(
       const ComposedCallAtomic<CoreExpr>& composed_call,
       const std::shared_ptr<Env>& env) {
-    Result<ValueT> inner_func = InterpretAtomic(composed_call->inner_func, env);
-    if (inner_func.Has<Error>()) {
-      return inner_func.Get<Error>();
-    }
+    const Result<ValueT>& inner_func =
+        InterpretAtomic(composed_call->inner_func, env);
+    ADT_RETURN_IF_ERROR(inner_func);
     std::vector<ValueT> arg_values;
     arg_values.reserve(composed_call->args.size());
     for (const auto& arg : composed_call->args) {
       Result<ValueT> arg_value = InterpretAtomic(arg, env);
-      if (arg_value.Has<Error>()) {
-        return arg_value.Get<Error>();
-      }
-      arg_values.push_back(arg_value.Get<ValueT>());
+      ADT_RETURN_IF_ERROR(arg_value);
+      arg_values.push_back(arg_value.template Get<ValueT>());
     }
-    Result<ValueT> inner_ret =
-        InterpretCall(inner_func.Get<ValueT>(), arg_values);
-    if (inner_ret.Has<Error>()) {
-      return inner_ret.Get<Error>();
-    }
+    const Result<ValueT>& inner_ret =
+        InterpretCall(inner_func.template Get<ValueT>(), arg_values);
+    ADT_RETURN_IF_ERROR(inner_ret);
     return composed_call->outter_func.Match(
         [&](const Lambda<CoreExpr>& lambda) -> Result<ValueT> {
-          return InterpretLambda(lambda, env, {inner_ret.Get<ValueT>()});
+          return InterpretLambda(
+              lambda, env, {inner_ret.template Get<ValueT>()});
         },
         [&](const auto&) -> Result<ValueT> {
-          Result<ValueT> outter_func =
+          const Result<ValueT>& outter_func =
               InterpretAtomic(composed_call->outter_func, env);
-          if (outter_func.Has<Error>()) {
-            return outter_func.Get<Error>();
-          }
-          return InterpretCall(outter_func.Get<ValueT>(),
-                               {inner_ret.Get<ValueT>()});
+          ADT_RETURN_IF_ERROR(outter_func);
+          return InterpretCall(outter_func.template Get<ValueT>(),
+                               {inner_ret.template Get<ValueT>()});
         });
   }
 
   Result<ValueT> InterpretClosure(const Closure<ValueT>& closure,
                                   const std::vector<ValueT>& args) {
     return closure.Match(
-        [&](const NaiveClosure& impl) {
+        [&](const NaiveClosure<ValueT>& impl) {
           return InterpretNaiveClosure(impl, args);
         },
-        [&](const MethodClosure& impl) {
+        [&](const MethodClosure<ValueT>& impl) {
           return InterpretMethodClosure(impl, args);
         });
   }
@@ -144,8 +140,10 @@ class CoreExprInterpreter {
                                         const std::vector<ValueT>& args) {
     std::vector<ValueT> new_args;
     new_args.reserve(args.size() + 1);
-    new_args.push_back(method.obj);
-    new_args.insert(new_args.end(), args.begin(), args.end());
+    new_args.emplace_back(method->obj);
+    for (const auto& arg : args) {
+      new_args.emplace_back(arg);
+    }
     return InterpretCall(method->func, new_args);
   }
 
@@ -172,6 +170,33 @@ class CoreExprInterpreter {
  protected:
   EnvMgr* env_mgr_;
   Frame<ValueT> builtin_frame_;
+
+ private:
+  // rhs override lhs
+  static Frame<ValueT> MergeFrame(const Frame<ValueT>& lhs,
+                                  const Frame<ValueT>& rhs) {
+    Object<ValueT> frame_obj{lhs.frame_obj->storage};
+    for (const auto& [k, v] : rhs.frame_obj->storage) {
+      frame_obj->Set(k, v);
+    }
+    return Frame<ValueT>{frame_obj};
+  }
+  static Frame<ValueT> MakeBuiltinFrame() {
+    return Frame<ValueT>{InitBuiltins()};
+  }
+  static Object<ValueT> InitBuiltins() {
+    return Object<ValueT>{std::unordered_map<std::string, ValueT>{
+        {kBuiltinIf, ValueT{BuiltinFuncType<ValueT>(&BuiltinIf<ValueT>)}},
+        {kBuiltinId, ValueT{BuiltinFuncType<ValueT>(&BuiltinIdentity<ValueT>)}},
+        {kBuiltinList, ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
+        {kBuiltinGetAttr,
+         ValueT{BuiltinFuncType<ValueT>(&BuiltinGetAttr<ValueT>)}},
+        {kBuiltinGetItem,
+         ValueT{BuiltinFuncType<ValueT>(&BuiltinGetItem<ValueT>)}},
+        {kBuiltinApply, ValueT{BuiltinFuncType<ValueT>(&BuiltinApply<ValueT>)}},
+        {"list", ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
+    }};
+  }
 };
 
 }  // namespace pexpr

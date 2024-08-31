@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include "paddle/pir/include/core/dll_decl.h"
 
 namespace pir {
@@ -64,7 +65,9 @@ class IR_API OpOperand {
 
   friend Operation;
 
-  size_t GetHashValue() const { return reinterpret_cast<size_t>(impl_); }
+  std::size_t GetHashValue() const {
+    return reinterpret_cast<std::size_t>(impl_);
+  }
 
  private:
   detail::OpOperandImpl *impl_{nullptr};

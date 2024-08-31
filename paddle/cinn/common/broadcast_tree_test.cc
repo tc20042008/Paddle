@@ -44,8 +44,7 @@ void CheckLeafNonBroadcast(const BroadcastLeaf& leaf) {
 
 void CheckInnerBranchNonBroadcast(
     const BroadcastBranch<BroadcastTree>& branch) {
-  const auto& [_, lhs_eq_rhs_tree, lhs_eq_one_tree, rhs_eq_one_tree] =
-      branch.tuple();
+  const auto& [_, lhs_eq_rhs_tree, lhs_eq_one_tree, rhs_eq_one_tree] = *branch;
   ASSERT_TRUE(lhs_eq_rhs_tree.Has<BroadcastLeaf>());
   ASSERT_TRUE(lhs_eq_one_tree.Has<BroadcastLeaf>());
   ASSERT_TRUE(rhs_eq_one_tree.Has<BroadcastLeaf>());
@@ -73,7 +72,7 @@ TEST(BroadcastTree, Naive) {
   const auto& [cstr_broadcastable,
                lhs_eq_rhs_tree,
                lhs_eq_one_tree,
-               rhs_eq_one_tree] = branch.tuple();
+               rhs_eq_one_tree] = *branch;
   ASSERT_EQ(cstr_broadcastable->lhs, DimExpr("S1"));
   ASSERT_EQ(cstr_broadcastable->rhs, DimExpr("S2"));
   ASSERT_TRUE(lhs_eq_rhs_tree.Has<BroadcastBranch<BroadcastTree>>());
@@ -104,7 +103,7 @@ TEST(BroadcastTree, SimplifyConstantBroadcast) {
   const auto& [cstr_broadcastable,
                lhs_eq_rhs_tree,
                lhs_eq_one_tree,
-               rhs_eq_one_tree] = branch.tuple();
+               rhs_eq_one_tree] = *branch;
   ASSERT_EQ(cstr_broadcastable->lhs, DimExpr("S1"));
   ASSERT_EQ(cstr_broadcastable->rhs, DimExpr("S2"));
   ASSERT_TRUE(lhs_eq_rhs_tree.Has<BroadcastLeaf>());

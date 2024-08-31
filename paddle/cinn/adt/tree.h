@@ -21,17 +21,14 @@
 namespace cinn::adt {
 
 // Tree InnerT LeafT = LeafT | InnerT (Tree InnerT LeafT)
-template <template <typename> class InnerT, typename LeafT>
-struct Tree;
+
+template <typename LeafNodeT, typename InnerNodeT>
+using TreeImpl = std::variant<LeafNodeT, InnerNodeT>;
 
 template <template <typename> class InnerT, typename LeafT>
-using TreeImpl = std::variant < LeafT,
-      InnerT<Tree<InnerT, LeafT>>;
-
-template <template <typename> class InnerT, typename LeafT>
-struct Tree : public TreeImpl<Tree<InnerT, LeafT>> {
-  using TreeImpl<Tree<InnerT, LeafT>>::TreeImpl;
-  DEFINE_ADT_VARIANT_METHODS(TreeImpl<Tree<InnerT, LeafT>>);
+struct Tree : public TreeImpl<LeafT, InnerT<Tree<InnerT, LeafT>>> {
+  using TreeImpl<LeafT, InnerT<Tree<InnerT, LeafT>>>::TreeImpl;
+  DEFINE_ADT_VARIANT_METHODS(TreeImpl<LeafT, InnerT<Tree<InnerT, LeafT>>>);
 };
 
 }  // namespace cinn::adt

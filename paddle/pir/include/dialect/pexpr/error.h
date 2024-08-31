@@ -20,6 +20,7 @@ namespace pexpr {
 
 using adt::errors::AttributeError;
 using adt::errors::Error;
+using adt::errors::IndexError;
 using adt::errors::InvalidArgumentError;
 using adt::errors::NameError;
 using adt::errors::RuntimeError;

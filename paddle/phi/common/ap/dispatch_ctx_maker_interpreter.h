@@ -13,22 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/adt/adt.h"
+#include "paddle/phi/common/ap/kernel_value.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_interpreter.h"
 
-namespace ap {
+namespace ap::kernel_dispatch {
 
-namespace adt = ::cinn::adt;
+class CtxMakerInterpreter : public pexpr::CoreExprInterpreter<Val> {
+ public:
+};
 
-using adt::errors::AttributeError;
-using adt::errors::Error;
-using adt::errors::IndexError;
-using adt::errors::InvalidArgumentError;
-using adt::errors::NameError;
-using adt::errors::RuntimeError;
-using adt::errors::SyntaxError;
-using adt::errors::TypeError;
-using adt::errors::ValueError;
-
-template <typename T>
-using Result = adt::Result<T>;
-}  // namespace ap
+}  // namespace ap::kernel_dispatch

@@ -23,10 +23,15 @@ COMMON_DECLARE_int64(pir_broadcast_tree_limit);
 namespace cinn::common {
 
 template <typename T>
-using BroadcastBranch = adt::Tuple<symbol::Broadcastable<symbol::DimExpr>,
-                                   /*cstr_lhs_eq_rhs_branch*/ T,
-                                   /*cstr_lhs_eq_one_branch*/ T,
-                                   /*cstr_rhs_eq_one_branch*/ T>;
+struct BroadcastBranchImpl {
+  symbol::Broadcastable<symbol::DimExpr> cond;
+  T cstr_lhs_eq_rhs_branch;
+  T cstr_lhs_eq_one_branch;
+  T cstr_rhs_eq_one_branch;
+};
+
+template <typename T>
+DEFINE_ADT_RC(BroadcastBranch, BroadcastBranchImpl<T>);
 
 using BroadcastLeaf = adt::List<std::vector<symbol::DimExpr>>;
 

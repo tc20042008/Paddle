@@ -152,11 +152,11 @@ Result<Val> MakeIndexExprSlice(const InterpretFuncType<Val>& Interpret,
   const auto& opt_range = TryGetDimExpr(args.at(1));
   const auto& opt_index_expr =
       TryGetConcretIndexExprValue<IndexExpr>(args.at(2));
-  ValidIndexExprBuilder builder{};
   const auto& pattern_match = ::common::Overloaded{
       [](const Slice& slice,
          const symbol::DimExpr& range,
          const IndexExpr& expr) -> Result<Val> {
+        ValidIndexExprBuilder builder{};
         return ConvertResult(builder.Slice(slice, range, expr));
       },
       [](const auto&, const auto&, const auto&) -> Result<Val> {
@@ -178,12 +178,12 @@ Result<Val> MakeIndexExprAffine(const InterpretFuncType<Val>& Interpret,
   const auto& opt_range = TryGetDimExpr(args.at(1));
   const auto& opt_index_expr =
       TryGetConcretIndexExprValue<IndexExpr>(args.at(2));
-  ValidIndexExprBuilder builder{};
   return std::visit(
       ::common::Overloaded{
           [](const Slice& slice,
              const symbol::DimExpr& range,
              const IndexExpr& index_expr) -> Result<Val> {
+            ValidIndexExprBuilder builder{};
             return ConvertResult(builder.Affine(slice, range, index_expr));
           },
           [](const auto&, const auto&, const auto&) -> Result<Val> {
@@ -199,10 +199,10 @@ Result<Val> MakeDisjointUnion(const InterpretFuncType<Val>& Interpret,
                               const std::vector<Val>& args) {
   const auto& opt_lhs = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
   const auto& opt_rhs = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
-  ValidIndexExprBuilder builder{};
   return std::visit(
       ::common::Overloaded{
           [](const IndexExpr& lhs, const IndexExpr& rhs) -> Result<Val> {
+            ValidIndexExprBuilder builder{};
             return ConvertResult(builder.DisjointUnion(lhs, rhs));
           },
           [](const auto&, const auto&) -> Result<Val> {
@@ -329,12 +329,10 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
   adt::List<IndexExpr> transform_index_exprs;
   transform_index_exprs->reserve(args.size() - 1);
   for (int i = 1; i < args.size(); ++i) {
-    const auto& arg_val = args.at(i);
-    if (!arg_val.Has<Closure<Val>>()) {
-      return TypeError{std::string("Argument ") + std::to_string(i) +
-                       " is not a closure."};
-    }
-    const auto& closure = arg_val.Get<Closure<Val>>();
+    const auto& opt_closure = CastToBuiltinValue<NaiveClosure<Val>>(args.at(i));
+    ADT_RETURN_IF_ERROR(opt_closure);
+    const auto& closure = opt_closure.GetOkValue();
+
     if (closure->lambda->args.size() != 1) {
       return TypeError{std::string("Argument ") + std::to_string(i) +
                        " is not a single-argumented closure."};

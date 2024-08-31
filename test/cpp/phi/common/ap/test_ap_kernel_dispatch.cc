@@ -12,23 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/cinn/adt/adt.h"
+#include <complex>
+#include <sstream>
+#include <string>
 
-namespace ap {
+#include "gtest/gtest.h"
+#include "paddle/phi/common/ap/dispatch_ctx_value.h"
+#include "paddle/phi/common/ap/kernel_dispatcher_interpreter.h"
 
-namespace adt = ::cinn::adt;
+namespace ap::kernel_define::test {
 
-using adt::errors::AttributeError;
-using adt::errors::Error;
-using adt::errors::IndexError;
-using adt::errors::InvalidArgumentError;
-using adt::errors::NameError;
-using adt::errors::RuntimeError;
-using adt::errors::SyntaxError;
-using adt::errors::TypeError;
-using adt::errors::ValueError;
+TEST(KernelDispatch, CppValue) {}
 
-template <typename T>
-using Result = adt::Result<T>;
-}  // namespace ap
+}  // namespace ap::kernel_define::test

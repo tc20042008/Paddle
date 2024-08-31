@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/common/ap/kernel_value.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_interpreter.h"
 
-#include <memory>
-#include "paddle/pir/include/pass/pass.h"
+namespace ap::kernel_define {
 
-namespace cinn::dialect::ir {
+class CtxMakerInterpreter : public pexpr::CoreExprInterpreter<Val> {
+ public:
+};
 
-std::unique_ptr<::pir::Pass> CreateLowerFusionOpToApUnaryPrototypePass();
-
-}  // namespace cinn::dialect::ir
+}  // namespace ap::kernel_define

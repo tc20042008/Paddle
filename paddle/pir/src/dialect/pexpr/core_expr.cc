@@ -21,8 +21,12 @@
 
 namespace pexpr {
 
+const char kBuiltinIf[] = "if";
 const char kBuiltinId[] = "__builtin_identity__";
-const char kIf[] = "if";
+const char kBuiltinList[] = "__builtin_list_";
+const char kBuiltinGetAttr[] = "__builtin_get_attr__";
+const char kBuiltinGetItem[] = "__builtin_get_item__";
+const char kBuiltinApply[] = "__builtin_apply__";
 
 namespace {
 

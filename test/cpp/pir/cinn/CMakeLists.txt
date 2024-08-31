@@ -1,5 +1,3 @@
-add_subdirectory(adt)
-
 if(WITH_TESTING AND WITH_CINN)
 
   paddle_test(test_dialect_convert SRCS dialect_convert_test.cc)

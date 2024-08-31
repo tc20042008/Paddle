@@ -58,8 +58,12 @@ struct CoreExpr : public CoreExprBase {
       const std::string& json_str);
 };
 
+extern const char kBuiltinIf[];
 extern const char kBuiltinId[];
-extern const char kIf[];
+extern const char kBuiltinList[];
+extern const char kBuiltinGetAttr[];
+extern const char kBuiltinGetItem[];
+extern const char kBuiltinApply[];
 
 size_t GetHashValue(const CoreExpr& core_expr);
 size_t GetHashValue(const ComposedCallAtomic<CoreExpr>& composed_call);

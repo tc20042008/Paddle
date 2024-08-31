@@ -321,7 +321,7 @@ namespace {
 
 std::string ToTxtStringImpl(const BroadcastBranch<BroadcastTree>& branch) {
   std::stringstream ss;
-  const auto& [cstr, lhs_eq_rhs, lhs_eq_one, rhs_eq_one] = branch.tuple();
+  const auto& [cstr, lhs_eq_rhs, lhs_eq_one, rhs_eq_one] = *branch;
   const auto& [lhs, rhs] = *cstr;
   const auto& Put = [&](const std::string& key, const auto& value) {
     ss << "\"" << key << "\": ";

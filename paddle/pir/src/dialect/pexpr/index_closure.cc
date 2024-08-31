@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/pir/include/dialect/pexpr/index_closure.h"
+#include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 #include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
 
-namespace pexpr {
+namespace pexpr::index_expr {
 
-adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosure::operator()(
+adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::operator()(
     const IndexTupleExpr& indexes_expr) const {
   size_t count = 0;
   for (const auto& [_, lambdas] : nice2index_lambdas) {
@@ -33,14 +34,15 @@ adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosure::operator()(
                     std::to_string(count)};
 }
 
-adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosure::CallLambda(
+adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::CallLambda(
     const Lambda<CoreExpr>& lambda, const IndexTupleExpr& indexes_expr) const {
-  const std::vector<pexpr::Val> args{closure_data.ctx,
-                                     closure_data.inputs_meta,
-                                     closure_data.outputs_meta,
-                                     closure_data.in_vars,
-                                     Val{IndexExprValue{indexes_expr}}};
-  const auto& res = interpreter(lambda, args);
+  const std::vector<pexpr::index_expr::Val> args{
+      closure_data.ctx,
+      closure_data.inputs_meta,
+      closure_data.outputs_meta,
+      closure_data.in_vars,
+      Val{IndexExprValue{indexes_expr}}};
+  const auto& res = (*this->interpreter)(lambda, args);
   if (res.Has<Error>()) {
     return res.Get<Error>();
   }
@@ -72,29 +74,29 @@ adt::Result<OpIndexTupleExprSignature> OpIndexesTransformApply(
        *indexes_transform_signature.in_signature.descriptors) {
     const auto& converted = IndexesTransformApply(transform);
     ADT_RETURN_IF_ERROR(converted);
-    in_sig.descriptors.emplace_back(converted.GetOkValue());
+    in_sig.descriptors->emplace_back(converted.GetOkValue());
   }
   OutIndexTupleExprSignature out_sig;
   for (const auto& transform :
        *indexes_transform_signature.out_signature.descriptors) {
     const auto& converted = IndexesTransformApply(transform);
     ADT_RETURN_IF_ERROR(converted);
-    out_sig.descriptors.emplace_back(converted.GetOkValue());
+    out_sig.descriptors->emplace_back(converted.GetOkValue());
   }
   return OpIndexTupleExprSignature{in_sig, out_sig};
 }
 
 }  // namespace
 
-adt::Result<OpIndexTupleExprSignature> RecordableIndexClosure::operator()(
+adt::Result<OpIndexTupleExprSignature> RecordableIndexClosureImpl::operator()(
     const IndexTupleExpr& indexes_expr) const {
   const auto& ApplyTransform = [&](const TrackedIndexesTransform& transform) {
     return transform.Match(
-        [&](const adt::IdentityFunc&) -> IndexTupleExpr {
+        [&](const adt::IdentityFunc&) -> adt::Result<IndexTupleExpr> {
           return indexes_expr;
         },
         [&](const IndexTupleExpr& tacked_indexes_expr_as_func)
-            -> IndexTupleExpr {
+            -> adt::Result<IndexTupleExpr> {
           return ValidIndexExprBuilder().Compose(tacked_indexes_expr_as_func,
                                                  indexes_expr);
         });
@@ -105,7 +107,7 @@ adt::Result<OpIndexTupleExprSignature> RecordableIndexClosure::operator()(
 
 adt::Result<OpIndexTupleExprSignature> IndexClosure::operator()(
     const IndexTupleExpr& indexes_expr) const {
-  return Match([&](const auto& impl) { return impl(indexes_expr); });
+  return Match([&](const auto& impl) { return (*impl)(indexes_expr); });
 }
 
-}  // namespace pexpr
+}  // namespace pexpr::index_expr

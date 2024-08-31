@@ -36,7 +36,7 @@ bool HasReduceAxis(const ScheduleConfig& config) {
 }
 
 bool IsWarpReduce(const ScheduleConfig& config) {
-  const auto& MatchWarpReduce = cinn::adt::match{
+  const auto& MatchWarpReduce = ::common::Overloaded{
       [&](const ir::NoneReduceMethod&) { return false; },
       [&](const ir::WarpReduceMethod&) { return true; },
       [&](const ir::BlockReduceMethod&) { return false; },

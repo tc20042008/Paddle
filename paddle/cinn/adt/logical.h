@@ -46,7 +46,7 @@ template <typename T>
 DEFINE_ADT_RC(Not, NotImpl<T>);
 
 template <typename T>
-using CompareOpImpl = std::variant<EQ<T>, LT<T>, GT<T>, NE<T>, GE<T>, LE<T>, >;
+using CompareOpImpl = std::variant<EQ<T>, LT<T>, GT<T>, NE<T>, GE<T>, LE<T>>;
 template <typename T>
 struct CompareOp : public CompareOpImpl<T> {
   using CompareOpImpl<T>::CompareOpImpl;

@@ -76,13 +76,13 @@ struct Rc {
   const __VA_ARGS__& variant() const {                                 \
     return reinterpret_cast<const __VA_ARGS__&>(*this);                \
   }                                                                    \
-  template <typename T>                                                \
+  template <typename __ADT_T>                                          \
   bool Has() const {                                                   \
-    return std::holds_alternative<T>(variant());                       \
+    return std::holds_alternative<__ADT_T>(variant());                 \
   }                                                                    \
-  template <typename T>                                                \
-  const T& Get() const {                                               \
-    return std::get<T>(variant());                                     \
+  template <typename __ADT_T>                                          \
+  const __ADT_T& Get() const {                                         \
+    return std::get<__ADT_T>(variant());                               \
   }                                                                    \
   bool operator!=(const __VA_ARGS__& other) const {                    \
     return !(*this == other);                                          \
@@ -262,6 +262,14 @@ struct TypeError {
   }
 };
 
+struct IndexError {
+  std::string msg;
+
+  bool operator==(const IndexError& other) const {
+    return other.msg == this->msg;
+  }
+};
+
 struct SyntaxError {
   std::string msg;
 
@@ -276,6 +284,7 @@ using ErrorBase = std::variant<RuntimeError,
                                NameError,
                                ValueError,
                                TypeError,
+                               IndexError,
                                SyntaxError>;
 
 struct [[nodiscard]] Error : public ErrorBase {
@@ -289,13 +298,15 @@ template <typename T>
 struct [[nodiscard]] Result : public Either<T, errors::Error> {
   using Either<T, errors::Error>::Either;
 
-  bool HasError() const { return Has<errors::Error>(); }
+  bool HasError() const { return this->template Has<errors::Error>(); }
 
   bool HasOkValue() const { return !HasError(); }
 
-  const errors::Error& GetError() const { return Get<errors::Error>(); }
+  const errors::Error& GetError() const {
+    return this->template Get<errors::Error>();
+  }
 
-  const T& GetOkValue() const { return Get<T>(); }
+  const T& GetOkValue() const { return this->template Get<T>(); }
 };
 
 #define ADT_RETURN_IF_ERROR(result) \

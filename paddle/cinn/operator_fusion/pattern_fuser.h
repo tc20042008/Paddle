@@ -474,7 +474,7 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
                             const StmtPattern<T>& second) {
   VLOG(4) << "MergePattern: " << GetPatternName(first) << " x "
           << GetPatternName(second);
-  const auto PatternMatch = adt::match{
+  const auto PatternMatch = ::common::Overloaded{
       [&](const ReduceTreePattern<T>& lhs, const ReduceTreePattern<T>& rhs) {
         return MergePatternImpl(lhs, rhs);
       },

@@ -31,7 +31,7 @@ class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
 
   static Object<Val> InitBuiltins() {
     return Object<Val>{std::unordered_map<std::string, Val>{
-        {kIf, Val{BuiltinFuncType<Val>(&BuiltinIf<Val>)}},
+        {kBuiltinIf, Val{BuiltinFuncType<Val>(&BuiltinIf<Val>)}},
         {kBuiltinId, Val{BuiltinFuncType<Val>(&BuiltinIdentity<Val>)}},
         {"__builtin_apply__", Val{BuiltinFuncType<Val>(&BuiltinApply<Val>)}},
         {"list", Val{BuiltinFuncType<Val>(&BuiltinList<Val>)}},
@@ -64,9 +64,6 @@ class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
          Val{BuiltinFuncType<Val>(&MakeOutIndexTupleExprSignature)}},
     }};
   }
-
-  EnvMgr* env_mgr_;
-  Frame<Val> builtin_frame_;
 };
 
 IndexExprInterpreter::IndexExprInterpreter()
@@ -81,7 +78,7 @@ IndexExprInterpreter::IndexExprInterpreter(
 Result<Val> IndexExprInterpreter::operator()(
     const Lambda<CoreExpr>& lambda, const std::vector<Val>& args) const {
   const auto& env = env_mgr_->New(impl_->builtin_frame());
-  Closure<Val> closure{lambda, env};
+  NaiveClosure<Val> closure{lambda, env};
   Result<Val> ret = (*impl_)(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;
@@ -96,7 +93,7 @@ Result<Val> IndexExprInterpreter::operator()(
   for (const auto& [name, val] : global_functions) {
     env->Set(name, Val{val});
   }
-  Closure<Val> closure{lambda, env};
+  NaiveClosure<Val> closure{lambda, env};
   Result<Val> ret = (*impl_)(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;

@@ -31,6 +31,11 @@ class LetVar {
 
   const std::string& name() const { return name_; }
 
+  LetVar& Attr(const std::string& atttr_name);
+
+  template <typename... Args>
+  AnfExpr Call(Args&&... args);
+
  private:
   friend class LetContext;
   LetVar(LetContext* let_ctx, const std::string& name)
@@ -67,9 +72,30 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
     DEFINE_MATCH_METHOD();
   };
 
-  template <typename... Args>
-  AnfExpr Call(const std::string& f, Args&&... args) {
-    return CallImpl(f, std::vector<CallArg>{CallArg{args}...});
+  template <typename Arg0, typename... Args>
+  AnfExpr Call(const LetVar& f, Arg0 arg0, Args&&... args) {
+    return Call(f.name(),
+                std::vector<CallArg>{std::forward<Arg0>(arg0),
+                                     std::forward<Args>(args)...});
+  }
+
+  AnfExpr Call(const LetVar& f) {
+    return Call(f.name(), std::vector<CallArg>{});
+  }
+
+  AnfExpr Call(const LetVar& f, const std::vector<LetVar>& vars) {
+    return Call(f.name(), vars);
+  }
+
+  AnfExpr Call(const std::string& f) {
+    return CallImpl(f, std::vector<CallArg>{});
+  }
+
+  template <typename Arg0, typename... Args>
+  AnfExpr Call(const std::string& f, Arg0 arg0, Args&&... args) {
+    return CallImpl(f,
+                    std::vector<CallArg>{std::forward<Arg0>(arg0),
+                                         std::forward<Args>(args)...});
   }
 
   AnfExpr Call(const std::string& f, const std::vector<LetVar>& vars) {
@@ -144,6 +170,18 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
 inline LetVar& LetVar::operator=(const AnfExpr& anf_val) {
   let_ctx_->AddBinding(name_, anf_val);
   return *this;
+}
+
+inline LetVar& LetVar::Attr(const std::string& atttr_name) {
+  AnfExprBuilder anf{};
+  AnfExpr anf_expr = anf.Call(tVar<std::string>{kBuiltinGetAttr},
+                              {Atomic<AnfExpr>{tVar<std::string>{atttr_name}}});
+  return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
+}
+
+template <typename... Args>
+inline AnfExpr LetVar::Call(Args&&... args) {
+  return let_ctx_->Call(*this, std::forward<Args>(args)...);
 }
 
 class LambdaExprBuilder {

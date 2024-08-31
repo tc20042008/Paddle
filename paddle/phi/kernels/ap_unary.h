@@ -13,22 +13,17 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/adt/adt.h"
 
-namespace ap {
+#include "paddle/phi/common/ap/kernel_context_maker.h"
+#include "paddle/phi/common/ap/kernel_definer.h"
+#include "paddle/phi/common/ap/kernel_dispatcher.h"
+#include "paddle/pir/include/dialect/pexpr/core_expr_interpreter.h"
 
-namespace adt = ::cinn::adt;
+namespace ap::kernel {
 
-using adt::errors::AttributeError;
-using adt::errors::Error;
-using adt::errors::IndexError;
-using adt::errors::InvalidArgumentError;
-using adt::errors::NameError;
-using adt::errors::RuntimeError;
-using adt::errors::SyntaxError;
-using adt::errors::TypeError;
-using adt::errors::ValueError;
+class KernelDefinerInterpreter : public pexpr::CoreExprInterpreter<> {
+ public:
+  KernelDefinerInterpreter() = default;
+};
 
-template <typename T>
-using Result = adt::Result<T>;
-}  // namespace ap
+}  // namespace ap::kernel

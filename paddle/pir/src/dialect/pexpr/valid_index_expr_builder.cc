@@ -15,20 +15,20 @@
 #include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
 
-namespace pexpr {
+namespace pexpr::index_expr {
 
 Result<IndexExpr> ValidIndexExprBuilder::BroadcastMask(
     const symbol::DimExpr& dim_expr, const IndexExpr& index_expr) {
   return IndexExprBroadcastMask<IndexExpr>{dim_expr, index_expr};
 }
 
-Result<IndexExpr> ValidIndexExprBuilder::Slice(const Slice& slice,
+Result<IndexExpr> ValidIndexExprBuilder::Slice(const pexpr::Slice& slice,
                                                const symbol::DimExpr& range,
                                                const IndexExpr& index_expr) {
   return IndexExprSlice<IndexExpr>{slice, range, index_expr};
 }
 
-Result<IndexExpr> ValidIndexExprBuilder::Affine(const Slice& slice,
+Result<IndexExpr> ValidIndexExprBuilder::Affine(const pexpr::Slice& slice,
                                                 const symbol::DimExpr& range,
                                                 const IndexExpr& index_expr) {
   return IndexExprAffine<IndexExpr>{slice, range, index_expr};
@@ -50,7 +50,7 @@ Result<IndexExpr> ValidIndexExprBuilder::DisjointUnion(
         "domain of `lhs_index_expr' does not equal to domain of "
         "`rhs_index_expr'"};
   }
-  return DisjointUnion<IndexExpr>{lhs_index_expr, rhs_index_expr};
+  return pexpr::DisjointUnion<IndexExpr>{lhs_index_expr, rhs_index_expr};
 }
 
 namespace {
@@ -82,7 +82,7 @@ Result<IndexTupleExpr> ValidIndexExprBuilder::Permute(
   if (!IsValidPerm(perms)) {
     return InvalidArgumentError{"argument `perms` is not valid"};
   }
-  const auto& rank = IndexTupleExprGetRank(expr);
+  const auto& rank = IndexTupleExprGetRank(indexes_expr);
   if (!rank.Has<int64_t>()) {
     return InvalidArgumentError{
         "wrong indexes_expr argument for IndexTupleExprPermute"};
@@ -113,7 +113,7 @@ bool ContainsNegative(const ShapeT& shape) {
 }
 
 template <typename DimExprsT>
-symbol::DimExpr Product(const DimExprsT& dim_exprs)->{
+symbol::DimExpr Product(const DimExprsT& dim_exprs) {
   symbol::DimExpr ret_expr{1};
   for (const auto& dim : *dim_exprs) {
     ret_expr = ret_expr * dim;
@@ -161,23 +161,23 @@ Result<IndexTupleExpr> ValidIndexExprBuilder::Transform(
     return RuntimeError{"error occured where calling IndexTupleExprGetDims"};
   }
   const auto& ranges = opt_ranges.Get<adt::List<symbol::DimExpr>>();
-  if (opt_rank.Get<int64_t>() != transform_index_exprs.size()) {
+  if (opt_rank.Get<int64_t>() != transform_index_exprs->size()) {
     return TypeError{
         "The rank of first argument must equal to number of lambdas."};
   }
   adt::List<symbol::DimExpr> domains{};
   domains->reserve(transform_index_exprs->size());
-  for (const auto& index_expr : transform_index_exprs) {
+  for (const auto& index_expr : *transform_index_exprs) {
     const auto& domain = IndexExprGetDomain(index_expr);
     if (!domain.Has<symbol::DimExpr>()) {
-      return TypeError("one of transform_index_exprs has no demain.");
+      return TypeError{"one of transform_index_exprs has no demain."};
     }
     domains->emplace_back(domain.Get<symbol::DimExpr>());
   }
   if (ranges != domains) {
-    return TypeError(
+    return TypeError{
         "domain of `transform_index_exprs' does not equal to range of "
-        "`indexes_expr'.");
+        "`indexes_expr'."};
   }
   return IndexTupleExprTransform<IndexTupleExpr>{transform_index_exprs,
                                                  indexes_expr};
@@ -217,7 +217,7 @@ Result<IndexTupleExpr> ValidIndexExprBuilder::Compose(
       },
       [&](const IndexTupleExprReshape<IndexTupleExpr>& reshape)
           -> Result<IndexTupleExpr> {
-        const auto& composed_inner = Compose(perm->indexes_expr, inner);
+        const auto& composed_inner = Compose(reshape->indexes_expr, inner);
         if (composed_inner.Has<Error>()) {
           return composed_inner.Get<Error>();
         }
@@ -225,7 +225,7 @@ Result<IndexTupleExpr> ValidIndexExprBuilder::Compose(
       },
       [&](const IndexTupleExprTransform<IndexTupleExpr>& transform)
           -> Result<IndexTupleExpr> {
-        const auto& composed_inner = Compose(perm->indexes_expr, inner);
+        const auto& composed_inner = Compose(transform->indexes_expr, inner);
         if (composed_inner.Has<Error>()) {
           return composed_inner.Get<Error>();
         }
@@ -234,4 +234,4 @@ Result<IndexTupleExpr> ValidIndexExprBuilder::Compose(
       });
 }
 
-}  // namespace pexpr
+}  // namespace pexpr::index_expr

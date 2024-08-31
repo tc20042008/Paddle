@@ -14,20 +14,35 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/fusion_descriptor.h"
 #include <functional>
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/common/bfs_walker.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/common/topo_walker.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
+#include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
 
 COMMON_DECLARE_bool(enable_debug_ap);
 
 namespace ap {
 
+using pexpr::IndexTupleExpr;
+using pexpr::OpIndexTupleExprSignature;
+using pexpr::index_expr::IndexClosure;
+using pexpr::index_expr::IndexClosureData;
+using pexpr::index_expr::IndexExprInterpreter;
+using pexpr::index_expr::Nice2IndexLambdas;
+using pexpr::index_expr::OpIndexesTransformSignature;
+using pexpr::index_expr::OrderedOneofIndexClosure;
+using pexpr::index_expr::RecordableIndexClosure;
+using pexpr::index_expr::TrackedIndexesTransform;
+using pexpr::index_expr::ValidIndexExprBuilder;
+
 std::optional<OpOutArg> OpOutArg::MakeFromValue(pir::Value value) {
-  auto* owner = value.owner();
+  auto* owner = value.defining_op();
   if (owner == nullptr) {
     return std::nullopt;
   }
@@ -43,22 +58,9 @@ using DimExprs4ValueT =
     std::function<std::optional<const symbol::ShapeOrDataDimExprs*>(
         pir::Value)>;
 using Nice2IndexLambdas4OpT =
-    std::function<std::optional<Nice2IndexLambdas>(const pir::Operation*)>;
+    std::function<std::optional<Nice2IndexLambdas>(pir::Operation*)>;
 using IndexClosure4OpT =
-    std::function<std::optional<pexpr::IndexClosure>(const pir::Operation*)>;
-
-using OpOrArgImpl = std::variant<OpInArg, OpOutArg, pir::Operation*>;
-
-struct OpOrArg : public OpOrArgImpl {
-  using OpOrArgImpl::OpOrArgImpl;
-  DEFINE_ADT_VARIANT_METHODS(OpOrArgImpl);
-
-  size_t GetHashValue() const {
-    return Match([](const auto& impl) {
-      return std::hash<std::decay_t<decltype(impl)>>()(impl);
-    });
-  }
-};
+    std::function<std::optional<IndexClosure>(pir::Operation*)>;
 
 }  // namespace ap
 
@@ -75,62 +77,61 @@ struct hash<ap::OpOrArg> {
 
 namespace ap {
 
-namespace {
-
-using pexpr::OpIndexTupleExprSignature;
-
 bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
                                                      const OpOrArg& dst) const {
   return std::visit(
       ::common::Overloaded{
-          [&](const OpInArg& src_op_operand, const pir::Operation* dst_op) {
+          [&](const OpInArg& src_op_operand, pir::Operation* dst_op) {
             // src_op_operand must be an anchorable OpArg.
             const auto& iter = op2sigatures.find(dst_op);
             if (iter == op2sigatures.end()) {
               return false;
             }
             const auto& args = iter->second;
-            return args.in_arg2signature.count(src) > 0;
+            OpArg src_op_arg{src_op_operand};
+            return args.in_arg2signature->data.count(src_op_arg) > 0;
           },
-          [&](const pir::Operation* src_op, const OpInArg& dst_op_operand) {
+          [&](pir::Operation* src_op, const OpInArg& dst_op_operand) {
             // src_op must have at least one anchorable OpArg.
             const auto& iter = op2sigatures.find(src_op);
             if (iter == op2sigatures.end()) {
               return false;
             }
             const auto& args = iter->second;
-            if (args.in_arg2signature.empty() &&
-                args.out_arg2signature.empty()) {
+            if (args.in_arg2signature->data.empty() &&
+                args.out_arg2signature->data.empty()) {
               return false;
             }
             return dst_op_operand.owner() == src_op;
           },
-          [&](const OpOutArg& src_op_result, const pir::Operation* dst_op) {
+          [&](const OpOutArg& src_op_result, pir::Operation* dst_op) {
             // src_op_result must be an anchorable OpArg.
             const auto& iter = op2sigatures.find(dst_op);
             if (iter == op2sigatures.end()) {
               return false;
             }
             const auto& args = iter->second;
-            return args.out_arg2signature.count(src) > 0;
+            return args.out_arg2signature->data.count(src_op_result) > 0;
           },
-          [&](const pir::Operation* src_op, const OpOutArg& dst_op_result) {
+          [&](pir::Operation* src_op, const OpOutArg& dst_op_result) {
             // src_op must have at least one anchorable OpArg.
             const auto& iter = op2sigatures.find(src_op);
             if (iter == op2sigatures.end()) {
               return false;
             }
             const auto& args = iter->second;
-            if (args.in_arg2signature.empty() &&
-                args.out_arg2signature.empty()) {
+            if (args.in_arg2signature->data.empty() &&
+                args.out_arg2signature->data.empty()) {
               return false;
             }
-            return dst_op_result.owner() == src_op;
+            return dst_op_result.value.defining_op() == src_op;
           },
           [](const auto&, const auto&) { return false; }},
       src.variant(),
-      dst.variant);
+      dst.variant());
 }
+
+namespace {
 
 ::common::TopoWalker<OpOrArg> GetAnchorableTopoWalker(
     const ::common::TopoWalker<OpOrArg>& walker,
@@ -138,7 +139,7 @@ bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
   const auto ForEachUpstream = [=](const OpOrArg& op_or_arg,
                                    const auto& DoEach) {
     walker.VisitPrevNodes(op_or_arg, [&](const OpOrArg& upstream) {
-      if (op2anchor2indexes_expr_signature.IsReachable(op_or_arg, upstream)) {
+      if (op2anchor2indexes_expr_signature->IsReachable(op_or_arg, upstream)) {
         DoEach(upstream);
       }
     });
@@ -146,7 +147,8 @@ bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
   const auto ForEachDownstream = [=](const OpOrArg& op_or_arg,
                                      const auto& DoEach) {
     walker.VisitNextNodes(op_or_arg, [&](const OpOrArg& downstream) {
-      if (op2anchor2indexes_expr_signature.IsReachable(op_or_arg, downstream)) {
+      if (op2anchor2indexes_expr_signature->IsReachable(op_or_arg,
+                                                        downstream)) {
         DoEach(downstream);
       }
     });
@@ -163,7 +165,7 @@ bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
                                      const auto& DoEach) {
     op_or_arg.Match(
         [&](OpInArg op_operand) {
-          auto* op = op_operand.source().owner();
+          auto* op = op_operand.source().defining_op();
           if (ops->count(op) == 0) {
             return;
           }
@@ -172,7 +174,7 @@ bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
             DoEach(OpOrArg{out_arg.value()});
           }
         },
-        [&](OpOutArg value) { DoEach(OpOrArg{value.owner()}); },
+        [&](OpOutArg out_arg) { DoEach(OpOrArg{out_arg.value.defining_op()}); },
         [&](pir::Operation* op) {
           for (int i = 0; i < op->num_operands(); ++i) {
             DoEach(OpOrArg{OpInArg{op->operand(i)}});
@@ -186,8 +188,9 @@ bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
           auto* op = op_operand.owner();
           DoEach(OpOrArg{op});
         },
-        [&](OpOutArg value) {
-          for (iter = value.use_begin(); iter != value.use_end(); ++iter) {
+        [&](OpOutArg out_arg) {
+          const auto& value = out_arg.value;
+          for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
             if (ops->count(iter->owner()) == 0) {
               continue;
             }
@@ -205,7 +208,7 @@ bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
 
 std::optional<pir::Operation*> GetYieldOp(
     const cinn::dialect::FusionOp& fusion_op) {
-  for (const auto& op : *fusion_op.block()) {
+  for (auto& op : *fusion_op.block()) {
     if (op.isa<pir::YieldOp>()) {
       return &op;
     }
@@ -239,13 +242,14 @@ void CheckReachableToAllOps(const std::string& error_tip,
                  // Do nothing.
                });
   });
-  for (const auto& op : *fusion_op.block()) {
+  for (auto& op : *fusion_op.block()) {
     if (op.isa<pir::YieldOp>()) {
       continue;
     }
     PADDLE_ENFORCE_GT(
         visited_ops.count(&op),
-        0 phi::errors::Unimplemented(
+        0,
+        phi::errors::Unimplemented(
             "%s: op named `%s' is not visisted.", error_tip, op.name()));
   }
 }
@@ -264,7 +268,7 @@ class OpArg2OpIndexesExprSignatureInferrer final {
   Op2Anchor2IndexesExprSignature GetOp2Anchor2IndexesExprSignature() {
     std::unordered_map<pir::Operation*, OpArg2OpIndexesExprSignature>
         op2sigatures;
-    for (const auto& op : *fusion_op.block()) {
+    for (auto& op : *fusion_op_.block()) {
       const auto& op_indexes_expr_signature =
           GetOpArg2OpIndexesExprSignature(&op);
       if (!op_indexes_expr_signature.has_value()) {
@@ -277,27 +281,29 @@ class OpArg2OpIndexesExprSignatureInferrer final {
 
  private:
   std::optional<OpArg2OpIndexesExprSignature> GetOpArg2OpIndexesExprSignature(
-      const pir::Operation* op) {
+      pir::Operation* op) {
     OpArg2OpIndexesExprSignature ret;
-    const index_closure = IndexClosure4Op(op);
+    const auto& index_closure = IndexClosure4Op(op);
     if (!index_closure.has_value()) {
       return std::nullopt;
     }
     VisitEachInArg(op, [&](const OpInArg& op_in_arg, const auto& shape) {
-      if (const auto& indexex_expr = CalIndexTupleExpr(index_closure, shape)) {
-        (*ret.in_arg2signature)[OpArg{op_in_arg}] = indexex_expr.value();
+      if (const auto& indexex_expr =
+              CalIndexTupleExpr(index_closure.value(), shape)) {
+        ret.in_arg2signature->data.emplace(op_in_arg, indexex_expr.value());
       }
     });
     VisitEachOutArg(op, [&](const OpOutArg& op_out_arg, const auto& shape) {
-      if (const auto& indexex_expr = CalIndexTupleExpr(index_closure, shape)) {
-        (*ret.out_arg2signature)[OpArg{op_out_arg}] = indexex_expr.value();
+      if (const auto& indexex_expr =
+              CalIndexTupleExpr(index_closure.value(), shape)) {
+        ret.out_arg2signature->data.emplace(op_out_arg, indexex_expr.value());
       }
     });
     return ret;
   }
 
   template <typename DoEachT>
-  void VisitEachInArg(const pir::Operation* op, const DoEachT& DoEach) {
+  void VisitEachInArg(pir::Operation* op, const DoEachT& DoEach) {
     for (int i = 0; i < op->num_operands(); ++i) {
       OpInArg in_arg(op->operand(i));
       DoEach(in_arg, GetShape(op->operand_source(i)));
@@ -305,25 +311,25 @@ class OpArg2OpIndexesExprSignatureInferrer final {
   }
 
   template <typename DoEachT>
-  void VisitEachOutArg(const pir::Operation* op, const DoEachT& DoEach) {
+  void VisitEachOutArg(pir::Operation* op, const DoEachT& DoEach) {
     for (int i = 0; i < op->num_results(); ++i) {
-      OpOutArg out_arg(op->result(i));
+      OpOutArg out_arg{op->result(i), i};
       DoEach(out_arg, GetShape(op->result(i)));
     }
   }
 
-  std::optional<std::List<symbol::DimExpr>> GetShape(pir::Value value) {
+  std::optional<adt::List<symbol::DimExpr>> GetShape(pir::Value value) {
     const auto& shape_or_data = DimExprs4Value(value);
     if (!shape_or_data.has_value()) {
       return std::nullopt;
     }
-    using OptDimList = std::optional<std::List<symbol::DimExpr>>;
+    using OptDimList = std::optional<adt::List<symbol::DimExpr>>;
     return shape_or_data.value()->Match(
         [&](const symbol::TensorShapeOrDataDimExprs& impl) -> OptDimList {
           adt::List<symbol::DimExpr> dim_exprs;
-          dim_exprs.reserve(vec.size());
-          for (const auto& dim_expr : vec) {
-            dim_exprs.emplace_back(dim_expr);
+          dim_exprs->reserve(impl.shape().size());
+          for (const auto& dim_expr : impl.shape()) {
+            dim_exprs->emplace_back(dim_expr);
           }
           return dim_exprs;
         },
@@ -336,8 +342,7 @@ class OpArg2OpIndexesExprSignatureInferrer final {
     if (!shape.has_value()) {
       return std::nullopt;
     }
-    const auto& res =
-        index_closure(interpreter_, IndexTupleExprDomain{shape.value()});
+    const auto& res = index_closure(pexpr::IndexTupleExprDomain{shape.value()});
     if (!res.Has<OpIndexTupleExprSignature>()) {
       return std::nullopt;
     }
@@ -345,33 +350,18 @@ class OpArg2OpIndexesExprSignatureInferrer final {
   }
 
   cinn::dialect::FusionOp fusion_op_;
-  pexpr::IndexExprInterpreter interpreter_;
+  pexpr::index_expr::IndexExprInterpreter interpreter_;
   DimExprs4ValueT DimExprs4Value;
   IndexClosure4OpT IndexClosure4Op;
 };
-
-pexpr::IndexClosure MakeIndexClosure(
-    const std::shared_ptr<IndexExprInterpreter>& interpreter,
-    const OpIndexClosureData& closure_data) {
-  const auto& func = [interpreter,
-                      closure_data](const IndexTupleExpr& indexes_expr)
-      -> adt::Result<OpIndexTupleExprSignature> {
-    std::vector<pexpr::Val> args{closure_data.ctx,
-                                 closure_data.inputs_meta,
-                                 closure_data.outputs_meta,
-                                 closure_data.in_vars};
-    const auto& res = interpreter();
-  };
-  return pexpr::NativeIndexClosure(func);
-}
 
 pexpr::index_expr::Val MakeTensorShapeFromVec(
     const std::vector<symbol::DimExpr>& vec) {
   using pexpr::index_expr::Val;
   adt::List<Val> dim_exprs;
-  dim_exprs.reserve(vec.size());
+  dim_exprs->reserve(vec.size());
   for (const auto& dim_expr : vec) {
-    dim_exprs.emplace_back(Val{pexpr::index_expr::IndexExprValue{dim_expr}});
+    dim_exprs->emplace_back(Val{pexpr::index_expr::IndexExprValue{dim_expr}});
   }
   return dim_exprs;
 }
@@ -393,9 +383,9 @@ pexpr::index_expr::Val MakeTensorShapeImpl(
     const symbol::TensorListShapeOrDataDimExprs& impl) {
   using pexpr::index_expr::Val;
   adt::List<Val> dim_exprs;
-  dim_exprs.reserve(impl.size());
+  dim_exprs->reserve(impl.size());
   for (const auto& shape_or_data : impl) {
-    dim_exprs.emplace_back(MakeTensorShapeImpl(shape_or_data));
+    dim_exprs->emplace_back(MakeTensorShapeImpl(shape_or_data));
   }
   return Val{dim_exprs};
 }
@@ -404,9 +394,9 @@ pexpr::index_expr::Val MakeTensorDataImpl(
     const symbol::TensorListShapeOrDataDimExprs& impl) {
   using pexpr::index_expr::Val;
   adt::List<Val> dim_exprs;
-  dim_exprs.reserve(impl.size());
+  dim_exprs->reserve(impl.size());
   for (const auto& shape_or_data : impl) {
-    dim_exprs.emplace_back(MakeTensorDataImpl(shape_or_data));
+    dim_exprs->emplace_back(MakeTensorDataImpl(shape_or_data));
   }
   return Val{dim_exprs};
 }
@@ -457,18 +447,18 @@ pexpr::Object<pexpr::index_expr::Val> MakeTensorMetaObject(
 }
 
 std::optional<IndexClosureData> MakeIndexClosureData(
-    const DimExprs4ValueT& DimExprs4Value, const pir::Operation& op) {
+    const DimExprs4ValueT& DimExprs4Value, pir::Operation* op) {
   using ValueList = adt::List<pexpr::index_expr::Val>;
   using OptValueList = std::optional<ValueList>;
   const auto& inputs_meta = [&]() -> OptValueList {
     ValueList ret;
-    ret.reserve(op.num_operands());
-    for (int i = 0; i < op.num_operands(); ++i) {
-      const auto& dim_exprs = DimExprs4Value(op.operand_source(i));
+    ret->reserve(op->num_operands());
+    for (int i = 0; i < op->num_operands(); ++i) {
+      const auto& dim_exprs = DimExprs4Value(op->operand_source(i));
       if (!dim_exprs.has_value()) {
         return std::nullopt;
       }
-      ret.emplace_back(MakeTensorMetaObject(dim_exprs));
+      ret->emplace_back(MakeTensorMetaObject(*dim_exprs.value()));
     }
     return ret;
   }();
@@ -477,13 +467,13 @@ std::optional<IndexClosureData> MakeIndexClosureData(
   }
   const auto& outputs_meta = [&]() -> OptValueList {
     ValueList ret;
-    ret.reserve(op.num_results());
-    for (int i = 0; i < op.num_results(); ++i) {
-      const auto& dim_exprs = DimExprs4Value(op.result(i));
+    ret->reserve(op->num_results());
+    for (int i = 0; i < op->num_results(); ++i) {
+      const auto& dim_exprs = DimExprs4Value(op->result(i));
       if (!dim_exprs.has_value()) {
         return std::nullopt;
       }
-      ret.emplace_back(MakeTensorMetaObject(dim_exprs));
+      ret->emplace_back(MakeTensorMetaObject(*dim_exprs.value()));
     }
     return ret;
   }();
@@ -491,17 +481,17 @@ std::optional<IndexClosureData> MakeIndexClosureData(
     return std::nullopt;
   }
   const auto& in_vars = [&] {
-    adt::List<pexpr::Val> in_vars;
+    adt::List<pexpr::index_expr::Val> in_vars;
     in_vars->reserve(op->num_operands());
     for (int i = 0; i < op->num_operands(); ++i) {
-      in_vars->push_back(pexpr::Val{std::string() + "op" +
-                                    std::to_string(op.id()) + "_in" +
-                                    std::to_string(i)});
+      in_vars->push_back(pexpr::index_expr::Val{std::string() + "op" +
+                                                std::to_string(op->id()) +
+                                                "_in" + std::to_string(i)});
     }
     return in_vars;
   }();
   return IndexClosureData{
-      .ctx = pexpr::Val{adt::Nothing{}},
+      .ctx = pexpr::index_expr::Val{adt::Nothing{}},
       .inputs_meta = inputs_meta.value(),
       .outputs_meta = outputs_meta.value(),
       .in_vars = in_vars,
@@ -513,19 +503,18 @@ IndexClosure4OpT MakeIndexClosure4Op(
     const DimExprs4ValueT& DimExprs4Value,
     const Nice2IndexLambdas4OpT& Nice2IndexLambdas4Op,
     const cinn::dialect::FusionOp& fusion_op) {
-  using Op2IndexClosure =
-      std::unordered_map<const pir::Operation*, pexpr::IndexClosure>;
+  using Op2IndexClosure = std::unordered_map<pir::Operation*, IndexClosure>;
   auto op2closure = std::make_shared<Op2IndexClosure>();
-  for (const auto& op : *fusion_op.block()) {
+  for (auto& op : *fusion_op.block()) {
     if (op.isa<pir::YieldOp>()) {
       continue;
     }
-    const nice2index_lambdas = Nice2IndexLambdas4Op(&op);
+    const auto& nice2index_lambdas = Nice2IndexLambdas4Op(&op);
     if (!nice2index_lambdas.has_value()) {
       continue;
     }
-    const auto& closure_data = MakeIndexClosureData(DimExprs4Value, op);
-    if (!closure_data.value()) {
+    const auto& closure_data = MakeIndexClosureData(DimExprs4Value, &op);
+    if (!closure_data.has_value()) {
       continue;
     }
     (*op2closure)[&op] = IndexClosure{OrderedOneofIndexClosure{
@@ -534,8 +523,7 @@ IndexClosure4OpT MakeIndexClosure4Op(
         .nice2index_lambdas = nice2index_lambdas.value(),
     }};
   }
-  return [op2closure](
-             const pir::Operation* op) -> std::optional<pexpr::IndexClosure> {
+  return [op2closure](pir::Operation* op) -> std::optional<IndexClosure> {
     const auto& iter = op2closure->find(op);
     if (iter == op2closure->end()) {
       return std::nullopt;
@@ -544,8 +532,9 @@ IndexClosure4OpT MakeIndexClosure4Op(
   };
 }
 
-DimExprs4ValueT MakeDimExpr4Value(const cinn::dialect::FusionOp& fusion_op,
-                                  ShapeConstraintIRAnalysis* shape_analysis) {
+DimExprs4ValueT MakeDimExpr4Value(
+    const cinn::dialect::FusionOp& fusion_op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const std::vector<pir::Operation*> ops = [&] {
     std::vector<pir::Operation*> ops;
     ops.reserve(fusion_op.block()->size());
@@ -559,7 +548,8 @@ DimExprs4ValueT MakeDimExpr4Value(const cinn::dialect::FusionOp& fusion_op,
   Value2DimExprs value2dim_expr =
       cinn::dialect::ir::details::CreateGroupShapeOrDataExprs(ops,
                                                               *shape_analysis);
-  return [map = move(value2dim_expr)](pir::Value value) {
+  return [map = move(value2dim_expr)](pir::Value value)
+             -> std::optional<const symbol::ShapeOrDataDimExprs*> {
     const auto& iter = map.find(value);
     if (iter == map.end()) {
       return std::nullopt;
@@ -576,18 +566,19 @@ DEFINE_ADT_RC(OpOrArgPaths, OpOrArgPathsImpl);
 
 // feasible path not shortest path.
 adt::Result<OpArgTo<OpOrArgPath>> GetPathsToYieldOpInArgs(
-    const OpInArg src,
+    const OpInArg& src,
     const ::common::TopoWalker<OpOrArg>& walker,
-    const pir::Operation* yield_op) {
+    pir::Operation* yield_op) {
+  OpOrArg src_op_or_arg{src};
   ::common::BfsWalker<OpOrArg> bfs_walker = GetBfsWalker(walker);
-  OpArgTo<OpOrArgPath> ret;
-  ret[src] = std::vector<OpOrArg>{OpOrArg{src}};
+  std::unordered_map<OpOrArg, OpOrArgPath> ret_data;
+  ret_data[src_op_or_arg] = std::vector<OpOrArg>{src_op_or_arg};
   const auto GetShortestNearbyPath =
       [&](const OpOrArg& dst) -> std::optional<const OpOrArgPath*> {
     std::optional<const OpOrArgPath*> path{std::nullopt};
     bfs_walker.VisitNextNodes(dst, [&](const OpOrArg& nearby) {
-      const auto& iter = ret.find(nearby);
-      if (iter == ret.end()) {
+      const auto& iter = ret_data.find(nearby);
+      if (iter == ret_data.end()) {
         return;
       }
       const auto* cur_path = &iter->second;
@@ -601,28 +592,38 @@ adt::Result<OpArgTo<OpOrArgPath>> GetPathsToYieldOpInArgs(
     });
     return path;
   };
-  bfs_walker(OpOrArg{src}, [&](const OpOrArg& dst) {
+  bfs_walker(src_op_or_arg, [&](const OpOrArg& dst) {
     const auto& near_path = GetShortestNearbyPath(dst);
     if (!near_path.has_value()) {
       return;
     }
-    ret[dst].reserve(near_path.value()->size() + 1);
-    ret[dst] = *near_path.value();
-    ret[dst].push_back(dst);
+    ret_data[dst].reserve(near_path.value()->size() + 1);
+    ret_data[dst] = *near_path.value();
+    ret_data[dst].push_back(dst);
   });
+  OpArgTo<OpOrArgPath> ret;
+  for (int i = 0; i < yield_op->num_operands(); ++i) {
+    pir::OpOperand operand = yield_op->operand(i);
+    OpArg op_arg{operand};
+    auto iter = ret_data.find(OpOrArg{operand});
+    if (iter == ret_data.end()) {
+      continue;
+    }
+    ret->data.emplace(op_arg, iter->second);
+  }
   return std::move(ret);
 }
 
 adt::Result<OpOrArgPaths> GetPathsBetweenYieldOpInArgs(
-    const ::common::TopoWalker<OpOrArg>& walker,
-    const pir::Operation* yield_op) {
+    const ::common::TopoWalker<OpOrArg>& walker, pir::Operation* yield_op) {
   OpOrArgPaths ret;
   for (int i = 0; i < yield_op->num_operands(); ++i) {
-    OpInArg in_arg{yield_op->operand(i)};
+    pir::OpOperand operand = yield_op->operand(i);
+    OpInArg in_arg{operand};
     adt::Result<OpArgTo<OpOrArgPath>> op_arg2path =
         GetPathsToYieldOpInArgs(in_arg, walker, yield_op);
     if (op_arg2path.HasOkValue()) {
-      ret->paths[in_arg] = op_arg2path.GetOkValue();
+      ret->paths->data.emplace(OpArg{operand}, op_arg2path.GetOkValue());
     }
   }
   return ret;
@@ -647,7 +648,7 @@ DEFINE_ADT_RC(OpArgPaths, OpArgPathsImpl);
 adt::Result<OpArg> ConvertToOpArg(const OpOrArg& op_or_arg) {
   return op_or_arg.Match(
       [&](pir::Operation*) -> adt::Result<OpArg> {
-        return adt::errors::InvalidArgument{
+        return adt::errors::InvalidArgumentError{
             "`pir::Operation*' couldn't convert to OpArg."};
       },
       [&](const auto& impl) -> adt::Result<OpArg> { return impl; });
@@ -665,7 +666,7 @@ adt::Result<OpArgStep> ConvertToOpStep(const OpOrArg& opt_src,
         return OpArgStep{src, op, dst};
       },
       [](const auto&, const auto&, const auto&) -> adt::Result<OpArgStep> {
-        return adt::errors::InvalidArgument{
+        return adt::errors::InvalidArgumentError{
             "Couldn't convert 3 consecutive OpOrArg into OpArgStep."};
       }};
   return std::visit(pattern_match,
@@ -679,17 +680,17 @@ adt::Result<OpArgPath> ConvertToOpArgPath(const OpOrArgPath& op_or_arg_path) {
     const auto& op_arg = ConvertToOpArg(op_or_arg_path.at(0));
     ADT_RETURN_IF_ERROR(op_arg);
     return OpArgPath{
-        .src = op_arg,
+        .src = op_arg.GetOkValue(),
         .op_steps = std::vector<OpArgStep>{},
-        .dst = op_arg,
+        .dst = op_arg.GetOkValue(),
     };
   }
   if (op_or_arg_path.size() < 5) {
-    return adt::errors::InvalidArgument{
+    return adt::errors::InvalidArgumentError{
         "op_or_arg_path.size() should be >= 5."};
   }
   if ((op_or_arg_path.size() - 2) % 3 == 0) {
-    return adt::errors::InvalidArgument{
+    return adt::errors::InvalidArgumentError{
         "(op_or_arg_path.size() - 2) should be divided by 3."};
   }
   OpArgPath ret;
@@ -713,18 +714,20 @@ adt::Result<OpArgPath> ConvertToOpArgPath(const OpOrArgPath& op_or_arg_path) {
 adt::Result<OpArgPaths> ConvertPathsToOpArgPaths(
     const OpOrArgPaths& op_or_arg_paths) {
   OpArgPaths op_arg_paths;
-  for (const auto& [src_op_arg, dst2paths] : op_or_arg_paths->paths) {
-    for (const auto& [dst_op_arg, op_or_arg_path] : dst2paths) {
+  for (const auto& [src_op_arg, dst2paths] : op_or_arg_paths->paths->data) {
+    OpArgTo<OpArgPath> op_arg_path{};
+    for (const auto& [dst_op_arg, op_or_arg_path] : dst2paths->data) {
       const auto& converted = ConvertToOpArgPath(op_or_arg_path);
       ADT_RETURN_IF_ERROR(converted);
-      op_arg_paths->paths[src_op_arg][dst_op_arg] = converted.GetOkValue();
+      op_arg_path->data.emplace(dst_op_arg, converted.GetOkValue());
     }
+    op_arg_paths->paths->data.emplace(src_op_arg, std::move(op_arg_path));
   }
   return op_arg_paths;
 }
 
 template <typename DoEachT>
-void VisitOpInArg(const pir::Operation* op, const DoEachT& DoEach) {
+void VisitOpInArg(pir::Operation* op, const DoEachT& DoEach) {
   for (int i = 0; i < op->num_operands(); ++i) {
     OpArg in_arg{op->operand(i)};
     DoEach(in_arg, i);
@@ -734,11 +737,12 @@ void VisitOpInArg(const pir::Operation* op, const DoEachT& DoEach) {
 template <typename T, typename ContainerT>
 adt::Result<T> VecGet(const ContainerT& vec, int idx) {
   if (idx < 0) {
-    return adt::errors::InvalidArgument{
+    return adt::errors::InvalidArgumentError{
         "negative index for vector is not allowed."};
   }
   if (idx >= vec->size()) {
-    return adt::errors::InvalidArgument{"index for vector is out of range."};
+    return adt::errors::InvalidArgumentError{
+        "index for vector is out of range."};
   }
   return vec->at(idx);
 }
@@ -763,29 +767,55 @@ const char* GetArgTypeString(const OpArg& op_arg) {
 }
 
 size_t GetArgIndex(const OpArg& op_arg) {
-  return op_arg.Match([](const OpInArg& impl) { return impl.index(); },
-                      [](const OpOutArg& impl) { return impl.index; });
+  return op_arg.Match(
+      [](const OpInArg& impl) -> size_t { return impl.index(); },
+      [](const OpOutArg& impl) -> size_t { return impl.index; });
+}
+
+adt::Result<pexpr::OpIndexTupleExprSignature> GetOpIndexesExprSignature(
+    const OpArg2OpIndexesExprSignature& anchor2signature,
+    const OpArg& op_arg,
+    const std::string& op_name) {
+  return op_arg.Match(
+      [&](const OpInArg&) -> adt::Result<pexpr::OpIndexTupleExprSignature> {
+        const auto& anchor_iter =
+            anchor2signature.in_arg2signature->data.find(op_arg);
+        if (anchor_iter == anchor2signature.in_arg2signature->data.end()) {
+          return adt::errors::InvalidArgumentError{
+              std::string() + "index signature of op `" + op_name +
+              "' could not be infered from " + GetArgTypeString(op_arg) +
+              " arg " + std::to_string(GetArgIndex(op_arg))};
+        }
+        return anchor_iter->second;
+      },
+      [&](const OpOutArg&) -> adt::Result<pexpr::OpIndexTupleExprSignature> {
+        const auto& anchor_iter =
+            anchor2signature.out_arg2signature->data.find(op_arg);
+        if (anchor_iter == anchor2signature.out_arg2signature->data.end()) {
+          return adt::errors::InvalidArgumentError{
+              std::string() + "index signature of op `" + op_name +
+              "' could not be infered from " + GetArgTypeString(op_arg) +
+              " arg " + std::to_string(GetArgIndex(op_arg))};
+        }
+        return anchor_iter->second;
+      });
 }
 
 adt::Result<IndexTupleExpr> GetIndexesExpr(
     const OpArgStep& op_step,
     const Op2Anchor2IndexesExprSignature& op2anchor2indexes_expr_signature) {
-  const auto& iter = op2anchor2indexes_expr_signature.find(op_step.op);
-  if (iter == op2anchor2indexes_expr_signature.end()) {
-    return adt::errors::InvalidArgument{
+  const auto& iter =
+      op2anchor2indexes_expr_signature->op2sigatures.find(op_step.op);
+  if (iter == op2anchor2indexes_expr_signature->op2sigatures.end()) {
+    return adt::errors::InvalidArgumentError{
         std::string() +
         "op index signature not found. op_name: " + op_step.op->name()};
   }
-  const auto& anchor2signature = iter->second;
-  const auto& anchor_iter = anchor2signature.find(op_step.src);
-  if (anchor_iter == anchor2signature.end()) {
-    return adt::errors::InvalidArgument{
-        std::string() + "index signature of op `" + op_step.op->name() +
-        "' could not be infered from " + GetArgTypeString(op_step.src) +
-        " arg " + std::to_string(GetArgIndex(op_step.src))};
-  }
-  const auto& signature = anchor_iter->second;
-  return GetIndexTupleExprFromSignature(signature, op_step.dst);
+  const OpArg2OpIndexesExprSignature& anchor2signature = iter->second;
+  const auto& signature = GetOpIndexesExprSignature(
+      anchor2signature, op_step.src, op_step.op->name());
+  ADT_RETURN_IF_ERROR(signature);
+  return GetIndexTupleExprFromSignature(signature.GetOkValue(), op_step.dst);
 }
 
 adt::Result<TrackedIndexesTransform> MakeIndexesTransformByPath(
@@ -814,19 +844,19 @@ adt::Result<TrackedIndexesTransform> MakeIndexesTransformByPath(
 
 adt::Result<OpIndexesTransformSignature>
 InferOpIndexesTransformSignatureByOpArgPath(
-    const pir::Operation* yield_op,
+    pir::Operation* yield_op,
     const OpArgTo<OpArgPath>& op_arg2path,
     const Op2Anchor2IndexesExprSignature& op2anchor2indexes_expr_signature,
     int src_idx) {
-  pexpr::index_expr::InputSignature<TrackedIndexesTransform> in_sig;
+  pexpr::InputSignature<TrackedIndexesTransform> in_sig;
   in_sig.descriptors->reserve(yield_op->num_operands());
   for (int i = 0; i < yield_op->num_operands(); ++i) {
     OpArg in_arg{yield_op->operand(i)};
-    const auto& iter = op_arg2path.find(in_arg);
-    if (iter == op_arg2path.end()) {
-      return TypeError{std::string() + "no infer path from arg " +
-                       std::to_string(src_idx) + " to  arg " +
-                       std::to_string(i) + " found."};
+    const auto& iter = op_arg2path->data.find(in_arg);
+    if (iter == op_arg2path->data.end()) {
+      return adt::errors::TypeError{std::string() + "no infer path from arg " +
+                                    std::to_string(src_idx) + " to  arg " +
+                                    std::to_string(i) + " found."};
     }
     const OpArgPath& op_arg_path = iter->second;
     const auto& transform_descriptor = MakeIndexesTransformByPath(
@@ -834,18 +864,21 @@ InferOpIndexesTransformSignatureByOpArgPath(
     ADT_RETURN_IF_ERROR(transform_descriptor);
     in_sig.descriptors->emplace_back(transform_descriptor.GetOkValue());
   }
+  // yield op has no output.
   return OpIndexesTransformSignature{
-      in_sig, pexpr::index_expr::OutputSignature<TrackedIndexesTransform>{}};
+      in_sig,
+      pexpr::OutputSignature<TrackedIndexesTransform>{
+          adt::List<TrackedIndexesTransform>{}}};
 }
 
-OpArgTo<pexpr::RecordableIndexClosure> InferRecordableIndexClosuresByOpArgPaths(
-    const pir::Operation* yield_op,
+OpArgTo<RecordableIndexClosure> InferRecordableIndexClosuresByOpArgPaths(
+    pir::Operation* yield_op,
     const OpArgPaths& op_arg_paths,
     const Op2Anchor2IndexesExprSignature& op2anchor2indexes_expr_signature) {
-  OpArgTo<pexpr::RecordableIndexClosure> ret;
-  VisitOpInArg(yield_op, [&](const OpArg& in_arg, int, src_idx) {
-    const auto& iter = op_arg_paths->paths.find(in_arg);
-    if (iter == op_arg_paths->paths.end()) {
+  OpArgTo<RecordableIndexClosure> ret;
+  VisitOpInArg(yield_op, [&](const OpArg& in_arg, int src_idx) {
+    const auto& iter = op_arg_paths->paths->data.find(in_arg);
+    if (iter == op_arg_paths->paths->data.end()) {
       return;
     }
     const auto& dst_op_arg_paths = iter->second;
@@ -858,21 +891,20 @@ OpArgTo<pexpr::RecordableIndexClosure> InferRecordableIndexClosuresByOpArgPaths(
     if (indexes_transform_sig.HasError()) {
       return;
     }
-    ret[in_arg] =
-        pexpr::RecordableIndexClosure{indexes_transform_sig.GetOkValue()};
+    ret->data.emplace(
+        in_arg, RecordableIndexClosure{indexes_transform_sig.GetOkValue()});
   });
   return std::move(ret);
 }
 
-adt::Result<OpArgTo<pexpr::RecordableIndexClosure>> GetOpArg2IndexClosure(
+adt::Result<OpArgTo<RecordableIndexClosure>> GetOpArg2IndexClosure(
     const ::common::TopoWalker<OpOrArg>& walker,
     const cinn::dialect::FusionOp& fusion_op,
     const Op2Anchor2IndexesExprSignature& op2anchor2indexes_expr_signature) {
   const auto yield_op = GetYieldOp(fusion_op);
   if (!yield_op.has_value()) {
-    return adt::errors::InvalidArgument {
-      "block of fusion op has no yield op."
-    }
+    return adt::errors::InvalidArgumentError{
+        "block of fusion op has no yield op."};
   }
   adt::Result<OpOrArgPaths> op_or_arg_paths =
       GetPathsBetweenYieldOpInArgs(walker, yield_op.value());
@@ -886,33 +918,43 @@ adt::Result<OpArgTo<pexpr::RecordableIndexClosure>> GetOpArg2IndexClosure(
       op2anchor2indexes_expr_signature);
 }
 
+adt::Result<Nice2IndexLambdas4OpT> MakeNice2IndexLambdas4Op(
+    const cinn::dialect::FusionOp& fusion_op) {
+  return adt::errors::RuntimeError{"MakeNice2IndexLambdas4Op not implemented."};
+}
+
 }  // namespace
 
 adt::Result<FusionDescriptor> GetFusionDescriptor(
-    const cinn::dialect::FusionOp& op,
-    ShapeConstraintIRAnalysis* shape_analysis) {
-  ::common::TopoWalker<OpOrArg> base_walker = GetOpOrArgTopoWalker(op);
+    const cinn::dialect::FusionOp& fusion_op,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  ::common::TopoWalker<OpOrArg> base_walker =
+      GetOpOrArgTopoWalker(fusion_op.block());
   if (FLAGS_enable_debug_ap) {
-    CheckReachableToAllOps("Check base TopoWalker<OpOrArg>", base_walker, op);
+    CheckReachableToAllOps(
+        "Check base TopoWalker<OpOrArg>", base_walker, fusion_op);
   }
   auto interpreter = std::make_shared<IndexExprInterpreter>();
-  auto DimExprs4Value = MakeDimExpr4Value(op, shape_analysis);
-  auto Nice2IndexLambdas4Op = MakeNice2IndexLambdas4Op(op);
-  auto IndexClosure4Op = MakeIndexClosure4Op(
-      interpreter, DimExprs4Value, Nice2IndexLambdas4Op, op);
+  auto DimExprs4Value = MakeDimExpr4Value(fusion_op, shape_analysis);
+  auto Nice2IndexLambdas4Op = MakeNice2IndexLambdas4Op(fusion_op);
+  ADT_RETURN_IF_ERROR(Nice2IndexLambdas4Op);
+  auto IndexClosure4Op = MakeIndexClosure4Op(interpreter,
+                                             DimExprs4Value,
+                                             Nice2IndexLambdas4Op.GetOkValue(),
+                                             fusion_op);
   OpArg2OpIndexesExprSignatureInferrer inferer(
-      op, DimExprs4Value, IndexClosure4Op);
+      fusion_op, DimExprs4Value, IndexClosure4Op);
   auto op2anchor2indexes_expr_signature =
-      inferer.GetOp2Anchor2IndexesExprSignature(op);
+      inferer.GetOp2Anchor2IndexesExprSignature();
   auto anchorable_walker =
       GetAnchorableTopoWalker(base_walker, op2anchor2indexes_expr_signature);
   if (FLAGS_enable_debug_ap) {
     CheckReachableToAllOps(
-        "Check anchorable TopoWalker<OpOrArg>", anchorable_walker, op);
+        "Check anchorable TopoWalker<OpOrArg>", anchorable_walker, fusion_op);
   }
-  adt::Result<OpArgTo<pexpr::RecordableIndexClosure>>
-      yield_op_arg2index_closure = GetOpArg2IndexClosure(
-          anchorable_walker, op, op2anchor2indexes_expr_signature);
+  adt::Result<OpArgTo<RecordableIndexClosure>> yield_op_arg2index_closure =
+      GetOpArg2IndexClosure(
+          anchorable_walker, fusion_op, op2anchor2indexes_expr_signature);
   ADT_RETURN_IF_ERROR(yield_op_arg2index_closure);
   TrivialFusionDescriptor trivial_fusion_descriptor{
       op2anchor2indexes_expr_signature,

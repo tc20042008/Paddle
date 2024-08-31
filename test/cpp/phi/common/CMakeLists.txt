@@ -1,3 +1,4 @@
+add_subdirectory(ap)
 cc_test(
   phi_test_backend
   SRCS test_backend.cc

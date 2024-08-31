@@ -48,4 +48,8 @@ inline Result<Val> CustomGetAttr(const IndexExprValue&,
   return AttributeError{std::string("no attribute '") + name + "' found."};
 }
 
+inline Result<Val> CustomGetItem(const IndexExprValue&, const Val& idx) {
+  return TypeError{"'IndexExprValue' object is not subscriptable"};
+}
+
 }  // namespace pexpr::index_expr

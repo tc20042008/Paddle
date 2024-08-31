@@ -16,10 +16,10 @@
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/op_signature.h"
 
-namespace pexpr::index_expr {
+namespace pexpr {
 
 using InIndexTupleExprSignature = InputSignature<IndexTupleExpr>;
 using OutIndexTupleExprSignature = OutputSignature<IndexTupleExpr>;
 using OpIndexTupleExprSignature = OpSignature<IndexTupleExpr>;
 
-}  // namespace pexpr::index_expr
+}  // namespace pexpr

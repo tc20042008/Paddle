@@ -65,6 +65,7 @@ cinn_cc_library(
   ${cinn_op_source_file}
   ${cinn_op_info_file}
   generate_shape_util.cc
+  fusion_descriptor.cc
   manual_op.cc
   op_attribute.cc
   DEPS

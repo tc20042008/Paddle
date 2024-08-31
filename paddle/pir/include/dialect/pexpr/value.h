@@ -46,6 +46,8 @@ struct ObjectImpl {
   bool Set(const std::string& var, const ValueT& val) {
     return storage.insert({var, val}).second;
   }
+
+  bool operator==(const ObjectImpl& other) const { return &other == this; }
 };
 template <typename ValueT>
 DEFINE_ADT_RC(Object, ObjectImpl<ValueT>);
@@ -76,11 +78,11 @@ template <typename ValueT>
 class Environment {
  public:
   Result<ValueT> Get(const std::string& var) const {
-    Result<ValueT> res = builtin_frame_.Get(var);
-    if (res.template Has<ValueT>()) {
-      return res;
+    const Result<ValueT>& builtin_val = builtin_frame_.Get(var);
+    if (builtin_val.template Has<ValueT>()) {
+      return builtin_val;
     }
-    res = frame_.Get(var);
+    const Result<ValueT>& res = frame_.Get(var);
     if (res.template Has<ValueT>()) {
       return res;
     }
@@ -129,6 +131,11 @@ template <typename ValueT>
 struct NaiveClosureImpl {
   Lambda<CoreExpr> lambda;
   std::shared_ptr<Environment<ValueT>> environment;
+
+  bool operator==(const NaiveClosureImpl& other) const {
+    return other.lambda == this->lambda &&
+           other.environment == this->environment;
+  }
 };
 
 template <typename ValueT>
@@ -138,15 +145,22 @@ template <typename ValueT>
 struct MethodClosureImpl {
   ValueT obj;
   ValueT func;
+
+  bool operator==(const MethodClosureImpl& other) const {
+    return other.obj == this->obj && other.func == this->func;
+  }
 };
 
 template <typename ValueT>
 DEFINE_ADT_RC(MethodClosure, const MethodClosureImpl<ValueT>);
 
-using ClosureImpl = std::variant<NaiveClosure, MethodClosure>;
-struct Closure : public ClosureImpl {
-  using ClosureImpl::ClosureImpl;
-  DEFINE_ADT_VARIANT_METHODS(ClosureImpl);
+template <typename ValueT>
+using ClosureImpl = std::variant<NaiveClosure<ValueT>, MethodClosure<ValueT>>;
+
+template <typename ValueT>
+struct Closure : public ClosureImpl<ValueT> {
+  using ClosureImpl<ValueT>::ClosureImpl;
+  DEFINE_ADT_VARIANT_METHODS(ClosureImpl<ValueT>);
 };
 
 template <typename ValueT>
@@ -155,8 +169,8 @@ using InterpretFuncType = std::function<Result<ValueT>(
 
 template <typename ValueT>
 using BuiltinFuncType =
-    std::function<Result<ValueT>(const InterpretFuncType<ValueT>& Interpret,
-                                 const std::vector<ValueT>& args)>;
+    Result<ValueT> (*)(const InterpretFuncType<ValueT>& Interpret,
+                       const std::vector<ValueT>& args);
 
 template <typename CustomT>
 using ValueBase = std::variant<CustomT,
@@ -175,22 +189,128 @@ struct Value : public ValueBase<CustomT> {
   DEFINE_ADT_VARIANT_METHODS(ValueBase<CustomT>);
 };
 
+template <typename T>
+struct GetBuiltinTypeNameImplHelper;
+
+template <>
+struct GetBuiltinTypeNameImplHelper<bool> {
+  static const char* Call() { return "bool"; }
+};
+
+template <>
+struct GetBuiltinTypeNameImplHelper<int64_t> {
+  static const char* Call() { return "int"; }
+};
+
+template <>
+struct GetBuiltinTypeNameImplHelper<std::string> {
+  static const char* Call() { return "str"; }
+};
+
+template <>
+struct GetBuiltinTypeNameImplHelper<Nothing> {
+  static const char* Call() { return "NoneType"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<adt::List<ValueT>> {
+  static const char* Call() { return "list"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<Object<ValueT>> {
+  static const char* Call() { return "object"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<Closure<ValueT>> {
+  static const char* Call() { return "closure_or_method"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<NaiveClosure<ValueT>> {
+  static const char* Call() { return "closure"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<MethodClosure<ValueT>> {
+  static const char* Call() { return "method"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<BuiltinFuncType<ValueT>> {
+  static const char* Call() { return "builtin_function"; }
+};
+
+template <typename T>
+const char* GetBuiltinTypeNameImpl() {
+  return GetBuiltinTypeNameImplHelper<T>::Call();
+}
+
 template <typename CustomT>
 const char* GetBuiltinTypeName(const Value<CustomT>& val) {
   using ValueT = Value<CustomT>;
   return val.Match(
-      [](const bool c) -> const char* { return "bool"; },
-      [](const int64_t c) -> const char* { return "int"; },
-      [](const std::string& c) -> const char* { return "str"; },
-      [](const Nothing&) -> const char* { return "None"; },
-      [](const adt::List<ValueT>& list) -> const char* { return "list"; },
-      [](const Object<ValueT>& obj) -> const char* { return "object"; },
-      [](const Closure<ValueT>& closure) -> const char* { return "closure"; },
-      [](const Method<ValueT>& closure) -> const char* { return "method"; },
-      [](const BuiltinFuncType<ValueT>& closure) -> const char* {
-        return "builtin_function";
+      [](const Closure<ValueT>& closure) -> const char* {
+        return closure.Match([&](const auto& impl) -> const char* {
+          return GetBuiltinTypeNameImpl<std::decay_t<decltype(impl)>>();
+        });
       },
-      [](const CustomT&) -> const char* { return "custom_type"; });
+      [](const CustomT&) -> const char* { return "custom_type"; },
+      [](const auto& impl) -> const char* {
+        return GetBuiltinTypeNameImpl<std::decay_t<decltype(impl)>>();
+      });
+}
+
+template <typename T, typename ValueT>
+struct CastToBuiltinValueHelpr {
+  static Result<T> Call(const ValueT& value) {
+    if (!value.template Has<T>()) {
+      return TypeError{std::string() + "cast failed. expected type: " +
+                       GetBuiltinTypeNameImpl<T>() +
+                       ", actual type: " + GetBuiltinTypeName(value)};
+    }
+    return value.template Get<T>();
+  }
+};
+
+template <typename ValueT>
+struct CastToBuiltinValueHelpr<NaiveClosure<ValueT>, ValueT> {
+  static Result<NaiveClosure<ValueT>> Call(const ValueT& value) {
+    const auto& opt_closure =
+        CastToBuiltinValueHelpr<Closure<ValueT>, ValueT>::Call(value);
+    ADT_RETURN_IF_ERROR(opt_closure);
+    const auto& closure = opt_closure.GetOkValue();
+    if (!closure.template Has<NaiveClosure<ValueT>>()) {
+      return TypeError{
+          std::string() +
+          "cast failed. expected type: 'naive_closure', actual type: " +
+          GetBuiltinTypeName(value)};
+    }
+    return closure.template Get<NaiveClosure<ValueT>>();
+  }
+};
+
+template <typename ValueT>
+struct CastToBuiltinValueHelpr<MethodClosure<ValueT>, ValueT> {
+  static Result<MethodClosure<ValueT>> Call(const ValueT& value) {
+    const auto& opt_closure =
+        CastToBuiltinValueHelpr<Closure<ValueT>, ValueT>::Call(value);
+    ADT_RETURN_IF_ERROR(opt_closure);
+    const auto& closure = opt_closure.GetOkValue();
+    if (!closure.template Has<MethodClosure<ValueT>>()) {
+      return TypeError{
+          std::string() +
+          "cast failed. expected type: 'method_closure', actual type: " +
+          GetBuiltinTypeName(value)};
+    }
+    return closure.template Get<MethodClosure<ValueT>>();
+  }
+};
+
+template <typename T, typename ValueT>
+Result<T> CastToBuiltinValue(const ValueT& value) {
+  return CastToBuiltinValueHelpr<T, ValueT>::Call(value);
 }
 
 template <typename CustomT>
@@ -198,13 +318,13 @@ Result<Value<CustomT>> CustomGetAttr(const CustomT& val,
                                      const std::string& name);
 
 template <typename CustomT>
-Result<Value<CustomT>> ObjectGetAttr(const Value<CustomT>& val,
-                                     const std::string& name) {
+Result<Value<CustomT>> ValueGetAttr(const Value<CustomT>& val,
+                                    const std::string& name) {
   using ValueT = Value<CustomT>;
   return val.Match(
       [&](const Object<ValueT>& obj) -> Result<ValueT> {
-        const auto& iter = obj.find(name);
-        if (iter == obj.end()) {
+        const auto& iter = obj->storage.find(name);
+        if (iter == obj->storage.end()) {
           return AttributeError{std::string("no attribute '") + name +
                                 "' found."};
         }
@@ -216,6 +336,41 @@ Result<Value<CustomT>> ObjectGetAttr(const Value<CustomT>& val,
       [&](const auto& other) -> Result<ValueT> {
         return AttributeError{std::string("no attribute '") + name +
                               "' found."};
+      });
+}
+
+template <typename CustomT>
+Result<Value<CustomT>> CustomGetItem(const CustomT& val,
+                                     const Value<CustomT>& idx);
+
+template <typename CustomT>
+Result<Value<CustomT>> ValueGetItem(const Value<CustomT>& val,
+                                    const Value<CustomT>& idx) {
+  using ValueT = Value<CustomT>;
+  return val.Match(
+      [&](const adt::List<ValueT>& obj) -> Result<ValueT> {
+        return idx.Match(
+            [&](int64_t idx) -> Result<ValueT> {
+              if (idx < 0) {
+                idx += obj->size();
+              }
+              if (idx >= 0 && idx < obj->size()) {
+                return obj->at(idx);
+              }
+              return IndexError{"list index out of range"};
+            },
+            [&](const auto&) -> Result<ValueT> {
+              return TypeError{std::string() +
+                               "list indices must be integers, not " +
+                               GetBuiltinTypeName(idx)};
+            });
+      },
+      [&](const CustomT& custom_val) -> Result<ValueT> {
+        return CustomGetItem(custom_val, idx);
+      },
+      [&](const auto& other) -> Result<ValueT> {
+        return TypeError{std::string() + "'" + GetBuiltinTypeName(val) +
+                         "' object is not subscriptable"};
       });
 }
 

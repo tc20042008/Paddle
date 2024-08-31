@@ -14,23 +14,28 @@
 
 #pragma once
 
+#include <map>
 #include <variant>
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_interpreter.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr_value.h"
 #include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 
 namespace pexpr::index_expr {
 
-using NativeIndexClosure = std::function<adt::Result<OpIndexTupleExprSignature>(
-    const IndexTupleExpr&)>;
-
 struct IndexClosureData {
-  const pexpr::Val ctx;
-  const std::List<pexpr::Val> inputs_meta;
-  const std::List<pexpr::Val> outputs_meta;
-  const std::List<pexpr::Val> in_vars;
+  const pexpr::index_expr::Val ctx;
+  const adt::List<pexpr::index_expr::Val> inputs_meta;
+  const adt::List<pexpr::index_expr::Val> outputs_meta;
+  const adt::List<pexpr::index_expr::Val> in_vars;
+
+  bool operator==(const IndexClosureData& other) const {
+    return other.ctx == this->ctx && other.inputs_meta == this->inputs_meta &&
+           other.outputs_meta == this->outputs_meta &&
+           other.in_vars == this->in_vars;
+  }
 };
 
 using Nice2IndexLambdas = std::map<int64_t, std::vector<Lambda<CoreExpr>>>;
@@ -42,6 +47,12 @@ struct OrderedOneofIndexClosureImpl {
 
   adt::Result<OpIndexTupleExprSignature> operator()(
       const IndexTupleExpr&) const;
+
+  bool operator==(const OrderedOneofIndexClosureImpl& other) const {
+    return other.interpreter == this->interpreter &&
+           other.closure_data == this->closure_data &&
+           other.nice2index_lambdas == this->nice2index_lambdas;
+  }
 
  private:
   adt::Result<OpIndexTupleExprSignature> CallLambda(
@@ -57,28 +68,27 @@ struct TrackedIndexesTransform : public TrackedIndexesTransformImpl {
   DEFINE_ADT_VARIANT_METHODS(TrackedIndexesTransformImpl);
 };
 
-using OpIndexesTransformSignature =
-    pexpr::index_expr::OpSignature<TrackedIndexesTransform>;
+using OpIndexesTransformSignature = pexpr::OpSignature<TrackedIndexesTransform>;
 
-struct RecordableIndexClosure {
+struct RecordableIndexClosureImpl {
   OpIndexesTransformSignature op_indexes_transform_signature;
 
   adt::Result<OpIndexTupleExprSignature> operator()(
       const IndexTupleExpr&) const;
 
-  bool operator==(const RecordableIndexClosure& other) const {
+  bool operator==(const RecordableIndexClosureImpl& other) const {
     return other.op_indexes_transform_signature ==
            this->op_indexes_transform_signature;
   }
 };
+DEFINE_ADT_RC(RecordableIndexClosure, RecordableIndexClosureImpl);
 
-using IndexClosureImpl = std::variant<NativeIndexClosure,
-                                      OrderedOneofIndexClosure,
-                                      RecordableIndexClosure>;
+using IndexClosureImpl =
+    std::variant<OrderedOneofIndexClosure, RecordableIndexClosure>;
 
 struct IndexClosure : public IndexClosureImpl {
   using IndexClosureImpl::IndexClosureImpl;
-  DEFINE_ADT_RC(IndexClosureImpl);
+  DEFINE_ADT_VARIANT_METHODS(IndexClosureImpl);
 
   adt::Result<OpIndexTupleExprSignature> operator()(
       const IndexTupleExpr& indexes_expr) const;

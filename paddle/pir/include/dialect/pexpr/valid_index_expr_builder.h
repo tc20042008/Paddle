@@ -17,7 +17,7 @@
 #include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 
-namespace pexpr {
+namespace pexpr::index_expr {
 
 class ValidIndexExprBuilder {
  public:
@@ -27,10 +27,10 @@ class ValidIndexExprBuilder {
 
   Result<IndexExpr> BroadcastMask(const symbol::DimExpr& dim_expr,
                                   const IndexExpr& index_expr);
-  Result<IndexExpr> Slice(const Slice& slice,
+  Result<IndexExpr> Slice(const pexpr::Slice& slice,
                           const symbol::DimExpr& range,
                           const IndexExpr& index_expr);
-  Result<IndexExpr> Affine(const Slice& slice,
+  Result<IndexExpr> Affine(const pexpr::Slice& slice,
                            const symbol::DimExpr& range,
                            const IndexExpr& index_expr);
   Result<IndexExpr> DisjointUnion(const IndexExpr& lhs, const IndexExpr& rhs);
@@ -48,4 +48,4 @@ class ValidIndexExprBuilder {
                                  const IndexTupleExpr& inner);
 };
 
-}  // namespace pexpr
+}  // namespace pexpr::index_expr

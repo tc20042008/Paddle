@@ -243,7 +243,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : ap_unary
-  args : (Tensor[] xs, int num_outputs)
+  args : (Tensor[] xs, int num_outputs, str kernel_definer_lambda, str define_ctx_maker_lambda, str kernel_dispatcher_lambda, str dispatch_ctx_maker_lambda)
   output : Tensor[](out){num_outputs}
   infer_meta :
     func : ApUnaryInferMeta

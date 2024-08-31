@@ -13,22 +13,17 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/adt/adt.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/pstring.h"
 
 namespace ap {
 
-namespace adt = ::cinn::adt;
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
+using float16 = ::phi::dtype::float16;
+using bfloat16 = ::phi::dtype::bfloat16;
+using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
+using float8_e5m2 = ::phi::dtype::float8_e5m2;
+using pstring = ::phi::dtype::pstring;
 
-using adt::errors::AttributeError;
-using adt::errors::Error;
-using adt::errors::IndexError;
-using adt::errors::InvalidArgumentError;
-using adt::errors::NameError;
-using adt::errors::RuntimeError;
-using adt::errors::SyntaxError;
-using adt::errors::TypeError;
-using adt::errors::ValueError;
-
-template <typename T>
-using Result = adt::Result<T>;
 }  // namespace ap

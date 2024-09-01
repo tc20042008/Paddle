@@ -58,6 +58,7 @@ struct CoreExpr : public CoreExprBase {
       const std::string& json_str);
 };
 
+extern const char kBuiltinNothing[];
 extern const char kBuiltinIf[];
 extern const char kBuiltinId[];
 extern const char kBuiltinList[];

@@ -284,6 +284,16 @@ struct IndexError {
   const char* class_name() const { return "IndexError"; }
 };
 
+struct MismatchError {
+  std::string msg;
+
+  bool operator==(const MismatchError& other) const {
+    return other.msg == this->msg;
+  }
+
+  const char* class_name() const { return "MismatchError"; }
+};
+
 struct SyntaxError {
   std::string msg;
 
@@ -301,6 +311,7 @@ using ErrorBase = std::variant<RuntimeError,
                                ValueError,
                                TypeError,
                                IndexError,
+                               MismatchError,
                                SyntaxError>;
 
 struct [[nodiscard]] Error : public ErrorBase {

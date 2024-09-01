@@ -92,13 +92,9 @@ TEST(CoreExpr, ConvertAnfExprToCoreExpr) {
       anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b"), anf.Var("c")}));
   const auto& opt_anf_expr =
       AnfExpr::ParseFromJsonString(anf_expr.DumpToJsonString());
-  ASSERT_TRUE(opt_anf_expr.has_value());
-  anf_expr = opt_anf_expr.value();
+  ASSERT_TRUE(opt_anf_expr.HasOkValue());
+  anf_expr = opt_anf_expr.GetOkValue();
   CoreExpr core_expr = ConvertAnfExprToCoreExpr(anf_expr);
-  const auto& opt_core_expr =
-      CoreExpr::ParseFromJsonString(core_expr.DumpToJsonString());
-  ASSERT_TRUE(opt_core_expr.has_value());
-  core_expr = opt_core_expr.value();
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
   CoreExpr expected = core.ComposedCallAtomic(

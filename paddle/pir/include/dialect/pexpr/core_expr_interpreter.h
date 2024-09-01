@@ -187,6 +187,7 @@ class CoreExprInterpreter {
   }
   static Object<ValueT> InitBuiltins() {
     return Object<ValueT>{std::unordered_map<std::string, ValueT>{
+        {kBuiltinNothing, ValueT{adt::Nothing{}}},
         {kBuiltinIf, ValueT{BuiltinFuncType<ValueT>(&BuiltinIf<ValueT>)}},
         {kBuiltinId, ValueT{BuiltinFuncType<ValueT>(&BuiltinIdentity<ValueT>)}},
         {kBuiltinList, ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},

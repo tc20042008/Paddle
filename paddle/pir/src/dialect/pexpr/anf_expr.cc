@@ -15,6 +15,8 @@
 #include "paddle/pir/include/dialect/pexpr/anf_expr.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
 
+#include <glog/logging.h>
+#include <exception>
 #include <unordered_map>
 #include "nlohmann/json.hpp"
 
@@ -25,7 +27,7 @@ namespace {
 static const char kString[] = "str";
 static const char kLambda[] = "lambda";
 static const char kIf[] = "if";
-static const char kLet[] = "let";
+static const char kLet[] = "__builtin_let__";
 
 using Json = nlohmann::json;
 
@@ -115,188 +117,267 @@ Json ConvertAnfExprToJson(const AnfExpr& anf_expr) {
       });
 }
 
-std::optional<AnfExpr> ConvertJsonToAnfExpr(const Json& j_obj);
+Result<AnfExpr> ConvertJsonToAnfExpr(const Json& j_obj);
 
-typedef std::optional<AnfExpr> (*JsonParseFuncType)(const Json& j_obj);
+typedef Result<AnfExpr> (*JsonParseFuncType)(const Json& j_obj);
 
 template <typename T>
-std::optional<AnfExpr> ParseJsonToAnfExpr(const Json& j_obj);
+Result<AnfExpr> ParseJsonToAnfExpr(const Json& j_obj);
+
+adt::errors::Error JsonParseFailed(const Json& j_obj, const std::string& msg) {
+  return adt::errors::TypeError{msg + " json: " + j_obj.dump()};
+}
+
+adt::errors::Error JsonParseMismatch(const Json& j_obj,
+                                     const std::string& msg) {
+  return adt::errors::MismatchError{msg};
+}
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<tVar<std::string>>(
-    const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<tVar<std::string>>(const Json& j_obj) {
   if (!j_obj.is_string()) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<tVar<std::string>>: json "
+                             "objects should be strings");
   }
   std::string str = j_obj.get<std::string>();
   return AnfExpr{AnfExprBuilder().Var(str)};
 }
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<bool>(const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<bool>(const Json& j_obj) {
   if (!j_obj.is_boolean()) {
-    return std::nullopt;
+    return JsonParseMismatch(
+        j_obj, "ParseJsonToAnfExpr<bool>: json objects should be booleans");
   }
   bool c = j_obj.get<bool>();
   return AnfExpr{AnfExprBuilder().Bool(c)};
 }
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<int64_t>(const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<int64_t>(const Json& j_obj) {
   if (!j_obj.is_number_integer()) {
-    return std::nullopt;
+    return JsonParseMismatch(
+        j_obj, "ParseJsonToAnfExpr<int64_t>: json objects should be  numbers");
   }
   auto c = j_obj.get<Json::number_integer_t>();
   return AnfExpr{AnfExprBuilder().Int64(c)};
 }
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<std::string>(const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<std::string>(const Json& j_obj) {
   if (!j_obj.is_object()) {
-    return std::nullopt;
-  }
-  if (j_obj.size() != 1) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<std::string>: an string "
+                             "AnfExpr should be a json object.");
   }
   if (!j_obj.contains(kString)) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<std::string>: an string "
+                             "AnfExpr should contain a string.");
+  }
+  if (j_obj.size() != 1) {
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<std::string>: length of json "
+                           "object should equal to 1.");
   }
   if (!j_obj[kString].is_string()) {
-    return std::nullopt;
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<std::string>: an string AnfExpr "
+                           "should contain a string.");
   }
   auto c = j_obj[kString].get<std::string>();
   return AnfExpr{AnfExprBuilder().String(c)};
 }
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<Lambda<AnfExpr>>(const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<Lambda<AnfExpr>>(const Json& j_obj) {
   if (!j_obj.is_array()) {
-    return std::nullopt;
+    return JsonParseMismatch(
+        j_obj,
+        "ParseJsonToAnfExpr<Lambda<AnfExpr>>: json objects should be arrays.");
   }
   if (j_obj.size() != 3) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<Lambda<AnfExpr>>: length of "
+                             "json array should equal to 3.");
   }
   if (j_obj.at(0) != kLambda) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<Lambda<AnfExpr>>: the first "
+                             "element of json array should equal to 'lambda'.");
   }
   if (!j_obj.at(1).is_array()) {
-    return std::nullopt;
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<Lambda<AnfExpr>>: the second "
+                           "element of json array should be a list.");
   }
   std::vector<tVar<std::string>> args;
   for (const auto& arg : j_obj.at(1)) {
     if (!arg.is_string()) {
-      return std::nullopt;
+      return JsonParseFailed(j_obj,
+                             "ParseJsonToAnfExpr<Lambda<AnfExpr>>: lambda "
+                             "arguments should be var names.");
     }
     args.emplace_back(arg.get<std::string>());
   }
   const auto& body = ConvertJsonToAnfExpr(j_obj.at(2));
-  if (!body.has_value()) {
-    return std::nullopt;
+  if (!body.HasOkValue()) {
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<Lambda<AnfExpr>>: the lambda "
+                           "body should be a valid AnfExpr.");
   }
-  return AnfExpr{AnfExprBuilder().Lambda(args, body.value())};
+  return AnfExpr{AnfExprBuilder().Lambda(args, body.GetOkValue())};
 }
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<Call<AnfExpr>>(const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<Call<AnfExpr>>(const Json& j_obj) {
   if (!j_obj.is_array()) {
-    return std::nullopt;
+    return JsonParseMismatch(
+        j_obj,
+        "ParseJsonToAnfExpr<Call<AnfExpr>>: json objects should be arrays.");
   }
   if (j_obj.empty()) {
-    return std::nullopt;
+    return JsonParseFailed(
+        j_obj,
+        "ParseJsonToAnfExpr<Call<AnfExpr>>: json arrays should be not empty.");
   }
   const auto& func = ConvertJsonToAnfExpr(j_obj.at(0));
-  if (!func.has_value()) {
-    return std::nullopt;
+  if (!func.HasOkValue()) {
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<Call<AnfExpr>>: the function "
+                           "should a valid AnfExpr.");
   }
-  if (!func.value().Has<Atomic<AnfExpr>>()) {
-    return std::nullopt;
+  if (!func.GetOkValue().Has<Atomic<AnfExpr>>()) {
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<Call<AnfExpr>>: the function "
+                           "should a valid atomic AnfExpr.");
   }
   std::vector<Atomic<AnfExpr>> args;
   for (int i = 1; i < j_obj.size(); ++i) {
     const auto& arg = j_obj.at(i);
     const auto& arg_expr = ConvertJsonToAnfExpr(arg);
-    if (!arg_expr.has_value()) {
-      return std::nullopt;
+    if (!arg_expr.HasOkValue()) {
+      return JsonParseFailed(j_obj,
+                             "ParseJsonToAnfExpr<Call<AnfExpr>>: the args "
+                             "should be valid AnfExprs.");
     }
-    if (!arg_expr.value().Has<Atomic<AnfExpr>>()) {
-      return std::nullopt;
+    if (!arg_expr.GetOkValue().Has<Atomic<AnfExpr>>()) {
+      return JsonParseFailed(j_obj,
+                             "ParseJsonToAnfExpr<Call<AnfExpr>>: the args "
+                             "should be valid atomic AnfExprs.");
     }
-    args.push_back(arg_expr.value().Get<Atomic<AnfExpr>>());
+    args.push_back(arg_expr.GetOkValue().Get<Atomic<AnfExpr>>());
   }
   return AnfExpr{
-      AnfExprBuilder().Call(func.value().Get<Atomic<AnfExpr>>(), args)};
+      AnfExprBuilder().Call(func.GetOkValue().Get<Atomic<AnfExpr>>(), args)};
 }
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<If<AnfExpr>>(const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<If<AnfExpr>>(const Json& j_obj) {
   if (!j_obj.is_array()) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<If<AnfExpr>>: json objects "
+                             "should be valid atomic AnfExprs.");
   }
   if (j_obj.size() != 4) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<If<AnfExpr>>: the length of "
+                             "json array should equal to 4.");
   }
   if (j_obj.at(0) != kIf) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<If<AnfExpr>>: the first "
+                             "argument of json array should equal to 'if'.");
   }
   const auto& cond = ConvertJsonToAnfExpr(j_obj.at(1));
-  if (!cond.has_value()) {
-    return std::nullopt;
+  if (!cond.HasOkValue()) {
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<If<AnfExpr>>: the second "
+                           "argument of json array should a valid AnfExpr.");
   }
-  if (!cond.value().Has<Atomic<AnfExpr>>()) {
-    return std::nullopt;
+  if (!cond.GetOkValue().Has<Atomic<AnfExpr>>()) {
+    return JsonParseFailed(
+        j_obj,
+        "ParseJsonToAnfExpr<If<AnfExpr>>: the second argument of json array "
+        "should a valid atomic AnfExpr.");
   }
-  const auto& cond_expr = cond.value().Get<Atomic<AnfExpr>>();
+  const auto& cond_expr = cond.GetOkValue().Get<Atomic<AnfExpr>>();
   const auto& true_expr = ConvertJsonToAnfExpr(j_obj.at(2));
-  if (!true_expr.has_value()) {
-    return std::nullopt;
+  if (!true_expr.HasOkValue()) {
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<If<AnfExpr>>: the third "
+                           "argument of json array should a valid AnfExpr.");
   }
   const auto& false_expr = ConvertJsonToAnfExpr(j_obj.at(3));
-  if (!false_expr.has_value()) {
-    return std::nullopt;
+  if (!false_expr.HasOkValue()) {
+    return JsonParseFailed(j_obj,
+                           "ParseJsonToAnfExpr<If<AnfExpr>>: the forth "
+                           "argument of json array should a valid AnfExpr.");
   }
-  return AnfExpr{
-      AnfExprBuilder().If(cond_expr, true_expr.value(), false_expr.value())};
+  return AnfExpr{AnfExprBuilder().If(
+      cond_expr, true_expr.GetOkValue(), false_expr.GetOkValue())};
 }
 
 template <>
-std::optional<AnfExpr> ParseJsonToAnfExpr<Let<AnfExpr>>(const Json& j_obj) {
+Result<AnfExpr> ParseJsonToAnfExpr<Let<AnfExpr>>(const Json& j_obj) {
   if (!j_obj.is_array()) {
-    return std::nullopt;
+    return JsonParseMismatch(
+        j_obj,
+        "ParseJsonToAnfExpr<Let<AnfExpr>>: json objects should be arrays.");
   }
-  if (j_obj.size() < 2) {
-    return std::nullopt;
+  if (j_obj.size() != 3) {
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<Let<AnfExpr>>: the length of "
+                             "json array should equal to 3.");
   }
   if (j_obj.at(0) != kLet) {
-    return std::nullopt;
+    return JsonParseMismatch(j_obj,
+                             "ParseJsonToAnfExpr<Let<AnfExpr>>: the first "
+                             "argument of json array should be 'let'.");
   }
   std::vector<Bind<AnfExpr>> bindings;
-  for (int i = 1; i < j_obj.size() - 1; ++i) {
-    const auto& binding = j_obj.at(i);
+  const auto& j_bindings = j_obj.at(1);
+  for (int i = 0; i < j_bindings.size(); ++i) {
+    const auto& binding = j_bindings.at(i);
     if (!binding.is_array()) {
-      return std::nullopt;
+      return JsonParseFailed(
+          binding,
+          "ParseJsonToAnfExpr<Let<AnfExpr>>: bindings should be json arrays.");
     }
     if (binding.size() != 2) {
-      return std::nullopt;
+      return JsonParseFailed(binding,
+                             "ParseJsonToAnfExpr<Let<AnfExpr>>: the size of "
+                             "one binding should equal to 2.");
     }
     if (!binding.at(0).is_string()) {
-      return std::nullopt;
+      return JsonParseFailed(binding.at(0),
+                             "ParseJsonToAnfExpr<Let<AnfExpr>>: the first "
+                             "element of a binding should be var name.");
     }
     std::string var = binding.at(0).get<std::string>();
     const auto& val = ConvertJsonToAnfExpr(binding.at(1));
-    if (!val.has_value()) {
-      return std::nullopt;
+    if (!val.HasOkValue()) {
+      return JsonParseFailed(binding.at(1),
+                             "ParseJsonToAnfExpr<Let<AnfExpr>>: the second "
+                             "element of a binding should be a valid AnfExpr.");
     }
-    if (!val.value().Has<Combined<AnfExpr>>()) {
-      return std::nullopt;
+    if (!val.GetOkValue().Has<Combined<AnfExpr>>()) {
+      return JsonParseFailed(
+          binding.at(1),
+          "ParseJsonToAnfExpr<Let<AnfExpr>>: the second element of a binding "
+          "should be a valid combined AnfExpr.");
     }
     bindings.push_back(
-        AnfExprBuilder().Bind(var, val.value().Get<Combined<AnfExpr>>()));
+        AnfExprBuilder().Bind(var, val.GetOkValue().Get<Combined<AnfExpr>>()));
   }
-  const auto& body = ConvertJsonToAnfExpr(j_obj.at(j_obj.size() - 1));
-  if (!body.has_value()) {
-    return std::nullopt;
+  const auto& body = ConvertJsonToAnfExpr(j_obj.at(2));
+  if (!body.HasOkValue()) {
+    return JsonParseFailed(j_obj.at(2),
+                           "ParseJsonToAnfExpr<Let<AnfExpr>>: the body of Let "
+                           "AnfExpr should be a valid AnfExpr.");
   }
-  return AnfExpr{AnfExprBuilder().Let(bindings, body.value())};
+  return AnfExpr{AnfExprBuilder().Let(bindings, body.GetOkValue())};
 }
 
 const std::vector<JsonParseFuncType>& GetJsonParseFuncs() {
@@ -313,19 +394,30 @@ const std::vector<JsonParseFuncType>& GetJsonParseFuncs() {
   return vec;
 }
 
-std::optional<AnfExpr> ConvertJsonToAnfExpr(const Json& j_obj) {
-  for (const auto& parse_func : GetJsonParseFuncs()) {
-    if (const auto& ret = parse_func(j_obj)) {
-      return ret;
+Result<AnfExpr> ConvertJsonToAnfExpr(const Json& j_obj) {
+  try {
+    for (const auto& parse_func : GetJsonParseFuncs()) {
+      const auto& ret = parse_func(j_obj);
+      if (ret.HasOkValue()) {
+        return ret.GetOkValue();
+      }
+      if (!ret.GetError().Has<adt::errors::MismatchError>()) {
+        LOG(ERROR) << "ConvertJsonToAnfExpr: error-type: "
+                   << ret.GetError().class_name()
+                   << ", error-msg: " << ret.GetError().msg();
+        return ret.GetError();
+      }
     }
+  } catch (std::exception& e) {
+    return JsonParseFailed(j_obj,
+                           "ConvertJsonToAnfExpr: throw error when parsing.");
   }
-  return std::nullopt;
+  return JsonParseFailed(j_obj, "ConvertJsonToAnfExpr: failed to convert.");
 }
 
 }  // namespace
 
-std::optional<AnfExpr> AnfExpr::ParseFromJsonString(
-    const std::string& json_str) {
+Result<AnfExpr> AnfExpr::ParseFromJsonString(const std::string& json_str) {
   return ConvertJsonToAnfExpr(Json::parse(json_str));
 }
 

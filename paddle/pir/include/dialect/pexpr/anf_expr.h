@@ -17,6 +17,7 @@
 #include <functional>
 #include <optional>
 #include <vector>
+#include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/atomic.h"
 
 namespace pexpr {
@@ -76,6 +77,8 @@ struct AnfExpr;
 using AnfExprBase =
     std::variant<Atomic<AnfExpr>, Combined<AnfExpr>, Let<AnfExpr>>;
 
+using adt::Result;
+
 // A-norm form
 struct AnfExpr : public AnfExprBase {
   using AnfExprBase::AnfExprBase;
@@ -83,8 +86,7 @@ struct AnfExpr : public AnfExprBase {
 
   std::string DumpToJsonString();
   std::string DumpToJsonString(int indent);
-  static std::optional<AnfExpr> ParseFromJsonString(
-      const std::string& json_str);
+  static Result<AnfExpr> ParseFromJsonString(const std::string& json_str);
 };
 
 }  // namespace pexpr

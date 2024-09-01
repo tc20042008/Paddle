@@ -188,7 +188,7 @@ Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
                               const std::string& name) {
   static const std::unordered_map<std::string, pexpr::BuiltinFuncType<Val>> map{
       {"module", &MakeDefineCtxModule},
-      {"delare_func", &MakeDefineCtxDeclareFunc},
+      {"declare_func", &MakeDefineCtxDeclareFunc},
       {"source_code", &MakeDefineCtxSource},
 #define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                    \
   {#cpp_type, &MakeDefineCtxArgType<cpp_type>},                    \

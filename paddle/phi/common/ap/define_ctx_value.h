@@ -37,10 +37,6 @@ struct GetCppTypeNameHelper;
     static const char* Call() { return #cpp_type; }              \
   };                                                             \
   template <>                                                    \
-  struct GetCppTypeNameHelper<const cpp_type> {                  \
-    static const char* Call() { return "const " #cpp_type; }     \
-  };                                                             \
-  template <>                                                    \
   struct GetCppTypeNameHelper<cpp_type*> {                       \
     static const char* Call() { return #cpp_type "*"; }          \
   };                                                             \
@@ -72,7 +68,6 @@ struct CppArgType {
 using ArgTypeImpl = std::variant<
 #define MAKE_CPP_TYPE_ALTERNATIVE(cpp_type, enum_type)    \
     CppArgType<cpp_type>,                                 \
-    CppArgType<const cpp_type>,                           \
     CppArgType<cpp_type*>,                                \
     CppArgType<const cpp_type*>,
     PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_ALTERNATIVE)

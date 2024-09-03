@@ -128,49 +128,59 @@ class Environment {
 };
 
 template <typename ValueT>
-struct NaiveClosureImpl {
+struct ClosureImpl {
   Lambda<CoreExpr> lambda;
   std::shared_ptr<Environment<ValueT>> environment;
 
-  bool operator==(const NaiveClosureImpl& other) const {
+  bool operator==(const ClosureImpl& other) const {
     return other.lambda == this->lambda &&
            other.environment == this->environment;
   }
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(NaiveClosure, const NaiveClosureImpl<ValueT>);
+DEFINE_ADT_RC(Closure, const ClosureImpl<ValueT>);
 
 template <typename ValueT>
-struct MethodClosureImpl {
+struct MethodImpl {
   ValueT obj;
   ValueT func;
 
-  bool operator==(const MethodClosureImpl& other) const {
+  bool operator==(const MethodImpl& other) const {
     return other.obj == this->obj && other.func == this->func;
   }
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(MethodClosure, const MethodClosureImpl<ValueT>);
-
-template <typename ValueT>
-using ClosureImpl = std::variant<NaiveClosure<ValueT>, MethodClosure<ValueT>>;
-
-template <typename ValueT>
-struct Closure : public ClosureImpl<ValueT> {
-  using ClosureImpl<ValueT>::ClosureImpl;
-  DEFINE_ADT_VARIANT_METHODS(ClosureImpl<ValueT>);
-};
+DEFINE_ADT_RC(Method, const MethodImpl<ValueT>);
 
 template <typename ValueT>
 using InterpretFuncType = std::function<Result<ValueT>(
-    const Closure<ValueT>& closure, const std::vector<ValueT>& args)>;
+    const ValueT& f, const std::vector<ValueT>& args)>;
 
 template <typename ValueT>
-using BuiltinFuncType =
+class CpsInterpreterBase {
+ public:
+  virtual Result<adt::Ok> InterpretLambdaCall(
+      const std::shared_ptr<Environment<ValueT>>& env,
+      const ValueT& outter_func,
+      const Lambda<CoreExpr>& lambda,
+      const std::vector<ValueT>& args,
+      ComposedCallImpl<ValueT>* ret_composed_call) = 0;
+};
+
+template <typename ValueT>
+using BuiltinFuncType = Result<ValueT> (*)(const std::vector<ValueT>& args);
+
+template <typename ValueT>
+using BuiltinHighOrderFuncType =
     Result<ValueT> (*)(const InterpretFuncType<ValueT>& Interpret,
                        const std::vector<ValueT>& args);
+
+template <typename ValueT>
+using CpsBuiltinHighOrderFuncType =
+    Result<adt::Ok> (*)(CpsInterpreterBase<ValueT>* CpsInterpret,
+                        ComposedCallImpl<ValueT>* composed_call);
 
 template <typename CustomT>
 using ValueBase = std::variant<CustomT,
@@ -179,9 +189,12 @@ using ValueBase = std::variant<CustomT,
                                std::string,
                                bool,
                                Closure<Value<CustomT>>,
+                               Method<Value<CustomT>>,
                                adt::List<Value<CustomT>>,
                                Object<Value<CustomT>>,
-                               BuiltinFuncType<Value<CustomT>>>;
+                               BuiltinFuncType<Value<CustomT>>,
+                               BuiltinHighOrderFuncType<Value<CustomT>>,
+                               CpsBuiltinHighOrderFuncType<Value<CustomT>>>;
 
 template <typename CustomT>
 struct Value : public ValueBase<CustomT> {
@@ -224,22 +237,27 @@ struct GetBuiltinTypeNameImplHelper<Object<ValueT>> {
 
 template <typename ValueT>
 struct GetBuiltinTypeNameImplHelper<Closure<ValueT>> {
-  static const char* Call() { return "closure_or_method"; }
-};
-
-template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<NaiveClosure<ValueT>> {
   static const char* Call() { return "closure"; }
 };
 
 template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<MethodClosure<ValueT>> {
+struct GetBuiltinTypeNameImplHelper<Method<ValueT>> {
   static const char* Call() { return "method"; }
 };
 
 template <typename ValueT>
 struct GetBuiltinTypeNameImplHelper<BuiltinFuncType<ValueT>> {
   static const char* Call() { return "builtin_function"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<BuiltinHighOrderFuncType<ValueT>> {
+  static const char* Call() { return "builtin_high_order_function"; }
+};
+
+template <typename ValueT>
+struct GetBuiltinTypeNameImplHelper<CpsBuiltinHighOrderFuncType<ValueT>> {
+  static const char* Call() { return "cps_builtin_high_order_function"; }
 };
 
 template <typename T>
@@ -251,11 +269,6 @@ template <typename CustomT>
 const char* GetBuiltinTypeName(const Value<CustomT>& val) {
   using ValueT = Value<CustomT>;
   return val.Match(
-      [](const Closure<ValueT>& closure) -> const char* {
-        return closure.Match([&](const auto& impl) -> const char* {
-          return GetBuiltinTypeNameImpl<std::decay_t<decltype(impl)>>();
-        });
-      },
       [](const CustomT&) -> const char* { return "custom_type"; },
       [](const auto& impl) -> const char* {
         return GetBuiltinTypeNameImpl<std::decay_t<decltype(impl)>>();
@@ -271,40 +284,6 @@ struct CastToBuiltinValueHelpr {
                        ", actual type: " + GetBuiltinTypeName(value)};
     }
     return value.template Get<T>();
-  }
-};
-
-template <typename ValueT>
-struct CastToBuiltinValueHelpr<NaiveClosure<ValueT>, ValueT> {
-  static Result<NaiveClosure<ValueT>> Call(const ValueT& value) {
-    const auto& opt_closure =
-        CastToBuiltinValueHelpr<Closure<ValueT>, ValueT>::Call(value);
-    ADT_RETURN_IF_ERROR(opt_closure);
-    const auto& closure = opt_closure.GetOkValue();
-    if (!closure.template Has<NaiveClosure<ValueT>>()) {
-      return TypeError{
-          std::string() +
-          "cast failed. expected type: 'naive_closure', actual type: " +
-          GetBuiltinTypeName(value)};
-    }
-    return closure.template Get<NaiveClosure<ValueT>>();
-  }
-};
-
-template <typename ValueT>
-struct CastToBuiltinValueHelpr<MethodClosure<ValueT>, ValueT> {
-  static Result<MethodClosure<ValueT>> Call(const ValueT& value) {
-    const auto& opt_closure =
-        CastToBuiltinValueHelpr<Closure<ValueT>, ValueT>::Call(value);
-    ADT_RETURN_IF_ERROR(opt_closure);
-    const auto& closure = opt_closure.GetOkValue();
-    if (!closure.template Has<MethodClosure<ValueT>>()) {
-      return TypeError{
-          std::string() +
-          "cast failed. expected type: 'method_closure', actual type: " +
-          GetBuiltinTypeName(value)};
-    }
-    return closure.template Get<MethodClosure<ValueT>>();
   }
 };
 

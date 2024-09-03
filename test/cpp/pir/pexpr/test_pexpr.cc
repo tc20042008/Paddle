@@ -30,7 +30,7 @@ TEST(CoreExpr, operator_eq_0) {
   using Var = tVar<std::string>;
   CoreExpr lhs = core.ComposedCallAtomic(
       core.Lambda({Var{"c"}},
-                  core.ComposedCallAtomic(core.Var(CoreExpr::kBuiltinId()),
+                  core.ComposedCallAtomic(core.Var(kBuiltinId()),
                                           core.Var("list"),
                                           {
                                               core.Var("a"),
@@ -39,7 +39,7 @@ TEST(CoreExpr, operator_eq_0) {
                                           })),
       core.Var("op2"),
       {});
-  CoreExpr rhs = core.ComposedCallAtomic(core.Var(CoreExpr::kBuiltinId()),
+  CoreExpr rhs = core.ComposedCallAtomic(core.Var(kBuiltinId()),
                                          core.Var("list"),
                                          {
                                              core.Var("a"),
@@ -53,24 +53,24 @@ TEST(CoreExpr, operator_eq_1) {
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
   CoreExpr lhs = core.ComposedCallAtomic(
-      core.Lambda({Var{"b"}},
-                  core.ComposedCallAtomic(
-                      core.Lambda({Var{"c"}},
-                                  core.ComposedCallAtomic(
-                                      core.Var(CoreExpr::kBuiltinId()),
-                                      core.Var("list"),
-                                      {
-                                          core.Var("a"),
-                                          core.Var("b"),
-                                          core.Var("c"),
-                                      })),
-                      core.Var("op2"),
-                      {})),
+      core.Lambda(
+          {Var{"b"}},
+          core.ComposedCallAtomic(
+              core.Lambda({Var{"c"}},
+                          core.ComposedCallAtomic(core.Var(kBuiltinId()),
+                                                  core.Var("list"),
+                                                  {
+                                                      core.Var("a"),
+                                                      core.Var("b"),
+                                                      core.Var("c"),
+                                                  })),
+              core.Var("op2"),
+              {})),
       core.Var("op1"),
       {});
   CoreExpr rhs = core.ComposedCallAtomic(
       core.Lambda({Var{"c"}},
-                  core.ComposedCallAtomic(core.Var(CoreExpr::kBuiltinId()),
+                  core.ComposedCallAtomic(core.Var(kBuiltinId()),
                                           core.Var("list"),
                                           {
                                               core.Var("a"),
@@ -106,7 +106,7 @@ TEST(CoreExpr, ConvertAnfExprToCoreExpr) {
                           core.ComposedCallAtomic(
                               core.Lambda({Var{"c"}},
                                           core.ComposedCallAtomic(
-                                              core.Var(CoreExpr::kBuiltinId()),
+                                              core.Var(kBuiltinReturn()),
                                               core.Var("list"),
                                               {
                                                   core.Var("a"),
@@ -127,8 +127,7 @@ TEST(CoreExpr, InlineBuiltinId) {
   AnfExpr anf_expr = anf.Let(
       {
           anf.Bind("a", anf.Call(anf.Var("op0"), {})),
-          anf.Bind("b",
-                   anf.Call(anf.Var(CoreExpr::kBuiltinId()), {anf.Var("a")})),
+          anf.Bind("b", anf.Call(anf.Var(kBuiltinId()), {anf.Var("a")})),
           anf.Bind("c", anf.Call(anf.Var("op2"), {})),
       },
       anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b"), anf.Var("c")}));
@@ -137,19 +136,19 @@ TEST(CoreExpr, InlineBuiltinId) {
   CoreExprBuilder core{};
   using Var = tVar<std::string>;
   CoreExpr expected = core.ComposedCallAtomic(
-      core.Lambda({Var{"a"}},
-                  core.ComposedCallAtomic(
-                      core.Lambda({Var{"c"}},
-                                  core.ComposedCallAtomic(
-                                      core.Var(CoreExpr::kBuiltinId()),
-                                      core.Var("list"),
-                                      {
-                                          core.Var("a"),
-                                          core.Var("a"),
-                                          core.Var("c"),
-                                      })),
-                      core.Var("op2"),
-                      {})),
+      core.Lambda(
+          {Var{"a"}},
+          core.ComposedCallAtomic(
+              core.Lambda({Var{"c"}},
+                          core.ComposedCallAtomic(core.Var(kBuiltinReturn()),
+                                                  core.Var("list"),
+                                                  {
+                                                      core.Var("a"),
+                                                      core.Var("a"),
+                                                      core.Var("c"),
+                                                  })),
+              core.Var("op2"),
+              {})),
       core.Var("op0"),
       {});
   ASSERT_EQ(core_expr, expected);
@@ -178,7 +177,7 @@ TEST(CoreExpr, InlineInnerLambda) {
                           core.ComposedCallAtomic(
                               core.Lambda({Var{"c"}},
                                           core.ComposedCallAtomic(
-                                              core.Var(CoreExpr::kBuiltinId()),
+                                              core.Var(kBuiltinReturn()),
                                               core.Var("list"),
                                               {
                                                   core.Var("a"),
@@ -187,11 +186,10 @@ TEST(CoreExpr, InlineInnerLambda) {
                                               })),
                               core.Var("op2"),
                               {})),
-              core.Lambda(
-                  {},
-                  core.ComposedCallAtomic(core.Var(CoreExpr::kBuiltinId()),
-                                          core.Var(CoreExpr::kBuiltinId()),
-                                          {core.Int64(0)})),
+              core.Lambda({},
+                          core.ComposedCallAtomic(core.Var(kBuiltinReturn()),
+                                                  core.Var(kBuiltinId()),
+                                                  {core.Int64(0)})),
               {})),
       core.Var("op0"),
       {});
@@ -209,7 +207,7 @@ TEST(CoreExpr, ReplaceLambdaArgName) {
                           core.ComposedCallAtomic(
                               core.Lambda({Var{"c"}},
                                           core.ComposedCallAtomic(
-                                              core.Var(CoreExpr::kBuiltinId()),
+                                              core.Var(kBuiltinReturn()),
                                               core.Var("list"),
                                               {
                                                   core.Var("a"),
@@ -218,11 +216,10 @@ TEST(CoreExpr, ReplaceLambdaArgName) {
                                               })),
                               core.Var("op2"),
                               {})),
-              core.Lambda(
-                  {},
-                  core.ComposedCallAtomic(core.Var(CoreExpr::kBuiltinId()),
-                                          core.Var(CoreExpr::kBuiltinId()),
-                                          {core.Int64(0)})),
+              core.Lambda({},
+                          core.ComposedCallAtomic(core.Var(kBuiltinReturn()),
+                                                  core.Var(kBuiltinId()),
+                                                  {core.Int64(0)})),
               {})),
       core.Var("op0"),
       {});
@@ -237,7 +234,7 @@ TEST(CoreExpr, ReplaceLambdaArgName) {
                           core.ComposedCallAtomic(
                               core.Lambda({Var{"d"}},
                                           core.ComposedCallAtomic(
-                                              core.Var(CoreExpr::kBuiltinId()),
+                                              core.Var(kBuiltinReturn()),
                                               core.Var("list"),
                                               {
                                                   core.Var("a"),
@@ -246,11 +243,10 @@ TEST(CoreExpr, ReplaceLambdaArgName) {
                                               })),
                               core.Var("op2"),
                               {})),
-              core.Lambda(
-                  {},
-                  core.ComposedCallAtomic(core.Var(CoreExpr::kBuiltinId()),
-                                          core.Var(CoreExpr::kBuiltinId()),
-                                          {core.Int64(0)})),
+              core.Lambda({},
+                          core.ComposedCallAtomic(core.Var(kBuiltinReturn()),
+                                                  core.Var(kBuiltinId()),
+                                                  {core.Int64(0)})),
               {})),
       core.Var("op0"),
       {});

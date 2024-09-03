@@ -31,12 +31,10 @@ class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
 
   static Object<Val> InitBuiltins() {
     return Object<Val>{std::unordered_map<std::string, Val>{
-        {CoreExpr::kBuiltinIf(), Val{BuiltinFuncType<Val>(&BuiltinIf<Val>)}},
-        {CoreExpr::kBuiltinId(),
-         Val{BuiltinFuncType<Val>(&BuiltinIdentity<Val>)}},
-        {CoreExpr::kBuiltinApply(),
-         Val{BuiltinFuncType<Val>(&BuiltinApply<Val>)}},
-        {"list", Val{BuiltinFuncType<Val>(&BuiltinList<Val>)}},
+        {kBuiltinIf(), Val{&BuiltinIf<Val>}},
+        {kBuiltinId(), Val{&BuiltinIdentity<Val>}},
+        {kBuiltinApply(), Val{&BuiltinApply<Val>}},
+        {"list", Val{&BuiltinList<Val>}},
         {"kUndefinedIndexTupleExpr",
          Val{IndexExprValue{IndexTupleExpr{UndefinedIndexTupleExpr{}}}}},
         {"kNothingIndexTupleExpr",
@@ -45,25 +43,18 @@ class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
          Val{IndexExprValue{IndexTupleExpr{IntArrayLikeIndexTupleExpr{}}}}},
         {"kUndefinedIndexExpr",
          Val{IndexExprValue{IndexExpr{UndefinedIndexExpr{}}}}},
-        {"PtrGetItem", Val{BuiltinFuncType<Val>(&MakePtrGetItem)}},
-        {"IndexExprBroadcastMask",
-         Val{BuiltinFuncType<Val>(&MakeIndexExprBroadcastMask)}},
-        {"Slice", Val{BuiltinFuncType<Val>(&MakeSlice)}},
-        {"IndexExprSlice", Val{BuiltinFuncType<Val>(&MakeIndexExprSlice)}},
-        {"IndexExprAffine", Val{BuiltinFuncType<Val>(&MakeIndexExprAffine)}},
-        {"DisjointUnion", Val{BuiltinFuncType<Val>(&MakeDisjointUnion)}},
-        {"IndexTupleExprPermute",
-         Val{BuiltinFuncType<Val>(&MakeIndexTupleExprPermute)}},
-        {"IndexTupleExprReshape",
-         Val{BuiltinFuncType<Val>(&MakeIndexTupleExprReshape)}},
-        {"IndexTupleExprTransform",
-         Val{BuiltinFuncType<Val>(&MakeIndexTupleExprTransform)}},
-        {"OpIndexTupleExprSignature",
-         Val{BuiltinFuncType<Val>(&MakeOpIndexTupleExprSignature)}},
-        {"InIndexTupleExprSignature",
-         Val{BuiltinFuncType<Val>(&MakeInIndexTupleExprSignature)}},
-        {"OutIndexTupleExprSignature",
-         Val{BuiltinFuncType<Val>(&MakeOutIndexTupleExprSignature)}},
+        {"PtrGetItem", Val{&MakePtrGetItem}},
+        {"IndexExprBroadcastMask", Val{&MakeIndexExprBroadcastMask}},
+        {"Slice", Val{&MakeSlice}},
+        {"IndexExprSlice", Val{&MakeIndexExprSlice}},
+        {"IndexExprAffine", Val{&MakeIndexExprAffine}},
+        {"DisjointUnion", Val{&MakeDisjointUnion}},
+        {"IndexTupleExprPermute", Val{&MakeIndexTupleExprPermute}},
+        {"IndexTupleExprReshape", Val{&MakeIndexTupleExprReshape}},
+        {"IndexTupleExprTransform", Val{&MakeIndexTupleExprTransform}},
+        {"OpIndexTupleExprSignature", Val{&MakeOpIndexTupleExprSignature}},
+        {"InIndexTupleExprSignature", Val{&MakeInIndexTupleExprSignature}},
+        {"OutIndexTupleExprSignature", Val{&MakeOutIndexTupleExprSignature}},
     }};
   }
 };
@@ -80,7 +71,7 @@ IndexExprInterpreter::IndexExprInterpreter(
 Result<Val> IndexExprInterpreter::operator()(
     const Lambda<CoreExpr>& lambda, const std::vector<Val>& args) const {
   const auto& env = env_mgr_->New(impl_->builtin_frame());
-  NaiveClosure<Val> closure{lambda, env};
+  Closure<Val> closure{lambda, env};
   Result<Val> ret = (*impl_)(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;
@@ -95,7 +86,7 @@ Result<Val> IndexExprInterpreter::operator()(
   for (const auto& [name, val] : global_functions) {
     env->Set(name, Val{val});
   }
-  NaiveClosure<Val> closure{lambda, env};
+  Closure<Val> closure{lambda, env};
   Result<Val> ret = (*impl_)(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;

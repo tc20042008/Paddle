@@ -20,8 +20,7 @@ namespace ap::kernel_dispatch {
 using ap::kernel_define::CppArgType;
 using pexpr::BuiltinFuncType;
 using pexpr::CastToBuiltinValue;
-using pexpr::InterpretFuncType;
-using pexpr::MethodClosure;
+using pexpr::Method;
 
 template <>
 Result<adt::Ok> DispatchRawContextImpl<Val>::LaunchCudaKernel(
@@ -90,8 +89,7 @@ Result<Val> StaticCast(DstT arg_type, const SrcT cpp_value) {
   }
 }
 
-Result<Val> CppValueStaticCast(const InterpretFuncType<Val>& Interpret,
-                               const std::vector<Val>& args) {
+Result<Val> CppValueStaticCast(const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{
         std::string() +
@@ -183,8 +181,7 @@ Result<Val> DispatchRawContextGetOutputs(const DispatchRawContext<Val>& raw_ctx,
   return raw_ctx->outputs;
 }
 
-Result<Val> MakeDispatchCtx(const InterpretFuncType<Val>& Interpret,
-                            const std::vector<Val>& args) {
+Result<Val> MakeDispatchCtx(const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{std::string() +
                      "'DispatchRawCtx.DispatchCtx' takes 2 arguments, but " +
@@ -211,8 +208,7 @@ Result<Val> MakeDispatchCtx(const InterpretFuncType<Val>& Interpret,
 
 Result<Val> DispatchRawContextMakeDispatchCtx(
     const DispatchRawContext<Val>& raw_ctx, const std::string&) {
-  return MethodClosure<Val>{raw_ctx,
-                            Val{BuiltinFuncType<Val>(&MakeDispatchCtx)}};
+  return Method<Val>{raw_ctx, Val{BuiltinFuncType<Val>(&MakeDispatchCtx)}};
 }
 
 Result<Val> DispatchRawContextGetAttr(const DispatchRawContext<Val>& raw_ctx,
@@ -254,8 +250,7 @@ Result<adt::List<CppValue>> GetKernelArgs(const Val& args) {
   return ret;
 }
 
-Result<Val> LaunchCuda(const InterpretFuncType<Val>& Interpret,
-                       const std::vector<Val>& args) {
+Result<Val> LaunchCuda(const std::vector<Val>& args) {
   if (args.size() != 5) {
     return TypeError{
         std::string() +
@@ -285,14 +280,13 @@ Result<Val> LaunchCuda(const InterpretFuncType<Val>& Interpret,
 
 Result<Val> DispatchContextLaunchCuda(const DispatchContext<Val>& ctx,
                                       const std::string&) {
-  return pexpr::MethodClosure<Val>{ctx, BuiltinFuncType<Val>{&LaunchCuda}};
+  return pexpr::Method<Val>{ctx, BuiltinFuncType<Val>{&LaunchCuda}};
 }
 
-template <Result<Val> (*BuiltinFunc)(const InterpretFuncType<Val>&,
-                                     const std::vector<Val>&)>
+template <BuiltinFuncType<Val> BuiltinFunc>
 Result<Val> MakeDispatchContextMethod(const DispatchContext<Val>& ctx,
                                       const std::string&) {
-  return pexpr::MethodClosure<Val>{ctx, BuiltinFuncType<Val>{BuiltinFunc}};
+  return pexpr::Method<Val>{ctx, BuiltinFuncType<Val>{BuiltinFunc}};
 }
 
 template <typename T>
@@ -311,17 +305,17 @@ Result<Val> DispatchContextGetAttr(const DispatchContext<Val>& ctx,
       {"inputs", &DispatchContextGetInputs},
       {"outputs", &DispatchContextGetOutputs},
       {"launch_cuda", &MakeDispatchContextMethod<&LaunchCuda>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                    \
-  {#cpp_type, &MakeDefineCtxArgType<cpp_type>},                    \
-      {"const_" #cpp_type, &MakeDefineCtxArgType<const cpp_type>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type*>},        \
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)              \
+  {#cpp_type, &MakeDefineCtxArgType<cpp_type>},              \
+      {"const_" #cpp_type, &MakeDefineCtxArgType<cpp_type>}, \
+      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type*>},  \
       {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                               \
-  {#cpp_type, &MakeDefineCtxArgType<cpp_type##_t>},                    \
-      {"const_" #cpp_type, &MakeDefineCtxArgType<const cpp_type##_t>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type##_t*>},        \
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                         \
+  {#cpp_type, &MakeDefineCtxArgType<cpp_type##_t>},              \
+      {"const_" #cpp_type, &MakeDefineCtxArgType<cpp_type##_t>}, \
+      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type##_t*>},  \
       {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type##_t*>},
           AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE

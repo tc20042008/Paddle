@@ -33,7 +33,7 @@ using kernel_define::ArgType;
 
 using CppValueImpl = std::variant<
 #define MAKE_ARG_VALUE_ALTERNATIVE(cpp_type, enum_type) \
-  cpp_type, const cpp_type, cpp_type*, const cpp_type*,
+  cpp_type, cpp_type*, const cpp_type*,
     PD_FOR_EACH_DATA_TYPE(MAKE_ARG_VALUE_ALTERNATIVE) void*,
     const void*
 #undef MAKE_ARG_VALUE_ALTERNATIVE
@@ -145,8 +145,6 @@ DEFINE_ADT_RC(MutableTensor, MutableTensorImpl<ValueT>);
 
 class CudaModule {
  public:
-  CudaModule(const CudaModule&) = delete;
-  CudaModule(CudaModule&&) = delete;
   virtual ~CudaModule() = default;
 
   virtual adt::Result<adt::Ok> LaunchCudaKernel(
@@ -221,10 +219,9 @@ struct GetCppValueTypeNameHelper;
   struct GetCppValueTypeNameHelper<type> {               \
     static const char* Call() { return #type; }          \
   };
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)               \
-  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type);       \
-  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(const cpp_type); \
-  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type*);      \
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)          \
+  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type);  \
+  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type*); \
   SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(const cpp_type*);
 PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE

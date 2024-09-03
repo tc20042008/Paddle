@@ -18,40 +18,29 @@
 
 namespace pexpr::index_expr {
 
-Result<Val> MakePtrGetItem(const InterpretFuncType<Val>& Interpret,
-                           const std::vector<Val>& args);
+Result<Val> MakePtrGetItem(const std::vector<Val>& args);
 
-Result<Val> MakeIndexExprBroadcastMask(const InterpretFuncType<Val>& Interpret,
-                                       const std::vector<Val>& args);
+Result<Val> MakeIndexExprBroadcastMask(const std::vector<Val>& args);
 
-Result<Val> MakeSlice(const InterpretFuncType<Val>& Interpret,
-                      const std::vector<Val>& args);
+Result<Val> MakeSlice(const std::vector<Val>& args);
 
-Result<Val> MakeIndexExprSlice(const InterpretFuncType<Val>& Interpret,
-                               const std::vector<Val>& args);
+Result<Val> MakeIndexExprSlice(const std::vector<Val>& args);
 
-Result<Val> MakeIndexExprAffine(const InterpretFuncType<Val>& Interpret,
-                                const std::vector<Val>& args);
+Result<Val> MakeIndexExprAffine(const std::vector<Val>& args);
 
-Result<Val> MakeDisjointUnion(const InterpretFuncType<Val>& Interpret,
-                              const std::vector<Val>& args);
+Result<Val> MakeDisjointUnion(const std::vector<Val>& args);
 
-Result<Val> MakeIndexTupleExprPermute(const InterpretFuncType<Val>& Interpret,
-                                      const std::vector<Val>& args);
+Result<Val> MakeIndexTupleExprPermute(const std::vector<Val>& args);
 
-Result<Val> MakeIndexTupleExprReshape(const InterpretFuncType<Val>& Interpret,
-                                      const std::vector<Val>& args);
+Result<Val> MakeIndexTupleExprReshape(const std::vector<Val>& args);
 
 Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
                                         const std::vector<Val>& args);
 
-Result<Val> MakeOpIndexTupleExprSignature(
-    const InterpretFuncType<Val>& Interpret, const std::vector<Val>& args);
+Result<Val> MakeOpIndexTupleExprSignature(const std::vector<Val>& args);
 
-Result<Val> MakeInIndexTupleExprSignature(
-    const InterpretFuncType<Val>& Interpret, const std::vector<Val>& args);
+Result<Val> MakeInIndexTupleExprSignature(const std::vector<Val>& args);
 
-Result<Val> MakeOutIndexTupleExprSignature(
-    const InterpretFuncType<Val>& Interpret, const std::vector<Val>& args);
+Result<Val> MakeOutIndexTupleExprSignature(const std::vector<Val>& args);
 
 }  // namespace pexpr::index_expr

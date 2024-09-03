@@ -146,7 +146,7 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
     anf_val.Match(
         [&](const Atomic<AnfExpr>& atomic) {
           const auto& combined =
-              anf.Call(tVar<std::string>{CoreExpr::kBuiltinId()}, {atomic});
+              anf.Call(tVar<std::string>{kBuiltinId()}, {atomic});
           bindings_.push_back(anf.Bind(name, combined));
         },
         [&](const Combined<AnfExpr>& combined) {
@@ -171,7 +171,7 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
 
 inline LetVar& LetVar::operator=(const LetVar& let_var) {
   AnfExprBuilder anf{};
-  return *this = anf.Call(tVar<std::string>{CoreExpr::kBuiltinId()},
+  return *this = anf.Call(tVar<std::string>{kBuiltinId()},
                           {tVar<std::string>{let_var.name()}});
 }
 
@@ -183,14 +183,14 @@ inline LetVar& LetVar::operator=(const AnfExpr& anf_val) {
 inline LetVar& LetVar::Attr(const std::string& atttr_name) {
   AnfExprBuilder anf{};
   AnfExpr anf_expr =
-      anf.Call(tVar<std::string>{CoreExpr::kBuiltinGetAttr()},
+      anf.Call(tVar<std::string>{kBuiltinGetAttr()},
                {tVar<std::string>{name()}, anf.String(atttr_name)});
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 
 inline LetVar& LetVar::At(int64_t idx) {
   AnfExprBuilder anf{};
-  AnfExpr anf_expr = anf.Call(tVar<std::string>{CoreExpr::kBuiltinGetItem()},
+  AnfExpr anf_expr = anf.Call(tVar<std::string>{kBuiltinGetItem()},
                               {tVar<std::string>{name()}, anf.Int64(idx)});
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }

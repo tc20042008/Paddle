@@ -160,7 +160,7 @@ std::optional<CoreExpr> TryInlineBuiltinId(
   }
   const auto& inner_func_name =
       composed_call->inner_func.Get<tVar<std::string>>().value();
-  if (inner_func_name != CoreExpr::kBuiltinId()) {
+  if (inner_func_name != kBuiltinId()) {
     return std::nullopt;
   }
   if (composed_call->args.size() != 1) {

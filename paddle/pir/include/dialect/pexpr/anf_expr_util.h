@@ -70,13 +70,13 @@ struct AnfExprToCoreExprConverter {
   CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr& anf_expr) {
     MaybeLazyCoreExpr ret_val = Convert(anf_expr);
     const auto& lazy_core_expr = TryWrapperToLazyCoreExpr(ret_val);
-    CoreExpr ret =
-        lazy_core_expr(CoreExprBuilder().Var(CoreExpr::kBuiltinId()));
+    CoreExpr ret = lazy_core_expr(CoreExprBuilder().Var(kBuiltinReturn()));
     return ret.Match(
         [&](const Atomic<CoreExpr>&) -> CoreExpr { return ret; },
         [&](const ComposedCallAtomic<CoreExpr>& composed_call) -> CoreExpr {
-          Atomic<CoreExpr> identity{tVar<std::string>{CoreExpr::kBuiltinId()}};
-          if (composed_call->outter_func != identity) {
+          Atomic<CoreExpr> return_id{tVar<std::string>{kBuiltinReturn()}};
+          Atomic<CoreExpr> identity{tVar<std::string>{kBuiltinId()}};
+          if (composed_call->outter_func != return_id) {
             return composed_call;
           }
           if (composed_call->inner_func != identity) {
@@ -114,7 +114,7 @@ struct AnfExprToCoreExprConverter {
           return LazyCoreExpr([val](const Atomic<CoreExpr>& continuation) {
             CoreExprBuilder core{};
             return core.ComposedCallAtomic(
-                continuation, core.Var(CoreExpr::kBuiltinId()), {val});
+                continuation, core.Var(kBuiltinId()), {val});
           });
         });
   }
@@ -146,7 +146,7 @@ struct AnfExprToCoreExprConverter {
   value_type ConvertLambda(const Lambda<AnfExpr>& anf_expr) {
     const auto& core_body_val = Convert(anf_expr->body);
     LazyCoreExpr lazy_core_expr = TryWrapperToLazyCoreExpr(core_body_val);
-    CoreExpr core_body = lazy_core_expr(core_.Var(CoreExpr::kBuiltinId()));
+    CoreExpr core_body = lazy_core_expr(core_.Var(kBuiltinReturn()));
     return CoreVal(core_.Lambda(anf_expr->args, core_body));
   }
 

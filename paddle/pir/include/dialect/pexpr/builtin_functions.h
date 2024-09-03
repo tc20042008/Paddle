@@ -19,6 +19,48 @@
 namespace pexpr {
 
 template <typename Val>
+Result<Val> BuiltinIdentity(const std::vector<Val>& args) {
+  if (args.size() != 1) {
+    return TypeError{std::string(kBuiltinId()) + "takes 1 argument, but " +
+                     std::to_string(args.size()) + "were given."};
+  }
+  return args.at(0);
+}
+
+template <typename Val>
+Result<Val> BuiltinList(const std::vector<Val>& args) {
+  adt::List<Val> l;
+  l->reserve(args.size());
+  for (const auto& arg : args) {
+    l->emplace_back(arg);
+  }
+  return Val{l};
+}
+
+template <typename Val>
+Result<Val> BuiltinGetAttr(const std::vector<Val>& args) {
+  if (args.size() != 2) {
+    return TypeError{std::string(kBuiltinGetAttr()) +
+                     " takes 2 argument, but " + std::to_string(args.size()) +
+                     "were given."};
+  }
+  if (!args.at(1).template Has<std::string>()) {
+    return TypeError{"attr_name must be a string"};
+  }
+  return ValueGetAttr(args.at(0), args.at(1).template Get<std::string>());
+}
+
+template <typename Val>
+Result<Val> BuiltinGetItem(const std::vector<Val>& args) {
+  if (args.size() != 2) {
+    return TypeError{std::string(kBuiltinGetItem()) +
+                     " takes 2 argument, but " + std::to_string(args.size()) +
+                     "were given."};
+  }
+  return ValueGetItem(args.at(0), args.at(1));
+}
+
+template <typename Val>
 Result<Val> BuiltinIf(const InterpretFuncType<Val>& Interpret,
                       const std::vector<Val>& args) {
   if (args.size() != 3) {
@@ -36,102 +78,98 @@ Result<Val> BuiltinIf(const InterpretFuncType<Val>& Interpret,
       },
       [&](const Object<Val>& obj) -> Result<bool> { return obj->size() > 0; },
       [&](const Closure<Val>& closure) -> Result<bool> { return true; },
+      [&](const Method<Val>& closure) -> Result<bool> { return true; },
       [&](const BuiltinFuncType<Val>& closure) -> Result<bool> { return true; },
+      [&](const BuiltinHighOrderFuncType<Val>& closure) -> Result<bool> {
+        return true;
+      },
       [&](const auto&) -> Result<bool> {
         return TypeError{"index expr could not be a condition"};
       });
-  if (select_true_branch_res.Has<Error>()) {
-    return select_true_branch_res.Get<Error>();
-  }
-  bool select_true_branch = select_true_branch_res.Get<bool>();
+  ADT_RETURN_IF_ERROR(select_true_branch_res);
+  bool select_true_branch = select_true_branch_res.GetOkValue();
   const auto& true_val = args.at(1);
   const auto& false_val = args.at(2);
-  return std::visit(
-      ::common::Overloaded{
-          [&](const Closure<Val>& true_closure,
-              const Closure<Val>& false_val) -> Result<Val> {
-            return Interpret(select_true_branch ? true_closure : false_val, {});
-          },
-          [&](const auto&, const auto&) -> Result<Val> {
-            return TypeError{"true_branch or false_branch is not closure"};
-          }},
-      true_val.variant(),
-      false_val.variant());
-}
-
-template <typename Val>
-Result<Val> BuiltinIdentity(const InterpretFuncType<Val>& Interpret,
-                            const std::vector<Val>& args) {
-  if (args.size() != 1) {
-    return TypeError{std::string(CoreExpr::kBuiltinId()) +
-                     "takes 1 argument, but " + std::to_string(args.size()) +
-                     "were given."};
-  }
-  return args.at(0);
-}
-
-template <typename Val>
-Result<Val> BuiltinList(const InterpretFuncType<Val>& Interpret,
-                        const std::vector<Val>& args) {
-  adt::List<Val> l;
-  l->reserve(args.size());
-  for (const auto& arg : args) {
-    l->emplace_back(arg);
-  }
-  return Val{l};
-}
-
-template <typename Val>
-Result<Val> BuiltinGetAttr(const InterpretFuncType<Val>& Interpret,
-                           const std::vector<Val>& args) {
-  if (args.size() != 2) {
-    return TypeError{std::string(CoreExpr::kBuiltinGetAttr()) +
-                     " takes 2 argument, but " + std::to_string(args.size()) +
-                     "were given."};
-  }
-  if (!args.at(1).template Has<std::string>()) {
-    return TypeError{"attr_name must be a string"};
-  }
-  return ValueGetAttr(args.at(0), args.at(1).template Get<std::string>());
-}
-
-template <typename Val>
-Result<Val> BuiltinGetItem(const InterpretFuncType<Val>& Interpret,
-                           const std::vector<Val>& args) {
-  if (args.size() != 2) {
-    return TypeError{std::string(CoreExpr::kBuiltinGetItem()) +
-                     " takes 2 argument, but " + std::to_string(args.size()) +
-                     "were given."};
-  }
-  return ValueGetItem(args.at(0), args.at(1));
+  return Interpret(select_true_branch ? true_val : false_val, {});
 }
 
 template <typename Val>
 Result<Val> BuiltinApply(const InterpretFuncType<Val>& Interpret,
                          const std::vector<Val>& args) {
   if (args.size() != 2) {
-    return TypeError{std::string(CoreExpr::kBuiltinId()) +
-                     "takes 2 arguments, but " + std::to_string(args.size()) +
-                     "were given."};
+    return TypeError{std::string(kBuiltinApply()) + "takes 2 arguments, but " +
+                     std::to_string(args.size()) + "were given."};
   }
-  const auto& pattern_match = ::common::Overloaded{
-      [&](const Closure<Val>& closure, const adt::List<Val>& arg_list)
-          -> Result<Val> { return Interpret(closure, arg_list.vector()); },
-      [&](const BuiltinFuncType<Val>& builtin_func,
-          const adt::List<Val>& arg_list) -> Result<Val> {
-        return builtin_func(Interpret, arg_list.vector());
+  const auto& opt_arg_list = CastToBuiltinValue<adt::List<Val>>(args.at(1));
+  ADT_RETURN_IF_ERROR(opt_arg_list);
+  const auto& arg_list = opt_arg_list.GetOkValue();
+  return Interpret(args.at(0), arg_list.vector());
+}
+
+template <typename Val>
+Result<Val> BuiltinHalt(const std::vector<Val>& args) {
+  return RuntimeError{"Dead code. Halt function should never be touched."};
+}
+
+template <typename Val>
+Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
+                             ComposedCallImpl<Val>* composed_call) {
+  const auto args = composed_call->args;
+  if (args.size() != 3) {
+    return TypeError{std::string("`if` takes 3 arguments, but ") +
+                     std::to_string(args.size()) + "were given."};
+  }
+  const auto& cond = args.at(0);
+  Result<bool> select_true_branch_res = cond.Match(
+      [&](const bool c) -> Result<bool> { return c; },
+      [&](const int64_t c) -> Result<bool> { return c != 0; },
+      [&](const std::string& c) -> Result<bool> { return !c.empty(); },
+      [&](const Nothing&) -> Result<bool> { return false; },
+      [&](const adt::List<Val>& list) -> Result<bool> {
+        return list->size() > 0;
       },
-      [&](const auto&, const auto&) -> Result<Val> {
-        if (!args.at(1).template Has<adt::List<Val>>()) {
-          return TypeError{std::string() +
-                           "the second arguments must be list, " +
-                           GetBuiltinTypeName(args.at(1)) + " were given."};
-        }
-        return TypeError{std::string() +
-                         "the second arguments must be a function, " +
-                         GetBuiltinTypeName(args.at(0)) + " were given."};
-      }};
-  return std::visit(pattern_match, args.at(0).variant(), args.at(1).variant());
+      [&](const Object<Val>& obj) -> Result<bool> { return obj->size() > 0; },
+      [&](const Closure<Val>& closure) -> Result<bool> { return true; },
+      [&](const Method<Val>& closure) -> Result<bool> { return true; },
+      [&](const BuiltinFuncType<Val>& closure) -> Result<bool> { return true; },
+      [&](const CpsBuiltinHighOrderFuncType<Val>& closure) -> Result<bool> {
+        return true;
+      },
+      [&](const auto&) -> Result<bool> {
+        return TypeError{"index expr could not be a condition"};
+      });
+  ADT_RETURN_IF_ERROR(select_true_branch_res);
+  bool select_true_branch = select_true_branch_res.GetOkValue();
+  const auto& opt_true_closure = CastToBuiltinValue<Closure<Val>>(args.at(1));
+  ADT_RETURN_IF_ERROR(opt_true_closure);
+  const auto& true_closure = opt_true_closure.GetOkValue();
+  const auto& opt_false_closure = CastToBuiltinValue<Closure<Val>>(args.at(2));
+  ADT_RETURN_IF_ERROR(opt_false_closure);
+  const auto& false_closure = opt_true_closure.GetOkValue();
+  Closure<Val> closure{select_true_branch ? true_closure : false_closure};
+  return interpreter->InterpretLambdaCall(closure->environment,
+                                          composed_call->outter_func,
+                                          closure->lambda,
+                                          std::vector<Val>(),
+                                          composed_call);
+}
+
+template <typename Val>
+Result<adt::Ok> CpsBuiltinApply(ComposedCallImpl<Val>* composed_call) {
+  const auto& args = composed_call->args;
+  if (args.size() != 2) {
+    return TypeError{std::string(kBuiltinApply()) + "takes 2 arguments, but " +
+                     std::to_string(args.size()) + "were given."};
+  }
+  const auto& opt_arg_list = CastToBuiltinValue<adt::List<Val>>(args.at(1));
+  if (!opt_arg_list.HasOkValue()) {
+    return TypeError{std::string() + "the second arguments must be list, " +
+                     GetBuiltinTypeName(args.at(1)) + " were given."};
+  }
+  const auto& arg_list = opt_arg_list.GetOkValue();
+  composed_call->inner_func = args.at(0);
+  composed_call->args = arg_list.vector();
+  return adt::Ok{};
 }
 
 }  // namespace pexpr

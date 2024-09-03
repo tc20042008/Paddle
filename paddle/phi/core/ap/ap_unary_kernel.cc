@@ -24,10 +24,9 @@
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/phi/common/ap/define_ctx_value.h"
 #include "paddle/phi/common/ap/dispatch_ctx_value.h"
-#include "paddle/phi/common/ap/kernel_definer_interpreter.h"
-#include "paddle/phi/common/ap/kernel_dispatcher_interpreter.h"
 #include "paddle/phi/core/ap/ap_cuda_jit_util.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 
 namespace ap {
 
@@ -78,6 +77,18 @@ class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
       const Module& module_val,
       const std::shared_ptr<ap::CUDAModule>& cuda_module_val)
       : CudaModule(), module_(module_val), cuda_module_(cuda_module_val) {}
+
+  ApUnaryCudaModuleImpl& operator=(const ApUnaryCudaModuleImpl& other) {
+    this->module_ = other.module_;
+    this->cuda_module_ = other.cuda_module_;
+    return *this;
+  }
+
+  ApUnaryCudaModuleImpl& operator=(ApUnaryCudaModuleImpl&& other) {
+    this->module_ = std::move(other.module_);
+    this->cuda_module_ = std::move(other.cuda_module_);
+    return *this;
+  }
 
   adt::Result<adt::Ok> LaunchCudaKernel(
       const std::string& func_name,
@@ -142,21 +153,21 @@ adt::Result<ApUnaryCudaModule> CacheCudaModule(
 adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
     const std::string& kernel_definer_lambda,
     const std::string& define_ctx_maker_lambda) {
-  KernelDefinerInterpreter interpreter;
+  pexpr::CpsExprInterpreter<Val> cps_interpreter;
   const auto& define_ctx_maker_core_expr =
       MakeOrGetCoreExpr(define_ctx_maker_lambda);
   ADT_RETURN_IF_ERROR(define_ctx_maker_core_expr);
   const pexpr::Lambda<pexpr::CoreExpr>& ctx_maker =
       define_ctx_maker_core_expr.GetOkValue();
   DefinerRawCtx raw_ctx{};
-  const Result<Val>& ctx = interpreter.CallLambda(ctx_maker, raw_ctx);
+  const Result<Val>& ctx = cps_interpreter.Interpret(ctx_maker, {raw_ctx});
   const auto& kernel_definer_core_expr =
       MakeOrGetCoreExpr(kernel_definer_lambda);
   ADT_RETURN_IF_ERROR(kernel_definer_core_expr);
   const pexpr::Lambda<pexpr::CoreExpr>& definer =
       kernel_definer_core_expr.GetOkValue();
   const Result<Val>& interpret_ret =
-      interpreter.CallLambda(definer, ctx.GetOkValue());
+      cps_interpreter.Interpret(definer, {ctx.GetOkValue()});
   ADT_RETURN_IF_ERROR(interpret_ret);
   const Result<Module>& m =
       CastToCustomValue<Module>(interpret_ret.GetOkValue());
@@ -223,7 +234,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
     const std::string& kernel_dispatcher_lambda,
     const std::string& dispatch_ctx_maker_lambda,
     std::vector<phi::DenseTensor*> outs) {
-  KernelDispatcherInterpreter interpreter{};
+  pexpr::CpsExprInterpreter<Val> cps_interpreter;
   const adt::Result<kernel_define::ApUnaryCudaModule>& m =
       kernel_define::MakeOrGetApUnaryCudaModule(kernel_definer_lambda,
                                                 define_ctx_maker_lambda);
@@ -240,7 +251,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
       MakeOrGetCoreExpr(dispatch_ctx_maker_lambda);
   ADT_RETURN_IF_ERROR(dispatch_ctx_maker_core_expr);
   const auto& ctx_maker_lambda = dispatch_ctx_maker_core_expr.GetOkValue();
-  const auto& ctx = interpreter.CallLambda(ctx_maker_lambda, raw_ctx);
+  const auto& ctx = cps_interpreter.Interpret(ctx_maker_lambda, {raw_ctx});
   ADT_RETURN_IF_ERROR(ctx);
   const adt::Result<pexpr::Lambda<pexpr::CoreExpr>>&
       kernel_dispatcher_core_expr = MakeOrGetCoreExpr(kernel_dispatcher_lambda);
@@ -248,7 +259,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
   const pexpr::Lambda<pexpr::CoreExpr>& lambda =
       kernel_dispatcher_core_expr.GetOkValue();
   const adt::Result<Val>& dispatch_ret =
-      interpreter.CallLambda(lambda, ctx.GetOkValue());
+      cps_interpreter.Interpret(lambda, {ctx.GetOkValue()});
   ADT_RETURN_IF_ERROR(dispatch_ret);
   return adt::Ok{};
 }

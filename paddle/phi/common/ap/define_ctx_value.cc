@@ -19,7 +19,6 @@ namespace ap::kernel_define {
 
 using pexpr::BuiltinFuncType;
 using pexpr::CastToBuiltinValue;
-using pexpr::InterpretFuncType;
 
 adt::Result<ArgType> ArgType::MakeFromPhiDataType(::phi::DataType data_type) {
   static const std::unordered_map<::phi::DataType, ArgType> map{
@@ -43,10 +42,6 @@ struct TypeConverter;
 #define SPECIALIZE_TYPE_CONVERTER(cpp_type, enum_type) \
   template <>                                          \
   struct TypeConverter<CppArgType<cpp_type>> {         \
-    using remove_const_type = CppArgType<cpp_type>;    \
-  };                                                   \
-  template <>                                          \
-  struct TypeConverter<CppArgType<const cpp_type>> {   \
     using remove_const_type = CppArgType<cpp_type>;    \
   };                                                   \
   template <>                                          \
@@ -81,8 +76,7 @@ ArgType ArgType::RemoveConst() const {
 
 namespace {
 
-Result<Val> MakeDefinerCtxModule(const InterpretFuncType<Val>& Interpret,
-                                 const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtxModule(const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{
         std::string(
@@ -138,8 +132,7 @@ Result<adt::List<ArgType>> GetFuncArgTypes(const Val& val) {
   return ret;
 }
 
-Result<Val> MakeDefinerCtxDeclareFunc(const InterpretFuncType<Val>& Interpret,
-                                      const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtxDeclareFunc(const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{
         std::string(
@@ -153,8 +146,7 @@ Result<Val> MakeDefinerCtxDeclareFunc(const InterpretFuncType<Val>& Interpret,
   return FuncDeclare{func_id.GetOkValue(), arg_types.GetOkValue()};
 }
 
-Result<Val> MakeDefinerCtxSource(const InterpretFuncType<Val>& Interpret,
-                                 const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtxSource(const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{
         std::string(
@@ -174,10 +166,9 @@ Result<Val> MakeDefinerCtxArgType(const DefinerCtx<Val>& ctx,
   return ArgType{CppArgType<T>{}};
 }
 
-template <Result<Val> (*BuiltinFunc)(const InterpretFuncType<Val>&,
-                                     const std::vector<Val>&)>
+template <BuiltinFuncType<Val> BuiltinFunc>
 Result<Val> DefinerCtxMethod(const DefinerCtx<Val>& ctx, const std::string&) {
-  return pexpr::MethodClosure<Val>{ctx, BuiltinFuncType<Val>{BuiltinFunc}};
+  return pexpr::Method<Val>{ctx, BuiltinFuncType<Val>{BuiltinFunc}};
 }
 
 using DefinerCtxGetAttrT = Result<Val> (*)(const DefinerCtx<Val>& ctx,
@@ -189,18 +180,18 @@ Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
       {"module", &DefinerCtxMethod<&MakeDefinerCtxModule>},
       {"declare_func", &DefinerCtxMethod<&MakeDefinerCtxDeclareFunc>},
       {"source_code", &DefinerCtxMethod<&MakeDefinerCtxSource>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                     \
-  {#cpp_type, &MakeDefinerCtxArgType<cpp_type>},                    \
-      {"const_" #cpp_type, &MakeDefinerCtxArgType<const cpp_type>}, \
-      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type*>},        \
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)               \
+  {#cpp_type, &MakeDefinerCtxArgType<cpp_type>},              \
+      {"const_" #cpp_type, &MakeDefinerCtxArgType<cpp_type>}, \
+      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type*>},  \
       {"const_" #cpp_type "_ptr", &MakeDefinerCtxArgType<const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                \
-  {#cpp_type, &MakeDefinerCtxArgType<cpp_type##_t>},                    \
-      {"const_" #cpp_type, &MakeDefinerCtxArgType<const cpp_type##_t>}, \
-      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type##_t*>},        \
-      {"const_" #cpp_type "_ptr",                                       \
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                          \
+  {#cpp_type, &MakeDefinerCtxArgType<cpp_type##_t>},              \
+      {"const_" #cpp_type, &MakeDefinerCtxArgType<cpp_type##_t>}, \
+      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type##_t*>},  \
+      {"const_" #cpp_type "_ptr",                                 \
        &MakeDefinerCtxArgType<const cpp_type##_t*>},
           AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE
@@ -215,8 +206,7 @@ Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
   return iter->second(ctx, name);
 }
 
-Result<Val> MakeDefinerCtx(const InterpretFuncType<Val>& Interpret,
-                           const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtx(const std::vector<Val>& args) {
   if (args.size() != 2) {
     return adt::errors::TypeError{
         std::string() + "'DefinerRawCtx.DefinerCtx' takes 2 arguments, but " +
@@ -245,7 +235,7 @@ Result<Val> MakeDefinerCtx(const InterpretFuncType<Val>& Interpret,
 
 Result<Val> DefineRawContextMakeDefinerCtx(const DefinerRawCtx& raw_ctx,
                                            const std::string&) {
-  return pexpr::MethodClosure<Val>{raw_ctx, &MakeDefinerCtx};
+  return pexpr::Method<Val>{raw_ctx, &MakeDefinerCtx};
 }
 
 using DefinerRawCtxGettAttrT = Result<Val> (*)(const DefinerRawCtx& raw_ctx,

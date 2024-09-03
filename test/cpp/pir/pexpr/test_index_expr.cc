@@ -68,8 +68,12 @@ TEST(IndexExpr, IndexTupleExprReshape) {
       {index_expr::Val{IndexExprValue{
           IndexTupleExpr{IndexTupleExprDomain{adt::List<symbol::DimExpr>{
               symbol::DimExpr{6}, symbol::DimExpr{4}}}}}}});
-  ASSERT_TRUE(result.Has<index_expr::Val>());
-  const auto& ret = result.Get<index_expr::Val>();
+  if (!result.HasOkValue()) {
+    LOG(ERROR) << "error-type: " << result.GetError().class_name()
+               << ", error-msg: " << result.GetError().msg();
+  }
+  ASSERT_TRUE(result.HasOkValue());
+  const auto& ret = result.GetOkValue();
   ASSERT_TRUE((ret.Has<IndexExprValue>()));
   ASSERT_TRUE((ret.Get<IndexExprValue>().Has<IndexTupleExpr>()));
   const auto& index_tuple_expr =

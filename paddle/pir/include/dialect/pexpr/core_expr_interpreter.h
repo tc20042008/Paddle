@@ -57,7 +57,7 @@ class CoreExprInterpreter {
                                  const std::shared_ptr<Env>& env) {
     return atomic.Match(
         [&](const Lambda<CoreExpr>& lambda) -> Result<ValueT> {
-          return NaiveClosure<ValueT>{lambda, env};
+          return Closure<ValueT>{lambda, env};
         },
         [&](const tVar<std::string>& var) -> Result<ValueT> {
           return env->Get(var.value())
@@ -103,17 +103,6 @@ class CoreExprInterpreter {
 
   Result<ValueT> InterpretClosure(const Closure<ValueT>& closure,
                                   const std::vector<ValueT>& args) {
-    return closure.Match(
-        [&](const NaiveClosure<ValueT>& impl) {
-          return InterpretNaiveClosure(impl, args);
-        },
-        [&](const MethodClosure<ValueT>& impl) {
-          return InterpretMethodClosure(impl, args);
-        });
-  }
-
-  Result<ValueT> InterpretNaiveClosure(const NaiveClosure<ValueT>& closure,
-                                       const std::vector<ValueT>& args) {
     const auto& new_env = env_mgr_->New(closure->environment);
     return InterpretLambda(closure->lambda, new_env, args);
   }
@@ -137,8 +126,8 @@ class CoreExprInterpreter {
     return Interpret(lambda->body, env);
   }
 
-  Result<ValueT> InterpretMethodClosure(const MethodClosure<ValueT>& method,
-                                        const std::vector<ValueT>& args) {
+  Result<ValueT> InterpretMethod(const Method<ValueT>& method,
+                                 const std::vector<ValueT>& args) {
     std::vector<ValueT> new_args;
     new_args.reserve(args.size() + 1);
     new_args.emplace_back(method->obj);
@@ -152,15 +141,21 @@ class CoreExprInterpreter {
                                const std::vector<ValueT>& args) {
     return f.Match(
         [&](const BuiltinFuncType<ValueT>& func) -> Result<ValueT> {
+          return func(args);
+        },
+        [&](const BuiltinHighOrderFuncType<ValueT>& func) -> Result<ValueT> {
           const auto& Func =
-              [this](const Closure<ValueT>& closure,
+              [this](const ValueT& closure,
                      const std::vector<ValueT>& args) -> Result<ValueT> {
-            return InterpretClosure(closure, args);
+            return InterpretCall(closure, args);
           };
           return func(Func, args);
         },
         [&](const Closure<ValueT>& closure) -> Result<ValueT> {
           return InterpretClosure(closure, args);
+        },
+        [&](const Method<ValueT>& method) -> Result<ValueT> {
+          return InterpretMethod(method, args);
         },
         [&](const auto& other) -> Result<ValueT> {
           return TypeError{std::string("'") + GetBuiltinTypeName(f) +
@@ -187,20 +182,20 @@ class CoreExprInterpreter {
   }
   static Object<ValueT> InitBuiltins() {
     return Object<ValueT>{std::unordered_map<std::string, ValueT>{
-        {CoreExpr::kBuiltinNothing(), ValueT{adt::Nothing{}}},
-        {CoreExpr::kBuiltinIf(),
-         ValueT{BuiltinFuncType<ValueT>(&BuiltinIf<ValueT>)}},
-        {CoreExpr::kBuiltinId(),
+        {kBuiltinNothing(), ValueT{adt::Nothing{}}},
+        {kBuiltinId(),
          ValueT{BuiltinFuncType<ValueT>(&BuiltinIdentity<ValueT>)}},
-        {CoreExpr::kBuiltinList(),
-         ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
-        {CoreExpr::kBuiltinGetAttr(),
+        {kBuiltinReturn(),
+         ValueT{BuiltinFuncType<ValueT>(&BuiltinIdentity<ValueT>)}},
+        {kBuiltinList(), ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
+        {kBuiltinGetAttr(),
          ValueT{BuiltinFuncType<ValueT>(&BuiltinGetAttr<ValueT>)}},
-        {CoreExpr::kBuiltinGetItem(),
+        {kBuiltinGetItem(),
          ValueT{BuiltinFuncType<ValueT>(&BuiltinGetItem<ValueT>)}},
-        {CoreExpr::kBuiltinApply(),
-         ValueT{BuiltinFuncType<ValueT>(&BuiltinApply<ValueT>)}},
-        {"list", ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
+        {kBuiltinIf(),
+         ValueT{BuiltinHighOrderFuncType<ValueT>(&BuiltinIf<ValueT>)}},
+        {kBuiltinApply(),
+         ValueT{BuiltinHighOrderFuncType<ValueT>(&BuiltinApply<ValueT>)}},
     }};
   }
 };

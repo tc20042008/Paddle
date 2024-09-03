@@ -19,9 +19,9 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/common/ap/define_ctx_value.h"
 #include "paddle/phi/common/ap/dispatch_ctx_value.h"
-#include "paddle/phi/common/ap/kernel_dispatcher_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
 
 namespace ap::kernel_dispatch::test {
@@ -50,8 +50,8 @@ TEST(KernelDispatch, CppValue) {
       .cuda_module = nullptr,
       .func_name2arg_types =
           std::unordered_map<std::string, adt::List<kernel_define::ArgType>>{}};
-  KernelDispatcherInterpreter interpreter;
-  const Result<Val>& ret = interpreter.CallLambda(lambda, raw_ctx);
+  pexpr::CpsExprInterpreter<Val> interpreter;
+  const Result<Val>& ret = interpreter.Interpret(lambda, {raw_ctx});
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"
                << pexpr::CoreExpr{lambda}.ToSExpression() << std::endl;

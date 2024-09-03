@@ -19,9 +19,9 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/ap/define_ctx_value.h"
-#include "paddle/phi/common/ap/kernel_definer_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
 
 namespace ap::kernel_define::test {
@@ -29,16 +29,16 @@ namespace ap::kernel_define::test {
 TEST(KernelDefine, ArgType) {
   pexpr::LambdaExprBuilder lmbd;
   pexpr::AnfExpr anf_expr = lmbd.Lambda({"ctx"}, [&](auto& ctx) {
-    return ctx.Var("ctx").Attr("const_int32_ptr").Call();
+    return ctx.Var("ctx").Attr("const_int32_ptr");
   });
   pexpr::CoreExpr core_expr = pexpr::ConvertAnfExprToCoreExpr(anf_expr);
   ASSERT_TRUE(core_expr.Has<pexpr::Atomic<pexpr::CoreExpr>>());
   const auto& atomic = core_expr.Get<pexpr::Atomic<pexpr::CoreExpr>>();
   ASSERT_TRUE(atomic.Has<pexpr::Lambda<pexpr::CoreExpr>>());
   const auto& lambda = atomic.Get<pexpr::Lambda<pexpr::CoreExpr>>();
-  KernelDefinerInterpreter interpreter;
+  pexpr::CpsExprInterpreter<Val> interpreter;
   DefinerCtx<Val> ctx{DefinerRawCtx{}, pexpr::Object<Val>{}};
-  const Result<Val>& ret = interpreter.CallLambda(lambda, ctx);
+  const Result<Val>& ret = interpreter.Interpret(lambda, {ctx});
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"
                << pexpr::CoreExpr{lambda}.ToSExpression() << std::endl;
@@ -55,138 +55,119 @@ TEST(KernelDefine, ArgType) {
 
 TEST(KernelDefine, FromJson) {
   const std::string json_str = R"(
+  [
+    "lambda",
     [
-      "lambda",
+      "ctx"
+    ],
+    [
+      "__builtin_let__",
       [
-        "ctx"
-      ],
-      [
-        "__builtin_let__",
         [
+          "__lambda_expr_tmp0",
           [
-            "__lambda_expr_tmp0",
-            [
-              "__builtin_get_attr__",
-              "ctx",
-              {
-                "str": "module"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp1",
-            [
-              "__builtin_get_attr__",
-              "ctx",
-              {
-                "str": "declare_func"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp2",
-            [
-              "__builtin_get_attr__",
-              "ctx",
-              {
-                "str": "const_float_ptr"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp3",
-            [
-              "__lambda_expr_tmp2"
-            ]
-          ],
-          [
-            "__lambda_expr_tmp4",
-            [
-              "__builtin_get_attr__",
-              "ctx",
-              {
-                "str": "const_int32"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp5",
-            [
-              "__lambda_expr_tmp4"
-            ]
-          ],
-          [
-            "__lambda_expr_tmp6",
-            [
-              "__builtin_get_attr__",
-              "ctx",
-              {
-                "str": "float_ptr"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp7",
-            [
-              "__lambda_expr_tmp6"
-            ]
-          ],
-          [
-            "__lambda_expr_tmp8",
-            [
-              "__builtin_list__",
-              "__lambda_expr_tmp3",
-              "__lambda_expr_tmp5",
-              "__lambda_expr_tmp7"
-            ]
-          ],
-          [
-            "__lambda_expr_tmp9",
-            [
-              "__lambda_expr_tmp1",
-              {
-                "str": "relu"
-              },
-              "__lambda_expr_tmp8"
-            ]
-          ],
-          [
-            "__lambda_expr_tmp10",
-            [
-              "__builtin_get_attr__",
-              "ctx",
-              {
-                "str": "source_code"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp11",
-            [
-              "__lambda_expr_tmp10",
-              {
-                "str": "\n#include <cstdint>\n#define CINN_WITH_CUDA\n\nextern \"C\" __global__\nvoid relu(const float* input, const int num, float* output) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n    if (idx < num) {\n        output[idx] = input[idx] > 0 ? input[idx] : 0;\n    }\n}\n"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp12",
-            [
-              "__lambda_expr_tmp0",
-              "__lambda_expr_tmp9",
-              "__lambda_expr_tmp11"
-            ]
+            "__builtin_getattr__",
+            "ctx",
+            {
+              "str": "module"
+            }
           ]
         ],
         [
-          "__builtin_identity__",
-          "__lambda_expr_tmp12"
+          "__lambda_expr_tmp1",
+          [
+            "__builtin_getattr__",
+            "ctx",
+            {
+              "str": "declare_func"
+            }
+          ]
+        ],
+        [
+          "__lambda_expr_tmp2",
+          [
+            "__builtin_getattr__",
+            "ctx",
+            {
+              "str": "const_float_ptr"
+            }
+          ]
+        ],
+        [
+          "__lambda_expr_tmp3",
+          [
+            "__builtin_getattr__",
+            "ctx",
+            {
+              "str": "const_int32"
+            }
+          ]
+        ],
+        [
+          "__lambda_expr_tmp4",
+          [
+            "__builtin_getattr__",
+            "ctx",
+            {
+              "str": "float_ptr"
+            }
+          ]
+        ],
+        [
+          "__lambda_expr_tmp5",
+          [
+            "__builtin_list__",
+            "__lambda_expr_tmp2",
+            "__lambda_expr_tmp3",
+            "__lambda_expr_tmp4"
+          ]
+        ],
+        [
+          "__lambda_expr_tmp6",
+          [
+            "__lambda_expr_tmp1",
+            {
+              "str": "relu"
+            },
+            "__lambda_expr_tmp5"
+          ]
+        ],
+        [
+          "__lambda_expr_tmp7",
+          [
+            "__builtin_getattr__",
+            "ctx",
+            {
+              "str": "source_code"
+            }
+          ]
+        ],
+        [
+          "__lambda_expr_tmp8",
+          [
+            "__lambda_expr_tmp7",
+            {
+              "str": "\n#include <cstdint>\n#define CINN_WITH_CUDA\n\nextern \"C\" __global__\nvoid relu(const float* input, const int num, float* output) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n    if (idx < num) {\n        output[idx] = input[idx] > 0 ? input[idx] : 0;\n    }\n}\n"
+            }
+          ]
+        ],
+        [
+          "__lambda_expr_tmp9",
+          [
+            "__lambda_expr_tmp0",
+            "__lambda_expr_tmp6",
+            "__lambda_expr_tmp8"
+          ]
         ]
+      ],
+      [
+        "__builtin_identity__",
+        "__lambda_expr_tmp9"
       ]
     ]
+  ]
   )";
   const auto& anf_expr = pexpr::MakeAnfExprFromJsonString(json_str);
-  LOG(ERROR) << "anf_expr.HasError(): " << anf_expr.HasError();
   if (anf_expr.HasError()) {
     LOG(ERROR) << "error-type: " << anf_expr.GetError().class_name()
                << ", error-msg: " << anf_expr.GetError().msg();
@@ -198,9 +179,9 @@ TEST(KernelDefine, FromJson) {
   const auto& atomic = core_expr.Get<pexpr::Atomic<pexpr::CoreExpr>>();
   ASSERT_TRUE(atomic.Has<pexpr::Lambda<pexpr::CoreExpr>>());
   const auto& lambda = atomic.Get<pexpr::Lambda<pexpr::CoreExpr>>();
-  KernelDefinerInterpreter interpreter;
+  pexpr::CpsExprInterpreter<Val> interpreter;
   DefinerCtx<Val> ctx{DefinerRawCtx{}, pexpr::Object<Val>{}};
-  const Result<Val>& ret = interpreter.CallLambda(lambda, ctx);
+  const Result<Val>& ret = interpreter.Interpret(lambda, {ctx});
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"
                << pexpr::CoreExpr{lambda}.ToSExpression() << std::endl;
@@ -219,7 +200,7 @@ TEST(KernelDefine, FromJson) {
   const auto& arg_types = func_declare->arg_types;
   ASSERT_EQ(arg_types->size(), 3);
   ASSERT_TRUE(arg_types->at(0).Has<CppArgType<const float*>>());
-  ASSERT_TRUE(arg_types->at(1).Has<CppArgType<const int32_t>>());
+  ASSERT_TRUE(arg_types->at(1).Has<CppArgType<int32_t>>());
   ASSERT_TRUE(arg_types->at(2).Has<CppArgType<float*>>());
 }
 

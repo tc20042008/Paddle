@@ -44,7 +44,7 @@ struct Rc {
   explicit Rc(Arg&& arg) : data_(new T{std::forward<Arg>(arg)}) {}
 
   template <typename Arg0, typename Arg1, typename... Args>
-  Rc(Arg0&& arg0, Arg1&& arg1, Args&&... args)
+  explicit Rc(Arg0&& arg0, Arg1&& arg1, Args&&... args)
       : data_(new T{std::forward<Arg0>(arg0),
                     std::forward<Arg1>(arg1),
                     std::forward<Args>(args)...}) {}

@@ -26,7 +26,7 @@ class KernelDispatcherInterpreter : public pexpr::CoreExprInterpreter<Val> {
   KernelDispatcherInterpreter(const KernelDispatcherInterpreter&) = delete;
   KernelDispatcherInterpreter(KernelDispatcherInterpreter&&) = delete;
 
-  adt::Result<Val> operator()(const pexpr::Lambda<pexpr::CoreExpr>& lambda,
+  adt::Result<Val> CallLambda(const pexpr::Lambda<pexpr::CoreExpr>& lambda,
                               const Val& ctx) {
     const auto& env = env_mgr_->New(this->builtin_frame());
     pexpr::NaiveClosure<Val> closure{lambda, env};

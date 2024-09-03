@@ -24,50 +24,7 @@
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
 
-#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
-#include "paddle/cinn/runtime/cuda/cuda_module.h"
-#include "paddle/phi/kernels/gpu/ap_cuda_jit_util.h"
-
-namespace ap {
-
-template <typename T, typename Context>
-void ApUnaryKernel(const Context& dev_ctx,
-                   const phi::DenseTensor& x,
-                   phi::DenseTensor* out) {
-  auto generate_ptx = [] {
-    ap::Compiler compiler;
-
-    std::string source_code = R"(
-  #include <cstdint>
-  #define CINN_WITH_CUDA
-
-  extern "C" __global__
-  void relu(const float* input, const int num, float* output) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-   if (idx < num) {
-      output[idx] = input[idx] > 0 ? input[idx] : 0;
-    }
-  }
-  )";
-    LOG(ERROR) << "\n" << source_code;
-    auto ptx = compiler(source_code);
-    CHECK(!ptx.empty());
-    return ptx;
-  };
-
-  auto ptx = generate_ptx();
-
-  ap::CUDAModule cuda_module(ptx, ap::CUDAModule::Kind::PTX);
-  int size = x.numel();
-  dim3 blocks_per_grid(1);
-  dim3 threads_per_block(100);
-  const void* x_data = x.data();
-  void* out_data = out->data();
-  void* args[] = {&x_data, &size, &out_data};
-  cuda_module.LaunchKernel(0, "relu", blocks_per_grid, threads_per_block, args);
-}
-
-}  // namespace ap
+#include "paddle/phi/core/ap/ap_unary_kernel.h"
 
 namespace phi {
 
@@ -95,7 +52,18 @@ void ApUnaryKernel(const Context& dev_ctx,
   for (auto* out : outs) {
     dev_ctx.template Alloc<T>(out);
   }
-  ap::ApUnaryKernel<T, Context>(dev_ctx, *xs[0], outs[0]);
+  const auto& ret =
+      ap::kernel_dispatch::ApUnaryKernel(xs,
+                                         num_outputs,
+                                         kernel_definer_lambda,
+                                         define_ctx_maker_lambda,
+                                         kernel_dispatcher_lambda,
+                                         dispatch_ctx_maker_lambda,
+                                         outs);
+  PADDLE_ENFORCE(!ret.HasError(),
+                 "ap_kernel failed. error_type: %s, error_msg: %s. ",
+                 ret.GetError().class_name(),
+                 ret.GetError().msg());
 }
 
 }  // namespace phi

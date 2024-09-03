@@ -62,6 +62,8 @@ struct Rc {
     return *other.data_ == *this->data_;
   }
 
+  const std::shared_ptr<T>& shared_ptr() const { return data_; }
+
  private:
   std::shared_ptr<T> data_;
 };

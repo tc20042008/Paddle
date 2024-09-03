@@ -52,19 +52,23 @@ struct CoreExpr : public CoreExprBase {
   using CoreExprBase::CoreExprBase;
   DEFINE_ADT_VARIANT_METHODS(CoreExprBase);
 
+  static constexpr const char* kBuiltinNothing() { return "None"; }
+  static constexpr const char* kBuiltinIf() { return "if"; }
+  static constexpr const char* kBuiltinId() { return "__builtin_identity__"; }
+  static constexpr const char* kBuiltinList() { return "__builtin_list__"; }
+  static constexpr const char* kBuiltinGetAttr() {
+    return "__builtin_getattr__";
+  }
+  static constexpr const char* kBuiltinGetItem() {
+    return "__builtin_getitem__";
+  }
+  static constexpr const char* kBuiltinApply() { return "__builtin_apply__"; }
+
   std::string ToSExpression() const;
   std::string DumpToJsonString();
   static std::optional<CoreExpr> ParseFromJsonString(
       const std::string& json_str);
 };
-
-extern const char kBuiltinNothing[];
-extern const char kBuiltinIf[];
-extern const char kBuiltinId[];
-extern const char kBuiltinList[];
-extern const char kBuiltinGetAttr[];
-extern const char kBuiltinGetItem[];
-extern const char kBuiltinApply[];
 
 size_t GetHashValue(const CoreExpr& core_expr);
 size_t GetHashValue(const ComposedCallAtomic<CoreExpr>& composed_call);

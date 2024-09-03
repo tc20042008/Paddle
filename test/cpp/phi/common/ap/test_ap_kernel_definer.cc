@@ -38,7 +38,7 @@ TEST(KernelDefine, ArgType) {
   const auto& lambda = atomic.Get<pexpr::Lambda<pexpr::CoreExpr>>();
   KernelDefinerInterpreter interpreter;
   DefinerCtx<Val> ctx{DefinerRawCtx{}, pexpr::Object<Val>{}};
-  const Result<Val>& ret = interpreter(lambda, ctx);
+  const Result<Val>& ret = interpreter.CallLambda(lambda, ctx);
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"
                << pexpr::CoreExpr{lambda}.ToSExpression() << std::endl;
@@ -185,7 +185,7 @@ TEST(KernelDefine, FromJson) {
       ]
     ]
   )";
-  const auto& anf_expr = pexpr::AnfExpr::ParseFromJsonString(json_str);
+  const auto& anf_expr = pexpr::MakeAnfExprFromJsonString(json_str);
   LOG(ERROR) << "anf_expr.HasError(): " << anf_expr.HasError();
   if (anf_expr.HasError()) {
     LOG(ERROR) << "error-type: " << anf_expr.GetError().class_name()
@@ -200,7 +200,7 @@ TEST(KernelDefine, FromJson) {
   const auto& lambda = atomic.Get<pexpr::Lambda<pexpr::CoreExpr>>();
   KernelDefinerInterpreter interpreter;
   DefinerCtx<Val> ctx{DefinerRawCtx{}, pexpr::Object<Val>{}};
-  const Result<Val>& ret = interpreter(lambda, ctx);
+  const Result<Val>& ret = interpreter.CallLambda(lambda, ctx);
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"
                << pexpr::CoreExpr{lambda}.ToSExpression() << std::endl;

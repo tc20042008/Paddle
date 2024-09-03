@@ -63,8 +63,9 @@ template <typename Val>
 Result<Val> BuiltinIdentity(const InterpretFuncType<Val>& Interpret,
                             const std::vector<Val>& args) {
   if (args.size() != 1) {
-    return TypeError{std::string(kBuiltinId) + "takes 1 argument, but " +
-                     std::to_string(args.size()) + "were given."};
+    return TypeError{std::string(CoreExpr::kBuiltinId()) +
+                     "takes 1 argument, but " + std::to_string(args.size()) +
+                     "were given."};
   }
   return args.at(0);
 }
@@ -84,8 +85,9 @@ template <typename Val>
 Result<Val> BuiltinGetAttr(const InterpretFuncType<Val>& Interpret,
                            const std::vector<Val>& args) {
   if (args.size() != 2) {
-    return TypeError{std::string(kBuiltinGetAttr) + " takes 2 argument, but " +
-                     std::to_string(args.size()) + "were given."};
+    return TypeError{std::string(CoreExpr::kBuiltinGetAttr()) +
+                     " takes 2 argument, but " + std::to_string(args.size()) +
+                     "were given."};
   }
   if (!args.at(1).template Has<std::string>()) {
     return TypeError{"attr_name must be a string"};
@@ -97,8 +99,9 @@ template <typename Val>
 Result<Val> BuiltinGetItem(const InterpretFuncType<Val>& Interpret,
                            const std::vector<Val>& args) {
   if (args.size() != 2) {
-    return TypeError{std::string(kBuiltinGetItem) + " takes 2 argument, but " +
-                     std::to_string(args.size()) + "were given."};
+    return TypeError{std::string(CoreExpr::kBuiltinGetItem()) +
+                     " takes 2 argument, but " + std::to_string(args.size()) +
+                     "were given."};
   }
   return ValueGetItem(args.at(0), args.at(1));
 }
@@ -107,8 +110,9 @@ template <typename Val>
 Result<Val> BuiltinApply(const InterpretFuncType<Val>& Interpret,
                          const std::vector<Val>& args) {
   if (args.size() != 2) {
-    return TypeError{std::string(kBuiltinId) + "takes 2 arguments, but " +
-                     std::to_string(args.size()) + "were given."};
+    return TypeError{std::string(CoreExpr::kBuiltinId()) +
+                     "takes 2 arguments, but " + std::to_string(args.size()) +
+                     "were given."};
   }
   const auto& pattern_match = ::common::Overloaded{
       [&](const Closure<Val>& closure, const adt::List<Val>& arg_list)

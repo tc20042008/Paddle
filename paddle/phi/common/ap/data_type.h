@@ -26,4 +26,14 @@ using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
 using float8_e5m2 = ::phi::dtype::float8_e5m2;
 using pstring = ::phi::dtype::pstring;
 
+#define AP_FOR_EACH_INT_TYPE(_) \
+  _(int8)                       \
+  _(uint8)                      \
+  _(int16)                      \
+  _(uint16)                     \
+  _(int32)                      \
+  _(uint32)                     \
+  _(int64)                      \
+  _(uint64)
+
 }  // namespace ap

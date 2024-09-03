@@ -81,8 +81,8 @@ ArgType ArgType::RemoveConst() const {
 
 namespace {
 
-Result<Val> MakeDefineCtxModule(const InterpretFuncType<Val>& Interpret,
-                                const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtxModule(const InterpretFuncType<Val>& Interpret,
+                                 const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{
         std::string(
@@ -138,8 +138,8 @@ Result<adt::List<ArgType>> GetFuncArgTypes(const Val& val) {
   return ret;
 }
 
-Result<Val> MakeDefineCtxDeclareFunc(const InterpretFuncType<Val>& Interpret,
-                                     const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtxDeclareFunc(const InterpretFuncType<Val>& Interpret,
+                                      const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{
         std::string(
@@ -153,8 +153,8 @@ Result<Val> MakeDefineCtxDeclareFunc(const InterpretFuncType<Val>& Interpret,
   return FuncDeclare{func_id.GetOkValue(), arg_types.GetOkValue()};
 }
 
-Result<Val> MakeDefineCtxSource(const InterpretFuncType<Val>& Interpret,
-                                const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtxSource(const InterpretFuncType<Val>& Interpret,
+                                 const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{
         std::string(
@@ -169,50 +169,99 @@ Result<Val> MakeDefineCtxSource(const InterpretFuncType<Val>& Interpret,
 }
 
 template <typename T>
-Result<Val> MakeDefineCtxArgType(const InterpretFuncType<Val>& Interpret,
-                                 const std::vector<Val>& args) {
+Result<Val> MakeDefinerCtxArgType(const DefinerCtx<Val>& ctx,
+                                  const std::string&) {
   return ArgType{CppArgType<T>{}};
 }
 
-#define AP_FOR_EACH_INT_TYPE(_) \
-  _(int8)                       \
-  _(uint8)                      \
-  _(int16)                      \
-  _(uint16)                     \
-  _(int32)                      \
-  _(uint32)                     \
-  _(int64)                      \
-  _(uint64)
+template <Result<Val> (*BuiltinFunc)(const InterpretFuncType<Val>&,
+                                     const std::vector<Val>&)>
+Result<Val> DefinerCtxMethod(const DefinerCtx<Val>& ctx, const std::string&) {
+  return pexpr::MethodClosure<Val>{ctx, BuiltinFuncType<Val>{BuiltinFunc}};
+}
+
+using DefinerCtxGetAttrT = Result<Val> (*)(const DefinerCtx<Val>& ctx,
+                                           const std::string&);
 
 Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
                               const std::string& name) {
-  static const std::unordered_map<std::string, pexpr::BuiltinFuncType<Val>> map{
-      {"module", &MakeDefineCtxModule},
-      {"declare_func", &MakeDefineCtxDeclareFunc},
-      {"source_code", &MakeDefineCtxSource},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                    \
-  {#cpp_type, &MakeDefineCtxArgType<cpp_type>},                    \
-      {"const_" #cpp_type, &MakeDefineCtxArgType<const cpp_type>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type*>},        \
-      {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type*>},
+  static const std::unordered_map<std::string, DefinerCtxGetAttrT> map{
+      {"module", &DefinerCtxMethod<&MakeDefinerCtxModule>},
+      {"declare_func", &DefinerCtxMethod<&MakeDefinerCtxDeclareFunc>},
+      {"source_code", &DefinerCtxMethod<&MakeDefinerCtxSource>},
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                     \
+  {#cpp_type, &MakeDefinerCtxArgType<cpp_type>},                    \
+      {"const_" #cpp_type, &MakeDefinerCtxArgType<const cpp_type>}, \
+      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type*>},        \
+      {"const_" #cpp_type "_ptr", &MakeDefinerCtxArgType<const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                               \
-  {#cpp_type, &MakeDefineCtxArgType<cpp_type##_t>},                    \
-      {"const_" #cpp_type, &MakeDefineCtxArgType<const cpp_type##_t>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type##_t*>},        \
-      {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type##_t*>},
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                \
+  {#cpp_type, &MakeDefinerCtxArgType<cpp_type##_t>},                    \
+      {"const_" #cpp_type, &MakeDefinerCtxArgType<const cpp_type##_t>}, \
+      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type##_t*>},        \
+      {"const_" #cpp_type "_ptr",                                       \
+       &MakeDefinerCtxArgType<const cpp_type##_t*>},
           AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE
-              {"void_ptr", &MakeDefineCtxArgType<void*>},
-      {"const_void_ptr", &MakeDefineCtxArgType<const void*>},
+              {"void_ptr", &MakeDefinerCtxArgType<void*>},
+      {"const_void_ptr", &MakeDefinerCtxArgType<const void*>},
   };
   const auto iter = map.find(name);
   if (iter == map.end()) {
     return AttributeError{
         std::string("'DefinerCtx' object has no attribute '") + name + "' "};
   }
-  return pexpr::MethodClosure<Val>{ctx, iter->second};
+  return iter->second(ctx, name);
+}
+
+Result<Val> MakeDefinerCtx(const InterpretFuncType<Val>& Interpret,
+                           const std::vector<Val>& args) {
+  if (args.size() != 2) {
+    return adt::errors::TypeError{
+        std::string() + "'DefinerRawCtx.DefinerCtx' takes 2 arguments, but " +
+        std::to_string(args.size()) + "were given."};
+  }
+
+  const Result<DefinerRawCtx>& raw_ctx =
+      CastToCustomValue<DefinerRawCtx>(args.at(0));
+  ADT_RETURN_IF_ERROR(raw_ctx);
+  const Result<pexpr::Object<Val>>& object = args.at(1).Match(
+      [&](const pexpr::Object<Val>& obj) -> Result<pexpr::Object<Val>> {
+        return obj;
+      },
+      [&](const pexpr::Nothing&) -> Result<pexpr::Object<Val>> {
+        return pexpr::Object<Val>{};
+      },
+      [&](const auto&) -> Result<pexpr::Object<Val>> {
+        return adt::errors::TypeError{
+            std::string() +
+            "the first argument of 'DefinerRawCtx.DefinerCtx' "
+            "must be an object."};
+      });
+  ADT_RETURN_IF_ERROR(object);
+  return DefinerCtx<Val>{raw_ctx.GetOkValue(), object.GetOkValue()};
+}
+
+Result<Val> DefineRawContextMakeDefinerCtx(const DefinerRawCtx& raw_ctx,
+                                           const std::string&) {
+  return pexpr::MethodClosure<Val>{raw_ctx, &MakeDefinerCtx};
+}
+
+using DefinerRawCtxGettAttrT = Result<Val> (*)(const DefinerRawCtx& raw_ctx,
+                                               const std::string&);
+
+Result<Val> DefinerRawCtxGetAttr(const DefinerRawCtx& raw_ctx,
+                                 const std::string& name) {
+  static const std::unordered_map<std::string, DefinerRawCtxGettAttrT> map{
+      {"DefinerCtx", &DefineRawContextMakeDefinerCtx},
+  };
+  const auto& iter = map.find(name);
+  if (iter == map.end()) {
+    return AttributeError{std::string("'DefinerRawCtx' has no attribute '") +
+                          name + "'"};
+  }
+  return iter->second(raw_ctx, name);
 }
 
 }  // namespace
@@ -220,6 +269,9 @@ Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
 Result<Val> CustomGetAttr(const CustomValue& custom_value,
                           const std::string& name) {
   return custom_value.Match(
+      [&](const DefinerRawCtx& raw_ctx) -> Result<Val> {
+        return DefinerRawCtxGetAttr(raw_ctx, name);
+      },
       [&](const DefinerCtx<Val>& ctx) -> Result<Val> {
         return DefinerCtxGetAttr(ctx, name);
       },

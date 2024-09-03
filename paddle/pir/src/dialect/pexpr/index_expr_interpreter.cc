@@ -31,9 +31,11 @@ class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
 
   static Object<Val> InitBuiltins() {
     return Object<Val>{std::unordered_map<std::string, Val>{
-        {kBuiltinIf, Val{BuiltinFuncType<Val>(&BuiltinIf<Val>)}},
-        {kBuiltinId, Val{BuiltinFuncType<Val>(&BuiltinIdentity<Val>)}},
-        {"__builtin_apply__", Val{BuiltinFuncType<Val>(&BuiltinApply<Val>)}},
+        {CoreExpr::kBuiltinIf(), Val{BuiltinFuncType<Val>(&BuiltinIf<Val>)}},
+        {CoreExpr::kBuiltinId(),
+         Val{BuiltinFuncType<Val>(&BuiltinIdentity<Val>)}},
+        {CoreExpr::kBuiltinApply(),
+         Val{BuiltinFuncType<Val>(&BuiltinApply<Val>)}},
         {"list", Val{BuiltinFuncType<Val>(&BuiltinList<Val>)}},
         {"kUndefinedIndexTupleExpr",
          Val{IndexExprValue{IndexTupleExpr{UndefinedIndexTupleExpr{}}}}},

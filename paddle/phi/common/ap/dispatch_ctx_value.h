@@ -149,10 +149,11 @@ class CudaModule {
   CudaModule(CudaModule&&) = delete;
   virtual ~CudaModule() = default;
 
-  virtual int64_t LaunchCudaKernel(const std::string& func_name,
-                                   int64_t num_blocks,
-                                   int64_t num_threads,
-                                   const std::vector<void*>& args) = 0;
+  virtual adt::Result<adt::Ok> LaunchCudaKernel(
+      const std::string& func_name,
+      int64_t num_blocks,
+      int64_t num_threads,
+      const std::vector<void*>& args) = 0;
 
  protected:
   CudaModule() = default;
@@ -213,13 +214,49 @@ using Env = pexpr::Environment<Val>;
 using EnvMgr = pexpr::EnvironmentManager<Val>;
 
 template <typename T>
-const char* GetCustomValueTypeNameImpl();
+struct GetCppValueTypeNameHelper;
 
 #define SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(type) \
   template <>                                            \
-  const char* GetCustomValueTypeNameImpl<type>() {       \
-    return #type;                                        \
-  }
+  struct GetCppValueTypeNameHelper<type> {               \
+    static const char* Call() { return #type; }          \
+  };
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)               \
+  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type);       \
+  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(const cpp_type); \
+  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type*);      \
+  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(const cpp_type*);
+PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
+#undef MAKE_CPP_TYPE_CASE
+
+template <>
+struct GetCppValueTypeNameHelper<void*> {
+  static const char* Call() { return "void*"; }
+};
+
+template <>
+struct GetCppValueTypeNameHelper<const void*> {
+  static const char* Call() { return "const void*"; }
+};
+
+template <typename T>
+inline const char* GetCppValueTypeNameImpl() {
+  return GetCppValueTypeNameHelper<std::decay_t<T>>::Call();
+}
+
+inline const char* GetCppValueTypeName(const CppValue& val) {
+  return val.Match(
+      [](auto impl) { return GetCppValueTypeNameImpl<decltype(impl)>(); });
+}
+
+template <typename T>
+struct GetCustomValueTypeNameHelper;
+
+#define SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(type) \
+  template <>                                            \
+  struct GetCustomValueTypeNameHelper<type> {            \
+    static const char* Call() { return #type; }          \
+  };
 
 SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(ArgType);
 SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(CppValue);
@@ -228,6 +265,11 @@ SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(MutableTensor<Val>);
 SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(DispatchRawContext<Val>);
 SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(DispatchContext<Val>);
 #undef SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL
+
+template <typename T>
+const char* GetCustomValueTypeNameImpl() {
+  return GetCustomValueTypeNameHelper<std::decay_t<T>>::Call();
+}
 
 inline const char* GetCustomValueTypeName(const CustomValue& value) {
   return value.Match([](const auto& impl) {
@@ -238,6 +280,11 @@ inline const char* GetCustomValueTypeName(const CustomValue& value) {
 template <typename T>
 Result<T> CastToCustomValue(const Val& value) {
   if (!value.Has<CustomValue>()) {
+    if (value.Has<bool>()) {
+      if constexpr (std::is_same_v<std::decay_t<T>, CppValue>) {
+        return CppValue{value.Get<bool>()};
+      }
+    }
     if (value.Has<int64_t>()) {
       if constexpr (std::is_same_v<std::decay_t<T>, CppValue>) {
         return CppValue{value.Get<int64_t>()};
@@ -254,6 +301,19 @@ Result<T> CastToCustomValue(const Val& value) {
                      ", actual type: " + GetCustomValueTypeName(custom_value)};
   }
   return custom_value.Get<T>();
+}
+
+template <typename T>
+Result<T> CastToCppValue(const Val& value) {
+  const auto& opt_cpp_value = CastToCustomValue<CppValue>(value);
+  ADT_RETURN_IF_ERROR(opt_cpp_value);
+  const auto& cpp_value = opt_cpp_value.GetOkValue();
+  if (!cpp_value.Has<T>()) {
+    return TypeError{std::string() + "cast failed. expected type: " +
+                     GetCppValueTypeNameImpl<T>() +
+                     ", actual type: " + GetCppValueTypeName(cpp_value)};
+  }
+  return cpp_value.Get<T>();
 }
 
 Result<Val> CustomGetAttr(const CustomValue& custom_value,

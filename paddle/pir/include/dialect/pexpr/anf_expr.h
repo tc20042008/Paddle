@@ -77,16 +77,18 @@ struct AnfExpr;
 using AnfExprBase =
     std::variant<Atomic<AnfExpr>, Combined<AnfExpr>, Let<AnfExpr>>;
 
-using adt::Result;
-
 // A-norm form
 struct AnfExpr : public AnfExprBase {
   using AnfExprBase::AnfExprBase;
   DEFINE_ADT_VARIANT_METHODS(AnfExprBase);
 
+  static constexpr const char* kString() { return "str"; }
+  static constexpr const char* kLambda() { return "lambda"; }
+  static constexpr const char* kIf() { return "if"; }
+  static constexpr const char* kLet() { return "__builtin_let__"; }
+
   std::string DumpToJsonString();
   std::string DumpToJsonString(int indent);
-  static Result<AnfExpr> ParseFromJsonString(const std::string& json_str);
 };
 
 }  // namespace pexpr

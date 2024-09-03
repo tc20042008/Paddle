@@ -57,8 +57,8 @@ Result<adt::Ok> DispatchRawContextImpl<Val>::LaunchCudaKernel(
           const_cast<std::decay_t<decltype(impl)>*>(&impl)));
     });
   }
-  cuda_module->LaunchCudaKernel(func_name, num_blocks, num_threads, void_args);
-  return adt::Ok{};
+  return cuda_module->LaunchCudaKernel(
+      func_name, num_blocks, num_threads, void_args);
 }
 
 namespace {
@@ -92,16 +92,16 @@ Result<Val> StaticCast(DstT arg_type, const SrcT cpp_value) {
 
 Result<Val> CppValueStaticCast(const InterpretFuncType<Val>& Interpret,
                                const std::vector<Val>& args) {
-  if (args.size() != 2) {
+  if (args.size() != 3) {
     return TypeError{
         std::string() +
-        "CppValue.static_cast take 2 arguments (including self) but " +
+        "CppValue.static_cast take 3 arguments (including self) but " +
         std::to_string(args.size()) + " were given."};
   }
-  const Result<CppValue>& cpp_value = CastToCustomValue<CppValue>(args.at(0));
-  ADT_RETURN_IF_ERROR(cpp_value);
   const Result<ArgType>& arg_type = CastToCustomValue<ArgType>(args.at(1));
   ADT_RETURN_IF_ERROR(arg_type);
+  const Result<CppValue>& cpp_value = CastToCustomValue<CppValue>(args.at(2));
+  ADT_RETURN_IF_ERROR(cpp_value);
   const auto& pattern_match = ::common::Overloaded{
       [&](auto arg_type_impl, auto cpp_value_impl) -> Result<Val> {
         return StaticCast(arg_type_impl, cpp_value_impl);
@@ -109,19 +109,6 @@ Result<Val> CppValueStaticCast(const InterpretFuncType<Val>& Interpret,
   return std::visit(pattern_match,
                     arg_type.GetOkValue().variant(),
                     cpp_value.GetOkValue().variant());
-}
-
-Result<Val> CppValueGetAttr(const CppValue& cpp_value,
-                            const std::string& name) {
-  static const std::unordered_map<std::string, BuiltinFuncType<Val>> map{
-      {"static_cast", &CppValueStaticCast},
-  };
-  const auto& iter = map.find(name);
-  if (iter == map.end()) {
-    return AttributeError{std::string("'CppValue' has no attribute '") + name +
-                          "'"};
-  }
-  return MethodClosure<Val>{Val{cpp_value}, Val{iter->second}};
 }
 
 template <typename T>
@@ -203,14 +190,8 @@ Result<Val> MakeDispatchCtx(const InterpretFuncType<Val>& Interpret,
                      "'DispatchRawCtx.DispatchCtx' takes 2 arguments, but " +
                      std::to_string(args.size()) + "were given."};
   }
-  const Result<DispatchRawContext<Val>>& raw_ctx = args.at(0).Match(
-      [&](const DispatchRawContext<Val>& raw_ctx)
-          -> Result<DispatchRawContext<Val>> { return raw_ctx; },
-      [&](const auto&) -> Result<DispatchRawContext<Val>> {
-        return TypeError{std::string() +
-                         "the self argument of 'DispatchRawCtx.DispatchCtx' "
-                         "must be an DispatchRawContext."};
-      });
+  const Result<DispatchRawContext<Val>>& raw_ctx =
+      CastToCustomValue<DispatchRawContext<Val>>(args.at(0));
   ADT_RETURN_IF_ERROR(raw_ctx);
   const Result<pexpr::Object<Val>>& object = args.at(1).Match(
       [&](const pexpr::Object<Val>& obj) -> Result<pexpr::Object<Val>> {
@@ -239,7 +220,7 @@ Result<Val> DispatchRawContextGetAttr(const DispatchRawContext<Val>& raw_ctx,
   static const std::unordered_map<std::string, KernelRawCtxGettAttrT> map{
       {"inputs", &DispatchRawContextGetInputs},
       {"outputs", &DispatchRawContextGetOutputs},
-      {"DispatchCtx", &DispatchRawContextMakeDispatchCtx},
+      {"DispatcherCtx", &DispatchRawContextMakeDispatchCtx},
   };
   const auto& iter = map.find(name);
   if (iter == map.end()) {
@@ -248,9 +229,6 @@ Result<Val> DispatchRawContextGetAttr(const DispatchRawContext<Val>& raw_ctx,
   }
   return iter->second(raw_ctx, name);
 }
-
-using KernelCtxGettAttrT = Result<Val> (*)(const DispatchContext<Val>& ctx,
-                                           const std::string&);
 
 Result<Val> DispatchContextGetInputs(const DispatchContext<Val>& ctx,
                                      const std::string& attr_name) {
@@ -281,7 +259,7 @@ Result<Val> LaunchCuda(const InterpretFuncType<Val>& Interpret,
   if (args.size() != 5) {
     return TypeError{
         std::string() +
-        "DispatchCtx.cuda_call take 6 arguments (including self) but " +
+        "DispatchCtx.launch_cuda take 6 arguments (including self) but " +
         std::to_string(args.size()) + " were given."};
   }
   const Result<DispatchContext<Val>>& ctx =
@@ -290,9 +268,9 @@ Result<Val> LaunchCuda(const InterpretFuncType<Val>& Interpret,
   const Result<std::string>& func_name =
       CastToBuiltinValue<std::string>(args.at(1));
   ADT_RETURN_IF_ERROR(func_name);
-  const Result<int64_t>& num_blocks = CastToBuiltinValue<int64_t>(args.at(2));
+  const Result<int64_t>& num_blocks = CastToCppValue<int64_t>(args.at(2));
   ADT_RETURN_IF_ERROR(num_blocks);
-  const Result<int64_t>& num_threads = CastToBuiltinValue<int64_t>(args.at(3));
+  const Result<int64_t>& num_threads = CastToCppValue<int64_t>(args.at(3));
   ADT_RETURN_IF_ERROR(num_threads);
   const Result<adt::List<CppValue>>& kernel_args = GetKernelArgs(args.at(4));
   ADT_RETURN_IF_ERROR(kernel_args);
@@ -318,31 +296,37 @@ Result<Val> MakeDispatchContextMethod(const DispatchContext<Val>& ctx,
 }
 
 template <typename T>
-Result<Val> MakeDefineCtxArgType(const InterpretFuncType<Val>& Interpret,
-                                 const std::vector<Val>& args) {
+Result<Val> MakeDefineCtxArgType(const DispatchContext<Val>& ctx,
+                                 const std::string&) {
   return ArgType{CppArgType<T>{}};
 }
+
+using KernelCtxGettAttrT = Result<Val> (*)(const DispatchContext<Val>& ctx,
+                                           const std::string&);
 
 Result<Val> DispatchContextGetAttr(const DispatchContext<Val>& ctx,
                                    const std::string& name) {
   static const std::unordered_map<std::string, KernelCtxGettAttrT> map{
+      {"static_cast", &MakeDispatchContextMethod<&CppValueStaticCast>},
       {"inputs", &DispatchContextGetInputs},
       {"outputs", &DispatchContextGetOutputs},
       {"launch_cuda", &MakeDispatchContextMethod<&LaunchCuda>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                             \
-  {#cpp_type, &MakeDispatchContextMethod<&MakeDefineCtxArgType<cpp_type>>}, \
-      {"const_" #cpp_type,                                                  \
-       &MakeDispatchContextMethod<&MakeDefineCtxArgType<const cpp_type>>},  \
-      {#cpp_type "_ptr",                                                    \
-       &MakeDispatchContextMethod<&MakeDefineCtxArgType<cpp_type*>>},       \
-      {"const_" #cpp_type "_ptr",                                           \
-       &MakeDispatchContextMethod<&MakeDefineCtxArgType<const cpp_type*>>},
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                    \
+  {#cpp_type, &MakeDefineCtxArgType<cpp_type>},                    \
+      {"const_" #cpp_type, &MakeDefineCtxArgType<const cpp_type>}, \
+      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type*>},        \
+      {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-          {"void_ptr",
-           &MakeDispatchContextMethod<&MakeDefineCtxArgType<void*>>},
-      {"const_void_ptr",
-       &MakeDispatchContextMethod<&MakeDefineCtxArgType<const void*>>},
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                               \
+  {#cpp_type, &MakeDefineCtxArgType<cpp_type##_t>},                    \
+      {"const_" #cpp_type, &MakeDefineCtxArgType<const cpp_type##_t>}, \
+      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type##_t*>},        \
+      {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type##_t*>},
+          AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
+#undef MAKE_INT_CPP_TYPE_CASE
+              {"void_ptr", &MakeDefineCtxArgType<void*>},
+      {"const_void_ptr", &MakeDefineCtxArgType<const void*>},
   };
   const auto& iter = map.find(name);
   if (iter == map.end()) {
@@ -357,9 +341,6 @@ Result<Val> DispatchContextGetAttr(const DispatchContext<Val>& ctx,
 Result<Val> CustomGetAttr(const CustomValue& custom_value,
                           const std::string& name) {
   return custom_value.Match(
-      [&](const CppValue& cpp_value) -> Result<Val> {
-        return CppValueGetAttr(cpp_value, name);
-      },
       [&](const ConstTensor<Val>& tensor) -> Result<Val> {
         return TensorGetAttr(tensor, name);
       },
@@ -375,6 +356,10 @@ Result<Val> CustomGetAttr(const CustomValue& custom_value,
       [&](const kernel_define::ArgType&) -> Result<Val> {
         return AttributeError{
             std::string("'ArgType' object has no attribute '") + name + "' "};
+      },
+      [&](const CppValue&) -> Result<Val> {
+        return AttributeError{
+            std::string("'CppValue' object has no attribute '") + name + "' "};
       });
 }
 

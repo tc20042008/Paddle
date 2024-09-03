@@ -12,11 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include <atomic>
-#include "paddle/common/enforce.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_util.h"
+#pragma once
 
-namespace pexpr {}  // namespace pexpr
+#include <string>
+#include <vector>
+
+#include "paddle/phi/common/ap/adt.h"
+
+namespace phi {
+
+class DenseTensor;
+
+}
+
+namespace ap::kernel_dispatch {
+
+adt::Result<adt::Ok> ApUnaryKernel(
+    const std::vector<const phi::DenseTensor*>& xs,
+    int num_outputs,
+    const std::string& kernel_definer_lambda,
+    const std::string& define_ctx_maker_lambda,
+    const std::string& kernel_dispatcher_lambda,
+    const std::string& dispatch_ctx_maker_lambda,
+    std::vector<phi::DenseTensor*> outs);
+
+}  // namespace ap::kernel_dispatch

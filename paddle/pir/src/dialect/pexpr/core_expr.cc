@@ -21,14 +21,6 @@
 
 namespace pexpr {
 
-const char kBuiltinNothing[] = "None";
-const char kBuiltinIf[] = "if";
-const char kBuiltinId[] = "__builtin_identity__";
-const char kBuiltinList[] = "__builtin_list__";
-const char kBuiltinGetAttr[] = "__builtin_get_attr__";
-const char kBuiltinGetItem[] = "__builtin_get_item__";
-const char kBuiltinApply[] = "__builtin_apply__";
-
 namespace {
 
 std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {

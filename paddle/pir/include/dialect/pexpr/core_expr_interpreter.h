@@ -187,15 +187,19 @@ class CoreExprInterpreter {
   }
   static Object<ValueT> InitBuiltins() {
     return Object<ValueT>{std::unordered_map<std::string, ValueT>{
-        {kBuiltinNothing, ValueT{adt::Nothing{}}},
-        {kBuiltinIf, ValueT{BuiltinFuncType<ValueT>(&BuiltinIf<ValueT>)}},
-        {kBuiltinId, ValueT{BuiltinFuncType<ValueT>(&BuiltinIdentity<ValueT>)}},
-        {kBuiltinList, ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
-        {kBuiltinGetAttr,
+        {CoreExpr::kBuiltinNothing(), ValueT{adt::Nothing{}}},
+        {CoreExpr::kBuiltinIf(),
+         ValueT{BuiltinFuncType<ValueT>(&BuiltinIf<ValueT>)}},
+        {CoreExpr::kBuiltinId(),
+         ValueT{BuiltinFuncType<ValueT>(&BuiltinIdentity<ValueT>)}},
+        {CoreExpr::kBuiltinList(),
+         ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
+        {CoreExpr::kBuiltinGetAttr(),
          ValueT{BuiltinFuncType<ValueT>(&BuiltinGetAttr<ValueT>)}},
-        {kBuiltinGetItem,
+        {CoreExpr::kBuiltinGetItem(),
          ValueT{BuiltinFuncType<ValueT>(&BuiltinGetItem<ValueT>)}},
-        {kBuiltinApply, ValueT{BuiltinFuncType<ValueT>(&BuiltinApply<ValueT>)}},
+        {CoreExpr::kBuiltinApply(),
+         ValueT{BuiltinFuncType<ValueT>(&BuiltinApply<ValueT>)}},
         {"list", ValueT{BuiltinFuncType<ValueT>(&BuiltinList<ValueT>)}},
     }};
   }

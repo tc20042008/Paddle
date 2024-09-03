@@ -51,7 +51,7 @@ TEST(KernelDispatch, CppValue) {
       .func_name2arg_types =
           std::unordered_map<std::string, adt::List<kernel_define::ArgType>>{}};
   KernelDispatcherInterpreter interpreter;
-  const Result<Val>& ret = interpreter(lambda, raw_ctx);
+  const Result<Val>& ret = interpreter.CallLambda(lambda, raw_ctx);
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"
                << pexpr::CoreExpr{lambda}.ToSExpression() << std::endl;

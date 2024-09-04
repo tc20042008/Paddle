@@ -170,7 +170,8 @@ class CpsInterpreterBase {
 };
 
 template <typename ValueT>
-using BuiltinFuncType = Result<ValueT> (*)(const std::vector<ValueT>& args);
+using BuiltinFuncType = Result<ValueT> (*)(const ValueT&,
+                                           const std::vector<ValueT>& args);
 
 template <typename ValueT>
 using BuiltinHighOrderFuncType =

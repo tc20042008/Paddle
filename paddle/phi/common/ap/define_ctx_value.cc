@@ -76,14 +76,13 @@ ArgType ArgType::RemoveConst() const {
 
 namespace {
 
-Result<Val> MakeDefinerCtxModule(const std::vector<Val>& args) {
-  if (args.size() != 3) {
-    return TypeError{
-        std::string(
-            "Definectx.module takes 3 arguments (including self) but ") +
-        std::to_string(args.size()) + "were given."};
+Result<Val> DefinerCtxMakeModule(const Val& self,
+                                 const std::vector<Val>& args) {
+  if (args.size() != 2) {
+    return TypeError{std::string("Definectx.module takes 2 arguments but ") +
+                     std::to_string(args.size()) + "were given."};
   }
-  const auto& list = args.at(1).Match(
+  const auto& list = args.at(0).Match(
       [&](const adt::List<Val>& l) -> adt::List<Val> { return l; },
       [&](const auto& impl) -> adt::List<Val> {
         return adt::List<Val>{Val{impl}};
@@ -104,12 +103,12 @@ Result<Val> MakeDefinerCtxModule(const std::vector<Val>& args) {
     }
     func_declares->emplace_back(custom_val.Get<FuncDeclare>());
   }
-  if (!args.at(2).Has<CustomValue>()) {
+  if (!args.at(1).Has<CustomValue>()) {
     return TypeError{
         std::string("the seoncd argument of Definectx.module must be a "
                     "source_code object.")};
   }
-  const auto& custom_val = args.at(2).Get<CustomValue>();
+  const auto& custom_val = args.at(1).Get<CustomValue>();
   if (!custom_val.Has<SourceCode>()) {
     return TypeError{
         std::string("the seoncd argument of Definectx.module must be a "
@@ -132,32 +131,32 @@ Result<adt::List<ArgType>> GetFuncArgTypes(const Val& val) {
   return ret;
 }
 
-Result<Val> MakeDefinerCtxDeclareFunc(const std::vector<Val>& args) {
-  if (args.size() != 3) {
+Result<Val> DefinerCtxMakeDeclareFunc(const Val& self,
+                                      const std::vector<Val>& args) {
+  if (args.size() != 2) {
     return TypeError{
-        std::string(
-            "Definectx.declare_func takes 3 arguments  (including self) but ") +
+        std::string("Definectx.declare_func takes 2 arguments but ") +
         std::to_string(args.size()) + "were given."};
   }
-  const Result<FuncId>& func_id = CastToBuiltinValue<FuncId>(args.at(1));
+  const Result<FuncId>& func_id = CastToBuiltinValue<FuncId>(args.at(0));
   ADT_RETURN_IF_ERROR(func_id);
-  const Result<adt::List<ArgType>>& arg_types = GetFuncArgTypes(args.at(2));
+  const Result<adt::List<ArgType>>& arg_types = GetFuncArgTypes(args.at(1));
   ADT_RETURN_IF_ERROR(arg_types);
   return FuncDeclare{func_id.GetOkValue(), arg_types.GetOkValue()};
 }
 
-Result<Val> MakeDefinerCtxSource(const std::vector<Val>& args) {
-  if (args.size() != 2) {
+Result<Val> DefinerCtxMakeSource(const Val& self,
+                                 const std::vector<Val>& args) {
+  if (args.size() != 1) {
     return TypeError{
-        std::string(
-            "Definectx.declare_func takes 2 arguments  (including self) but ") +
+        std::string("Definectx.declare_func takes 1 arguments. but ") +
         std::to_string(args.size()) + "were given."};
   }
-  if (!args.at(1).Has<std::string>()) {
+  if (!args.at(0).Has<std::string>()) {
     return TypeError{std::string(
         "the first argument of Definectx.source_code must be string.")};
   }
-  return SourceCode{args.at(1).Get<std::string>()};
+  return SourceCode{args.at(0).Get<std::string>()};
 }
 
 template <typename T>
@@ -168,7 +167,7 @@ Result<Val> MakeDefinerCtxArgType(const DefinerCtx<Val>& ctx,
 
 template <BuiltinFuncType<Val> BuiltinFunc>
 Result<Val> DefinerCtxMethod(const DefinerCtx<Val>& ctx, const std::string&) {
-  return pexpr::Method<Val>{ctx, BuiltinFuncType<Val>{BuiltinFunc}};
+  return pexpr::Method<Val>{ctx, BuiltinFunc};
 }
 
 using DefinerCtxGetAttrT = Result<Val> (*)(const DefinerCtx<Val>& ctx,
@@ -177,9 +176,9 @@ using DefinerCtxGetAttrT = Result<Val> (*)(const DefinerCtx<Val>& ctx,
 Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
                               const std::string& name) {
   static const std::unordered_map<std::string, DefinerCtxGetAttrT> map{
-      {"module", &DefinerCtxMethod<&MakeDefinerCtxModule>},
-      {"declare_func", &DefinerCtxMethod<&MakeDefinerCtxDeclareFunc>},
-      {"source_code", &DefinerCtxMethod<&MakeDefinerCtxSource>},
+      {"module", &DefinerCtxMethod<&DefinerCtxMakeModule>},
+      {"declare_func", &DefinerCtxMethod<&DefinerCtxMakeDeclareFunc>},
+      {"source_code", &DefinerCtxMethod<&DefinerCtxMakeSource>},
 #define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)               \
   {#cpp_type, &MakeDefinerCtxArgType<cpp_type>},              \
       {"const_" #cpp_type, &MakeDefinerCtxArgType<cpp_type>}, \
@@ -206,17 +205,16 @@ Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
   return iter->second(ctx, name);
 }
 
-Result<Val> MakeDefinerCtx(const std::vector<Val>& args) {
-  if (args.size() != 2) {
+Result<Val> MakeDefinerCtx(const Val& self, const std::vector<Val>& args) {
+  if (args.size() != 1) {
     return adt::errors::TypeError{
-        std::string() + "'DefinerRawCtx.DefinerCtx' takes 2 arguments, but " +
+        std::string() + "'DefinerRawCtx.DefinerCtx' takes 1 arguments, but " +
         std::to_string(args.size()) + "were given."};
   }
 
-  const Result<DefinerRawCtx>& raw_ctx =
-      CastToCustomValue<DefinerRawCtx>(args.at(0));
+  const Result<DefinerRawCtx>& raw_ctx = CastToCustomValue<DefinerRawCtx>(self);
   ADT_RETURN_IF_ERROR(raw_ctx);
-  const Result<pexpr::Object<Val>>& object = args.at(1).Match(
+  const Result<pexpr::Object<Val>>& object = args.at(0).Match(
       [&](const pexpr::Object<Val>& obj) -> Result<pexpr::Object<Val>> {
         return obj;
       },

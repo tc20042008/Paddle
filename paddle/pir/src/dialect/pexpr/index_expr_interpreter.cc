@@ -14,15 +14,15 @@
 
 #pragma once
 #include "paddle/pir/include/dialect/pexpr/index_expr_interpreter.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_interpreter.h"
+#include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_builtin_functions.h"
 
 namespace pexpr::index_expr {
 
-class IndexExprInterpreterImpl : public CoreExprInterpreter<Val> {
+class IndexExprInterpreterImpl : public CpsExprInterpreter<Val> {
  public:
   explicit IndexExprInterpreterImpl(const std::shared_ptr<EnvMgr>& env_mgr)
-      : CoreExprInterpreter<Val>(env_mgr, MakeBuiltinFrame()) {}
+      : CpsExprInterpreter<Val>(env_mgr, MakeBuiltinFrame()) {}
   IndexExprInterpreterImpl(const IndexExprInterpreterImpl&) = delete;
   IndexExprInterpreterImpl(IndexExprInterpreterImpl&&) = delete;
 
@@ -72,7 +72,7 @@ Result<Val> IndexExprInterpreter::operator()(
     const Lambda<CoreExpr>& lambda, const std::vector<Val>& args) const {
   const auto& env = env_mgr_->New(impl_->builtin_frame());
   Closure<Val> closure{lambda, env};
-  Result<Val> ret = (*impl_)(closure, args);
+  Result<Val> ret = impl_->Interpret(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;
 }
@@ -87,7 +87,7 @@ Result<Val> IndexExprInterpreter::operator()(
     env->Set(name, Val{val});
   }
   Closure<Val> closure{lambda, env};
-  Result<Val> ret = (*impl_)(closure, args);
+  Result<Val> ret = impl_->Interpret(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;
 }

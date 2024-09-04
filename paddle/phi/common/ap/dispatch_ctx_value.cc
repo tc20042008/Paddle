@@ -89,16 +89,15 @@ Result<Val> StaticCast(DstT arg_type, const SrcT cpp_value) {
   }
 }
 
-Result<Val> CppValueStaticCast(const std::vector<Val>& args) {
-  if (args.size() != 3) {
-    return TypeError{
-        std::string() +
-        "CppValue.static_cast take 3 arguments (including self) but " +
-        std::to_string(args.size()) + " were given."};
+Result<Val> CppValueStaticCast(const Val& self, const std::vector<Val>& args) {
+  if (args.size() != 2) {
+    return TypeError{std::string() +
+                     "CppValue.static_cast take 2 arguments. but " +
+                     std::to_string(args.size()) + " were given."};
   }
-  const Result<ArgType>& arg_type = CastToCustomValue<ArgType>(args.at(1));
+  const Result<ArgType>& arg_type = CastToCustomValue<ArgType>(args.at(0));
   ADT_RETURN_IF_ERROR(arg_type);
-  const Result<CppValue>& cpp_value = CastToCustomValue<CppValue>(args.at(2));
+  const Result<CppValue>& cpp_value = CastToCustomValue<CppValue>(args.at(1));
   ADT_RETURN_IF_ERROR(cpp_value);
   const auto& pattern_match = ::common::Overloaded{
       [&](auto arg_type_impl, auto cpp_value_impl) -> Result<Val> {
@@ -250,24 +249,24 @@ Result<adt::List<CppValue>> GetKernelArgs(const Val& args) {
   return ret;
 }
 
-Result<Val> LaunchCuda(const std::vector<Val>& args) {
-  if (args.size() != 5) {
+Result<Val> LaunchCuda(const Val& self, const std::vector<Val>& args) {
+  if (args.size() != 4) {
     return TypeError{
         std::string() +
         "DispatchCtx.launch_cuda take 6 arguments (including self) but " +
         std::to_string(args.size()) + " were given."};
   }
   const Result<DispatchContext<Val>>& ctx =
-      CastToCustomValue<DispatchContext<Val>>(args.at(0));
+      CastToCustomValue<DispatchContext<Val>>(self);
   ADT_RETURN_IF_ERROR(ctx);
   const Result<std::string>& func_name =
-      CastToBuiltinValue<std::string>(args.at(1));
+      CastToBuiltinValue<std::string>(args.at(0));
   ADT_RETURN_IF_ERROR(func_name);
-  const Result<int64_t>& num_blocks = CastToCppValue<int64_t>(args.at(2));
+  const Result<int64_t>& num_blocks = CastToCppValue<int64_t>(args.at(1));
   ADT_RETURN_IF_ERROR(num_blocks);
-  const Result<int64_t>& num_threads = CastToCppValue<int64_t>(args.at(3));
+  const Result<int64_t>& num_threads = CastToCppValue<int64_t>(args.at(2));
   ADT_RETURN_IF_ERROR(num_threads);
-  const Result<adt::List<CppValue>>& kernel_args = GetKernelArgs(args.at(4));
+  const Result<adt::List<CppValue>>& kernel_args = GetKernelArgs(args.at(3));
   ADT_RETURN_IF_ERROR(kernel_args);
   const Result<adt::Ok>& ret =
       ctx.GetOkValue()->raw_ctx->LaunchCudaKernel(func_name.GetOkValue(),

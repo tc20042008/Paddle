@@ -83,7 +83,14 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
         [&](const CpsBuiltinHighOrderFuncType<ValueT>& func)
             -> Result<adt::Ok> { return func(this, composed_call); },
         [&](const Method<ValueT>& method) -> Result<adt::Ok> {
-          return InterpretMethodCall(method, composed_call);
+          return method->func.Match(
+              [&](const BuiltinFuncType<ValueT>& func) {
+                return InterpretBuiltinMethodCall(
+                    func, method->obj, composed_call);
+              },
+              [&](const auto&) {
+                return InterpretMethodCall(method, composed_call);
+              });
         },
         [&](const Closure<ValueT>& closure) -> Result<adt::Ok> {
           return InterpretClosureCall(composed_call->outter_func,
@@ -96,19 +103,6 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                            GetBuiltinTypeName(composed_call->inner_func) +
                            "' object is not callable"};
         });
-  }
-
-  Result<adt::Ok> InterpretMethodCall(const Method<ValueT>& method,
-                                      ComposedCallImpl<ValueT>* composed_call) {
-    std::vector<ValueT> new_args;
-    new_args.reserve(composed_call->args.size() + 1);
-    new_args.emplace_back(method->obj);
-    for (const auto& arg : composed_call->args) {
-      new_args.emplace_back(arg);
-    }
-    composed_call->inner_func = method->func;
-    composed_call->args = std::move(new_args);
-    return adt::Ok{};
   }
 
   bool IsHalt(const ValueT& func) {
@@ -203,8 +197,16 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
   Result<adt::Ok> InterpretBuiltinFuncCall(
       const BuiltinFuncType<ValueT>& func,
       ComposedCallImpl<ValueT>* composed_call) {
+    return InterpretBuiltinMethodCall(
+        func, ValueT{adt::Nothing{}}, composed_call);
+  }
+
+  Result<adt::Ok> InterpretBuiltinMethodCall(
+      const BuiltinFuncType<ValueT>& func,
+      const ValueT& obj,
+      ComposedCallImpl<ValueT>* composed_call) {
     const auto original_outter_func = composed_call->outter_func;
-    const auto& opt_inner_ret = func(composed_call->args);
+    const auto& opt_inner_ret = func(obj, composed_call->args);
     ADT_RETURN_IF_ERROR(opt_inner_ret);
     const auto& inner_ret = opt_inner_ret.GetOkValue();
     if (original_outter_func.template Has<Closure<ValueT>>()) {
@@ -219,6 +221,18 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
     composed_call->outter_func = &BuiltinHalt<ValueT>;
     composed_call->inner_func = original_outter_func;
     composed_call->args = {inner_ret};
+    return adt::Ok{};
+  }
+  Result<adt::Ok> InterpretMethodCall(const Method<ValueT>& method,
+                                      ComposedCallImpl<ValueT>* composed_call) {
+    std::vector<ValueT> new_args;
+    new_args.reserve(composed_call->args.size() + 1);
+    new_args.emplace_back(method->obj);
+    for (const auto& arg : composed_call->args) {
+      new_args.emplace_back(arg);
+    }
+    composed_call->inner_func = method->func;
+    composed_call->args = std::move(new_args);
     return adt::Ok{};
   }
 

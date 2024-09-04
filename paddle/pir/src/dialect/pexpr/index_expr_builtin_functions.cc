@@ -61,7 +61,7 @@ inline Maybe<int64_t> TryGetInt64(const Val& val) {
       [&](const auto&) -> Maybe<int64_t> { return Nothing{}; });
 }
 
-Result<Val> MakePtrGetItem(const std::vector<Val>& args) {
+Result<Val> MakePtrGetItem(const Val&, const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{std::string("PtrGetItem takes 3 arguments but ") +
                      std::to_string(args.size()) + "were given."};
@@ -95,7 +95,8 @@ Result<Val> ConvertResult(const T& result) {
 
 }  // namespace
 
-Result<Val> MakeIndexExprBroadcastMask(const std::vector<Val>& args) {
+Result<Val> MakeIndexExprBroadcastMask(const Val&,
+                                       const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{
         std::string("IndexExprBroadcastMask takes 2 arguments but ") +
@@ -116,7 +117,7 @@ Result<Val> MakeIndexExprBroadcastMask(const std::vector<Val>& args) {
   return std::visit(pattern_match, opt_arg0.variant(), opt_arg1.variant());
 }
 
-Result<Val> MakeSlice(const std::vector<Val>& args) {
+Result<Val> MakeSlice(const Val&, const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{std::string("Slice takes 3 arguments but ") +
                      std::to_string(args.size()) + "were given."};
@@ -139,7 +140,7 @@ Result<Val> MakeSlice(const std::vector<Val>& args) {
                     opt_step.variant());
 }
 
-Result<Val> MakeIndexExprSlice(const std::vector<Val>& args) {
+Result<Val> MakeIndexExprSlice(const Val&, const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{std::string("IndexExprSlice takes 3 arguments but ") +
                      std::to_string(args.size()) + "were given."};
@@ -164,7 +165,7 @@ Result<Val> MakeIndexExprSlice(const std::vector<Val>& args) {
                     opt_index_expr.variant());
 }
 
-Result<Val> MakeIndexExprAffine(const std::vector<Val>& args) {
+Result<Val> MakeIndexExprAffine(const Val&, const std::vector<Val>& args) {
   if (args.size() != 3) {
     return TypeError{std::string("IndexExprAffine takes 3 arguments but ") +
                      std::to_string(args.size()) + "were given."};
@@ -190,7 +191,7 @@ Result<Val> MakeIndexExprAffine(const std::vector<Val>& args) {
       opt_index_expr.variant());
 }
 
-Result<Val> MakeDisjointUnion(const std::vector<Val>& args) {
+Result<Val> MakeDisjointUnion(const Val&, const std::vector<Val>& args) {
   const auto& opt_lhs = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
   const auto& opt_rhs = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
   return std::visit(
@@ -243,7 +244,8 @@ inline Maybe<adt::List<symbol::DimExpr>> TryGetDimExprList(const Val& val) {
       });
 }
 
-Result<Val> MakeIndexTupleExprPermute(const std::vector<Val>& args) {
+Result<Val> MakeIndexTupleExprPermute(const Val&,
+                                      const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{
         std::string("IndexTupleExprPermute takes 2 arguments but ") +
@@ -266,7 +268,8 @@ Result<Val> MakeIndexTupleExprPermute(const std::vector<Val>& args) {
                     opt_expr.variant());
 }
 
-Result<Val> MakeIndexTupleExprReshape(const std::vector<Val>& args) {
+Result<Val> MakeIndexTupleExprReshape(const Val&,
+                                      const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{
         std::string("IndexTupleExprReshape takes 2 arguments but ") +
@@ -349,7 +352,8 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
   return ConvertResult(builder.Transform(transform_index_exprs, indexes_expr));
 }
 
-Result<Val> MakeOpIndexTupleExprSignature(const std::vector<Val>& args) {
+Result<Val> MakeOpIndexTupleExprSignature(const Val&,
+                                          const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{
         std::string("OpIndexTupleExprSignature takes 2 arguments but ") +
@@ -372,7 +376,8 @@ Result<Val> MakeOpIndexTupleExprSignature(const std::vector<Val>& args) {
       out_sig.variant());
 }
 
-Result<Val> MakeInIndexTupleExprSignature(const std::vector<Val>& args) {
+Result<Val> MakeInIndexTupleExprSignature(const Val&,
+                                          const std::vector<Val>& args) {
   adt::List<IndexTupleExpr> indexes_exprs;
   indexes_exprs->reserve(args.size());
   for (const auto& arg : args) {
@@ -388,7 +393,8 @@ Result<Val> MakeInIndexTupleExprSignature(const std::vector<Val>& args) {
   return InIndexTupleExprSignature{indexes_exprs};
 }
 
-Result<Val> MakeOutIndexTupleExprSignature(const std::vector<Val>& args) {
+Result<Val> MakeOutIndexTupleExprSignature(const Val&,
+                                           const std::vector<Val>& args) {
   adt::List<IndexTupleExpr> indexes_exprs;
   indexes_exprs->reserve(args.size());
   for (const auto& arg : args) {

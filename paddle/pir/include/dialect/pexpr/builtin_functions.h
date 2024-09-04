@@ -19,7 +19,7 @@
 namespace pexpr {
 
 template <typename Val>
-Result<Val> BuiltinIdentity(const std::vector<Val>& args) {
+Result<Val> BuiltinIdentity(const Val&, const std::vector<Val>& args) {
   if (args.size() != 1) {
     return TypeError{std::string(kBuiltinId()) + "takes 1 argument, but " +
                      std::to_string(args.size()) + "were given."};
@@ -28,7 +28,7 @@ Result<Val> BuiltinIdentity(const std::vector<Val>& args) {
 }
 
 template <typename Val>
-Result<Val> BuiltinList(const std::vector<Val>& args) {
+Result<Val> BuiltinList(const Val&, const std::vector<Val>& args) {
   adt::List<Val> l;
   l->reserve(args.size());
   for (const auto& arg : args) {
@@ -38,7 +38,7 @@ Result<Val> BuiltinList(const std::vector<Val>& args) {
 }
 
 template <typename Val>
-Result<Val> BuiltinGetAttr(const std::vector<Val>& args) {
+Result<Val> BuiltinGetAttr(const Val&, const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{std::string(kBuiltinGetAttr()) +
                      " takes 2 argument, but " + std::to_string(args.size()) +
@@ -51,7 +51,7 @@ Result<Val> BuiltinGetAttr(const std::vector<Val>& args) {
 }
 
 template <typename Val>
-Result<Val> BuiltinGetItem(const std::vector<Val>& args) {
+Result<Val> BuiltinGetItem(const Val&, const std::vector<Val>& args) {
   if (args.size() != 2) {
     return TypeError{std::string(kBuiltinGetItem()) +
                      " takes 2 argument, but " + std::to_string(args.size()) +
@@ -107,7 +107,7 @@ Result<Val> BuiltinApply(const InterpretFuncType<Val>& Interpret,
 }
 
 template <typename Val>
-Result<Val> BuiltinHalt(const std::vector<Val>& args) {
+Result<Val> BuiltinHalt(const Val&, const std::vector<Val>& args) {
   return RuntimeError{"Dead code. Halt function should never be touched."};
 }
 

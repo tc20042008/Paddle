@@ -20,7 +20,8 @@ namespace pexpr {
 
 namespace adt = ::cinn::adt;
 
-using Nothing = adt::Nothing;
+using adt::Nothing;
+using adt::Result;
 
 template <typename T>
 using Maybe = adt::Maybe<T>;

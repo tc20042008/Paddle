@@ -29,38 +29,14 @@ inline Result<ArithmeticType> GetArithmeticTypeFromPhiDataType(
   };
   const auto& iter = map.find(data_type);
   if (iter == map.end()) {
-    return InvalidArgumentError{"Invalid phi data type."};
+    return adt::errors::InvalidArgumentError{"Invalid phi data type."};
   }
   return iter->second;
 }
 
-namespace detail {
-
-template <typename DstT, typename SrcT>
-Result<ArithmeticValue> ArithmeticValueStaticCast(SrcT v) {
-  if constexpr (std::is_same_v<DstT, adt::Undefined>) {
-    return TypeError{"static_cast can not cast to 'undefined' type."};
-  } else if constexpr (std::is_same_v<DstT, phi::dtype::pstring>) {
-    return TypeError{"static_cast can not cast to 'pstring' type."};
-  } else if constexpr (std::is_same_v<SrcT, adt::Undefined>) {
-    return TypeError{"static_cast can not cast from 'undefined' type."};
-  } else if constexpr (std::is_same_v<SrcT, phi::dtype::pstring>) {
-    return TypeError{"static_cast can not cast from 'pstring' type."};
-  } else {
-    return static_cast<DstT>(v);
-  }
-}
-
-}  // namespace detail
-
 inline Result<ArithmeticValue> ArithmeticValueStaticCast(
     const ArithmeticType& dst_type, const ArithmeticValue& value) {
-  const auto& pattern_match = ::common::Overloaded{
-      [&](auto arg_type_impl, auto cpp_value_impl) -> Result<ArithmeticValue> {
-        using DstT = typename decltype(arg_type_impl)::type;
-        return detail::ArithmeticValueStaticCast<DstT>(cpp_value_impl);
-      }};
-  return std::visit(pattern_match, dst_type.variant(), value.variant());
+  return value.StaticCastTo(dst_type);
 }
 
 }  // namespace pexpr

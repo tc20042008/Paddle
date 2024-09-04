@@ -17,7 +17,6 @@
 #include <list>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type_util.h"
 #include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/atomic.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
@@ -362,8 +361,8 @@ Result<Value<CustomT>> ValueGetItem(const Value<CustomT>& val,
       [&](const adt::List<ValueT>& obj) -> Result<ValueT> {
         return idx.Match(
             [&](const ArithmeticValue& arithmetic_idx) -> Result<ValueT> {
-              const auto& int64_idx = ArithmeticValueStaticCast(
-                  CppArithmeticType<int64_t>{}, arithmetic_idx);
+              const auto& int64_idx =
+                  arithmetic_idx.StaticCastTo(CppArithmeticType<int64_t>{});
               ADT_RETURN_IF_ERROR(int64_idx);
               const auto& opt_index =
                   int64_idx.GetOkValue().template TryGet<int64_t>();

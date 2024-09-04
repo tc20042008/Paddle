@@ -46,11 +46,11 @@ TEST(KernelDefine, ArgType) {
                << ", error-msg: " << ret.GetError().msg() << std::endl;
   }
   ASSERT_TRUE(ret.HasOkValue());
-  const Result<ArgType>& opt_arg_type =
-      CastToCustomValue<ArgType>(ret.GetOkValue());
-  ASSERT_TRUE(opt_arg_type.HasOkValue());
-  const ArgType& arg_type = opt_arg_type.GetOkValue();
-  ASSERT_TRUE(arg_type.Has<CppArgType<const int32_t*>>());
+  const Result<pexpr::PointerType>& opt_pointer_type =
+      pexpr::CastToBuiltinValue<pexpr::PointerType>(ret.GetOkValue());
+  ASSERT_TRUE(opt_pointer_type.HasOkValue());
+  const pexpr::PointerType& pointer_type = opt_pointer_type.GetOkValue();
+  ASSERT_TRUE(pointer_type.Has<pexpr::CppPointerType<const int32_t*>>());
 }
 
 TEST(KernelDefine, FromJson) {
@@ -199,9 +199,9 @@ TEST(KernelDefine, FromJson) {
   ASSERT_EQ(func_name, "relu");
   const auto& arg_types = func_declare->arg_types;
   ASSERT_EQ(arg_types->size(), 3);
-  ASSERT_TRUE(arg_types->at(0).Has<CppArgType<const float*>>());
-  ASSERT_TRUE(arg_types->at(1).Has<CppArgType<int32_t>>());
-  ASSERT_TRUE(arg_types->at(2).Has<CppArgType<float*>>());
+  ASSERT_TRUE(arg_types->at(0).IsType<const float*>());
+  ASSERT_TRUE(arg_types->at(1).IsType<int32_t>());
+  ASSERT_TRUE(arg_types->at(2).IsType<float*>());
 }
 
 }  // namespace ap::kernel_define::test

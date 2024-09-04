@@ -43,8 +43,9 @@ TEST(CpsExprInterpreter, simple) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  ASSERT_TRUE(val.Has<int64_t>());
-  ASSERT_EQ(val.Get<int64_t>(), 1);
+  const auto& int_val = CastToArithmeticValue<int64_t>(val);
+  ASSERT_TRUE(int_val.HasOkValue());
+  ASSERT_EQ(int_val.GetOkValue(), 1);
 }
 
 TEST(CpsExprInterpreter, lambda) {
@@ -70,8 +71,9 @@ TEST(CpsExprInterpreter, lambda) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  ASSERT_TRUE(val.Has<int64_t>());
-  ASSERT_EQ(val.Get<int64_t>(), 1);
+  const auto& int_val = CastToArithmeticValue<int64_t>(val);
+  ASSERT_TRUE(int_val.HasOkValue());
+  ASSERT_EQ(int_val.GetOkValue(), 1);
 }
 
 }  // namespace pexpr::tests

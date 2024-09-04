@@ -14,20 +14,27 @@
 
 #include "paddle/phi/common/ap/dispatch_ctx_value.h"
 #include <type_traits>
+#include "paddle/pir/include/dialect/pexpr/arithmetic_type_util.h"
 
 namespace ap::kernel_dispatch {
 
-using ap::kernel_define::CppArgType;
+using pexpr::ArithmeticType;
+using pexpr::ArithmeticValue;
 using pexpr::BuiltinFuncType;
+using pexpr::CastToArithmeticValue;
 using pexpr::CastToBuiltinValue;
+using pexpr::CppArithmeticType;
+using pexpr::CppPointerType;
 using pexpr::Method;
+using pexpr::PointerType;
+using pexpr::PointerValue;
 
 template <>
 Result<adt::Ok> DispatchRawContextImpl<Val>::LaunchCudaKernel(
     const std::string& func_name,
     int64_t num_blocks,
     int64_t num_threads,
-    const adt::List<CppValue>& kernel_args) const {
+    const adt::List<ArgValue>& kernel_args) const {
   std::vector<void*> void_args;
   void_args.reserve(kernel_args->size());
   const auto& iter = this->func_name2arg_types.find(func_name);
@@ -45,8 +52,8 @@ Result<adt::Ok> DispatchRawContextImpl<Val>::LaunchCudaKernel(
   for (int i = 0; i < defined_arg_types->size(); ++i) {
     const auto& defined_arg_type = defined_arg_types->at(i);
     const auto& kernel_arg = kernel_args->at(i);
-    const auto& arg_type = GetArgType(kernel_arg);
-    if (!(defined_arg_type.RemoveConst() == arg_type.RemoveConst())) {
+    const auto& arg_type = kernel_arg.GetType();
+    if (!(defined_arg_type == arg_type)) {
       return TypeError{std::string() + "error: invalid conversion from '" +
                        arg_type.name() + "' to '" + defined_arg_type.name() +
                        "'"};
@@ -62,50 +69,21 @@ Result<adt::Ok> DispatchRawContextImpl<Val>::LaunchCudaKernel(
 
 namespace {
 
-template <typename DstT, typename SrcT>
-Result<Val> StaticCast(DstT arg_type, const SrcT cpp_value) {
-  if constexpr (std::is_pointer_v<typename DstT::type>) {
-    return InvalidArgumentError{std::string() +
-                                "static_cast does not support pointers."};
-  } else if constexpr (std::is_pointer_v<SrcT>) {
-    return InvalidArgumentError{std::string() +
-                                "static_cast does not support pointers."};
-  } else if constexpr (std::is_same_v<typename DstT::type,  // NOLINT
-                                      phi::dtype::pstring>) {
-    return InvalidArgumentError{std::string() +
-                                "static_cast does not support pstring."};
-  } else if constexpr (std::is_same_v<typename DstT::type,  // NOLINT
-                                      const phi::dtype::pstring>) {
-    return InvalidArgumentError{std::string() +
-                                "static_cast does not support pstring."};
-  } else if constexpr (std::is_same_v<SrcT, phi::dtype::pstring>) {
-    return InvalidArgumentError{std::string() +
-                                "static_cast does not support pstring."};
-  } else if constexpr (std::is_same_v<SrcT, const phi::dtype::pstring>) {
-    return InvalidArgumentError{std::string() +
-                                "static_cast does not support pstring."};
-  } else {
-    return Val{CppValue{static_cast<typename DstT::type>(cpp_value)}};
-  }
-}
-
-Result<Val> CppValueStaticCast(const Val& self, const std::vector<Val>& args) {
+Result<Val> ArgValueStaticCast(const Val& self, const std::vector<Val>& args) {
   if (args.size() != 2) {
-    return TypeError{std::string() +
-                     "CppValue.static_cast take 2 arguments. but " +
+    return TypeError{std::string() + "static_cast take 2 arguments. but " +
                      std::to_string(args.size()) + " were given."};
   }
-  const Result<ArgType>& arg_type = CastToCustomValue<ArgType>(args.at(0));
+  const Result<ArithmeticType>& arg_type =
+      CastToBuiltinValue<ArithmeticType>(args.at(0));
   ADT_RETURN_IF_ERROR(arg_type);
-  const Result<CppValue>& cpp_value = CastToCustomValue<CppValue>(args.at(1));
-  ADT_RETURN_IF_ERROR(cpp_value);
-  const auto& pattern_match = ::common::Overloaded{
-      [&](auto arg_type_impl, auto cpp_value_impl) -> Result<Val> {
-        return StaticCast(arg_type_impl, cpp_value_impl);
-      }};
-  return std::visit(pattern_match,
-                    arg_type.GetOkValue().variant(),
-                    cpp_value.GetOkValue().variant());
+  const Result<ArithmeticValue>& arg_value =
+      CastToBuiltinValue<ArithmeticValue>(args.at(1));
+  ADT_RETURN_IF_ERROR(arg_value);
+  const auto& arithmetic_value = pexpr::ArithmeticValueStaticCast(
+      arg_type.GetOkValue(), arg_value.GetOkValue());
+  ADT_RETURN_IF_ERROR(arithmetic_value);
+  return arithmetic_value.GetOkValue();
 }
 
 template <typename T>
@@ -117,13 +95,13 @@ Result<Val> TensorShapeGetAttr(const T& tensor, const std::string&) {
 }
 
 template <typename T>
-const T* GetConstTensorDataPtr(const CppArgType<T>&,
+const T* GetConstTensorDataPtr(const pexpr::CppArithmeticType<T>&,
                                const ConstTensorData& tensor) {
   return tensor.template data<T>();
 }
 
 template <typename T>
-T* GetMutableTensorDataPtr(const CppArgType<T>&,
+T* GetMutableTensorDataPtr(const pexpr::CppArithmeticType<T>&,
                            const MutableTensorData& tensor) {
   return tensor.template data<T>();
 }
@@ -135,22 +113,30 @@ template <>
 Result<Val> TensorDataGetAttr(const ConstTensor<Val>& tensor,
                               const std::string&) {
   phi::DataType dtype = tensor->tensor_data.dtype();
-  const auto& arg_type = kernel_define::ArgType::MakeFromPhiDataType(dtype);
-  ADT_RETURN_IF_ERROR(arg_type);
-  return arg_type.GetOkValue().Match([&](const auto& impl) -> Val {
-    return CppValue{GetConstTensorDataPtr(impl, tensor->tensor_data)};
-  });
+  const auto& arithmetic_type = pexpr::GetArithmeticTypeFromPhiDataType(dtype);
+  ADT_RETURN_IF_ERROR(arithmetic_type);
+  return arithmetic_type.GetOkValue().Match(
+      [&](const adt::Undefined&) -> Result<Val> {
+        return TypeError{"dtype is invalid."};
+      },
+      [&](const auto& impl) -> Result<Val> {
+        return PointerValue{GetConstTensorDataPtr(impl, tensor->tensor_data)};
+      });
 }
 
 template <>
 Result<Val> TensorDataGetAttr(const MutableTensor<Val>& tensor,
                               const std::string&) {
   phi::DataType dtype = tensor->tensor_data.dtype();
-  const auto& arg_type = kernel_define::ArgType::MakeFromPhiDataType(dtype);
-  ADT_RETURN_IF_ERROR(arg_type);
-  return arg_type.GetOkValue().Match([&](const auto& impl) -> Val {
-    return CppValue{GetMutableTensorDataPtr(impl, tensor->tensor_data)};
-  });
+  const auto& arithmetic_type = pexpr::GetArithmeticTypeFromPhiDataType(dtype);
+  ADT_RETURN_IF_ERROR(arithmetic_type);
+  return arithmetic_type.GetOkValue().Match(
+      [&](const adt::Undefined&) -> Result<Val> {
+        return TypeError{"dtype is invalid."};
+      },
+      [&](const auto& impl) -> Result<Val> {
+        return PointerValue{GetMutableTensorDataPtr(impl, tensor->tensor_data)};
+      });
 }
 
 template <typename T>
@@ -180,16 +166,16 @@ Result<Val> DispatchRawContextGetOutputs(const DispatchRawContext<Val>& raw_ctx,
   return raw_ctx->outputs;
 }
 
-Result<Val> MakeDispatchCtx(const std::vector<Val>& args) {
-  if (args.size() != 2) {
+Result<Val> MakeDispatchCtx(const Val& self, const std::vector<Val>& args) {
+  if (args.size() != 1) {
     return TypeError{std::string() +
-                     "'DispatchRawCtx.DispatchCtx' takes 2 arguments, but " +
+                     "'DispatchRawCtx.DispatchCtx' takes 1 arguments, but " +
                      std::to_string(args.size()) + "were given."};
   }
   const Result<DispatchRawContext<Val>>& raw_ctx =
-      CastToCustomValue<DispatchRawContext<Val>>(args.at(0));
+      CastToCustomValue<DispatchRawContext<Val>>(self);
   ADT_RETURN_IF_ERROR(raw_ctx);
-  const Result<pexpr::Object<Val>>& object = args.at(1).Match(
+  const Result<pexpr::Object<Val>>& object = args.at(0).Match(
       [&](const pexpr::Object<Val>& obj) -> Result<pexpr::Object<Val>> {
         return obj;
       },
@@ -207,7 +193,7 @@ Result<Val> MakeDispatchCtx(const std::vector<Val>& args) {
 
 Result<Val> DispatchRawContextMakeDispatchCtx(
     const DispatchRawContext<Val>& raw_ctx, const std::string&) {
-  return Method<Val>{raw_ctx, Val{BuiltinFuncType<Val>(&MakeDispatchCtx)}};
+  return Method<Val>{raw_ctx, Val{&MakeDispatchCtx}};
 }
 
 Result<Val> DispatchRawContextGetAttr(const DispatchRawContext<Val>& raw_ctx,
@@ -235,16 +221,16 @@ Result<Val> DispatchContextGetOutputs(const DispatchContext<Val>& ctx,
   return DispatchRawContextGetOutputs(ctx->raw_ctx, attr_name);
 }
 
-Result<adt::List<CppValue>> GetKernelArgs(const Val& args) {
+Result<adt::List<ArgValue>> GetKernelArgs(const Val& args) {
   const Result<adt::List<Val>>& arg_list =
       CastToBuiltinValue<adt::List<Val>>(args);
   ADT_RETURN_IF_ERROR(arg_list);
-  adt::List<CppValue> ret;
+  adt::List<ArgValue> ret;
   ret->reserve(arg_list.GetOkValue()->size());
   for (const auto& arg : *arg_list.GetOkValue()) {
-    const Result<CppValue>& cpp_arg = CastToCustomValue<CppValue>(arg);
-    ADT_RETURN_IF_ERROR(cpp_arg);
-    ret->emplace_back(cpp_arg.GetOkValue());
+    const Result<ArgValue>& arg_value = CastToArgValue(arg);
+    ADT_RETURN_IF_ERROR(arg_value);
+    ret->emplace_back(arg_value.GetOkValue());
   }
   return ret;
 }
@@ -262,11 +248,13 @@ Result<Val> LaunchCuda(const Val& self, const std::vector<Val>& args) {
   const Result<std::string>& func_name =
       CastToBuiltinValue<std::string>(args.at(0));
   ADT_RETURN_IF_ERROR(func_name);
-  const Result<int64_t>& num_blocks = CastToCppValue<int64_t>(args.at(1));
+  const Result<int64_t>& num_blocks =
+      CastToArithmeticValue<int64_t>(args.at(1));
   ADT_RETURN_IF_ERROR(num_blocks);
-  const Result<int64_t>& num_threads = CastToCppValue<int64_t>(args.at(2));
+  const Result<int64_t>& num_threads =
+      CastToArithmeticValue<int64_t>(args.at(2));
   ADT_RETURN_IF_ERROR(num_threads);
-  const Result<adt::List<CppValue>>& kernel_args = GetKernelArgs(args.at(3));
+  const Result<adt::List<ArgValue>>& kernel_args = GetKernelArgs(args.at(3));
   ADT_RETURN_IF_ERROR(kernel_args);
   const Result<adt::Ok>& ret =
       ctx.GetOkValue()->raw_ctx->LaunchCudaKernel(func_name.GetOkValue(),
@@ -289,9 +277,15 @@ Result<Val> MakeDispatchContextMethod(const DispatchContext<Val>& ctx,
 }
 
 template <typename T>
-Result<Val> MakeDefineCtxArgType(const DispatchContext<Val>& ctx,
-                                 const std::string&) {
-  return ArgType{CppArgType<T>{}};
+Result<Val> MakeDefineCtxArithmeticType(const DispatchContext<Val>& ctx,
+                                        const std::string&) {
+  return ArithmeticType{CppArithmeticType<T>{}};
+}
+
+template <typename T>
+Result<Val> MakeDefineCtxPointerType(const DispatchContext<Val>& ctx,
+                                     const std::string&) {
+  return PointerType{CppPointerType<T>{}};
 }
 
 using KernelCtxGettAttrT = Result<Val> (*)(const DispatchContext<Val>& ctx,
@@ -300,26 +294,27 @@ using KernelCtxGettAttrT = Result<Val> (*)(const DispatchContext<Val>& ctx,
 Result<Val> DispatchContextGetAttr(const DispatchContext<Val>& ctx,
                                    const std::string& name) {
   static const std::unordered_map<std::string, KernelCtxGettAttrT> map{
-      {"static_cast", &MakeDispatchContextMethod<&CppValueStaticCast>},
+      {"static_cast", &MakeDispatchContextMethod<&ArgValueStaticCast>},
       {"inputs", &DispatchContextGetInputs},
       {"outputs", &DispatchContextGetOutputs},
       {"launch_cuda", &MakeDispatchContextMethod<&LaunchCuda>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)              \
-  {#cpp_type, &MakeDefineCtxArgType<cpp_type>},              \
-      {"const_" #cpp_type, &MakeDefineCtxArgType<cpp_type>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type*>},  \
-      {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type*>},
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                     \
+  {#cpp_type, &MakeDefineCtxArithmeticType<cpp_type>},              \
+      {"const_" #cpp_type, &MakeDefineCtxArithmeticType<cpp_type>}, \
+      {#cpp_type "_ptr", &MakeDefineCtxPointerType<cpp_type*>},     \
+      {"const_" #cpp_type "_ptr", &MakeDefineCtxPointerType<const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                         \
-  {#cpp_type, &MakeDefineCtxArgType<cpp_type##_t>},              \
-      {"const_" #cpp_type, &MakeDefineCtxArgType<cpp_type##_t>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxArgType<cpp_type##_t*>},  \
-      {"const_" #cpp_type "_ptr", &MakeDefineCtxArgType<const cpp_type##_t*>},
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                \
+  {#cpp_type, &MakeDefineCtxArithmeticType<cpp_type##_t>},              \
+      {"const_" #cpp_type, &MakeDefineCtxArithmeticType<cpp_type##_t>}, \
+      {#cpp_type "_ptr", &MakeDefineCtxPointerType<cpp_type##_t*>},     \
+      {"const_" #cpp_type "_ptr",                                       \
+       &MakeDefineCtxPointerType<const cpp_type##_t*>},
           AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE
-              {"void_ptr", &MakeDefineCtxArgType<void*>},
-      {"const_void_ptr", &MakeDefineCtxArgType<const void*>},
+              {"void_ptr", &MakeDefineCtxPointerType<void*>},
+      {"const_void_ptr", &MakeDefineCtxPointerType<const void*>},
   };
   const auto& iter = map.find(name);
   if (iter == map.end()) {
@@ -345,14 +340,6 @@ Result<Val> CustomGetAttr(const CustomValue& custom_value,
       },
       [&](const DispatchContext<Val>& raw_ctx) -> Result<Val> {
         return DispatchContextGetAttr(raw_ctx, name);
-      },
-      [&](const kernel_define::ArgType&) -> Result<Val> {
-        return AttributeError{
-            std::string("'ArgType' object has no attribute '") + name + "' "};
-      },
-      [&](const CppValue&) -> Result<Val> {
-        return AttributeError{
-            std::string("'CppValue' object has no attribute '") + name + "' "};
       });
 }
 

@@ -27,54 +27,10 @@ class DenseTensor;
 namespace ap::kernel_define {
 
 namespace adt = ::cinn::adt;
+using pexpr::ArithmeticType;
+using pexpr::PointerType;
 
-template <typename T>
-struct GetCppTypeNameHelper;
-
-#define SPECIALIZE_GET_CPP_TYPE_NAME(cpp_type, enum_type)        \
-  template <>                                                    \
-  struct GetCppTypeNameHelper<cpp_type> {                        \
-    static const char* Call() { return #cpp_type; }              \
-  };                                                             \
-  template <>                                                    \
-  struct GetCppTypeNameHelper<cpp_type*> {                       \
-    static const char* Call() { return #cpp_type "*"; }          \
-  };                                                             \
-  template <>                                                    \
-  struct GetCppTypeNameHelper<const cpp_type*> {                 \
-    static const char* Call() { return "const " #cpp_type "*"; } \
-  };
-PD_FOR_EACH_DATA_TYPE(SPECIALIZE_GET_CPP_TYPE_NAME);
-#undef SPECIALIZE_GET_CPP_TYPE_NAME
-
-template <>
-struct GetCppTypeNameHelper<void*> {
-  static const char* Call() { return "void*"; }
-};
-
-template <>
-struct GetCppTypeNameHelper<const void*> {
-  static const char* Call() { return "const void*"; }
-};
-
-template <typename T>
-struct CppArgType {
-  using type = T;
-  bool operator==(const CppArgType& other) const { return true; }
-  const char* name() const { return GetCppTypeNameHelper<T>::Call(); }
-};
-
-// clang-format off
-using ArgTypeImpl = std::variant<
-#define MAKE_CPP_TYPE_ALTERNATIVE(cpp_type, enum_type)    \
-    CppArgType<cpp_type>,                                 \
-    CppArgType<cpp_type*>,                                \
-    CppArgType<const cpp_type*>,
-    PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_ALTERNATIVE)
-#undef MAKE_CPP_TYPE_ALTERNATIVE
-    CppArgType<void*>,
-    CppArgType<const void*>>;
-// clang-format on
+using ArgTypeImpl = std::variant<ArithmeticType, PointerType>;
 
 struct ArgType : public ArgTypeImpl {
   using ArgTypeImpl::ArgTypeImpl;
@@ -84,9 +40,33 @@ struct ArgType : public ArgTypeImpl {
     return Match([](const auto& impl) { return impl.name(); });
   }
 
-  static adt::Result<ArgType> MakeFromPhiDataType(::phi::DataType);
+  template <typename T>
+  adt::Result<T> TryGet() const {
+    if (!this->template Has<T>()) {
+      return adt::errors::TypeError{
+          std::string() + "ArgType::TryGet() failed. T: " + typeid(T).name()};
+    }
+    return this->template Get<T>();
+  }
 
-  ArgType RemoveConst() const;
+  template <typename T>
+  bool IsType() const {
+    if constexpr (std::is_pointer_v<T>) {
+      const auto& pointer_type = this->template TryGet<pexpr::PointerType>();
+      if (pointer_type.HasError()) {
+        return false;
+      }
+      return pointer_type.GetOkValue().template Has<pexpr::CppPointerType<T>>();
+    } else {
+      const auto& arithmetic_type =
+          this->template TryGet<pexpr::ArithmeticType>();
+      if (arithmetic_type.HasError()) {
+        return false;
+      }
+      return arithmetic_type.GetOkValue()
+          .template Has<pexpr::CppArithmeticType<T>>();
+    }
+  }
 };
 
 struct DefinerRawCtxImpl {
@@ -140,12 +120,8 @@ struct ModuleImpl {
 DEFINE_ADT_RC(Module, ModuleImpl);
 
 template <typename ValueT>
-using CustomValueImpl = std::variant<DefinerRawCtx,
-                                     DefinerCtx<ValueT>,
-                                     ArgType,
-                                     FuncDeclare,
-                                     SourceCode,
-                                     Module>;
+using CustomValueImpl = std::
+    variant<DefinerRawCtx, DefinerCtx<ValueT>, FuncDeclare, SourceCode, Module>;
 
 struct CustomValue : public CustomValueImpl<pexpr::Value<CustomValue>> {
   using CustomValueImpl<pexpr::Value<CustomValue>>::CustomValueImpl;
@@ -169,11 +145,6 @@ struct GetCustomValueTypeNameHelper<DefinerRawCtx> {
 template <>
 struct GetCustomValueTypeNameHelper<DefinerCtx<Val>> {
   static const char* Call() { return "DefinerCtx"; }
-};
-
-template <>
-struct GetCustomValueTypeNameHelper<ArgType> {
-  static const char* Call() { return "ArgType"; }
 };
 
 template <>
@@ -224,6 +195,22 @@ Result<Val> CustomGetAttr(const CustomValue&, const std::string& name);
 
 inline Result<Val> CustomGetItem(const CustomValue&, const Val& idx) {
   return adt::errors::TypeError{"'IndexExprValue' object is not subscriptable"};
+}
+
+inline Result<ArgType> CastToArgType(const Val& val) {
+  return val.Match(
+      [&](const ArithmeticType& atype) -> Result<ArgType> {
+        return ArgType{atype};
+      },
+      [&](const PointerType& ptype) -> Result<ArgType> {
+        return ArgType{ptype};
+      },
+      [&](const auto&) -> Result<ArgType> {
+        return TypeError{std::string() +
+                         "CastToArgType failed. expected types: "
+                         "(ArithmeticType, PointerType), actual type: " +
+                         GetBuiltinTypeName(val)};
+      });
 }
 
 }  // namespace ap::kernel_define

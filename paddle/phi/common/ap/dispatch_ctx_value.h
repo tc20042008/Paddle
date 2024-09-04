@@ -31,24 +31,39 @@ namespace adt = ::cinn::adt;
 
 using kernel_define::ArgType;
 
-using CppValueImpl = std::variant<
-#define MAKE_ARG_VALUE_ALTERNATIVE(cpp_type, enum_type) \
-  cpp_type, cpp_type*, const cpp_type*,
-    PD_FOR_EACH_DATA_TYPE(MAKE_ARG_VALUE_ALTERNATIVE) void*,
-    const void*
-#undef MAKE_ARG_VALUE_ALTERNATIVE
-    >;
+using ArgValueImpl = std::variant<pexpr::ArithmeticValue, pexpr::PointerValue>;
 
-struct CppValue : public CppValueImpl {
-  using CppValueImpl::CppValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(CppValueImpl);
+struct ArgValue : public ArgValueImpl {
+  using ArgValueImpl::ArgValueImpl;
+  DEFINE_ADT_VARIANT_METHODS(ArgValueImpl);
+
+  ArgType GetType() const {
+    return Match([](auto impl) -> ArgType { return impl.GetType(); });
+  }
+
+  template <typename T>
+  adt::Result<T> TryGet() const {
+    if (!this->template Has<T>()) {
+      return adt::errors::TypeError{
+          std::string() + "ArgValue::TryGet() failed. T: " + typeid(T).name()};
+    }
+    return this->template Get<T>();
+  }
+
+  template <typename T>
+  adt::Result<T> TryGetValue() const {
+    if constexpr (std::is_pointer_v<T>) {
+      const auto& pointer_value = this->template TryGet<pexpr::PointerValue>();
+      ADT_RETURN_IF_ERROR(pointer_value);
+      return pointer_value.GetOkValue().template TryGet<T>();
+    } else {
+      const auto& arithmetic_value =
+          this->template TryGet<pexpr::ArithmeticValue>();
+      ADT_RETURN_IF_ERROR(arithmetic_value);
+      return arithmetic_value.GetOkValue().template TryGet<T>();
+    }
+  }
 };
-
-inline ArgType GetArgType(const CppValue& cpp_value) {
-  return cpp_value.Match([](auto impl) -> ArgType {
-    return kernel_define::CppArgType<decltype(impl)>{};
-  });
-}
 
 struct TypedBufferImpl {
   void* buffer;
@@ -173,7 +188,7 @@ struct DispatchRawContextImpl {
       const std::string& func_name,
       int64_t num_blocks,
       int64_t num_threads,
-      const adt::List<CppValue>& kernel_args) const;
+      const adt::List<ArgValue>& kernel_args) const;
 };
 
 template <typename ValueT>
@@ -193,9 +208,7 @@ template <typename ValueT>
 DEFINE_ADT_RC(DispatchContext, DispatchContextImpl<ValueT>);
 
 template <typename ValueT>
-using CustomValueImpl = std::variant<ArgType,
-                                     CppValue,
-                                     ConstTensor<ValueT>,
+using CustomValueImpl = std::variant<ConstTensor<ValueT>,
                                      MutableTensor<ValueT>,
                                      DispatchRawContext<ValueT>,
                                      DispatchContext<ValueT>>;
@@ -212,41 +225,6 @@ using Env = pexpr::Environment<Val>;
 using EnvMgr = pexpr::EnvironmentManager<Val>;
 
 template <typename T>
-struct GetCppValueTypeNameHelper;
-
-#define SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(type) \
-  template <>                                            \
-  struct GetCppValueTypeNameHelper<type> {               \
-    static const char* Call() { return #type; }          \
-  };
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)          \
-  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type);  \
-  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(cpp_type*); \
-  SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(const cpp_type*);
-PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
-#undef MAKE_CPP_TYPE_CASE
-
-template <>
-struct GetCppValueTypeNameHelper<void*> {
-  static const char* Call() { return "void*"; }
-};
-
-template <>
-struct GetCppValueTypeNameHelper<const void*> {
-  static const char* Call() { return "const void*"; }
-};
-
-template <typename T>
-inline const char* GetCppValueTypeNameImpl() {
-  return GetCppValueTypeNameHelper<std::decay_t<T>>::Call();
-}
-
-inline const char* GetCppValueTypeName(const CppValue& val) {
-  return val.Match(
-      [](auto impl) { return GetCppValueTypeNameImpl<decltype(impl)>(); });
-}
-
-template <typename T>
 struct GetCustomValueTypeNameHelper;
 
 #define SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(type) \
@@ -255,8 +233,6 @@ struct GetCustomValueTypeNameHelper;
     static const char* Call() { return #type; }          \
   };
 
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(ArgType);
-SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(CppValue);
 SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(ConstTensor<Val>);
 SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(MutableTensor<Val>);
 SPECIALIZE_GET_CUSTOM_VALUE_TYPE_NAME_IMPL(DispatchRawContext<Val>);
@@ -277,16 +253,6 @@ inline const char* GetCustomValueTypeName(const CustomValue& value) {
 template <typename T>
 Result<T> CastToCustomValue(const Val& value) {
   if (!value.Has<CustomValue>()) {
-    if (value.Has<bool>()) {
-      if constexpr (std::is_same_v<std::decay_t<T>, CppValue>) {
-        return CppValue{value.Get<bool>()};
-      }
-    }
-    if (value.Has<int64_t>()) {
-      if constexpr (std::is_same_v<std::decay_t<T>, CppValue>) {
-        return CppValue{value.Get<int64_t>()};
-      }
-    }
     return TypeError{std::string() + "cast failed. expected type: " +
                      GetCustomValueTypeNameImpl<T>() +
                      ", actual type: " + GetBuiltinTypeName(value)};
@@ -300,17 +266,18 @@ Result<T> CastToCustomValue(const Val& value) {
   return custom_value.Get<T>();
 }
 
-template <typename T>
-Result<T> CastToCppValue(const Val& value) {
-  const auto& opt_cpp_value = CastToCustomValue<CppValue>(value);
-  ADT_RETURN_IF_ERROR(opt_cpp_value);
-  const auto& cpp_value = opt_cpp_value.GetOkValue();
-  if (!cpp_value.Has<T>()) {
-    return TypeError{std::string() + "cast failed. expected type: " +
-                     GetCppValueTypeNameImpl<T>() +
-                     ", actual type: " + GetCppValueTypeName(cpp_value)};
-  }
-  return cpp_value.Get<T>();
+inline Result<ArgValue> CastToArgValue(const Val& value) {
+  return value.Match(
+      [&](const pexpr::ArithmeticValue& impl) -> Result<ArgValue> {
+        return impl;
+      },
+      [&](const pexpr::PointerValue& impl) -> Result<ArgValue> { return impl; },
+      [&](const auto&) -> Result<ArgValue> {
+        return TypeError{std::string() +
+                         "CastToArgValue failed. expected types: "
+                         "(ArithmeticValue, PointerValue), actual type: " +
+                         GetBuiltinTypeName(value)};
+      });
 }
 
 Result<Val> CustomGetAttr(const CustomValue& custom_value,

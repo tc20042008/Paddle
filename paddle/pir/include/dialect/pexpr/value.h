@@ -16,9 +16,14 @@
 
 #include <list>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
+#include "paddle/pir/include/dialect/pexpr/arithmetic_type_util.h"
+#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/atomic.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/pointer_type.h"
+#include "paddle/pir/include/dialect/pexpr/pointer_value.h"
 
 namespace pexpr {
 
@@ -186,9 +191,11 @@ using CpsBuiltinHighOrderFuncType =
 template <typename CustomT>
 using ValueBase = std::variant<CustomT,
                                Nothing,
-                               int64_t,
+                               ArithmeticType,
+                               PointerType,
+                               ArithmeticValue,
+                               PointerValue,
                                std::string,
-                               bool,
                                Closure<Value<CustomT>>,
                                Method<Value<CustomT>>,
                                adt::List<Value<CustomT>>,
@@ -207,13 +214,23 @@ template <typename T>
 struct GetBuiltinTypeNameImplHelper;
 
 template <>
-struct GetBuiltinTypeNameImplHelper<bool> {
-  static const char* Call() { return "bool"; }
+struct GetBuiltinTypeNameImplHelper<ArithmeticType> {
+  static const char* Call() { return "arithmetic_type"; }
 };
 
 template <>
-struct GetBuiltinTypeNameImplHelper<int64_t> {
-  static const char* Call() { return "int"; }
+struct GetBuiltinTypeNameImplHelper<PointerType> {
+  static const char* Call() { return "pointer_type"; }
+};
+
+template <>
+struct GetBuiltinTypeNameImplHelper<ArithmeticValue> {
+  static const char* Call() { return "arithmetic_value"; }
+};
+
+template <>
+struct GetBuiltinTypeNameImplHelper<PointerValue> {
+  static const char* Call() { return "pointer_value"; }
 };
 
 template <>
@@ -293,6 +310,20 @@ Result<T> CastToBuiltinValue(const ValueT& value) {
   return CastToBuiltinValueHelpr<T, ValueT>::Call(value);
 }
 
+template <typename T, typename ValueT>
+Result<T> CastToArithmeticValue(const ValueT& value) {
+  const auto& arithmetic_value = CastToBuiltinValue<ArithmeticValue>(value);
+  ADT_RETURN_IF_ERROR(arithmetic_value);
+  return arithmetic_value.GetOkValue().template TryGet<T>();
+}
+
+template <typename T, typename ValueT>
+Result<T> CastToPointerValue(const ValueT& value) {
+  const auto& pointer_value = CastToBuiltinValue<PointerValue>(value);
+  ADT_RETURN_IF_ERROR(pointer_value);
+  return pointer_value.GetOkValue().template TryGet<T>();
+}
+
 template <typename CustomT>
 Result<Value<CustomT>> CustomGetAttr(const CustomT& val,
                                      const std::string& name);
@@ -330,12 +361,19 @@ Result<Value<CustomT>> ValueGetItem(const Value<CustomT>& val,
   return val.Match(
       [&](const adt::List<ValueT>& obj) -> Result<ValueT> {
         return idx.Match(
-            [&](int64_t idx) -> Result<ValueT> {
-              if (idx < 0) {
-                idx += obj->size();
+            [&](const ArithmeticValue& arithmetic_idx) -> Result<ValueT> {
+              const auto& int64_idx = ArithmeticValueStaticCast(
+                  CppArithmeticType<int64_t>{}, arithmetic_idx);
+              ADT_RETURN_IF_ERROR(int64_idx);
+              const auto& opt_index =
+                  int64_idx.GetOkValue().template TryGet<int64_t>();
+              ADT_RETURN_IF_ERROR(opt_index);
+              int64_t index = opt_index.GetOkValue();
+              if (index < 0) {
+                index += obj->size();
               }
-              if (idx >= 0 && idx < obj->size()) {
-                return obj->at(idx);
+              if (index >= 0 && index < obj->size()) {
+                return obj->at(index);
               }
               return IndexError{"list index out of range"};
             },

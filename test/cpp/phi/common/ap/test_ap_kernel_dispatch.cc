@@ -59,12 +59,12 @@ TEST(KernelDispatch, CppValue) {
                << ", error-msg: " << ret.GetError().msg() << std::endl;
   }
   ASSERT_TRUE(ret.HasOkValue());
-  const Result<CppValue>& opt_cpp_value =
-      CastToCustomValue<CppValue>(ret.GetOkValue());
-  ASSERT_TRUE(opt_cpp_value.HasOkValue());
-  const CppValue& cpp_value = opt_cpp_value.GetOkValue();
-  ASSERT_TRUE(cpp_value.Has<const int32_t*>());
-  ASSERT_EQ(cpp_value.Get<const int32_t*>(), &number);
+  const Result<pexpr::PointerValue>& opt_ptr_value =
+      pexpr::CastToBuiltinValue<pexpr::PointerValue>(ret.GetOkValue());
+  ASSERT_TRUE(opt_ptr_value.HasOkValue());
+  const pexpr::PointerValue& ptr_value = opt_ptr_value.GetOkValue();
+  ASSERT_TRUE(ptr_value.Has<const int32_t*>());
+  ASSERT_EQ(ptr_value.Get<const int32_t*>(), &number);
 }
 
 }  // namespace ap::kernel_dispatch::test

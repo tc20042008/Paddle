@@ -126,7 +126,9 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                   },
                   [&](const auto& val) -> Result<ValueT> { return val; });
         },
-        [&](const auto& val) -> Result<ValueT> { return ValueT{val}; });
+        [&](int64_t c) -> Result<ValueT> { return ArithmeticValue{c}; },
+        [&](bool c) -> Result<ValueT> { return ArithmeticValue{c}; },
+        [&](const std::string& val) -> Result<ValueT> { return ValueT{val}; });
   }
 
   Result<adt::Ok> InterpretClosureCall(

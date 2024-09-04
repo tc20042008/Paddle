@@ -17,62 +17,12 @@
 
 namespace ap::kernel_define {
 
+using pexpr::ArithmeticType;
 using pexpr::BuiltinFuncType;
 using pexpr::CastToBuiltinValue;
-
-adt::Result<ArgType> ArgType::MakeFromPhiDataType(::phi::DataType data_type) {
-  static const std::unordered_map<::phi::DataType, ArgType> map{
-#define MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE(cpp_type, enum_type) \
-  {phi::enum_type, ArgType{CppArgType<cpp_type>{}}},
-      PD_FOR_EACH_DATA_TYPE(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
-#undef MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE
-  };
-  const auto& iter = map.find(data_type);
-  if (iter == map.end()) {
-    return InvalidArgumentError{"Invalid phi data type."};
-  }
-  return iter->second;
-}
-
-namespace {
-
-template <typename T>
-struct TypeConverter;
-
-#define SPECIALIZE_TYPE_CONVERTER(cpp_type, enum_type) \
-  template <>                                          \
-  struct TypeConverter<CppArgType<cpp_type>> {         \
-    using remove_const_type = CppArgType<cpp_type>;    \
-  };                                                   \
-  template <>                                          \
-  struct TypeConverter<CppArgType<cpp_type*>> {        \
-    using remove_const_type = CppArgType<cpp_type*>;   \
-  };                                                   \
-  template <>                                          \
-  struct TypeConverter<CppArgType<const cpp_type*>> {  \
-    using remove_const_type = CppArgType<cpp_type*>;   \
-  };
-
-PD_FOR_EACH_DATA_TYPE(SPECIALIZE_TYPE_CONVERTER);
-#undef SPECIALIZE_TYPE_CONVERTER
-
-template <>
-struct TypeConverter<CppArgType<void*>> {
-  using remove_const_type = CppArgType<void*>;
-};
-
-template <>
-struct TypeConverter<CppArgType<const void*>> {
-  using remove_const_type = CppArgType<void*>;
-};
-
-}  // namespace
-
-ArgType ArgType::RemoveConst() const {
-  return Match([](auto impl) {
-    return ArgType{typename TypeConverter<decltype(impl)>::remove_const_type{}};
-  });
-}
+using pexpr::CppArithmeticType;
+using pexpr::CppPointerType;
+using pexpr::PointerType;
 
 namespace {
 
@@ -124,7 +74,7 @@ Result<adt::List<ArgType>> GetFuncArgTypes(const Val& val) {
   adt::List<ArgType> ret;
   ret->reserve(list.GetOkValue()->size());
   for (const auto& elt : *list.GetOkValue()) {
-    const auto& arg_type = CastToCustomValue<ArgType>(elt);
+    const auto& arg_type = CastToArgType(elt);
     ADT_RETURN_IF_ERROR(arg_type);
     ret->emplace_back(arg_type.GetOkValue());
   }
@@ -160,9 +110,15 @@ Result<Val> DefinerCtxMakeSource(const Val& self,
 }
 
 template <typename T>
-Result<Val> MakeDefinerCtxArgType(const DefinerCtx<Val>& ctx,
-                                  const std::string&) {
-  return ArgType{CppArgType<T>{}};
+Result<Val> DefinerCtxMakeArithmeticType(const DefinerCtx<Val>& ctx,
+                                         const std::string&) {
+  return ArithmeticType{CppArithmeticType<T>{}};
+}
+
+template <typename T>
+Result<Val> DefinerCtxMakePointerType(const DefinerCtx<Val>& ctx,
+                                      const std::string&) {
+  return PointerType{CppPointerType<T>{}};
 }
 
 template <BuiltinFuncType<Val> BuiltinFunc>
@@ -179,23 +135,24 @@ Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
       {"module", &DefinerCtxMethod<&DefinerCtxMakeModule>},
       {"declare_func", &DefinerCtxMethod<&DefinerCtxMakeDeclareFunc>},
       {"source_code", &DefinerCtxMethod<&DefinerCtxMakeSource>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)               \
-  {#cpp_type, &MakeDefinerCtxArgType<cpp_type>},              \
-      {"const_" #cpp_type, &MakeDefinerCtxArgType<cpp_type>}, \
-      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type*>},  \
-      {"const_" #cpp_type "_ptr", &MakeDefinerCtxArgType<const cpp_type*>},
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                      \
+  {#cpp_type, &DefinerCtxMakeArithmeticType<cpp_type>},              \
+      {"const_" #cpp_type, &DefinerCtxMakeArithmeticType<cpp_type>}, \
+      {#cpp_type "_ptr", &DefinerCtxMakePointerType<cpp_type*>},     \
+      {"const_" #cpp_type "_ptr",                                    \
+       &DefinerCtxMakePointerType<const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                          \
-  {#cpp_type, &MakeDefinerCtxArgType<cpp_type##_t>},              \
-      {"const_" #cpp_type, &MakeDefinerCtxArgType<cpp_type##_t>}, \
-      {#cpp_type "_ptr", &MakeDefinerCtxArgType<cpp_type##_t*>},  \
-      {"const_" #cpp_type "_ptr",                                 \
-       &MakeDefinerCtxArgType<const cpp_type##_t*>},
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                 \
+  {#cpp_type, &DefinerCtxMakeArithmeticType<cpp_type##_t>},              \
+      {"const_" #cpp_type, &DefinerCtxMakeArithmeticType<cpp_type##_t>}, \
+      {#cpp_type "_ptr", &DefinerCtxMakePointerType<cpp_type##_t*>},     \
+      {"const_" #cpp_type "_ptr",                                        \
+       &DefinerCtxMakePointerType<const cpp_type##_t*>},
           AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE
-              {"void_ptr", &MakeDefinerCtxArgType<void*>},
-      {"const_void_ptr", &MakeDefinerCtxArgType<const void*>},
+              {"void_ptr", &DefinerCtxMakePointerType<void*>},
+      {"const_void_ptr", &DefinerCtxMakePointerType<const void*>},
   };
   const auto iter = map.find(name);
   if (iter == map.end()) {
@@ -262,10 +219,6 @@ Result<Val> CustomGetAttr(const CustomValue& custom_value,
       },
       [&](const DefinerCtx<Val>& ctx) -> Result<Val> {
         return DefinerCtxGetAttr(ctx, name);
-      },
-      [&](const ArgType&) -> Result<Val> {
-        return AttributeError{
-            std::string("'ArgType' object has no attribute '") + name + "' "};
       },
       [&](const auto&) -> Result<Val> {
         return AttributeError{std::string("object has no attribute '") + name +

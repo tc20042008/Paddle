@@ -14,16 +14,19 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/anf_expr.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr.h"
-
 namespace pexpr {
 
-CoreExpr ReplaceLambdaArgName(
-    const CoreExpr& core_expr,
-    const std::string& pattern_arg_name,
-    const std::function<std::string()>& UniqueVarNameGetter);
-
-CoreExpr Inline(const CoreExpr&);
+#define PEXPR_FOR_EACH_BINARY_OP(_) \
+  _(Add, +)                         \
+  _(Sub, -)                         \
+  _(Mul, *)                         \
+  _(Div, /)                         \
+  _(Mod, %)                         \
+  _(EQ, ==)                         \
+  _(NE, !=)                         \
+  _(GT, >)                          \
+  _(GE, >=)                         \
+  _(LT, <)                          \
+  _(LE, <=)
 
 }  // namespace pexpr

@@ -21,7 +21,6 @@
 #include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_util.h"
 
 namespace pexpr {
 
@@ -75,7 +74,7 @@ struct AnfExprToCoreExprConverter {
         [&](const Atomic<CoreExpr>&) -> CoreExpr { return ret; },
         [&](const ComposedCallAtomic<CoreExpr>& composed_call) -> CoreExpr {
           Atomic<CoreExpr> return_id{tVar<std::string>{kBuiltinReturn()}};
-          Atomic<CoreExpr> identity{tVar<std::string>{kBuiltinId()}};
+          Atomic<CoreExpr> identity{Symbol{builtin_symbol::Id{}}};
           if (composed_call->outter_func != return_id) {
             return composed_call;
           }
@@ -114,7 +113,7 @@ struct AnfExprToCoreExprConverter {
           return LazyCoreExpr([val](const Atomic<CoreExpr>& continuation) {
             CoreExprBuilder core{};
             return core.ComposedCallAtomic(
-                continuation, core.Var(kBuiltinId()), {val});
+                continuation, Symbol{builtin_symbol::Id{}}, {val});
           });
         });
   }
@@ -134,8 +133,11 @@ struct AnfExprToCoreExprConverter {
         [&](const If<AnfExpr>& if_expr) { return ConvertIf(if_expr); });
   }
 
-  value_type ConvertVar(const tVar<std::string>& anf_expr) {
-    return CoreVal(core_.Var(anf_expr.value()));
+  value_type ConvertVar(const tVar<std::string>& var) {
+    const auto& opt_symbol = builtin_symbol::GetSymbolFromString(var.value());
+    return CoreVal(opt_symbol.Match(
+        [&](const builtin_symbol::Symbol& symbol) -> Symbol { return symbol; },
+        [&](const adt::Nothing&) -> Symbol { return var; }));
   }
 
   value_type ConvertBool(const bool c) { return CoreVal(core_.Bool(c)); }

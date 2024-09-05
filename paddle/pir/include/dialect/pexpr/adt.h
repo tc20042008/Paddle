@@ -20,6 +20,8 @@ namespace pexpr {
 
 namespace adt = ::cinn::adt;
 
+DEFINE_ADT_TAG(tVar);
+
 using adt::Nothing;
 using adt::Result;
 

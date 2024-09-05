@@ -266,6 +266,16 @@ struct ValueError {
   const char* class_name() const { return "ValueError"; }
 };
 
+struct ZeroDivisionError {
+  std::string msg;
+
+  bool operator==(const ZeroDivisionError& other) const {
+    return other.msg == this->msg;
+  }
+
+  const char* class_name() const { return "ZeroDivisionError"; }
+};
+
 struct TypeError {
   std::string msg;
 
@@ -311,6 +321,7 @@ using ErrorBase = std::variant<RuntimeError,
                                AttributeError,
                                NameError,
                                ValueError,
+                               ZeroDivisionError,
                                TypeError,
                                IndexError,
                                MismatchError,

@@ -82,10 +82,6 @@ template <typename ValueT>
 class Environment {
  public:
   Result<ValueT> Get(const std::string& var) const {
-    const Result<ValueT>& builtin_val = builtin_frame_.Get(var);
-    if (builtin_val.template Has<ValueT>()) {
-      return builtin_val;
-    }
     const Result<ValueT>& res = frame_.Get(var);
     if (res.template Has<ValueT>()) {
       return res;
@@ -106,20 +102,19 @@ class Environment {
   }
 
  private:
-  static std::shared_ptr<Environment> New(const Frame<ValueT>& builtin_frame) {
-    return std::shared_ptr<Environment>(new Environment(builtin_frame));
-  }
-
   static std::shared_ptr<Environment> New(
       const std::shared_ptr<Environment>& parent) {
-    return std::shared_ptr<Environment>(new Environment(parent));
+    return std::shared_ptr<Environment>(
+        new Environment(parent, Frame<ValueT>{}));
   }
 
-  explicit Environment(const Frame<ValueT>& builtin_frame)
-      : parent_(nullptr), builtin_frame_(builtin_frame), frame_() {}
+  static std::shared_ptr<Environment> NewInitEnv(const Frame<ValueT>& frame) {
+    return std::shared_ptr<Environment>(new Environment(nullptr, frame));
+  }
 
-  explicit Environment(const std::shared_ptr<Environment>& parent)
-      : parent_(parent), builtin_frame_(parent->builtin_frame_), frame_() {}
+  explicit Environment(const std::shared_ptr<Environment>& parent,
+                       const Frame<ValueT>& frame)
+      : parent_(parent), frame_(frame) {}
 
   Environment(const Environment&) = delete;
   Environment(Environment&&) = delete;
@@ -127,7 +122,6 @@ class Environment {
   friend class EnvironmentManager<ValueT>;
 
   std::shared_ptr<Environment> parent_;
-  Frame<ValueT> builtin_frame_;
   Frame<ValueT> frame_;
 };
 
@@ -178,11 +172,6 @@ using BuiltinFuncType = Result<ValueT> (*)(const ValueT&,
                                            const std::vector<ValueT>& args);
 
 template <typename ValueT>
-using BuiltinHighOrderFuncType =
-    Result<ValueT> (*)(const InterpretFuncType<ValueT>& Interpret,
-                       const std::vector<ValueT>& args);
-
-template <typename ValueT>
 using CpsBuiltinHighOrderFuncType =
     Result<adt::Ok> (*)(CpsInterpreterBase<ValueT>* CpsInterpret,
                         ComposedCallImpl<ValueT>* composed_call);
@@ -200,7 +189,6 @@ using ValueBase = std::variant<CustomT,
                                adt::List<Value<CustomT>>,
                                Object<Value<CustomT>>,
                                BuiltinFuncType<Value<CustomT>>,
-                               BuiltinHighOrderFuncType<Value<CustomT>>,
                                CpsBuiltinHighOrderFuncType<Value<CustomT>>>;
 
 template <typename CustomT>
@@ -268,11 +256,6 @@ struct GetBuiltinTypeNameImplHelper<BuiltinFuncType<ValueT>> {
 };
 
 template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<BuiltinHighOrderFuncType<ValueT>> {
-  static const char* Call() { return "builtin_high_order_function"; }
-};
-
-template <typename ValueT>
 struct GetBuiltinTypeNameImplHelper<CpsBuiltinHighOrderFuncType<ValueT>> {
   static const char* Call() { return "cps_builtin_high_order_function"; }
 };
@@ -323,74 +306,6 @@ Result<T> CastToPointerValue(const ValueT& value) {
   return pointer_value.GetOkValue().template TryGet<T>();
 }
 
-template <typename CustomT>
-Result<Value<CustomT>> CustomGetAttr(const CustomT& val,
-                                     const std::string& name);
-
-template <typename CustomT>
-Result<Value<CustomT>> ValueGetAttr(const Value<CustomT>& val,
-                                    const std::string& name) {
-  using ValueT = Value<CustomT>;
-  return val.Match(
-      [&](const Object<ValueT>& obj) -> Result<ValueT> {
-        const auto& iter = obj->storage.find(name);
-        if (iter == obj->storage.end()) {
-          return AttributeError{std::string("no attribute '") + name +
-                                "' found."};
-        }
-        return iter->second;
-      },
-      [&](const CustomT& custom_val) -> Result<ValueT> {
-        return CustomGetAttr(custom_val, name);
-      },
-      [&](const auto& other) -> Result<ValueT> {
-        return AttributeError{std::string("no attribute '") + name +
-                              "' found."};
-      });
-}
-
-template <typename CustomT>
-Result<Value<CustomT>> CustomGetItem(const CustomT& val,
-                                     const Value<CustomT>& idx);
-
-template <typename CustomT>
-Result<Value<CustomT>> ValueGetItem(const Value<CustomT>& val,
-                                    const Value<CustomT>& idx) {
-  using ValueT = Value<CustomT>;
-  return val.Match(
-      [&](const adt::List<ValueT>& obj) -> Result<ValueT> {
-        return idx.Match(
-            [&](const ArithmeticValue& arithmetic_idx) -> Result<ValueT> {
-              const auto& int64_idx =
-                  arithmetic_idx.StaticCastTo(CppArithmeticType<int64_t>{});
-              ADT_RETURN_IF_ERROR(int64_idx);
-              const auto& opt_index =
-                  int64_idx.GetOkValue().template TryGet<int64_t>();
-              ADT_RETURN_IF_ERROR(opt_index);
-              int64_t index = opt_index.GetOkValue();
-              if (index < 0) {
-                index += obj->size();
-              }
-              if (index >= 0 && index < obj->size()) {
-                return obj->at(index);
-              }
-              return IndexError{"list index out of range"};
-            },
-            [&](const auto&) -> Result<ValueT> {
-              return TypeError{std::string() +
-                               "list indices must be integers, not " +
-                               GetBuiltinTypeName(idx)};
-            });
-      },
-      [&](const CustomT& custom_val) -> Result<ValueT> {
-        return CustomGetItem(custom_val, idx);
-      },
-      [&](const auto& other) -> Result<ValueT> {
-        return TypeError{std::string() + "'" + GetBuiltinTypeName(val) +
-                         "' object is not subscriptable"};
-      });
-}
-
 // Watch out circle references:
 // Value   ->   Closure
 //   /\              |
@@ -404,9 +319,15 @@ class EnvironmentManager {
   EnvironmentManager() {}
   ~EnvironmentManager() { ClearAllFrames(); }
 
-  template <typename T>
-  std::shared_ptr<Environment<ValueT>> New(T&& arg) {
-    auto ptr = Environment<ValueT>::New(std::forward<T>(arg));
+  std::shared_ptr<Environment<ValueT>> New(
+      const std::shared_ptr<Environment<ValueT>>& env) {
+    auto ptr = Environment<ValueT>::New(env);
+    weak_envs_.push_back(ptr);
+    return ptr;
+  }
+
+  std::shared_ptr<Environment<ValueT>> NewInitEnv(const Frame<ValueT>& frame) {
+    auto ptr = Environment<ValueT>::NewInitEnv(frame);
     weak_envs_.push_back(ptr);
     return ptr;
   }

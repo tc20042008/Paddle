@@ -28,21 +28,19 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
  public:
   using EnvMgr = EnvironmentManager<ValueT>;
   using Env = Environment<ValueT>;
-  CpsExprInterpreter()
-      : env_mgr_(new EnvMgr()), builtin_frame_(MakeBuiltinFrame()) {}
+  CpsExprInterpreter() : env_mgr_(new EnvMgr()), builtin_env_() {}
   CpsExprInterpreter(const std::shared_ptr<EnvMgr>& env_mgr,
-                     const Frame<ValueT>& builtin_frame_val)
-      : env_mgr_(env_mgr),
-        builtin_frame_(MergeFrame(MakeBuiltinFrame(), builtin_frame_val)) {}
+                     const Frame<ValueT>& frame)
+      : env_mgr_(env_mgr), builtin_env_(env_mgr->NewInitEnv(frame)) {}
   CpsExprInterpreter(const CpsExprInterpreter&) = delete;
   CpsExprInterpreter(CpsExprInterpreter&&) = delete;
 
   const std::shared_ptr<EnvMgr>& env_mgr() const { return env_mgr_; }
-  const Frame<ValueT>& builtin_frame() const { return builtin_frame_; }
+  const std::shared_ptr<Env>& builtin_env() const { return builtin_env_; }
 
   Result<ValueT> Interpret(const Lambda<CoreExpr>& lambda,
                            const std::vector<ValueT>& args) {
-    Closure<ValueT> closure{lambda, env_mgr()->New(builtin_frame())};
+    Closure<ValueT> closure{lambda, env_mgr()->New(builtin_env())};
     const auto& ret = Interpret(closure, args);
     env_mgr()->ClearAllFrames();
     return ret;
@@ -117,18 +115,48 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
         [&](const Lambda<CoreExpr>& lambda) -> Result<ValueT> {
           return Closure<ValueT>{lambda, env};
         },
-        [&](const tVar<std::string>& var) -> Result<ValueT> {
-          return env->Get(var.value())
-              .Match(
-                  [&](const Error& error) -> Result<ValueT> {
-                    return NameError{std::string("name '") + var.value() +
-                                     "' is not defined."};
-                  },
-                  [&](const auto& val) -> Result<ValueT> { return val; });
+        [&](const Symbol& symbol) -> Result<ValueT> {
+          return symbol.Match(
+              [&](const tVar<std::string>& var) -> Result<ValueT> {
+                return env->Get(var.value())
+                    .Match(
+                        [&](const Error& error) -> Result<ValueT> {
+                          return NameError{std::string("name '") + var.value() +
+                                           "' is not defined."};
+                        },
+                        [&](const auto& val) -> Result<ValueT> { return val; });
+              },
+              [&](const builtin_symbol::Symbol& symbol) -> Result<ValueT> {
+                return InterpretBuiltinSymbol(symbol);
+              });
         },
         [&](int64_t c) -> Result<ValueT> { return ArithmeticValue{c}; },
         [&](bool c) -> Result<ValueT> { return ArithmeticValue{c}; },
         [&](const std::string& val) -> Result<ValueT> { return ValueT{val}; });
+  }
+
+  Result<ValueT> InterpretBuiltinSymbol(const builtin_symbol::Symbol& symbol) {
+    return symbol.Match(
+        [&](const builtin_symbol::If&) -> ValueT {
+          return &CpsBuiltinIf<ValueT>;
+        },
+        [&](const builtin_symbol::Apply&) -> ValueT {
+          return &CpsBuiltinApply<ValueT>;
+        },
+        [&](const builtin_symbol::Nothing&) -> ValueT {
+          return adt::Nothing{};
+        },
+        [&](const builtin_symbol::Id&) -> ValueT {
+          return &BuiltinIdentity<ValueT>;
+        },
+        [&](const builtin_symbol::List&) -> ValueT {
+          return &BuiltinList<ValueT>;
+        },
+        [&](const builtin_symbol::Op& op) -> ValueT {
+          return op.Match([](auto impl) {
+            return GetBuiltinOpFunc<decltype(impl), ValueT>();
+          });
+        });
   }
 
   Result<adt::Ok> InterpretClosureCall(
@@ -239,32 +267,9 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
   }
 
   std::shared_ptr<EnvMgr> env_mgr_;
-  Frame<ValueT> builtin_frame_;
+  std::shared_ptr<Env> builtin_env_;
 
  private:
-  // rhs override lhs
-  static Frame<ValueT> MergeFrame(const Frame<ValueT>& lhs,
-                                  const Frame<ValueT>& rhs) {
-    Object<ValueT> frame_obj{lhs.frame_obj->storage};
-    for (const auto& [k, v] : rhs.frame_obj->storage) {
-      frame_obj->Set(k, v);
-    }
-    return Frame<ValueT>{frame_obj};
-  }
-  static Frame<ValueT> MakeBuiltinFrame() {
-    return Frame<ValueT>{InitBuiltins()};
-  }
-  static Object<ValueT> InitBuiltins() {
-    return Object<ValueT>{std::unordered_map<std::string, ValueT>{
-        {kBuiltinNothing(), ValueT{adt::Nothing{}}},
-        {kBuiltinId(), ValueT{&BuiltinIdentity<ValueT>}},
-        {kBuiltinList(), ValueT{&BuiltinList<ValueT>}},
-        {kBuiltinGetAttr(), ValueT{&BuiltinGetAttr<ValueT>}},
-        {kBuiltinGetItem(), ValueT{&BuiltinGetItem<ValueT>}},
-        {kBuiltinIf(), ValueT{&CpsBuiltinIf<ValueT>}},
-        {kBuiltinApply(), ValueT{&CpsBuiltinApply<ValueT>}},
-    }};
-  }
 };
 
 }  // namespace pexpr

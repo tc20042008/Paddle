@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include <atomic>
-#include "paddle/common/enforce.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_util.h"
+#pragma once
 
-namespace pexpr {}  // namespace pexpr
+namespace pexpr {
+
+#define PEXPR_FOR_EACH_UNARY_OP(_) \
+  _(Not, !)                        \
+  _(Neg, -)
+
+}  // namespace pexpr

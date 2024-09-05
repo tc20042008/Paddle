@@ -18,14 +18,12 @@
 #include <optional>
 #include <type_traits>
 #include <vector>
-#include "paddle/cinn/adt/adt.h"
 #include "paddle/common/overloaded.h"
+#include "paddle/pir/include/dialect/pexpr/adt.h"
 
 namespace adt = ::cinn::adt;
 
 namespace pexpr {
-
-DEFINE_ADT_TAG(tVar);
 
 template <typename Expr>
 struct LambdaImpl {
@@ -43,8 +41,16 @@ DEFINE_ADT_RC(Lambda, const LambdaImpl<Expr>);
 // aexpr := Var | CONST | (lambda [VAR] expr)
 
 template <typename Expr>
-using AtomicBase =
-    std::variant<tVar<std::string>, bool, int64_t, std::string, Lambda<Expr>>;
+struct ExprSymbolTrait {
+  using symbol_type = tVar<std::string>;
+};
+
+template <typename Expr>
+using AtomicBase = std::variant<typename ExprSymbolTrait<Expr>::symbol_type,
+                                bool,
+                                int64_t,
+                                std::string,
+                                Lambda<Expr>>;
 
 template <typename Expr>
 struct Atomic : public AtomicBase<Expr> {

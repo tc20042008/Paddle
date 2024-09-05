@@ -36,4 +36,42 @@ using pstring = ::phi::dtype::pstring;
   _(int64)                         \
   _(uint64)
 
+#define PEXPR_FOR_EACH_ARITHMETIC_OP_SUPPORTED_TYPE(_) \
+  _(bool)                                              \
+  _(float)                                             \
+  _(double)                                            \
+  _(int8_t)                                            \
+  _(uint8_t)                                           \
+  _(int16_t)                                           \
+  _(uint16_t)                                          \
+  _(int32_t)                                           \
+  _(uint32_t)                                          \
+  _(int64_t)                                           \
+  _(uint64_t)
+
+namespace detail {
+
+template <typename T>
+struct IsArithmeticOpSupportedHelper {
+  static constexpr bool value = false;
+};
+
+#define SPECIALIZE_IS_ARITHMETIC_OP_SUPPORTED(cpp_type) \
+  template <>                                           \
+  struct IsArithmeticOpSupportedHelper<cpp_type> {      \
+    static constexpr bool value = true;                 \
+  };
+
+PEXPR_FOR_EACH_ARITHMETIC_OP_SUPPORTED_TYPE(
+    SPECIALIZE_IS_ARITHMETIC_OP_SUPPORTED)
+
+#undef SPECIALIZE_IS_ARITHMETIC_OP_SUPPORTED
+
+}  // namespace detail
+
+template <typename T>
+constexpr bool IsArithmeticOpSupported() {
+  return detail::IsArithmeticOpSupportedHelper<T>::value;
+}
+
 }  // namespace pexpr

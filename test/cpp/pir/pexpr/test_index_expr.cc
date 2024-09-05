@@ -20,7 +20,6 @@
 #include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
 

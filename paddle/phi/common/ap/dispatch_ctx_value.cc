@@ -80,8 +80,8 @@ Result<Val> ArgValueStaticCast(const Val& self, const std::vector<Val>& args) {
   const Result<ArithmeticValue>& arg_value =
       CastToBuiltinValue<ArithmeticValue>(args.at(1));
   ADT_RETURN_IF_ERROR(arg_value);
-  const auto& arithmetic_value = pexpr::ArithmeticValueStaticCast(
-      arg_type.GetOkValue(), arg_value.GetOkValue());
+  const auto& arithmetic_value =
+      arg_value.GetOkValue().StaticCastTo(arg_type.GetOkValue());
   ADT_RETURN_IF_ERROR(arithmetic_value);
   return arithmetic_value.GetOkValue();
 }

@@ -22,18 +22,13 @@ namespace pexpr::index_expr {
 class IndexExprInterpreterImpl : public CpsExprInterpreter<Val> {
  public:
   explicit IndexExprInterpreterImpl(const std::shared_ptr<EnvMgr>& env_mgr)
-      : CpsExprInterpreter<Val>(env_mgr, MakeBuiltinFrame()) {}
+      : CpsExprInterpreter<Val>(env_mgr, Frame<Val>{InitBuiltins()}) {}
   IndexExprInterpreterImpl(const IndexExprInterpreterImpl&) = delete;
   IndexExprInterpreterImpl(IndexExprInterpreterImpl&&) = delete;
 
  private:
-  static Frame<Val> MakeBuiltinFrame() { return Frame<Val>{InitBuiltins()}; }
-
   static Object<Val> InitBuiltins() {
     return Object<Val>{std::unordered_map<std::string, Val>{
-        {kBuiltinIf(), Val{&BuiltinIf<Val>}},
-        {kBuiltinId(), Val{&BuiltinIdentity<Val>}},
-        {kBuiltinApply(), Val{&BuiltinApply<Val>}},
         {"list", Val{&BuiltinList<Val>}},
         {"kUndefinedIndexTupleExpr",
          Val{IndexExprValue{IndexTupleExpr{UndefinedIndexTupleExpr{}}}}},
@@ -70,7 +65,7 @@ IndexExprInterpreter::IndexExprInterpreter(
 
 Result<Val> IndexExprInterpreter::operator()(
     const Lambda<CoreExpr>& lambda, const std::vector<Val>& args) const {
-  const auto& env = env_mgr_->New(impl_->builtin_frame());
+  const auto& env = env_mgr_->New(impl_->builtin_env());
   Closure<Val> closure{lambda, env};
   Result<Val> ret = impl_->Interpret(closure, args);
   env_mgr_->ClearAllFrames();
@@ -82,7 +77,7 @@ Result<Val> IndexExprInterpreter::operator()(
         global_functions,
     const Lambda<CoreExpr>& lambda,
     const std::vector<Val>& args) const {
-  const auto& env = env_mgr_->New(impl_->builtin_frame());
+  const auto& env = env_mgr_->New(impl_->builtin_env());
   for (const auto& [name, val] : global_functions) {
     env->Set(name, Val{val});
   }

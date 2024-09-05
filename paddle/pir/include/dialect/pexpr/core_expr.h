@@ -23,7 +23,38 @@
 
 namespace pexpr {
 
+using SymbolImpl = std::variant<tVar<std::string>, builtin_symbol::Symbol>;
+
+struct Symbol : public SymbolImpl {
+  using SymbolImpl::SymbolImpl;
+  DEFINE_ADT_VARIANT_METHODS(SymbolImpl);
+
+  std::size_t GetHashValue() const {
+    std::size_t hash_value = Match(
+        [&](const tVar<std::string>& var) {
+          return std::hash<std::string>()(var.value());
+        },
+        [&](const builtin_symbol::Symbol& symbol) {
+          return symbol.GetHashValue();
+        });
+    return adt::hash_combine(hash_value, this->index());
+  }
+
+  std::string Name() const {
+    return Match(
+        [](const tVar<std::string>& var) -> std::string { return var.value(); },
+        [](const builtin_symbol::Symbol& symbol) -> std::string {
+          return symbol.Name();
+        });
+  }
+};
+
 struct CoreExpr;
+
+template <>
+struct ExprSymbolTrait<CoreExpr> {
+  using symbol_type = Symbol;
+};
 
 // (outter_func (inner_func [args]))
 template <typename T>
@@ -54,9 +85,6 @@ struct CoreExpr : public CoreExprBase {
   DEFINE_ADT_VARIANT_METHODS(CoreExprBase);
 
   std::string ToSExpression() const;
-  std::string DumpToJsonString();
-  static std::optional<CoreExpr> ParseFromJsonString(
-      const std::string& json_str);
 };
 
 size_t GetHashValue(const CoreExpr& core_expr);
@@ -82,9 +110,7 @@ inline size_t GetHashValue(const ComposedCallAtomic<CoreExpr>& composed_call) {
 
 inline size_t GetHashValue(const Atomic<CoreExpr>& atomic) {
   size_t ret = atomic.Match(
-      [](const tVar<std::string>& var) -> size_t {
-        return std::hash<std::string>()(var.value());
-      },
+      [](const Symbol& symbol) -> size_t { return symbol.GetHashValue(); },
       [](const bool val) -> size_t { return val; },
       [](const int64_t val) -> size_t { return val; },
       [](const std::string& val) -> size_t {

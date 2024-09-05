@@ -34,9 +34,4 @@ inline Result<ArithmeticType> GetArithmeticTypeFromPhiDataType(
   return iter->second;
 }
 
-inline Result<ArithmeticValue> ArithmeticValueStaticCast(
-    const ArithmeticType& dst_type, const ArithmeticValue& value) {
-  return value.StaticCastTo(dst_type);
-}
-
 }  // namespace pexpr

@@ -40,7 +40,7 @@ struct ArithmeticValue : public ArithmeticValueImpl {
     if (!Has<T>()) {
       return adt::errors::TypeError{
           std::string() + "ArithmeticValue::TryGet() failed. expected_type: " +
-          CppArithmeticType<T>{}.name() + ", actual_type: " + GetType().name()};
+          CppArithmeticType<T>{}.Name() + ", actual_type: " + GetType().Name()};
     }
     return Get<T>();
   }

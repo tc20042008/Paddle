@@ -36,8 +36,8 @@ struct ArgType : public ArgTypeImpl {
   using ArgTypeImpl::ArgTypeImpl;
   DEFINE_ADT_VARIANT_METHODS(ArgTypeImpl);
 
-  const char* name() const {
-    return Match([](const auto& impl) { return impl.name(); });
+  const char* Name() const {
+    return Match([](const auto& impl) { return impl.Name(); });
   }
 
   template <typename T>

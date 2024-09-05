@@ -55,7 +55,7 @@ Result<adt::Ok> DispatchRawContextImpl<Val>::LaunchCudaKernel(
     const auto& arg_type = kernel_arg.GetType();
     if (!(defined_arg_type == arg_type)) {
       return TypeError{std::string() + "error: invalid conversion from '" +
-                       arg_type.name() + "' to '" + defined_arg_type.name() +
+                       arg_type.Name() + "' to '" + defined_arg_type.Name() +
                        "'"};
     }
     kernel_arg.Match([&](const auto& impl) {

@@ -198,7 +198,9 @@ struct Value : public ValueBase<CustomT> {
 };
 
 template <typename T>
-struct GetBuiltinTypeNameImplHelper;
+struct GetBuiltinTypeNameImplHelper {
+  static const char* Call() { return "custom_type"; }
+};
 
 template <>
 struct GetBuiltinTypeNameImplHelper<ArithmeticType> {

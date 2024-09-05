@@ -17,6 +17,7 @@
 #include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
 #include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/binary_func.h"
+#include "paddle/pir/include/dialect/pexpr/unary_func.h"
 
 namespace pexpr {
 
@@ -25,21 +26,21 @@ namespace pexpr {
     static constexpr const char* Name() { return #op; } \
                                                         \
     template <typename LhsT>                            \
-    static auto Call(LhsT val) {                        \
+    static auto Call(const LhsT& val) {                 \
       return op val;                                    \
     }                                                   \
   };
 PEXPR_FOR_EACH_UNARY_OP(DEFINE_ARITHMETIC_UNARY_OP);
 #undef DEFINE_ARITHMETIC_UNARY_OP
 
-#define DEFINE_ARITHMETIC_BINARY_OP(name, op)           \
-  struct Arithmetic##name {                             \
-    static constexpr const char* Name() { return #op; } \
-                                                        \
-    template <typename LhsT, typename RhsT>             \
-    static auto Call(LhsT lhs, RhsT rhs) {              \
-      return lhs op rhs;                                \
-    }                                                   \
+#define DEFINE_ARITHMETIC_BINARY_OP(name, op)            \
+  struct Arithmetic##name {                              \
+    static constexpr const char* Name() { return #op; }  \
+                                                         \
+    template <typename LhsT, typename RhsT>              \
+    static auto Call(const LhsT& lhs, const RhsT& rhs) { \
+      return lhs op rhs;                                 \
+    }                                                    \
   };
 PEXPR_FOR_EACH_BINARY_OP(DEFINE_ARITHMETIC_BINARY_OP);
 #undef DEFINE_ARITHMETIC_BINARY_OP
@@ -54,9 +55,9 @@ struct ArithmeticUnaryFuncHelper {
         return ArithmeticOp::Call(val);
       } else {
         return adt::errors::TypeError{
-            std::string() + "'" + ArithmeticOp::Name() +
-            "' does not support operand " +
-            CppArithmeticType<decltype(val)>{}.name() + "."};
+            std::string() + "unsupported operand type for " +
+            ArithmeticOp::Name() + ": " +
+            CppArithmeticType<decltype(val)>{}.Name() + "."};
       }
     });
   }
@@ -108,10 +109,10 @@ struct ArithmeticBinaryFuncHelper {
             return ArithmeticBinaryOpHelper<ArithmeticOp>::Call(lhs, rhs);
           } else {
             return adt::errors::TypeError{
-                std::string() + "'" + ArithmeticOp::Name() +
-                "' does not support operands (" +
-                CppArithmeticType<decltype(lhs)>{}.name() + ", " +
-                CppArithmeticType<decltype(rhs)>{}.name() + ")."};
+                std::string() + "unsupported operand types for " +
+                ArithmeticOp::Name() + ": '" +
+                CppArithmeticType<decltype(lhs)>{}.Name() + "' and '" +
+                CppArithmeticType<decltype(rhs)>{}.Name() + "'."};
           }
         }};
     return std::visit(pattern_match, lhs_value.variant(), rhs_value.variant());

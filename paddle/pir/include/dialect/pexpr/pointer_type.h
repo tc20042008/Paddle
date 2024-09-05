@@ -47,7 +47,7 @@ template <typename T>
 struct CppPointerType : public std::monostate {
   using std::monostate::monostate;
   using type = T;
-  const char* name() const { return GetPointerTypeNameHelper<T>::Call(); }
+  const char* Name() const { return GetPointerTypeNameHelper<T>::Call(); }
 };
 
 // clang-format off
@@ -65,8 +65,8 @@ struct PointerType : public PointerTypeImpl {
   using PointerTypeImpl::PointerTypeImpl;
   DEFINE_ADT_VARIANT_METHODS(PointerTypeImpl);
 
-  const char* name() const {
-    return Match([](const auto& impl) { return impl.name(); });
+  const char* Name() const {
+    return Match([](const auto& impl) { return impl.Name(); });
   }
 };
 

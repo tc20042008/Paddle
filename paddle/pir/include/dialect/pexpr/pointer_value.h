@@ -42,7 +42,7 @@ struct PointerValue : public PointerValueImpl {
     if (!this->template Has<T>()) {
       return TypeError{
           std::string() + "PointerValue::TryGet() failed. expected_type: " +
-          CppPointerType<T>{}.name() + ", actual_type: " + GetType().name()};
+          CppPointerType<T>{}.Name() + ", actual_type: " + GetType().Name()};
     }
     return this->template Get<T>();
   }

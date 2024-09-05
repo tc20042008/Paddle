@@ -37,7 +37,7 @@ template <typename T>
 struct CppArithmeticType : public std::monostate {
   using std::monostate::monostate;
   using type = T;
-  const char* name() const { return GetArithmeticTypeNameHelper<T>::Call(); }
+  const char* Name() const { return GetArithmeticTypeNameHelper<T>::Call(); }
 };
 
 // clang-format off
@@ -53,8 +53,8 @@ struct ArithmeticType : public ArithmeticTypeImpl {
   using ArithmeticTypeImpl::ArithmeticTypeImpl;
   DEFINE_ADT_VARIANT_METHODS(ArithmeticTypeImpl);
 
-  const char* name() const {
-    return Match([](const auto& impl) { return impl.name(); });
+  const char* Name() const {
+    return Match([](const auto& impl) { return impl.Name(); });
   }
 };
 

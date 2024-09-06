@@ -16,19 +16,18 @@
 #include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_value.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
 
 namespace pexpr::index_expr {
 
 template <typename T>
 inline Maybe<T> TryGetConcretIndexExprValue(const Val& val) {
-  return val.Match(
-      [&](const IndexExprValue& index_expr_value) -> Maybe<T> {
-        return index_expr_value.Match(
-            [](const T& index_expr) -> Maybe<T> { return index_expr; },
-            [](const auto&) -> Maybe<T> { return Nothing{}; });
-      },
-      [&](const auto&) -> Maybe<T> { return Nothing{}; });
+  const auto& ret = MethodClass<Val>::template TryGet<T>(val);
+  if (ret.HasOkValue()) {
+    return ret.GetOkValue();
+  }
+  return adt::Nothing{};
 }
 
 inline Maybe<symbol::DimExpr> TryGetDimExpr(const Val& val) {
@@ -41,12 +40,8 @@ inline Maybe<symbol::DimExpr> TryGetDimExpr(const Val& val) {
         int64_t c = opt_constant.GetOkValue();
         return symbol::DimExpr{c};
       },
-      [&](const IndexExprValue& index_expr_value) -> Maybe<symbol::DimExpr> {
-        return index_expr_value.Match(
-            [](const symbol::DimExpr& dim_expr) -> Maybe<symbol::DimExpr> {
-              return dim_expr;
-            },
-            [](const auto&) -> Maybe<symbol::DimExpr> { return Nothing{}; });
+      [](const symbol::DimExpr& dim_expr) -> Maybe<symbol::DimExpr> {
+        return dim_expr;
       },
       [&](const auto&) -> Maybe<symbol::DimExpr> { return Nothing{}; });
 }
@@ -60,13 +55,9 @@ inline Maybe<int64_t> TryGetInt64(const Val& val) {
         }
         return ret.GetOkValue();
       },
-      [&](const IndexExprValue& index_expr_value) -> Maybe<int64_t> {
-        return index_expr_value.Match(
-            [](const symbol::DimExpr& dim_expr) -> Maybe<int64_t> {
-              return dim_expr.Match(
-                  [](const int64_t c) -> Maybe<int64_t> { return c; },
-                  [](const auto&) -> Maybe<int64_t> { return Nothing{}; });
-            },
+      [](const symbol::DimExpr& dim_expr) -> Maybe<int64_t> {
+        return dim_expr.Match(
+            [](const int64_t c) -> Maybe<int64_t> { return c; },
             [](const auto&) -> Maybe<int64_t> { return Nothing{}; });
       },
       [&](const auto&) -> Maybe<int64_t> { return Nothing{}; });
@@ -140,7 +131,7 @@ Result<Val> MakeSlice(const Val&, const std::vector<Val>& args) {
       [](const symbol::DimExpr& start,
          const symbol::DimExpr& stop,
          const symbol::DimExpr& step) -> Result<Val> {
-        return Val{IndexExprValue{Slice{start, stop, step}}};
+        return Val{Slice{start, stop, step}};
       },
       [](const auto&, const auto&, const auto&) -> Result<Val> {
         return InvalidArgumentError{"wrong argument type for Slice"};
@@ -303,8 +294,10 @@ Result<Val> MakeIndexTupleExprReshape(const Val&,
                     opt_expr.variant());
 }
 
-Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
-                                        const std::vector<Val>& args) {
+Result<adt::Ok> MakeIndexTupleExprTransform(
+    CpsInterpreterBase<Val>* interpreter,
+    ComposedCallImpl<Val>* composed_call) {
+  const auto& args = composed_call->args;
   if (args.size() < 1) {
     return TypeError{
         "IndexTupleExprTransform takes at least 1 argument but 0 were given."};
@@ -335,7 +328,8 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
   adt::List<IndexExpr> transform_index_exprs;
   transform_index_exprs->reserve(args.size() - 1);
   for (int i = 1; i < args.size(); ++i) {
-    const auto& opt_closure = CastToBuiltinValue<Closure<Val>>(args.at(i));
+    const auto& opt_closure =
+        MethodClass<Val>::template TryGet<Closure<Val>>(args.at(i));
     ADT_RETURN_IF_ERROR(opt_closure);
     const auto& closure = opt_closure.GetOkValue();
 
@@ -343,16 +337,13 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
       return TypeError{std::string("Argument ") + std::to_string(i) +
                        " is not a single-argumented closure."};
     }
-    const auto& arg_name = closure->lambda->args.at(0).value();
     int idx = i - 1;
     IndexExprDomain domain{dim_exprs->at(idx)};
     const auto& ret_lambda_call =
-        Interpret(closure, {Val{IndexExprValue{domain}}});
-    if (ret_lambda_call.Has<Error>()) {
-      return ret_lambda_call.Get<Error>();
-    }
+        interpreter->Interpret(closure, {Val{domain}});
+    ADT_RETURN_IF_ERROR(ret_lambda_call);
     const auto& ret_index_expr =
-        TryGetConcretIndexExprValue<IndexExpr>(ret_lambda_call.Get<Val>());
+        TryGetConcretIndexExprValue<IndexExpr>(ret_lambda_call.GetOkValue());
     if (!ret_index_expr.Has<IndexExpr>()) {
       return TypeError{std::string("closure of argument") + std::to_string(i) +
                        " does not return a IndexExpr."};
@@ -360,7 +351,14 @@ Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
     transform_index_exprs->push_back(ret_index_expr.Get<IndexExpr>());
   }
   ValidIndexExprBuilder builder{};
-  return ConvertResult(builder.Transform(transform_index_exprs, indexes_expr));
+  const auto& opt_ret =
+      ConvertResult(builder.Transform(transform_index_exprs, indexes_expr));
+  ADT_RETURN_IF_ERROR(opt_ret);
+  const auto& ret = opt_ret.GetOkValue();
+  composed_call->args = {ret};
+  composed_call->inner_func = composed_call->outter_func;
+  composed_call->outter_func = &BuiltinHalt<Val>;
+  return adt::Ok{};
 }
 
 Result<Val> MakeOpIndexTupleExprSignature(const Val&,
@@ -371,20 +369,16 @@ Result<Val> MakeOpIndexTupleExprSignature(const Val&,
         std::to_string(args.size()) + "were given."};
   }
   const auto& in_sig = args.at(0);
+  const auto& opt_in =
+      MethodClass<Val>::template TryGet<InIndexTupleExprSignature>(in_sig);
+  ADT_RETURN_IF_ERROR(opt_in);
+  const auto& in = opt_in.GetOkValue();
   const auto& out_sig = args.at(1);
-  return std::visit(
-      ::common::Overloaded{
-          [&](const InIndexTupleExprSignature& in,
-              const OutIndexTupleExprSignature& out) {
-            return OpIndexTupleExprSignature{in, out};
-          },
-          [&](const auto&, const auto&) {
-            return InvalidArgumentError{
-                "wrong argument type for OpIndexTupleExprSignature"};
-          },
-      },
-      in_sig.variant(),
-      out_sig.variant());
+  const auto& opt_out =
+      MethodClass<Val>::template TryGet<OutIndexTupleExprSignature>(out_sig);
+  ADT_RETURN_IF_ERROR(opt_out);
+  const auto& out = opt_out.GetOkValue();
+  return OpIndexTupleExprSignature{in, out};
 }
 
 Result<Val> MakeInIndexTupleExprSignature(const Val&,

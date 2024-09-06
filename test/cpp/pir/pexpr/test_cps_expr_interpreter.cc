@@ -18,6 +18,7 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/cast_util.h"
 #include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
 #include "test/cpp/pir/pexpr/test_value.h"
@@ -40,7 +41,7 @@ TEST(CpsExprInterpreter, simple) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastToArithmeticValue<int64_t>(val);
+  const auto& int_val = CastUtil<Val>::ToArithmeticValue<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 1);
 }
@@ -65,7 +66,7 @@ TEST(CpsExprInterpreter, lambda) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastToArithmeticValue<int64_t>(val);
+  const auto& int_val = CastUtil<Val>::ToArithmeticValue<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 1);
 }
@@ -288,7 +289,7 @@ TEST(CpsExprInterpreter, arithmetic_value) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastToArithmeticValue<int64_t>(val);
+  const auto& int_val = CastUtil<Val>::ToArithmeticValue<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 5);
 }

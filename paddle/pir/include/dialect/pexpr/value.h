@@ -18,9 +18,13 @@
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
 #include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
-#include "paddle/pir/include/dialect/pexpr/atomic.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/builtin_func_type.h"
+#include "paddle/pir/include/dialect/pexpr/builtin_symbol.h"
+#include "paddle/pir/include/dialect/pexpr/closure.h"
+#include "paddle/pir/include/dialect/pexpr/cps_builtin_high_order_func_type.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/method.h"
+#include "paddle/pir/include/dialect/pexpr/object.h"
 #include "paddle/pir/include/dialect/pexpr/pointer_type.h"
 #include "paddle/pir/include/dialect/pexpr/pointer_value.h"
 
@@ -30,31 +34,6 @@ using adt::Nothing;
 
 template <typename CustomT>
 class Value;
-
-template <typename ValueT>
-struct ObjectImpl {
-  std::unordered_map<std::string, ValueT> storage;
-
-  size_t size() const { return storage.size(); }
-
-  void clear() { storage.clear(); }
-
-  Result<ValueT> Get(const std::string& var) const {
-    const auto& iter = storage.find(var);
-    if (iter == storage.end()) {
-      return AttributeError{"object has no attribute '" + var + "'"};
-    }
-    return iter->second;
-  }
-
-  bool Set(const std::string& var, const ValueT& val) {
-    return storage.insert({var, val}).second;
-  }
-
-  bool operator==(const ObjectImpl& other) const { return &other == this; }
-};
-template <typename ValueT>
-DEFINE_ADT_RC(Object, ObjectImpl<ValueT>);
 
 template <typename ValueT>
 struct Frame {
@@ -125,188 +104,24 @@ class Environment {
   Frame<ValueT> frame_;
 };
 
-template <typename ValueT>
-struct ClosureImpl {
-  Lambda<CoreExpr> lambda;
-  std::shared_ptr<Environment<ValueT>> environment;
-
-  bool operator==(const ClosureImpl& other) const {
-    return other.lambda == this->lambda &&
-           other.environment == this->environment;
-  }
-};
-
-template <typename ValueT>
-DEFINE_ADT_RC(Closure, const ClosureImpl<ValueT>);
-
-template <typename ValueT>
-struct MethodImpl {
-  ValueT obj;
-  ValueT func;
-
-  bool operator==(const MethodImpl& other) const {
-    return other.obj == this->obj && other.func == this->func;
-  }
-};
-
-template <typename ValueT>
-DEFINE_ADT_RC(Method, const MethodImpl<ValueT>);
-
-template <typename ValueT>
-using InterpretFuncType = std::function<Result<ValueT>(
-    const ValueT& f, const std::vector<ValueT>& args)>;
-
-template <typename ValueT>
-class CpsInterpreterBase {
- public:
-  virtual Result<adt::Ok> InterpretLambdaCall(
-      const std::shared_ptr<Environment<ValueT>>& env,
-      const ValueT& outter_func,
-      const Lambda<CoreExpr>& lambda,
-      const std::vector<ValueT>& args,
-      ComposedCallImpl<ValueT>* ret_composed_call) = 0;
-};
-
-template <typename ValueT>
-using BuiltinFuncType = Result<ValueT> (*)(const ValueT&,
-                                           const std::vector<ValueT>& args);
-
-template <typename ValueT>
-using CpsBuiltinHighOrderFuncType =
-    Result<adt::Ok> (*)(CpsInterpreterBase<ValueT>* CpsInterpret,
-                        ComposedCallImpl<ValueT>* composed_call);
-
-template <typename CustomT>
-using ValueBase = std::variant<CustomT,
-                               Nothing,
+template <typename ValueT, typename... CustomTs>
+using ValueBase = std::variant<Nothing,
                                ArithmeticType,
                                PointerType,
                                ArithmeticValue,
                                PointerValue,
                                std::string,
-                               Closure<Value<CustomT>>,
-                               Method<Value<CustomT>>,
-                               adt::List<Value<CustomT>>,
-                               Object<Value<CustomT>>,
-                               BuiltinFuncType<Value<CustomT>>,
-                               CpsBuiltinHighOrderFuncType<Value<CustomT>>>;
-
-template <typename CustomT>
-struct Value : public ValueBase<CustomT> {
-  using ValueBase<CustomT>::ValueBase;
-  DEFINE_ADT_VARIANT_METHODS(ValueBase<CustomT>);
-};
-
-template <typename T>
-struct GetBuiltinTypeNameImplHelper {
-  static const char* Call() { return "custom_type"; }
-};
-
-template <>
-struct GetBuiltinTypeNameImplHelper<ArithmeticType> {
-  static const char* Call() { return "arithmetic_type"; }
-};
-
-template <>
-struct GetBuiltinTypeNameImplHelper<PointerType> {
-  static const char* Call() { return "pointer_type"; }
-};
-
-template <>
-struct GetBuiltinTypeNameImplHelper<ArithmeticValue> {
-  static const char* Call() { return "arithmetic_value"; }
-};
-
-template <>
-struct GetBuiltinTypeNameImplHelper<PointerValue> {
-  static const char* Call() { return "pointer_value"; }
-};
-
-template <>
-struct GetBuiltinTypeNameImplHelper<std::string> {
-  static const char* Call() { return "str"; }
-};
-
-template <>
-struct GetBuiltinTypeNameImplHelper<Nothing> {
-  static const char* Call() { return "NoneType"; }
-};
+                               Closure<ValueT>,
+                               Method<ValueT>,
+                               adt::List<ValueT>,
+                               Object<ValueT>,
+                               builtin_symbol::Symbol,
+                               BuiltinFuncType<ValueT>,
+                               CpsBuiltinHighOrderFuncType<ValueT>,
+                               CustomTs...>;
 
 template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<adt::List<ValueT>> {
-  static const char* Call() { return "list"; }
-};
-
-template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<Object<ValueT>> {
-  static const char* Call() { return "object"; }
-};
-
-template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<Closure<ValueT>> {
-  static const char* Call() { return "closure"; }
-};
-
-template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<Method<ValueT>> {
-  static const char* Call() { return "method"; }
-};
-
-template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<BuiltinFuncType<ValueT>> {
-  static const char* Call() { return "builtin_function"; }
-};
-
-template <typename ValueT>
-struct GetBuiltinTypeNameImplHelper<CpsBuiltinHighOrderFuncType<ValueT>> {
-  static const char* Call() { return "cps_builtin_high_order_function"; }
-};
-
-template <typename T>
-const char* GetBuiltinTypeNameImpl() {
-  return GetBuiltinTypeNameImplHelper<T>::Call();
-}
-
-template <typename CustomT>
-const char* GetBuiltinTypeName(const Value<CustomT>& val) {
-  using ValueT = Value<CustomT>;
-  return val.Match(
-      [](const CustomT&) -> const char* { return "custom_type"; },
-      [](const auto& impl) -> const char* {
-        return GetBuiltinTypeNameImpl<std::decay_t<decltype(impl)>>();
-      });
-}
-
-template <typename T, typename ValueT>
-struct CastToBuiltinValueHelpr {
-  static Result<T> Call(const ValueT& value) {
-    if (!value.template Has<T>()) {
-      return TypeError{std::string() + "cast failed. expected type: " +
-                       GetBuiltinTypeNameImpl<T>() +
-                       ", actual type: " + GetBuiltinTypeName(value)};
-    }
-    return value.template Get<T>();
-  }
-};
-
-template <typename T, typename ValueT>
-Result<T> CastToBuiltinValue(const ValueT& value) {
-  return CastToBuiltinValueHelpr<T, ValueT>::Call(value);
-}
-
-template <typename T, typename ValueT>
-Result<T> CastToArithmeticValue(const ValueT& value) {
-  const auto& arithmetic_value = CastToBuiltinValue<ArithmeticValue>(value);
-  ADT_RETURN_IF_ERROR(arithmetic_value);
-  return arithmetic_value.GetOkValue().template TryGet<T>();
-}
-
-template <typename T, typename ValueT>
-Result<T> CastToPointerValue(const ValueT& value) {
-  const auto& pointer_value = CastToBuiltinValue<PointerValue>(value);
-  ADT_RETURN_IF_ERROR(pointer_value);
-  return pointer_value.GetOkValue().template TryGet<T>();
-}
+using Builtin = ValueBase<ValueT>;
 
 // Watch out circle references:
 // Value   ->   Closure

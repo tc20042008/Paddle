@@ -15,19 +15,15 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/value.h"
+#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
 
 namespace pexpr::tests {
 
-struct TestCustomValue : public std::monostate {};
-
-using Val = Value<TestCustomValue>;
-
-adt::Result<Val> CustomGetAttr(const TestCustomValue& val, const std::string&) {
-  return TypeError{"Not implemented error."};
+struct TestValue : public ValueBase<TestValue> {
+  using ValueBase<TestValue>::ValueBase;
+  DEFINE_ADT_VARIANT_METHODS(ValueBase<TestValue>);
 }
 
-adt::Result<Val> CustomGetItem(const TestCustomValue& val, const Val& idx) {
-  return TypeError{"Not implemented error."};
-}
+using Val = TestValue;
 
 }  // namespace pexpr::tests

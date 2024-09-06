@@ -40,10 +40,8 @@ TEST(IndexExpr, kNothingIndexTupleExpr) {
   Result<index_expr::Val> result = interpreter(lambda, {});
   ASSERT_TRUE(result.Has<index_expr::Val>());
   const auto& ret = result.Get<index_expr::Val>();
-  ASSERT_TRUE((ret.Has<IndexExprValue>()));
-  ASSERT_TRUE((ret.Get<IndexExprValue>().Has<IndexTupleExpr>()));
-  const auto& index_tuple_expr =
-      ret.Get<IndexExprValue>().Get<IndexTupleExpr>();
+  ASSERT_TRUE(ret.Has<IndexTupleExpr>());
+  const auto& index_tuple_expr = ret.Get<IndexTupleExpr>();
   ASSERT_TRUE((index_tuple_expr.Has<NothingIndexTupleExpr>()));
 }
 
@@ -64,19 +62,17 @@ TEST(IndexExpr, IndexTupleExprReshape) {
   index_expr::IndexExprInterpreter interpreter;
   Result<index_expr::Val> result = interpreter(
       lambda,
-      {index_expr::Val{IndexExprValue{
+      {index_expr::Val{
           IndexTupleExpr{IndexTupleExprDomain{adt::List<symbol::DimExpr>{
-              symbol::DimExpr{6}, symbol::DimExpr{4}}}}}}});
+              symbol::DimExpr{6}, symbol::DimExpr{4}}}}}});
   if (!result.HasOkValue()) {
     LOG(ERROR) << "error-type: " << result.GetError().class_name()
                << ", error-msg: " << result.GetError().msg();
   }
   ASSERT_TRUE(result.HasOkValue());
   const auto& ret = result.GetOkValue();
-  ASSERT_TRUE((ret.Has<IndexExprValue>()));
-  ASSERT_TRUE((ret.Get<IndexExprValue>().Has<IndexTupleExpr>()));
-  const auto& index_tuple_expr =
-      ret.Get<IndexExprValue>().Get<IndexTupleExpr>();
+  ASSERT_TRUE(ret.Has<IndexTupleExpr>());
+  const auto& index_tuple_expr = ret.Get<IndexTupleExpr>();
   ASSERT_TRUE((index_tuple_expr.Has<IndexTupleExprReshape<IndexTupleExpr>>()));
 }
 
@@ -97,9 +93,9 @@ TEST(IndexExpr, IndexTupleExprReshape_failed) {
   index_expr::IndexExprInterpreter interpreter;
   Result<index_expr::Val> result = interpreter(
       lambda,
-      {index_expr::Val{IndexExprValue{
+      {index_expr::Val{
           IndexTupleExpr{IndexTupleExprDomain{adt::List<symbol::DimExpr>{
-              symbol::DimExpr{5}, symbol::DimExpr{4}}}}}}});
+              symbol::DimExpr{5}, symbol::DimExpr{4}}}}}});
   ASSERT_TRUE(result.Has<Error>());
 }
 }  // namespace pexpr::index_expr::tests

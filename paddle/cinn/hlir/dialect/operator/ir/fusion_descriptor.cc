@@ -361,7 +361,7 @@ pexpr::index_expr::Val MakeTensorShapeFromVec(
   adt::List<Val> dim_exprs;
   dim_exprs->reserve(vec.size());
   for (const auto& dim_expr : vec) {
-    dim_exprs->emplace_back(Val{pexpr::index_expr::IndexExprValue{dim_expr}});
+    dim_exprs->emplace_back(Val{dim_expr});
   }
   return dim_exprs;
 }

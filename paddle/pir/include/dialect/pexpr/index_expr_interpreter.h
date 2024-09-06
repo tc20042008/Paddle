@@ -18,6 +18,7 @@
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_value.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr_value_method_class.h"
 
 namespace pexpr::index_expr {
 

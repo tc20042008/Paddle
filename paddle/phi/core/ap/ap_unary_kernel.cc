@@ -23,7 +23,9 @@
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/phi/common/ap/define_ctx_value.h"
+#include "paddle/phi/common/ap/define_ctx_value_method_class.h"
 #include "paddle/phi/common/ap/dispatch_ctx_value.h"
+#include "paddle/phi/common/ap/dispatch_ctx_value_method_class.h"
 #include "paddle/phi/core/ap/ap_cuda_jit_util.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
@@ -170,7 +172,7 @@ adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
       cps_interpreter.Interpret(definer, {ctx.GetOkValue()});
   ADT_RETURN_IF_ERROR(interpret_ret);
   const Result<Module>& m =
-      CastToCustomValue<Module>(interpret_ret.GetOkValue());
+      MethodClass<Val>::TryGet<Module>(interpret_ret.GetOkValue());
   ADT_RETURN_IF_ERROR(m);
   const auto& cuda_module = MakeBackendCudaModule(m.GetOkValue());
   ADT_RETURN_IF_ERROR(cuda_module);
@@ -200,7 +202,7 @@ adt::List<Val> MakeConstTensors(
   for (const auto* x : xs) {
     ConstTensorData tensor_data{x};
     adt::List<Val> dims{MakeTensorDims(*x)};
-    ret->emplace_back(CustomValue{ConstTensor<Val>{tensor_data, dims}});
+    ret->emplace_back(ConstTensor<Val>{tensor_data, dims});
   }
   return ret;
 }
@@ -211,7 +213,7 @@ adt::List<Val> MakeMutableTensors(std::vector<phi::DenseTensor*>* ys) {
   for (auto* y : *ys) {
     MutableTensorData tensor_data{y};
     adt::List<Val> dims{MakeTensorDims(*y)};
-    ret->emplace_back(CustomValue{MutableTensor<Val>{tensor_data, dims}});
+    ret->emplace_back(MutableTensor<Val>{tensor_data, dims});
   }
   return ret;
 }
@@ -242,11 +244,10 @@ adt::Result<adt::Ok> ApUnaryKernel(
   const auto& cuda_module = m.GetOkValue();
   adt::List<Val> inputs = MakeConstTensors(xs);
   adt::List<Val> outputs = MakeMutableTensors(&outs);
-  DispatchRawContext<Val> raw_ctx{
-      inputs,
-      outputs,
-      cuda_module.shared_ptr(),
-      MakeFuncName2ArgTypes(cuda_module->GetModule())};
+  DispatchRawCtx<Val> raw_ctx{inputs,
+                              outputs,
+                              cuda_module.shared_ptr(),
+                              MakeFuncName2ArgTypes(cuda_module->GetModule())};
   const auto& dispatch_ctx_maker_core_expr =
       MakeOrGetCoreExpr(dispatch_ctx_maker_lambda);
   ADT_RETURN_IF_ERROR(dispatch_ctx_maker_core_expr);

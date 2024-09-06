@@ -21,6 +21,7 @@
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_value.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 
 namespace pexpr::index_expr {

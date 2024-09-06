@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
 #include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 

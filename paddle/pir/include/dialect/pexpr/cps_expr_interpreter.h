@@ -20,6 +20,7 @@
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/value.h"
+#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
 
 namespace pexpr {
 
@@ -47,7 +48,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
   }
 
   Result<ValueT> Interpret(const Closure<ValueT>& closure,
-                           const std::vector<ValueT>& args) {
+                           const std::vector<ValueT>& args) override {
     ComposedCallImpl<ValueT> composed_call{&BuiltinHalt<ValueT>, closure, args};
     const auto& ret = InterpretComposedCallUntilHalt(&composed_call);
     ADT_RETURN_IF_ERROR(ret);
@@ -96,10 +97,14 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                                       composed_call->args,
                                       composed_call);
         },
+        [&](const builtin_symbol::Symbol& symbol) -> Result<adt::Ok> {
+          return InterpretBuiltinSymbolCall(symbol, composed_call);
+        },
         [&](const auto& other) -> Result<adt::Ok> {
-          return TypeError{std::string("'") +
-                           GetBuiltinTypeName(composed_call->inner_func) +
-                           "' object is not callable"};
+          return TypeError{
+              std::string("'") +
+              MethodClass<ValueT>::Name(composed_call->inner_func) +
+              "' object is not callable"};
         });
   }
 
@@ -127,7 +132,11 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                         [&](const auto& val) -> Result<ValueT> { return val; });
               },
               [&](const builtin_symbol::Symbol& symbol) -> Result<ValueT> {
-                return InterpretBuiltinSymbol(symbol);
+                return symbol.Match(
+                    [&](const builtin_symbol::Nothing&) -> Result<ValueT> {
+                      return adt::Nothing{};
+                    },
+                    [&](const auto&) -> Result<ValueT> { return symbol; });
               });
         },
         [&](int64_t c) -> Result<ValueT> { return ArithmeticValue{c}; },
@@ -135,28 +144,100 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
         [&](const std::string& val) -> Result<ValueT> { return ValueT{val}; });
   }
 
-  Result<ValueT> InterpretBuiltinSymbol(const builtin_symbol::Symbol& symbol) {
+  Result<adt::Ok> InterpretBuiltinSymbolCall(
+      const builtin_symbol::Symbol& symbol,
+      ComposedCallImpl<ValueT>* ret_composed_call) {
     return symbol.Match(
-        [&](const builtin_symbol::If&) -> ValueT {
-          return &CpsBuiltinIf<ValueT>;
+        [&](const builtin_symbol::If&) -> Result<adt::Ok> {
+          ret_composed_call->inner_func = &CpsBuiltinIf<ValueT>;
+          return adt::Ok{};
         },
-        [&](const builtin_symbol::Apply&) -> ValueT {
-          return &CpsBuiltinApply<ValueT>;
+        [&](const builtin_symbol::Apply&) -> Result<adt::Ok> {
+          ret_composed_call->inner_func = &CpsBuiltinApply<ValueT>;
+          return adt::Ok{};
         },
-        [&](const builtin_symbol::Nothing&) -> ValueT {
-          return adt::Nothing{};
+        [&](const builtin_symbol::Nothing&) -> Result<adt::Ok> {
+          return TypeError{"'None' is not callable"};
         },
-        [&](const builtin_symbol::Id&) -> ValueT {
-          return &BuiltinIdentity<ValueT>;
+        [&](const builtin_symbol::Id&) -> Result<adt::Ok> {
+          ret_composed_call->inner_func = &BuiltinIdentity<ValueT>;
+          return adt::Ok{};
         },
-        [&](const builtin_symbol::List&) -> ValueT {
-          return &BuiltinList<ValueT>;
+        [&](const builtin_symbol::List&) -> Result<adt::Ok> {
+          ret_composed_call->inner_func = &BuiltinList<ValueT>;
+          return adt::Ok{};
         },
-        [&](const builtin_symbol::Op& op) -> ValueT {
-          return op.Match([](auto impl) {
-            return GetBuiltinOpFunc<decltype(impl), ValueT>();
+        [&](const builtin_symbol::Op& op) -> Result<adt::Ok> {
+          return op.Match([&](auto impl) -> Result<adt::Ok> {
+            using BuiltinSymbol = decltype(impl);
+            if constexpr (BuiltinSymbol::num_operands == 1) {
+              return this
+                  ->template InterpretBuiltinUnarySymbolCall<BuiltinSymbol>(
+                      ret_composed_call);
+            } else if constexpr (BuiltinSymbol::num_operands == 2) {
+              return this
+                  ->template InterpretBuiltinBinarySymbolCall<BuiltinSymbol>(
+                      ret_composed_call);
+            } else {
+              static_assert(true, "NotImplemented");
+              return RuntimeError{"NotImplemented."};
+            }
           });
         });
+  }
+
+  template <typename BuiltinSymbol>
+  Result<adt::Ok> InterpretBuiltinUnarySymbolCall(
+      ComposedCallImpl<ValueT>* ret_composed_call) {
+    if (ret_composed_call->args.size() != 1) {
+      return TypeError{std::string() + "'" + BuiltinSymbol::Name() +
+                       "' takes 1 argument. but " +
+                       std::to_string(ret_composed_call->args.size()) +
+                       " were given."};
+    }
+    const auto& operand = ret_composed_call->args.at(0);
+    const auto& opt_func =
+        MethodClass<ValueT>::template GetBuiltinUnaryFunc<BuiltinSymbol>(
+            operand);
+    if (!opt_func.has_value()) {
+      return TypeError{std::string() + "unsupported operand type for " +
+                       GetBuiltinSymbolDebugString<BuiltinSymbol>() + ": '" +
+                       MethodClass<ValueT>::Name(operand) + "'"};
+    }
+    const auto& opt_ret = opt_func.value()(operand);
+    ADT_RETURN_IF_ERROR(opt_ret);
+    const auto& ret = opt_ret.GetOkValue();
+    ret_composed_call->args = {ret};
+    ret_composed_call->inner_func = ret_composed_call->outter_func;
+    ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
+    return adt::Ok{};
+  }
+
+  template <typename BuiltinSymbol>
+  Result<adt::Ok> InterpretBuiltinBinarySymbolCall(
+      ComposedCallImpl<ValueT>* ret_composed_call) {
+    if (ret_composed_call->args.size() != 2) {
+      return TypeError{std::string() + "'" + BuiltinSymbol::Name() +
+                       "' takes 2 argument. but " +
+                       std::to_string(ret_composed_call->args.size()) +
+                       " were given."};
+    }
+    const auto& lhs = ret_composed_call->args.at(0);
+    const auto& opt_func =
+        MethodClass<ValueT>::template GetBuiltinBinaryFunc<BuiltinSymbol>(lhs);
+    if (!opt_func.has_value()) {
+      return TypeError{std::string() + "unsupported operand type for " +
+                       GetBuiltinSymbolDebugString<BuiltinSymbol>() + ": '" +
+                       MethodClass<ValueT>::Name(lhs) + "'"};
+    }
+    const auto& rhs = ret_composed_call->args.at(1);
+    const auto& opt_ret = opt_func.value()(lhs, rhs);
+    ADT_RETURN_IF_ERROR(opt_ret);
+    const auto& ret = opt_ret.GetOkValue();
+    ret_composed_call->args = {ret};
+    ret_composed_call->inner_func = ret_composed_call->outter_func;
+    ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
+    return adt::Ok{};
   }
 
   Result<adt::Ok> InterpretClosureCall(

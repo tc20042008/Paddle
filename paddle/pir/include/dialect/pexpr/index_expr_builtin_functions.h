@@ -35,8 +35,8 @@ Result<Val> MakeIndexTupleExprPermute(const Val&, const std::vector<Val>& args);
 
 Result<Val> MakeIndexTupleExprReshape(const Val&, const std::vector<Val>& args);
 
-Result<Val> MakeIndexTupleExprTransform(const InterpretFuncType<Val>& Interpret,
-                                        const std::vector<Val>& args);
+Result<adt::Ok> MakeIndexTupleExprTransform(
+    CpsInterpreterBase<Val>* interpreter, ComposedCallImpl<Val>* composed_call);
 
 Result<Val> MakeOpIndexTupleExprSignature(const Val&,
                                           const std::vector<Val>& args);

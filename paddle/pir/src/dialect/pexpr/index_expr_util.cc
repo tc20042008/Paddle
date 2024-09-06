@@ -14,6 +14,8 @@
 
 #include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
 
 namespace pexpr {
 

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
 
 namespace pexpr::index_expr {
 

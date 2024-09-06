@@ -19,7 +19,9 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/ap/define_ctx_value.h"
+#include "paddle/phi/common/ap/define_ctx_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
+#include "paddle/pir/include/dialect/pexpr/cast_util.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
@@ -47,7 +49,7 @@ TEST(KernelDefine, ArgType) {
   }
   ASSERT_TRUE(ret.HasOkValue());
   const Result<pexpr::PointerType>& opt_pointer_type =
-      pexpr::CastToBuiltinValue<pexpr::PointerType>(ret.GetOkValue());
+      MethodClass<Val>::TryGet<pexpr::PointerType>(ret.GetOkValue());
   ASSERT_TRUE(opt_pointer_type.HasOkValue());
   const pexpr::PointerType& pointer_type = opt_pointer_type.GetOkValue();
   ASSERT_TRUE(pointer_type.Has<pexpr::CppPointerType<const int32_t*>>());
@@ -190,7 +192,7 @@ TEST(KernelDefine, FromJson) {
   }
   ASSERT_TRUE(ret.HasOkValue());
   const Result<Module>& opt_module =
-      CastToCustomValue<Module>(ret.GetOkValue());
+      MethodClass<Val>::TryGet<Module>(ret.GetOkValue());
   ASSERT_TRUE(opt_module.HasOkValue());
   const Module& m = opt_module.GetOkValue();
   ASSERT_EQ(m->func_declares->size(), 1);

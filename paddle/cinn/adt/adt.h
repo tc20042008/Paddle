@@ -306,6 +306,16 @@ struct MismatchError {
   const char* class_name() const { return "MismatchError"; }
 };
 
+struct NotImplementedError {
+  std::string msg;
+
+  bool operator==(const NotImplementedError& other) const {
+    return other.msg == this->msg;
+  }
+
+  const char* class_name() const { return "NotImplementedError"; }
+};
+
 struct SyntaxError {
   std::string msg;
 
@@ -313,7 +323,7 @@ struct SyntaxError {
     return other.msg == this->msg;
   }
 
-  const char* class_name() const { return "IndexError"; }
+  const char* class_name() const { return "SyntaxError"; }
 };
 
 using ErrorBase = std::variant<RuntimeError,
@@ -325,6 +335,7 @@ using ErrorBase = std::variant<RuntimeError,
                                TypeError,
                                IndexError,
                                MismatchError,
+                               NotImplementedError,
                                SyntaxError>;
 
 struct [[nodiscard]] Error : public ErrorBase {

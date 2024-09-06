@@ -36,31 +36,15 @@ adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::operator()(
 
 adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::CallLambda(
     const Lambda<CoreExpr>& lambda, const IndexTupleExpr& indexes_expr) const {
-  const std::vector<pexpr::index_expr::Val> args{
-      closure_data.ctx,
-      closure_data.inputs_meta,
-      closure_data.outputs_meta,
-      closure_data.in_vars,
-      Val{IndexExprValue{indexes_expr}}};
-  const auto& res = (*this->interpreter)(lambda, args);
-  if (res.Has<Error>()) {
-    return res.Get<Error>();
-  }
-  const auto& val = res.Get<Val>();
-  if (!val.Has<IndexExprValue>()) {
-    return ValueError{
-        std::string() +
-        "index lambda should return an IndexExprValue object. but `" +
-        GetBuiltinTypeName(val) + "` object returned."};
-  }
-  const auto& index_expr_value = val.Get<IndexExprValue>();
-  if (!index_expr_value.Has<OpIndexTupleExprSignature>()) {
-    return ValueError{
-        std::string() +
-        "index lambda should return a OpIndexTupleExprSignature object. but `" +
-        GetBuiltinTypeName(val) + "` object returned."};
-  }
-  return index_expr_value.Get<OpIndexTupleExprSignature>();
+  const std::vector<pexpr::index_expr::Val> args{closure_data.ctx,
+                                                 closure_data.inputs_meta,
+                                                 closure_data.outputs_meta,
+                                                 closure_data.in_vars,
+                                                 Val{indexes_expr}};
+  const auto& opt_ret = (*this->interpreter)(lambda, args);
+  ADT_RETURN_IF_ERROR(opt_ret);
+  const auto& ret = opt_ret.GetOkValue();
+  return MethodClass<Val>::TryGet<OpIndexTupleExprSignature>(ret);
 }
 
 namespace {

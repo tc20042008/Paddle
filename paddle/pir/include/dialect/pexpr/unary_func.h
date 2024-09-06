@@ -20,4 +20,16 @@ namespace pexpr {
   _(Not, !)                        \
   _(Neg, -)
 
+#define DEFINE_ARITHMETIC_UNARY_OP(name, op)            \
+  struct Arithmetic##name {                             \
+    static constexpr const char* Name() { return #op; } \
+                                                        \
+    template <typename LhsT>                            \
+    static auto Call(const LhsT& val) {                 \
+      return op val;                                    \
+    }                                                   \
+  };
+PEXPR_FOR_EACH_UNARY_OP(DEFINE_ARITHMETIC_UNARY_OP);
+#undef DEFINE_ARITHMETIC_UNARY_OP
+
 }  // namespace pexpr

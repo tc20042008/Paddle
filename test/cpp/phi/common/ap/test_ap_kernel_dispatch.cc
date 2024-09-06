@@ -19,6 +19,7 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/common/ap/define_ctx_value.h"
 #include "paddle/phi/common/ap/dispatch_ctx_value.h"
+#include "paddle/phi/common/ap/dispatch_ctx_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
@@ -44,7 +45,7 @@ TEST(KernelDispatch, CppValue) {
       .buffer = &number, .dtype = phi::DataType::INT32, .size = 1};
   ConstTensor<Val> const_tensor{.tensor_data = ConstTensorData{buffer},
                                 .dims = adt::List<Val>{Val{int64_t(1)}}};
-  DispatchRawContext<Val> raw_ctx{
+  DispatchRawCtx<Val> raw_ctx{
       .inputs = adt::List<Val>{Val{const_tensor}},
       .outputs = adt::List<Val>{},
       .cuda_module = nullptr,
@@ -60,7 +61,8 @@ TEST(KernelDispatch, CppValue) {
   }
   ASSERT_TRUE(ret.HasOkValue());
   const Result<pexpr::PointerValue>& opt_ptr_value =
-      pexpr::CastToBuiltinValue<pexpr::PointerValue>(ret.GetOkValue());
+      pexpr::MethodClass<Val>::template TryGet<pexpr::PointerValue>(
+          ret.GetOkValue());
   ASSERT_TRUE(opt_ptr_value.HasOkValue());
   const pexpr::PointerValue& ptr_value = opt_ptr_value.GetOkValue();
   ASSERT_TRUE(ptr_value.Has<const int32_t*>());

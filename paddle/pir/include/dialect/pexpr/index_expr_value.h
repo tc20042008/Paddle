@@ -17,6 +17,7 @@
 #include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
 #include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 #include "paddle/pir/include/dialect/pexpr/value.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
@@ -24,32 +25,24 @@
 
 namespace pexpr::index_expr {
 
-template <typename Val>
-using IndexExprValueBase = std::variant<symbol::DimExpr,
-                                        Slice,
-                                        IndexExpr,
-                                        IndexTupleExpr,
-                                        InIndexTupleExprSignature,
-                                        OutIndexTupleExprSignature,
-                                        OpIndexTupleExprSignature>;
+template <typename ValueT>
+using ValueImpl = ValueBase<ValueT,
+                            symbol::DimExpr,
+                            Slice,
+                            IndexExpr,
+                            IndexTupleExpr,
+                            InIndexTupleExprSignature,
+                            OutIndexTupleExprSignature,
+                            OpIndexTupleExprSignature>;
 
-struct IndexExprValue : public IndexExprValueBase<Value<IndexExprValue>> {
-  using IndexExprValueBase<Value<IndexExprValue>>::IndexExprValueBase;
-  DEFINE_ADT_VARIANT_METHODS(IndexExprValueBase<Value<IndexExprValue>>);
+struct Value : public ValueImpl<Value> {
+  using ValueImpl<Value>::ValueImpl;
+  DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 };
 
-using Val = Value<IndexExprValue>;
+using Val = Value;
 
 using Env = Environment<Val>;
 using EnvMgr = EnvironmentManager<Val>;
-
-inline Result<Val> CustomGetAttr(const IndexExprValue&,
-                                 const std::string& name) {
-  return AttributeError{std::string("no attribute '") + name + "' found."};
-}
-
-inline Result<Val> CustomGetItem(const IndexExprValue&, const Val& idx) {
-  return TypeError{"'IndexExprValue' object is not subscriptable"};
-}
 
 }  // namespace pexpr::index_expr

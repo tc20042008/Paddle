@@ -21,30 +21,6 @@
 
 namespace pexpr {
 
-#define DEFINE_ARITHMETIC_UNARY_OP(name, op)            \
-  struct Arithmetic##name {                             \
-    static constexpr const char* Name() { return #op; } \
-                                                        \
-    template <typename LhsT>                            \
-    static auto Call(const LhsT& val) {                 \
-      return op val;                                    \
-    }                                                   \
-  };
-PEXPR_FOR_EACH_UNARY_OP(DEFINE_ARITHMETIC_UNARY_OP);
-#undef DEFINE_ARITHMETIC_UNARY_OP
-
-#define DEFINE_ARITHMETIC_BINARY_OP(name, op)            \
-  struct Arithmetic##name {                              \
-    static constexpr const char* Name() { return #op; }  \
-                                                         \
-    template <typename LhsT, typename RhsT>              \
-    static auto Call(const LhsT& lhs, const RhsT& rhs) { \
-      return lhs op rhs;                                 \
-    }                                                    \
-  };
-PEXPR_FOR_EACH_BINARY_OP(DEFINE_ARITHMETIC_BINARY_OP);
-#undef DEFINE_ARITHMETIC_BINARY_OP
-
 namespace detail {
 
 template <typename ArithmeticOp>

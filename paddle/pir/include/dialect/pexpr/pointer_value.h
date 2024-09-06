@@ -40,7 +40,7 @@ struct PointerValue : public PointerValueImpl {
   template <typename T>
   Result<T> TryGet() const {
     if (!this->template Has<T>()) {
-      return TypeError{
+      return adt::errors::TypeError{
           std::string() + "PointerValue::TryGet() failed. expected_type: " +
           CppPointerType<T>{}.Name() + ", actual_type: " + GetType().Name()};
     }

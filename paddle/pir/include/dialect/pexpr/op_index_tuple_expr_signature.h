@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
 #include "paddle/pir/include/dialect/pexpr/op_signature.h"
 
 namespace pexpr {

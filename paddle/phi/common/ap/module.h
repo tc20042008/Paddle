@@ -17,6 +17,7 @@
 #include "paddle/phi/common/ap/adt.h"
 #include "paddle/phi/common/ap/arg_type.h"
 #include "paddle/phi/common/ap/data_type.h"
+#include "paddle/phi/common/ap/source_code.h"
 
 namespace ap::kernel_define {
 

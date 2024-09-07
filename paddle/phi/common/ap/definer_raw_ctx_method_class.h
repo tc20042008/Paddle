@@ -16,7 +16,7 @@
 
 #include "paddle/phi/common/ap/definer_ctx.h"
 #include "paddle/phi/common/ap/definer_raw_ctx.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_define {

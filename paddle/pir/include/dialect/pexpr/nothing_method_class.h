@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
@@ -47,16 +47,16 @@ struct NothingMethodClass {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
-    return rhs_val.Match([](adt::Nothing) -> ArithmeticValue { return true; },
-                         [](const auto&) -> ArithmeticValue { return false; });
+    return rhs_val.Match([](adt::Nothing) -> DataValue { return true; },
+                         [](const auto&) -> DataValue { return false; });
   }
 
   static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
-    return rhs_val.Match([](adt::Nothing) -> ArithmeticValue { return false; },
-                         [](const auto&) -> ArithmeticValue { return true; });
+    return rhs_val.Match([](adt::Nothing) -> DataValue { return false; },
+                         [](const auto&) -> DataValue { return true; });
   }
 };
 

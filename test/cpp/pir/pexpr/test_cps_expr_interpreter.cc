@@ -41,7 +41,7 @@ TEST(CpsExprInterpreter, simple) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastUtil<Val>::ToArithmeticValue<int64_t>(val);
+  const auto& int_val = CastUtil<Val>::ToDataValue<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 1);
 }
@@ -66,12 +66,12 @@ TEST(CpsExprInterpreter, lambda) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastUtil<Val>::ToArithmeticValue<int64_t>(val);
+  const auto& int_val = CastUtil<Val>::ToDataValue<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 1);
 }
 
-TEST(CpsExprInterpreter, arithmetic_value) {
+TEST(CpsExprInterpreter, data_value) {
   const std::string json_str = R"(
     [
       "lambda",
@@ -280,8 +280,8 @@ TEST(CpsExprInterpreter, arithmetic_value) {
   ASSERT_TRUE(atomic.Has<Lambda<CoreExpr>>());
   const auto& lambda = atomic.Get<Lambda<CoreExpr>>();
   CpsExprInterpreter<Val> interpreter{};
-  ArithmeticValue x{int64_t(2)};
-  ArithmeticValue y{int32_t(3)};
+  DataValue x{int64_t(2)};
+  DataValue y{int32_t(3)};
   const auto& interpret_ret = interpreter.Interpret(lambda, {x, y});
   if (!interpret_ret.HasOkValue()) {
     LOG(ERROR) << "error-type: " << interpret_ret.GetError().class_name()
@@ -289,7 +289,7 @@ TEST(CpsExprInterpreter, arithmetic_value) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastUtil<Val>::ToArithmeticValue<int64_t>(val);
+  const auto& int_val = CastUtil<Val>::ToDataValue<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 5);
 }

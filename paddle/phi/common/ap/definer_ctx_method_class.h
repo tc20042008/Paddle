@@ -15,17 +15,17 @@
 #pragma once
 
 #include "paddle/phi/common/ap/module.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_define {
 
-using pexpr::ArithmeticType;
 using pexpr::BuiltinBinaryFuncT;
 using pexpr::BuiltinFuncType;
 using pexpr::BuiltinUnaryFuncT;
-using pexpr::CppArithmeticType;
+using pexpr::CppDataType;
 using pexpr::CppPointerType;
+using pexpr::DataType;
 using pexpr::MethodClass;
 using pexpr::PointerType;
 
@@ -108,9 +108,9 @@ Result<Val> DefinerCtxMakeSource(const Val& self,
 }
 
 template <typename Val, typename T>
-Result<Val> DefinerCtxMakeArithmeticType(const DefinerCtx<Val>& ctx,
-                                         const std::string&) {
-  return ArithmeticType{CppArithmeticType<T>{}};
+Result<Val> DefinerCtxMakeDataType(const DefinerCtx<Val>& ctx,
+                                   const std::string&) {
+  return DataType{CppDataType<T>{}};
 }
 
 template <typename Val, typename T>
@@ -135,19 +135,19 @@ Result<Val> DefinerCtxGetAttr(const DefinerCtx<Val>& ctx,
       {"module", &DefinerCtxMethod<Val, &DefinerCtxMakeModule<Val>>},
       {"declare_func", &DefinerCtxMethod<Val, &DefinerCtxMakeDeclareFunc<Val>>},
       {"source_code", &DefinerCtxMethod<Val, &DefinerCtxMakeSource<Val>>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                           \
-  {#cpp_type, &DefinerCtxMakeArithmeticType<Val, cpp_type>},              \
-      {"const_" #cpp_type, &DefinerCtxMakeArithmeticType<Val, cpp_type>}, \
-      {#cpp_type "_ptr", &DefinerCtxMakePointerType<Val, cpp_type*>},     \
-      {"const_" #cpp_type "_ptr",                                         \
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                       \
+  {#cpp_type, &DefinerCtxMakeDataType<Val, cpp_type>},                \
+      {"const_" #cpp_type, &DefinerCtxMakeDataType<Val, cpp_type>},   \
+      {#cpp_type "_ptr", &DefinerCtxMakePointerType<Val, cpp_type*>}, \
+      {"const_" #cpp_type "_ptr",                                     \
        &DefinerCtxMakePointerType<Val, const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                      \
-  {#cpp_type, &DefinerCtxMakeArithmeticType<Val, cpp_type##_t>},              \
-      {"const_" #cpp_type, &DefinerCtxMakeArithmeticType<Val, cpp_type##_t>}, \
-      {#cpp_type "_ptr", &DefinerCtxMakePointerType<Val, cpp_type##_t*>},     \
-      {"const_" #cpp_type "_ptr",                                             \
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                  \
+  {#cpp_type, &DefinerCtxMakeDataType<Val, cpp_type##_t>},                \
+      {"const_" #cpp_type, &DefinerCtxMakeDataType<Val, cpp_type##_t>},   \
+      {#cpp_type "_ptr", &DefinerCtxMakePointerType<Val, cpp_type##_t*>}, \
+      {"const_" #cpp_type "_ptr",                                         \
        &DefinerCtxMakePointerType<Val, const cpp_type##_t*>},
           AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE

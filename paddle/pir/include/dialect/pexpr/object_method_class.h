@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/object.h"
 

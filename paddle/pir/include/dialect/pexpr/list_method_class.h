@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/adt.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
@@ -47,9 +47,9 @@ struct ListMethodClass {
     ADT_RETURN_IF_ERROR(opt_lst);
     const auto& lst = opt_lst.GetOkValue();
     return idx.Match(
-        [&](const ArithmeticValue& arithmetic_idx) -> Result<ValueT> {
+        [&](const DataValue& arithmetic_idx) -> Result<ValueT> {
           const auto& int64_idx =
-              arithmetic_idx.StaticCastTo(CppArithmeticType<int64_t>{});
+              arithmetic_idx.StaticCastTo(CppDataType<int64_t>{});
           ADT_RETURN_IF_ERROR(int64_idx);
           const auto& opt_index =
               int64_idx.GetOkValue().template TryGet<int64_t>();

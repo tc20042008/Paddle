@@ -16,12 +16,12 @@
 
 #include <list>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_func_type.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_symbol.h"
 #include "paddle/pir/include/dialect/pexpr/closure.h"
 #include "paddle/pir/include/dialect/pexpr/cps_builtin_high_order_func_type.h"
+#include "paddle/pir/include/dialect/pexpr/data_type.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/method.h"
 #include "paddle/pir/include/dialect/pexpr/object.h"
@@ -106,9 +106,9 @@ class Environment {
 
 template <typename ValueT, typename... CustomTs>
 using ValueBase = std::variant<Nothing,
-                               ArithmeticType,
+                               DataType,
                                PointerType,
-                               ArithmeticValue,
+                               DataValue,
                                PointerValue,
                                std::string,
                                Closure<ValueT>,

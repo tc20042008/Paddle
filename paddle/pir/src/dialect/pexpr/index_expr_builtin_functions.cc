@@ -32,7 +32,7 @@ inline Maybe<T> TryGetConcretIndexExprValue(const Val& val) {
 
 inline Maybe<symbol::DimExpr> TryGetDimExpr(const Val& val) {
   return val.Match(
-      [](const ArithmeticValue& a_val) -> Maybe<symbol::DimExpr> {
+      [](const DataValue& a_val) -> Maybe<symbol::DimExpr> {
         const auto& opt_constant = a_val.TryGet<int64_t>();
         if (!opt_constant.HasOkValue()) {
           return Nothing{};
@@ -48,7 +48,7 @@ inline Maybe<symbol::DimExpr> TryGetDimExpr(const Val& val) {
 
 inline Maybe<int64_t> TryGetInt64(const Val& val) {
   return val.Match(
-      [](const ArithmeticValue& c) -> Maybe<int64_t> {
+      [](const DataValue& c) -> Maybe<int64_t> {
         const auto& ret = c.TryGet<int64_t>();
         if (!ret.HasOkValue()) {
           return Nothing{};

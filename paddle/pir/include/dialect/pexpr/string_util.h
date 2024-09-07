@@ -15,8 +15,8 @@
 #pragma once
 
 #include <string>
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
@@ -39,9 +39,8 @@ struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, std::string> {
 };
 
 template <typename Val>
-struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, ArithmeticValue> {
-  static Result<Val> Call(const std::string& lhs,
-                          const ArithmeticValue& rhs_val) {
+struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, DataValue> {
+  static Result<Val> Call(const std::string& lhs, const DataValue& rhs_val) {
     const auto& rhs = rhs_val.Match([](auto impl) -> Result<std::string> {
       using T = decltype(impl);
       if constexpr (IsArithmeticOpSupported<T>()) {
@@ -50,7 +49,7 @@ struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, ArithmeticValue> {
         return adt::errors::TypeError{std::string() +
                                       "unsupported operand types for " +
                                       ArithmeticAdd::Name() + ": 'str' and '" +
-                                      CppArithmeticType<T>{}.Name() + "'"};
+                                      CppDataType<T>{}.Name() + "'"};
       }
     });
     ADT_RETURN_IF_ERROR(rhs);
@@ -62,7 +61,7 @@ struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, ArithmeticValue> {
   template <typename Val>                                                     \
   struct BuiltinStringBinaryHelper<cls_name, Val, std::string> {              \
     static Result<Val> Call(const std::string& lhs, const std::string& rhs) { \
-      return ArithmeticValue{cls_name::Call(lhs, rhs)};                       \
+      return DataValue{cls_name::Call(lhs, rhs)};                             \
     }                                                                         \
   };
 SPECIALIZE_BuiltinStringBinaryHelper_string_cmp(ArithmeticEQ);
@@ -74,11 +73,9 @@ SPECIALIZE_BuiltinStringBinaryHelper_string_cmp(ArithmeticLE);
 #undef SPECIALIZE_BuiltinStringBinaryHelper_string
 
 template <typename Val>
-struct BuiltinStringBinaryHelper<ArithmeticMul, Val, ArithmeticValue> {
-  static Result<Val> Call(const std::string& lhs,
-                          const ArithmeticValue& rhs_val) {
-    const auto& opt_uint64 =
-        rhs_val.StaticCastTo(CppArithmeticType<uint64_t>{});
+struct BuiltinStringBinaryHelper<ArithmeticMul, Val, DataValue> {
+  static Result<Val> Call(const std::string& lhs, const DataValue& rhs_val) {
+    const auto& opt_uint64 = rhs_val.StaticCastTo(CppDataType<uint64_t>{});
     ADT_RETURN_IF_ERROR(opt_uint64);
     const auto& opt_size = opt_uint64.GetOkValue().template TryGet<uint64_t>();
     ADT_RETURN_IF_ERROR(opt_size);

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/common/ap/module.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_define {

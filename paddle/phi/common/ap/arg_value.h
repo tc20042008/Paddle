@@ -32,7 +32,7 @@ namespace adt = ::cinn::adt;
 
 using kernel_define::ArgType;
 
-using ArgValueImpl = std::variant<pexpr::ArithmeticValue, pexpr::PointerValue>;
+using ArgValueImpl = std::variant<pexpr::DataValue, pexpr::PointerValue>;
 
 struct ArgValue : public ArgValueImpl {
   using ArgValueImpl::ArgValueImpl;
@@ -58,10 +58,9 @@ struct ArgValue : public ArgValueImpl {
       ADT_RETURN_IF_ERROR(pointer_value);
       return pointer_value.GetOkValue().template TryGet<T>();
     } else {
-      const auto& arithmetic_value =
-          this->template TryGet<pexpr::ArithmeticValue>();
-      ADT_RETURN_IF_ERROR(arithmetic_value);
-      return arithmetic_value.GetOkValue().template TryGet<T>();
+      const auto& data_value = this->template TryGet<pexpr::DataValue>();
+      ADT_RETURN_IF_ERROR(data_value);
+      return data_value.GetOkValue().template TryGet<T>();
     }
   }
 };
@@ -69,14 +68,12 @@ struct ArgValue : public ArgValueImpl {
 template <typename ValueT>
 Result<ArgValue> CastToArgValue(const ValueT& value) {
   return value.Match(
-      [&](const pexpr::ArithmeticValue& impl) -> Result<ArgValue> {
-        return impl;
-      },
+      [&](const pexpr::DataValue& impl) -> Result<ArgValue> { return impl; },
       [&](const pexpr::PointerValue& impl) -> Result<ArgValue> { return impl; },
       [&](const auto&) -> Result<ArgValue> {
         return TypeError{std::string() +
                          "CastToArgValue failed. expected types: "
-                         "(ArithmeticValue, PointerValue), actual type: " +
+                         "(DataValue, PointerValue), actual type: " +
                          pexpr::MethodClass<ValueT>::Name(value)};
       });
 }

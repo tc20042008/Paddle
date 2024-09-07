@@ -14,18 +14,18 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
+#include "paddle/pir/include/dialect/pexpr/data_type.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
 
 template <typename ValueT>
-struct ArithmeticTypeMethodClass {
-  using Self = ArithmeticTypeMethodClass;
+struct DataTypeMethodClass {
+  using Self = DataTypeMethodClass;
 
-  static const char* Name() { return "ArithmeticType"; }
+  static const char* Name() { return "DataType"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -46,15 +46,15 @@ struct ArithmeticTypeMethodClass {
 
   static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<ArithmeticType>(lhs_val);
+        MethodClass<ValueT>::template TryGet<DataType>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<ArithmeticType>(rhs_val);
+        MethodClass<ValueT>::template TryGet<DataType>(rhs_val);
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> ArithmeticValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
           return std::is_same_v<decltype(lhs), decltype(rhs)>;
         }};
     return std::visit(pattern_match, lhs.variant(), rhs.variant());
@@ -62,15 +62,15 @@ struct ArithmeticTypeMethodClass {
 
   static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<ArithmeticType>(lhs_val);
+        MethodClass<ValueT>::template TryGet<DataType>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<ArithmeticType>(rhs_val);
+        MethodClass<ValueT>::template TryGet<DataType>(rhs_val);
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> ArithmeticValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
           return !std::is_same_v<decltype(lhs), decltype(rhs)>;
         }};
     return std::visit(pattern_match, lhs.variant(), rhs.variant());
@@ -78,8 +78,8 @@ struct ArithmeticTypeMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, ArithmeticType> {
-  using method_class = ArithmeticTypeMethodClass<ValueT>;
+struct MethodClassImpl<ValueT, DataType> {
+  using method_class = DataTypeMethodClass<ValueT>;
 
   static const char* Name() { return method_class::Name(); }
 

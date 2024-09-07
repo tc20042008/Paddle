@@ -15,16 +15,15 @@
 #pragma once
 
 #include "paddle/phi/common/data_type.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_type.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 
 namespace pexpr {
 
-inline Result<ArithmeticType> GetArithmeticTypeFromPhiDataType(
-    ::phi::DataType data_type) {
-  static const std::unordered_map<::phi::DataType, ArithmeticType> map{
+inline Result<DataType> GetDataTypeFromPhiDataType(::phi::DataType data_type) {
+  static const std::unordered_map<::phi::DataType, DataType> map{
 #define MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE(cpp_type, enum_type) \
-  {::phi::enum_type, ArithmeticType{CppArithmeticType<cpp_type>{}}},
+  {::phi::enum_type, DataType{CppDataType<cpp_type>{}}},
       PD_FOR_EACH_DATA_TYPE(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
 #undef MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE
   };

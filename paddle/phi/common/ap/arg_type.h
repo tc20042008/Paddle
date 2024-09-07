@@ -26,11 +26,11 @@ class DenseTensor;
 
 namespace ap::kernel_define {
 
-using pexpr::ArithmeticType;
+using pexpr::DataType;
 using pexpr::MethodClass;
 using pexpr::PointerType;
 
-using ArgTypeImpl = std::variant<ArithmeticType, PointerType>;
+using ArgTypeImpl = std::variant<DataType, PointerType>;
 
 struct ArgType : public ArgTypeImpl {
   using ArgTypeImpl::ArgTypeImpl;
@@ -58,13 +58,11 @@ struct ArgType : public ArgTypeImpl {
       }
       return pointer_type.GetOkValue().template Has<pexpr::CppPointerType<T>>();
     } else {
-      const auto& arithmetic_type =
-          this->template TryGet<pexpr::ArithmeticType>();
-      if (arithmetic_type.HasError()) {
+      const auto& data_type = this->template TryGet<pexpr::DataType>();
+      if (data_type.HasError()) {
         return false;
       }
-      return arithmetic_type.GetOkValue()
-          .template Has<pexpr::CppArithmeticType<T>>();
+      return data_type.GetOkValue().template Has<pexpr::CppDataType<T>>();
     }
   }
 };
@@ -72,18 +70,15 @@ struct ArgType : public ArgTypeImpl {
 template <typename ValueT>
 Result<ArgType> CastToArgType(const ValueT& val) {
   return val.Match(
-      [&](const ArithmeticType& atype) -> Result<ArgType> {
-        return ArgType{atype};
-      },
+      [&](const DataType& atype) -> Result<ArgType> { return ArgType{atype}; },
       [&](const PointerType& ptype) -> Result<ArgType> {
         return ArgType{ptype};
       },
       [&](const auto&) -> Result<ArgType> {
-        return adt::errors::TypeError{
-            std::string() +
-            "CastToArgType failed. expected types: "
-            "(ArithmeticType, PointerType), actual type: " +
-            MethodClass<ValueT>::Name(val)};
+        return adt::errors::TypeError{std::string() +
+                                      "CastToArgType failed. expected types: "
+                                      "(DataType, PointerType), actual type: " +
+                                      MethodClass<ValueT>::Name(val)};
       });
 }
 

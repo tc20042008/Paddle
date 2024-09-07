@@ -14,18 +14,18 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value_util.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_value_util.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
 
 template <typename ValueT>
-struct ArithmeticValueMethodClass {
-  using Self = ArithmeticValueMethodClass;
+struct DataValueMethodClass {
+  using Self = DataValueMethodClass;
 
-  static const char* Name() { return "ArithmeticValue"; }
+  static const char* Name() { return "DataValue"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -55,11 +55,11 @@ struct ArithmeticValueMethodClass {
   static adt::Result<ValueT> BinaryFunc(const ValueT& lhs_val,
                                         const ValueT& rhs_val) {
     const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<ArithmeticValue>(lhs_val);
+        MethodClass<ValueT>::template TryGet<DataValue>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<ArithmeticValue>(rhs_val);
+        MethodClass<ValueT>::template TryGet<DataValue>(rhs_val);
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& ret = ArithmeticBinaryFunc<ArithmeticOp>(lhs, rhs);
@@ -70,7 +70,7 @@ struct ArithmeticValueMethodClass {
   template <typename ArithmeticOp>
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
     const auto& opt_operand =
-        MethodClass<ValueT>::template TryGet<ArithmeticValue>(val);
+        MethodClass<ValueT>::template TryGet<DataValue>(val);
     ADT_RETURN_IF_ERROR(opt_operand);
     const auto& operand = opt_operand.GetOkValue();
     const auto& ret = ArithmeticUnaryFunc<ArithmeticOp>(operand);
@@ -80,8 +80,8 @@ struct ArithmeticValueMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, ArithmeticValue> {
-  using method_class = ArithmeticValueMethodClass<ValueT>;
+struct MethodClassImpl<ValueT, DataValue> {
+  using method_class = DataValueMethodClass<ValueT>;
 
   static const char* Name() { return method_class::Name(); }
 

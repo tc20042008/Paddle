@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/pointer_value.h"
 
@@ -54,7 +54,7 @@ struct PointerValueMethodClass {
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> ArithmeticValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
           if constexpr (std::is_same_v<decltype(lhs), decltype(rhs)>) {
             return lhs == rhs;
           } else {
@@ -74,7 +74,7 @@ struct PointerValueMethodClass {
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> ArithmeticValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
           if constexpr (std::is_same_v<decltype(lhs), decltype(rhs)>) {
             return lhs != rhs;
           } else {

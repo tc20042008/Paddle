@@ -21,12 +21,12 @@ namespace pexpr {
 template <typename ValueT>
 struct CastUtil {
   template <typename T>
-  static adt::Result<T> ToArithmeticValue(const ValueT& value) {
-    const auto& opt_arithmetic_value =
-        MethodClass<ValueT>::template TryGet<ArithmeticValue>(value);
-    ADT_RETURN_IF_ERROR(opt_arithmetic_value);
-    const auto& arithmetic_value = opt_arithmetic_value.GetOkValue();
-    return arithmetic_value.template TryGet<T>();
+  static adt::Result<T> ToDataValue(const ValueT& value) {
+    const auto& opt_data_value =
+        MethodClass<ValueT>::template TryGet<DataValue>(value);
+    ADT_RETURN_IF_ERROR(opt_data_value);
+    const auto& data_value = opt_data_value.GetOkValue();
+    return data_value.template TryGet<T>();
   }
 };
 

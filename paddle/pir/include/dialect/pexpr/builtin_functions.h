@@ -15,7 +15,7 @@
 #pragma once
 #include <functional>
 #include <sstream>
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value_util.h"
+#include "paddle/pir/include/dialect/pexpr/data_value_util.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/string_util.h"
 #include "paddle/pir/include/dialect/pexpr/value.h"

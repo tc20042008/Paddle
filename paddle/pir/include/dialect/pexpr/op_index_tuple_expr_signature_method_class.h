@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 

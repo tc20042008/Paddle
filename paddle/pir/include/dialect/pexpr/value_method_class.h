@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type_method_class.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_func_type_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_symbol_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/closure_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/cps_builtin_high_order_func_type_method_class.h"
+#include "paddle/pir/include/dialect/pexpr/data_type_method_class.h"
+#include "paddle/pir/include/dialect/pexpr/data_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/list_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/method_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/nothing_method_class.h"

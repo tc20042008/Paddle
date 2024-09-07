@@ -16,21 +16,21 @@
 
 #include "paddle/phi/common/ap/dispatch_ctx.h"
 #include "paddle/phi/common/ap/dispatch_raw_ctx_method_class.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type_util.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
 #include "paddle/pir/include/dialect/pexpr/cast_util.h"
+#include "paddle/pir/include/dialect/pexpr/data_type_util.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_dispatch {
 
-using pexpr::ArithmeticType;
-using pexpr::ArithmeticValue;
 using pexpr::BuiltinBinaryFuncT;
 using pexpr::BuiltinFuncType;
 using pexpr::BuiltinUnaryFuncT;
 using pexpr::CastUtil;
-using pexpr::CppArithmeticType;
+using pexpr::CppDataType;
 using pexpr::CppPointerType;
+using pexpr::DataType;
+using pexpr::DataValue;
 using pexpr::Method;
 using pexpr::MethodClass;
 using pexpr::PointerType;
@@ -82,16 +82,16 @@ Result<Val> ArgValueStaticCast(const Val& self, const std::vector<Val>& args) {
     return TypeError{std::string() + "static_cast take 2 arguments. but " +
                      std::to_string(args.size()) + " were given."};
   }
-  const Result<ArithmeticType>& arg_type =
-      MethodClass<Val>::template TryGet<ArithmeticType>(args.at(0));
+  const Result<DataType>& arg_type =
+      MethodClass<Val>::template TryGet<DataType>(args.at(0));
   ADT_RETURN_IF_ERROR(arg_type);
-  const Result<ArithmeticValue>& arg_value =
-      MethodClass<Val>::template TryGet<ArithmeticValue>(args.at(1));
+  const Result<DataValue>& arg_value =
+      MethodClass<Val>::template TryGet<DataValue>(args.at(1));
   ADT_RETURN_IF_ERROR(arg_value);
-  const auto& arithmetic_value =
+  const auto& data_value =
       arg_value.GetOkValue().StaticCastTo(arg_type.GetOkValue());
-  ADT_RETURN_IF_ERROR(arithmetic_value);
-  return arithmetic_value.GetOkValue();
+  ADT_RETURN_IF_ERROR(data_value);
+  return data_value.GetOkValue();
 }
 
 template <typename Val>
@@ -136,10 +136,10 @@ Result<Val> LaunchCuda(const Val& self, const std::vector<Val>& args) {
       MethodClass<Val>::template TryGet<std::string>(args.at(0));
   ADT_RETURN_IF_ERROR(func_name);
   const Result<int64_t>& num_blocks =
-      CastUtil<Val>::template ToArithmeticValue<int64_t>(args.at(1));
+      CastUtil<Val>::template ToDataValue<int64_t>(args.at(1));
   ADT_RETURN_IF_ERROR(num_blocks);
   const Result<int64_t>& num_threads =
-      CastUtil<Val>::template ToArithmeticValue<int64_t>(args.at(2));
+      CastUtil<Val>::template ToDataValue<int64_t>(args.at(2));
   ADT_RETURN_IF_ERROR(num_threads);
   const Result<adt::List<ArgValue>>& kernel_args = GetKernelArgs(args.at(3));
   ADT_RETURN_IF_ERROR(kernel_args);
@@ -165,9 +165,9 @@ Result<Val> MakeDispatchCtxMethod(const DispatchCtx<Val>& ctx,
 }
 
 template <typename Val, typename T>
-Result<Val> MakeDefineCtxArithmeticType(const DispatchCtx<Val>& ctx,
-                                        const std::string&) {
-  return ArithmeticType{CppArithmeticType<T>{}};
+Result<Val> MakeDefineCtxDataType(const DispatchCtx<Val>& ctx,
+                                  const std::string&) {
+  return DataType{CppDataType<T>{}};
 }
 
 template <typename Val, typename T>
@@ -188,19 +188,19 @@ Result<Val> DispatchCtxGetAttr(const DispatchCtx<Val>& ctx,
       {"inputs", &DispatchCtxGetInputs<Val>},
       {"outputs", &DispatchCtxGetOutputs<Val>},
       {"launch_cuda", &MakeDispatchCtxMethod<Val, &LaunchCuda<Val>>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                          \
-  {#cpp_type, &MakeDefineCtxArithmeticType<Val, cpp_type>},              \
-      {"const_" #cpp_type, &MakeDefineCtxArithmeticType<Val, cpp_type>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxPointerType<Val, cpp_type*>},     \
-      {"const_" #cpp_type "_ptr",                                        \
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                      \
+  {#cpp_type, &MakeDefineCtxDataType<Val, cpp_type>},                \
+      {"const_" #cpp_type, &MakeDefineCtxDataType<Val, cpp_type>},   \
+      {#cpp_type "_ptr", &MakeDefineCtxPointerType<Val, cpp_type*>}, \
+      {"const_" #cpp_type "_ptr",                                    \
        &MakeDefineCtxPointerType<Val, const cpp_type*>},
       PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                     \
-  {#cpp_type, &MakeDefineCtxArithmeticType<Val, cpp_type##_t>},              \
-      {"const_" #cpp_type, &MakeDefineCtxArithmeticType<Val, cpp_type##_t>}, \
-      {#cpp_type "_ptr", &MakeDefineCtxPointerType<Val, cpp_type##_t*>},     \
-      {"const_" #cpp_type "_ptr",                                            \
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                 \
+  {#cpp_type, &MakeDefineCtxDataType<Val, cpp_type##_t>},                \
+      {"const_" #cpp_type, &MakeDefineCtxDataType<Val, cpp_type##_t>},   \
+      {#cpp_type "_ptr", &MakeDefineCtxPointerType<Val, cpp_type##_t*>}, \
+      {"const_" #cpp_type "_ptr",                                        \
        &MakeDefineCtxPointerType<Val, const cpp_type##_t*>},
           AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE

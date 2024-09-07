@@ -74,4 +74,44 @@ constexpr bool IsArithmeticOpSupported() {
   return detail::IsArithmeticOpSupportedHelper<T>::value;
 }
 
+template <typename T>
+struct GetDataTypeNameHelper;
+
+#define SPECIALIZE_GET_CPP_TYPE_NAME(cpp_type, enum_type) \
+  template <>                                             \
+  struct GetDataTypeNameHelper<cpp_type> {                \
+    static const char* Call() { return #cpp_type; }       \
+  };
+PD_FOR_EACH_DATA_TYPE(SPECIALIZE_GET_CPP_TYPE_NAME);
+#undef SPECIALIZE_GET_CPP_TYPE_NAME
+template <>
+struct GetDataTypeNameHelper<adt::Undefined> {
+  static const char* Call() { return "undefined"; }
+};
+
+template <typename T>
+struct CppDataType : public std::monostate {
+  using std::monostate::monostate;
+  using type = T;
+  const char* Name() const { return GetDataTypeNameHelper<T>::Call(); }
+};
+
+// clang-format off
+using DataTypeImpl = std::variant<
+#define MAKE_ARITHMETIC_TYPE_ALTERNATIVE(cpp_type, enum_type)    \
+    CppDataType<cpp_type>,
+    PD_FOR_EACH_DATA_TYPE(MAKE_ARITHMETIC_TYPE_ALTERNATIVE)
+#undef MAKE_ARITHMETIC_TYPE_ALTERNATIVE
+    CppDataType<adt::Undefined>>;
+// clang-format on
+
+struct DataType : public DataTypeImpl {
+  using DataTypeImpl::DataTypeImpl;
+  DEFINE_ADT_VARIANT_METHODS(DataTypeImpl);
+
+  const char* Name() const {
+    return Match([](const auto& impl) { return impl.Name(); });
+  }
+};
+
 }  // namespace pexpr

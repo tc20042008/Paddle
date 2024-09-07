@@ -15,19 +15,19 @@
 #pragma once
 
 #include "paddle/phi/common/ap/const_tensor.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type_util.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_type_util.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_dispatch {
 
-using pexpr::ArithmeticType;
-using pexpr::ArithmeticValue;
 using pexpr::BuiltinBinaryFuncT;
 using pexpr::BuiltinFuncType;
 using pexpr::BuiltinUnaryFuncT;
-using pexpr::CppArithmeticType;
+using pexpr::CppDataType;
 using pexpr::CppPointerType;
+using pexpr::DataType;
+using pexpr::DataValue;
 using pexpr::Method;
 using pexpr::MethodClass;
 using pexpr::PointerType;
@@ -42,7 +42,7 @@ Result<Val> ConstTensorShapeGetAttr(const ConstTensor<Val>& tensor,
 }
 
 template <typename T>
-const T* GetConstTensorDataPtr(const pexpr::CppArithmeticType<T>&,
+const T* GetConstTensorDataPtr(const pexpr::CppDataType<T>&,
                                const ConstTensorData& tensor) {
   return tensor.template data<T>();
 }
@@ -51,9 +51,9 @@ template <typename Val>
 Result<Val> ConstTensorDataGetAttr(const ConstTensor<Val>& tensor,
                                    const std::string&) {
   phi::DataType dtype = tensor->tensor_data.dtype();
-  const auto& arithmetic_type = pexpr::GetArithmeticTypeFromPhiDataType(dtype);
-  ADT_RETURN_IF_ERROR(arithmetic_type);
-  return arithmetic_type.GetOkValue().Match(
+  const auto& data_type = pexpr::GetDataTypeFromPhiDataType(dtype);
+  ADT_RETURN_IF_ERROR(data_type);
+  return data_type.GetOkValue().Match(
       [&](const adt::Undefined&) -> Result<Val> {
         return TypeError{"dtype is invalid."};
       },

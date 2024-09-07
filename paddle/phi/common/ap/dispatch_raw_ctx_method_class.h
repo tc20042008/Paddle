@@ -15,17 +15,17 @@
 #pragma once
 
 #include "paddle/phi/common/ap/dispatch_raw_ctx.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_type_util.h"
-#include "paddle/pir/include/dialect/pexpr/arithmetic_value.h"
+#include "paddle/pir/include/dialect/pexpr/data_type_util.h"
+#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_dispatch {
 
-using pexpr::ArithmeticType;
-using pexpr::ArithmeticValue;
 using pexpr::BuiltinFuncType;
-using pexpr::CppArithmeticType;
+using pexpr::CppDataType;
 using pexpr::CppPointerType;
+using pexpr::DataType;
+using pexpr::DataValue;
 using pexpr::Method;
 using pexpr::MethodClass;
 using pexpr::PointerType;

@@ -29,6 +29,9 @@ namespace adt = ::cinn::adt;
 
 template <typename ValueT>
 using ValueImpl = pexpr::ValueBase<ValueT,
+                                   pexpr::DataType,
+                                   pexpr::PointerType,
+                                   pexpr::Object<ValueT>,
                                    DefinerRawCtx,
                                    DefinerCtx<ValueT>,
                                    FuncDeclare,

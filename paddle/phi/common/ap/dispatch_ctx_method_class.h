@@ -16,17 +16,15 @@
 
 #include "paddle/phi/common/ap/dispatch_ctx.h"
 #include "paddle/phi/common/ap/dispatch_raw_ctx_method_class.h"
-#include "paddle/pir/include/dialect/pexpr/cast_util.h"
 #include "paddle/pir/include/dialect/pexpr/data_type_util.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
+#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
 
 namespace ap::kernel_dispatch {
 
 using pexpr::BuiltinBinaryFuncT;
 using pexpr::BuiltinFuncType;
 using pexpr::BuiltinUnaryFuncT;
-using pexpr::CastUtil;
 using pexpr::CppDataType;
 using pexpr::CppPointerType;
 using pexpr::DataType;
@@ -77,24 +75,6 @@ Result<adt::Ok> DispatchRawCtxImpl<Val>::LaunchCudaKernel(
 namespace detail {
 
 template <typename Val>
-Result<Val> ArgValueStaticCast(const Val& self, const std::vector<Val>& args) {
-  if (args.size() != 2) {
-    return TypeError{std::string() + "static_cast take 2 arguments. but " +
-                     std::to_string(args.size()) + " were given."};
-  }
-  const Result<DataType>& arg_type =
-      MethodClass<Val>::template TryGet<DataType>(args.at(0));
-  ADT_RETURN_IF_ERROR(arg_type);
-  const Result<DataValue>& arg_value =
-      MethodClass<Val>::template TryGet<DataValue>(args.at(1));
-  ADT_RETURN_IF_ERROR(arg_value);
-  const auto& data_value =
-      arg_value.GetOkValue().StaticCastTo(arg_type.GetOkValue());
-  ADT_RETURN_IF_ERROR(data_value);
-  return data_value.GetOkValue();
-}
-
-template <typename Val>
 Result<Val> DispatchCtxGetInputs(const DispatchCtx<Val>& ctx,
                                  const std::string& attr_name) {
   return DispatchRawCtxGetInputs(ctx->raw_ctx, attr_name);
@@ -136,10 +116,10 @@ Result<Val> LaunchCuda(const Val& self, const std::vector<Val>& args) {
       MethodClass<Val>::template TryGet<std::string>(args.at(0));
   ADT_RETURN_IF_ERROR(func_name);
   const Result<int64_t>& num_blocks =
-      CastUtil<Val>::template ToDataValue<int64_t>(args.at(1));
+      MethodClass<Val>::template TryGet<int64_t>(args.at(1));
   ADT_RETURN_IF_ERROR(num_blocks);
   const Result<int64_t>& num_threads =
-      CastUtil<Val>::template ToDataValue<int64_t>(args.at(2));
+      MethodClass<Val>::template TryGet<int64_t>(args.at(2));
   ADT_RETURN_IF_ERROR(num_threads);
   const Result<adt::List<ArgValue>>& kernel_args = GetKernelArgs(args.at(3));
   ADT_RETURN_IF_ERROR(kernel_args);
@@ -176,6 +156,11 @@ Result<Val> MakeDefineCtxPointerType(const DispatchCtx<Val>& ctx,
   return PointerType{CppPointerType<T>{}};
 }
 
+template <typename Val, typename T>
+Result<Val> DispatchCtxType(const DispatchCtx<Val>& ctx, const std::string&) {
+  return pexpr::TypeImpl<T>{};
+}
+
 template <typename Val>
 using KernelCtxGettAttrT = Result<Val> (*)(const DispatchCtx<Val>& ctx,
                                            const std::string&);
@@ -184,7 +169,8 @@ template <typename Val>
 Result<Val> DispatchCtxGetAttr(const DispatchCtx<Val>& ctx,
                                const std::string& name) {
   static const std::unordered_map<std::string, KernelCtxGettAttrT<Val>> map{
-      {"static_cast", &MakeDispatchCtxMethod<Val, &ArgValueStaticCast<Val>>},
+      {pexpr::TypeImpl<pexpr::DataValue>{}.Name(),
+       &DispatchCtxType<Val, pexpr::DataValue>},
       {"inputs", &DispatchCtxGetInputs<Val>},
       {"outputs", &DispatchCtxGetOutputs<Val>},
       {"launch_cuda", &MakeDispatchCtxMethod<Val, &LaunchCuda<Val>>},
@@ -220,8 +206,6 @@ Result<Val> DispatchCtxGetAttr(const DispatchCtx<Val>& ctx,
 template <typename ValueT>
 struct DispatchCtxMethodClass {
   using Self = DispatchCtxMethodClass;
-
-  static const char* Name() { return "DispatchCtx"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -259,8 +243,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, ap::kernel_dispatch::DispatchCtx<ValueT>> {
   using method_class = ap::kernel_dispatch::DispatchCtxMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -271,5 +253,10 @@ struct MethodClassImpl<ValueT, ap::kernel_dispatch::DispatchCtx<ValueT>> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT,
+                       TypeImpl<ap::kernel_dispatch::DispatchCtx<ValueT>>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

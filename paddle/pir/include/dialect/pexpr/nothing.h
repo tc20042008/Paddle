@@ -14,16 +14,17 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/value.h"
-#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
+#include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
-namespace pexpr::tests {
+namespace pexpr {
 
-struct TestValue : public ValueBase<TestValue> {
-  using ValueBase<TestValue>::ValueBase;
-  DEFINE_ADT_VARIANT_METHODS(ValueBase<TestValue>);
-}
+template <>
+struct TypeImpl<adt::Nothing> : public std::monostate {
+  using value_type = adt::Nothing;
 
-using Val = TestValue;
+  const char* Name() const { return "NoneType"; }
+};
 
-}  // namespace pexpr::tests
+}  // namespace pexpr

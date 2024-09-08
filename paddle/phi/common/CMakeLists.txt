@@ -1,5 +1,3 @@
-add_subdirectory(ap)
-
 collect_srcs(
   common_srcs
   SRCS

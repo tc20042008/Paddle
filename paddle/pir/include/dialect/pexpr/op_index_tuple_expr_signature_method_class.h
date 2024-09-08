@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 
@@ -23,8 +22,6 @@ namespace pexpr {
 template <typename ValueT>
 struct InIndexTupleExprSignatureMethodClass {
   using Self = InIndexTupleExprSignatureMethodClass;
-
-  static const char* Name() { return "in_index_tuple_expr_signature"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -41,8 +38,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, InIndexTupleExprSignature> {
   using method_class = InIndexTupleExprSignatureMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -55,10 +50,12 @@ struct MethodClassImpl<ValueT, InIndexTupleExprSignature> {
 };
 
 template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<InIndexTupleExprSignature>>
+    : public EmptyMethodClass<ValueT> {};
+
+template <typename ValueT>
 struct OutIndexTupleExprSignatureMethodClass {
   using Self = OutIndexTupleExprSignatureMethodClass;
-
-  static const char* Name() { return "out_index_tuple_expr_signature"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -75,8 +72,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, OutIndexTupleExprSignature> {
   using method_class = OutIndexTupleExprSignatureMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -89,10 +84,12 @@ struct MethodClassImpl<ValueT, OutIndexTupleExprSignature> {
 };
 
 template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<OutIndexTupleExprSignature>>
+    : public EmptyMethodClass<ValueT> {};
+
+template <typename ValueT>
 struct OpIndexTupleExprSignatureMethodClass {
   using Self = OpIndexTupleExprSignatureMethodClass;
-
-  static const char* Name() { return "op_index_tuple_expr_signature"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -109,8 +106,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, OpIndexTupleExprSignature> {
   using method_class = OpIndexTupleExprSignatureMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -121,5 +116,9 @@ struct MethodClassImpl<ValueT, OpIndexTupleExprSignature> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<OpIndexTupleExprSignature>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

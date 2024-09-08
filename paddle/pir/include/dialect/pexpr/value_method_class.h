@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include "paddle/pir/include/dialect/pexpr/bool_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_func_type_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_symbol_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/closure_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/cps_builtin_high_order_func_type_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/data_type_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/data_value_method_class.h"
+#include "paddle/pir/include/dialect/pexpr/int_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/list_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/method_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/nothing_method_class.h"
@@ -27,3 +29,4 @@
 #include "paddle/pir/include/dialect/pexpr/pointer_type_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/pointer_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/string_method_class.h"
+#include "paddle/pir/include/dialect/pexpr/type_method_class.h"

@@ -52,7 +52,7 @@ struct ArithmeticBinaryOpHelper<ArithmeticDiv> {
   template <typename LhsT, typename RhsT>
   static Result<DataValue> Call(LhsT lhs, RhsT rhs) {
     if (rhs == 0) {
-      return adt::errors::ZeroDivisionError{"division by zero"};
+      return adt::errors::ZeroDivisionError{"division or modulo by zero"};
     }
     return ArithmeticDiv::Call(lhs, rhs);
   }
@@ -63,6 +63,9 @@ struct ArithmeticBinaryOpHelper<ArithmeticMod> {
   template <typename LhsT, typename RhsT>
   static Result<DataValue> Call(LhsT lhs, RhsT rhs) {
     if constexpr (std::is_integral_v<LhsT> && std::is_integral_v<RhsT>) {
+      if (rhs == 0) {
+        return adt::errors::ZeroDivisionError{"division or modulo by zero"};
+      }
       return ArithmeticMod::Call(lhs, rhs);
     } else if constexpr (!std::is_integral_v<LhsT>) {
       return adt::errors::TypeError{

@@ -17,6 +17,7 @@
 #include "paddle/phi/common/ap/adt.h"
 #include "paddle/phi/common/ap/arg_type.h"
 #include "paddle/phi/common/ap/data_type.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace ap::kernel_define {
 
@@ -30,3 +31,14 @@ struct SourceCodeImpl {
 DEFINE_ADT_RC(SourceCode, SourceCodeImpl);
 
 }  // namespace ap::kernel_define
+
+namespace pexpr {
+
+template <>
+struct TypeImpl<ap::kernel_define::SourceCode> : public std::monostate {
+  using value_type = ap::kernel_define::SourceCode;
+
+  const char* Name() const { return "SourceCode"; }
+};
+
+}  // namespace pexpr

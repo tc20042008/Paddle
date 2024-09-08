@@ -21,10 +21,10 @@
 #include "paddle/phi/common/ap/define_ctx_value.h"
 #include "paddle/phi/common/ap/define_ctx_value_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/cast_util.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
+#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
 
 namespace ap::kernel_define::test {
 

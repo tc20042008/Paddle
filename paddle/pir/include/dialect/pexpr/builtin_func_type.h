@@ -16,6 +16,7 @@
 
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
@@ -23,4 +24,11 @@ template <typename ValueT>
 using BuiltinFuncType = Result<ValueT> (*)(const ValueT&,
                                            const std::vector<ValueT>& args);
 
-}
+template <typename ValueT>
+struct TypeImpl<BuiltinFuncType<ValueT>> : public std::monostate {
+  using value_type = BuiltinFuncType<ValueT>;
+
+  const char* Name() const { return "builtin_function"; }
+};
+
+}  // namespace pexpr

@@ -16,7 +16,6 @@
 
 #include <string>
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
@@ -24,10 +23,9 @@ namespace pexpr {
 template <typename ArithmeticOp, typename Val, typename T>
 struct BuiltinStringBinaryHelper {
   static Result<Val> Call(const std::string& str, const T& rhs) {
-    return adt::errors::TypeError{std::string() +
-                                  "unsupported operand types for " +
-                                  ArithmeticOp::Name() + ": 'str' and '" +
-                                  MethodClassImpl<Val, T>::Name() + "'"};
+    return adt::errors::TypeError{
+        std::string() + "unsupported operand types for " +
+        ArithmeticOp::Name() + ": 'str' and '" + TypeImpl<T>{}.Name() + "'"};
   }
 };
 
@@ -39,21 +37,16 @@ struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, std::string> {
 };
 
 template <typename Val>
-struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, DataValue> {
-  static Result<Val> Call(const std::string& lhs, const DataValue& rhs_val) {
-    const auto& rhs = rhs_val.Match([](auto impl) -> Result<std::string> {
-      using T = decltype(impl);
-      if constexpr (IsArithmeticOpSupported<T>()) {
-        return std::to_string(impl);
-      } else {
-        return adt::errors::TypeError{std::string() +
-                                      "unsupported operand types for " +
-                                      ArithmeticAdd::Name() + ": 'str' and '" +
-                                      CppDataType<T>{}.Name() + "'"};
-      }
-    });
-    ADT_RETURN_IF_ERROR(rhs);
-    return lhs + rhs.GetOkValue();
+struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, int64_t> {
+  static Result<Val> Call(const std::string& lhs, const int64_t& rhs_val) {
+    return lhs + std::to_string(rhs_val);
+  }
+};
+
+template <typename Val>
+struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, bool> {
+  static Result<Val> Call(const std::string& lhs, const bool& rhs_val) {
+    return lhs + (rhs_val ? "True" : "False");
   }
 };
 
@@ -61,7 +54,7 @@ struct BuiltinStringBinaryHelper<ArithmeticAdd, Val, DataValue> {
   template <typename Val>                                                     \
   struct BuiltinStringBinaryHelper<cls_name, Val, std::string> {              \
     static Result<Val> Call(const std::string& lhs, const std::string& rhs) { \
-      return DataValue{cls_name::Call(lhs, rhs)};                             \
+      return cls_name::Call(lhs, rhs);                                        \
     }                                                                         \
   };
 SPECIALIZE_BuiltinStringBinaryHelper_string_cmp(ArithmeticEQ);
@@ -73,15 +66,22 @@ SPECIALIZE_BuiltinStringBinaryHelper_string_cmp(ArithmeticLE);
 #undef SPECIALIZE_BuiltinStringBinaryHelper_string
 
 template <typename Val>
-struct BuiltinStringBinaryHelper<ArithmeticMul, Val, DataValue> {
-  static Result<Val> Call(const std::string& lhs, const DataValue& rhs_val) {
-    const auto& opt_uint64 = rhs_val.StaticCastTo(CppDataType<uint64_t>{});
-    ADT_RETURN_IF_ERROR(opt_uint64);
-    const auto& opt_size = opt_uint64.GetOkValue().template TryGet<uint64_t>();
-    ADT_RETURN_IF_ERROR(opt_size);
-    uint64_t size = opt_size.GetOkValue();
+struct BuiltinStringBinaryHelper<ArithmeticMul, Val, int64_t> {
+  static Result<Val> Call(const std::string& lhs, int64_t size) {
+    size = (size > 0 ? size : 0);
     std::ostringstream ss;
     for (int i = 0; i < size; ++i) {
+      ss << lhs;
+    }
+    return ss.str();
+  }
+};
+
+template <typename Val>
+struct BuiltinStringBinaryHelper<ArithmeticMul, Val, bool> {
+  static Result<Val> Call(const std::string& lhs, bool size) {
+    std::ostringstream ss;
+    for (int i = 0; i < static_cast<int>(size); ++i) {
       ss << lhs;
     }
     return ss.str();

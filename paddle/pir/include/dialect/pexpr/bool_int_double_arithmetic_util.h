@@ -15,35 +15,26 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/adt.h"
-#include "paddle/pir/include/dialect/pexpr/atomic.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/binary_func.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
-#include "paddle/pir/include/dialect/pexpr/type.h"
+#include "paddle/pir/include/dialect/pexpr/unary_func.h"
 
 namespace pexpr {
 
-template <typename ValueT>
-class Environment;
+template <typename ArithmeticOp, typename ValueT, typename T>
+Result<ValueT> BoolIntDoubleArithmeticUnaryFunc(const T& value) {
+  return BoolIntDoubleUnary<ArithmeticOp>::Call(value);
+}
 
-template <typename ValueT>
-struct ClosureImpl {
-  Lambda<CoreExpr> lambda;
-  std::shared_ptr<Environment<ValueT>> environment;
-
-  bool operator==(const ClosureImpl& other) const {
-    return other.lambda == this->lambda &&
-           other.environment == this->environment;
+template <typename ArithmeticOp, typename ValueT, typename T0, typename T1>
+Result<ValueT> BoolIntDoubleArithmeticBinaryFunc(const T0& lhs, const T1& rhs) {
+  if constexpr (std::is_same_v<ArithmeticOp, builtin_symbol::Div> ||
+                std::is_same_v<ArithmeticOp, builtin_symbol::Mod>) {
+    if (rhs == 0) {
+      return adt::errors::ZeroDivisionError{"division or modulo by zero"};
+    }
   }
-};
-
-template <typename ValueT>
-DEFINE_ADT_RC(Closure, const ClosureImpl<ValueT>);
-
-template <typename ValueT>
-struct TypeImpl<Closure<ValueT>> : public std::monostate {
-  using value_type = Closure<ValueT>;
-
-  const char* Name() const { return "closure"; }
-};
+  return BoolIntDoubleBinary<ArithmeticOp>::Call(lhs, rhs);
+}
 
 }  // namespace pexpr

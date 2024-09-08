@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <unordered_map>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/type.h"
@@ -22,36 +21,10 @@
 namespace pexpr {
 
 template <typename ValueT>
-struct ObjectImpl {
-  std::unordered_map<std::string, ValueT> storage;
+struct TypeImpl<adt::List<ValueT>> : public std::monostate {
+  using value_type = adt::List<ValueT>;
 
-  size_t size() const { return storage.size(); }
-
-  void clear() { storage.clear(); }
-
-  Result<ValueT> Get(const std::string& var) const {
-    const auto& iter = storage.find(var);
-    if (iter == storage.end()) {
-      return AttributeError{"object has no attribute '" + var + "'"};
-    }
-    return iter->second;
-  }
-
-  bool Set(const std::string& var, const ValueT& val) {
-    return storage.insert({var, val}).second;
-  }
-
-  bool operator==(const ObjectImpl& other) const { return &other == this; }
-};
-
-template <typename ValueT>
-DEFINE_ADT_RC(Object, ObjectImpl<ValueT>);
-
-template <typename ValueT>
-struct TypeImpl<Object<ValueT>> : public std::monostate {
-  using value_type = Object<ValueT>;
-
-  const char* Name() const { return "object"; }
+  const char* Name() const { return "list"; }
 };
 
 }  // namespace pexpr

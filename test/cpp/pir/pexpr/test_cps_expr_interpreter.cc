@@ -18,12 +18,22 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/cast_util.h"
 #include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 #include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
-#include "test/cpp/pir/pexpr/test_value.h"
+#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
 
 namespace pexpr::tests {
+
+namespace {
+
+struct TestValue : public ValueBase<TestValue> {
+  using ValueBase<TestValue>::ValueBase;
+  DEFINE_ADT_VARIANT_METHODS(ValueBase<TestValue>);
+};
+
+using Val = TestValue;
+
+}  // namespace
 
 TEST(CpsExprInterpreter, simple) {
   LambdaExprBuilder lmbd{};
@@ -41,7 +51,7 @@ TEST(CpsExprInterpreter, simple) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastUtil<Val>::ToDataValue<int64_t>(val);
+  const auto& int_val = MethodClass<Val>::TryGet<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 1);
 }
@@ -66,7 +76,7 @@ TEST(CpsExprInterpreter, lambda) {
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastUtil<Val>::ToDataValue<int64_t>(val);
+  const auto& int_val = MethodClass<Val>::TryGet<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
   ASSERT_EQ(int_val.GetOkValue(), 1);
 }
@@ -280,18 +290,18 @@ TEST(CpsExprInterpreter, data_value) {
   ASSERT_TRUE(atomic.Has<Lambda<CoreExpr>>());
   const auto& lambda = atomic.Get<Lambda<CoreExpr>>();
   CpsExprInterpreter<Val> interpreter{};
-  DataValue x{int64_t(2)};
-  DataValue y{int32_t(3)};
+  int64_t x = 3;
+  int64_t y = 5;
   const auto& interpret_ret = interpreter.Interpret(lambda, {x, y});
   if (!interpret_ret.HasOkValue()) {
-    LOG(ERROR) << "error-type: " << interpret_ret.GetError().class_name()
-               << ", error-msg: " << interpret_ret.GetError().msg();
+    LOG(ERROR) << interpret_ret.GetError().class_name() << ": "
+               << interpret_ret.GetError().msg();
   }
   ASSERT_TRUE(interpret_ret.HasOkValue());
   const auto& val = interpret_ret.GetOkValue();
-  const auto& int_val = CastUtil<Val>::ToDataValue<int64_t>(val);
+  const auto& int_val = MethodClass<Val>::TryGet<int64_t>(val);
   ASSERT_TRUE(int_val.HasOkValue());
-  ASSERT_EQ(int_val.GetOkValue(), 5);
+  ASSERT_EQ(int_val.GetOkValue(), 8);
 }
 
 }  // namespace pexpr::tests

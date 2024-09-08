@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/data_type.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
@@ -68,6 +69,13 @@ struct PointerType : public PointerTypeImpl {
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });
   }
+};
+
+template <>
+struct TypeImpl<PointerType> : public std::monostate {
+  using value_type = PointerType;
+
+  const char* Name() const { return "PointerType"; }
 };
 
 }  // namespace pexpr

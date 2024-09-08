@@ -18,6 +18,7 @@
 #include "paddle/pir/include/dialect/pexpr/atomic.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
@@ -42,5 +43,12 @@ template <typename ValueT>
 using CpsBuiltinHighOrderFuncType =
     Result<adt::Ok> (*)(CpsInterpreterBase<ValueT>* CpsInterpret,
                         ComposedCallImpl<ValueT>* composed_call);
+
+template <typename ValueT>
+struct TypeImpl<CpsBuiltinHighOrderFuncType<ValueT>> : public std::monostate {
+  using value_type = CpsBuiltinHighOrderFuncType<ValueT>;
+
+  const char* Name() const { return "cps_builtin_function"; }
+};
 
 }  // namespace pexpr

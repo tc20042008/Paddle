@@ -31,23 +31,25 @@ Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
                      std::to_string(args.size()) + "were given."};
   }
   const auto& cond = args.at(0);
+  using TypeT = decltype(std::get<0>(std::declval<Val>()));
   Result<bool> select_true_branch_res = cond.Match(
-      [&](const bool c) -> Result<bool> { return c; },
-      [&](const int64_t c) -> Result<bool> { return c != 0; },
-      [&](const std::string& c) -> Result<bool> { return !c.empty(); },
-      [&](const Nothing&) -> Result<bool> { return false; },
-      [&](const adt::List<Val>& list) -> Result<bool> {
+      [](const TypeT&) -> Result<bool> { return true; },
+      [](const bool c) -> Result<bool> { return c; },
+      [](const int64_t c) -> Result<bool> { return c != 0; },
+      [](const std::string& c) -> Result<bool> { return !c.empty(); },
+      [](const Nothing&) -> Result<bool> { return false; },
+      [](const adt::List<Val>& list) -> Result<bool> {
         return list->size() > 0;
       },
-      [&](const Object<Val>& obj) -> Result<bool> { return obj->size() > 0; },
-      [&](const Closure<Val>& closure) -> Result<bool> { return true; },
-      [&](const Method<Val>& closure) -> Result<bool> { return true; },
-      [&](const builtin_symbol::Symbol&) -> Result<bool> { return true; },
-      [&](const BuiltinFuncType<Val>& closure) -> Result<bool> { return true; },
-      [&](const CpsBuiltinHighOrderFuncType<Val>& closure) -> Result<bool> {
+      [](const Object<Val>& obj) -> Result<bool> { return obj->size() > 0; },
+      [](const Closure<Val>& closure) -> Result<bool> { return true; },
+      [](const Method<Val>& closure) -> Result<bool> { return true; },
+      [](const builtin_symbol::Symbol&) -> Result<bool> { return true; },
+      [](const BuiltinFuncType<Val>& closure) -> Result<bool> { return true; },
+      [](const CpsBuiltinHighOrderFuncType<Val>& closure) -> Result<bool> {
         return true;
       },
-      [&](const auto&) -> Result<bool> {
+      [](const auto&) -> Result<bool> {
         return TypeError{"index expr could not be a condition"};
       });
   ADT_RETURN_IF_ERROR(select_true_branch_res);

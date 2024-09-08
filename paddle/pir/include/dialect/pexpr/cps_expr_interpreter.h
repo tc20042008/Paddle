@@ -15,6 +15,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <utility>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
@@ -75,7 +76,11 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
 
   Result<adt::Ok> InterpretComposedCall(
       ComposedCallImpl<ValueT>* composed_call) {
+    using TypeT = decltype(std::get<0>(std::declval<ValueT>()));
     return composed_call->inner_func.Match(
+        [&](const TypeT& type) -> Result<adt::Ok> {
+          return InterpretConstruct(type, composed_call);
+        },
         [&](const BuiltinFuncType<ValueT>& func) -> Result<adt::Ok> {
           return InterpretBuiltinFuncCall(func, composed_call);
         },
@@ -139,9 +144,9 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                     [&](const auto&) -> Result<ValueT> { return symbol; });
               });
         },
-        [&](int64_t c) -> Result<ValueT> { return DataValue{c}; },
-        [&](bool c) -> Result<ValueT> { return DataValue{c}; },
-        [&](const std::string& val) -> Result<ValueT> { return ValueT{val}; });
+        [&](int64_t c) -> Result<ValueT> { return c; },
+        [&](bool c) -> Result<ValueT> { return c; },
+        [&](const std::string& val) -> Result<ValueT> { return val; });
   }
 
   Result<adt::Ok> InterpretBuiltinSymbolCall(
@@ -155,6 +160,10 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
         [&](const builtin_symbol::Apply&) -> Result<adt::Ok> {
           ret_composed_call->inner_func = &CpsBuiltinApply<ValueT>;
           return adt::Ok{};
+        },
+        [&](const builtin_symbol::Call&) -> Result<adt::Ok> {
+          return adt::errors::NotImplementedError{
+              std::string() + "'" + kBuiltinCall() + "' is not supported yet."};
         },
         [&](const builtin_symbol::Nothing&) -> Result<adt::Ok> {
           return TypeError{"'None' is not callable"};
@@ -180,7 +189,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                       ret_composed_call);
             } else {
               static_assert(true, "NotImplemented");
-              return RuntimeError{"NotImplemented."};
+              return NotImplementedError{"NotImplemented."};
             }
           });
         });
@@ -210,6 +219,22 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
     ret_composed_call->args = {ret};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
     ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
+    return adt::Ok{};
+  }
+
+  template <typename TypeT>
+  Result<adt::Ok> InterpretConstruct(
+      const TypeT& type, ComposedCallImpl<ValueT>* ret_composed_call) {
+    const auto& opt_func =
+        MethodClass<ValueT>::template GetBuiltinUnaryFunc<builtin_symbol::Call>(
+            ValueT{type});
+    if (!opt_func.has_value()) {
+      return TypeError{std::string() + "no constructor for type '" +
+                       type.Name() + "'"};
+    }
+    const auto& opt_constructor = opt_func.value()(ValueT{type});
+    ADT_RETURN_IF_ERROR(opt_constructor);
+    ret_composed_call->inner_func = opt_constructor.GetOkValue();
     return adt::Ok{};
   }
 

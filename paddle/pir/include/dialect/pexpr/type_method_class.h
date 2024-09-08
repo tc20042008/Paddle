@@ -14,15 +14,14 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/builtin_func_type.h"
-#include "paddle/pir/include/dialect/pexpr/constants.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
-template <typename ValueT>
-struct BuiltinFuncTypeMethodClass {
-  using Self = BuiltinFuncTypeMethodClass;
+template <typename ValueT, typename T>
+struct TypeMethodClass {
+  using Self = TypeMethodClass;
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -35,9 +34,9 @@ struct BuiltinFuncTypeMethodClass {
   }
 };
 
-template <typename ValueT>
-struct MethodClassImpl<ValueT, BuiltinFuncType<ValueT>> {
-  using method_class = BuiltinFuncTypeMethodClass<ValueT>;
+template <typename ValueT, typename... Ts>
+struct MethodClassImpl<ValueT, Type<Ts...>> {
+  using method_class = TypeMethodClass<ValueT, Type<Ts...>>;
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -50,8 +49,17 @@ struct MethodClassImpl<ValueT, BuiltinFuncType<ValueT>> {
   }
 };
 
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<BuiltinFuncType<ValueT>>>
-    : public EmptyMethodClass<ValueT> {};
+template <typename ValueT, typename... Ts>
+struct MethodClassImpl<ValueT, TypeImpl<Type<Ts...>>> {
+  template <typename BuiltinUnarySymbol>
+  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+    return std::nullopt;
+  }
+
+  template <typename BultinBinarySymbol>
+  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+    return std::nullopt;
+  }
+};
 
 }  // namespace pexpr

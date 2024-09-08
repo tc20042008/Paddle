@@ -16,6 +16,7 @@
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/data_type.h"
 #include "paddle/pir/include/dialect/pexpr/pointer_type.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
@@ -46,6 +47,13 @@ struct PointerValue : public PointerValueImpl {
     }
     return this->template Get<T>();
   }
+};
+
+template <>
+struct TypeImpl<PointerValue> : public std::monostate {
+  using value_type = PointerValue;
+
+  const char* Name() const { return "PointerValue"; }
 };
 
 }  // namespace pexpr

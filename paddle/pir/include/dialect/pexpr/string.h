@@ -14,36 +14,18 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
-#include "paddle/pir/include/dialect/pexpr/atomic.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
 #include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
-template <typename ValueT>
-class Environment;
+template <>
+struct TypeImpl<std::string> : public std::monostate {
+  using value_type = std::string;
 
-template <typename ValueT>
-struct ClosureImpl {
-  Lambda<CoreExpr> lambda;
-  std::shared_ptr<Environment<ValueT>> environment;
-
-  bool operator==(const ClosureImpl& other) const {
-    return other.lambda == this->lambda &&
-           other.environment == this->environment;
-  }
-};
-
-template <typename ValueT>
-DEFINE_ADT_RC(Closure, const ClosureImpl<ValueT>);
-
-template <typename ValueT>
-struct TypeImpl<Closure<ValueT>> : public std::monostate {
-  using value_type = Closure<ValueT>;
-
-  const char* Name() const { return "closure"; }
+  const char* Name() const { return "str"; }
 };
 
 }  // namespace pexpr

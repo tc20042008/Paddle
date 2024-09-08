@@ -16,6 +16,7 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/phi/common/ap/adt.h"
 #include "paddle/phi/common/ap/data_type.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace ap::kernel_define {
 
@@ -27,3 +28,14 @@ struct DefinerRawCtxImpl {
 DEFINE_ADT_RC(DefinerRawCtx, DefinerRawCtxImpl);
 
 }  // namespace ap::kernel_define
+
+namespace pexpr {
+
+template <>
+struct TypeImpl<ap::kernel_define::DefinerRawCtx> : public std::monostate {
+  using value_type = ap::kernel_define::DefinerRawCtx;
+
+  const char* Name() const { return "DefinerRawCtx"; }
+};
+
+}  // namespace pexpr

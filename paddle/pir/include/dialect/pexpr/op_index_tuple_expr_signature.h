@@ -16,11 +16,33 @@
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
 #include "paddle/pir/include/dialect/pexpr/op_signature.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
 using InIndexTupleExprSignature = InputSignature<IndexTupleExpr>;
 using OutIndexTupleExprSignature = OutputSignature<IndexTupleExpr>;
 using OpIndexTupleExprSignature = OpSignature<IndexTupleExpr>;
+
+template <>
+struct TypeImpl<InIndexTupleExprSignature> : public std::monostate {
+  using value_type = InIndexTupleExprSignature;
+
+  const char* Name() const { return "InIndexTupleExprSignature"; }
+};
+
+template <>
+struct TypeImpl<OutIndexTupleExprSignature> : public std::monostate {
+  using value_type = OutIndexTupleExprSignature;
+
+  const char* Name() const { return "OutIndexTupleExprSignature"; }
+};
+
+template <>
+struct TypeImpl<OpIndexTupleExprSignature> : public std::monostate {
+  using value_type = OpIndexTupleExprSignature;
+
+  const char* Name() const { return "OpIndexTupleExprSignature"; }
+};
 
 }  // namespace pexpr

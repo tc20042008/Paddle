@@ -19,6 +19,7 @@
 #include "paddle/phi/common/ap/dispatch_raw_ctx.h"
 #include "paddle/phi/common/ap/typed_buffer.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 #include "paddle/pir/include/dialect/pexpr/value.h"
 
 namespace phi {
@@ -41,3 +42,15 @@ template <typename ValueT>
 DEFINE_ADT_RC(DispatchCtx, DispatchCtxImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch
+
+namespace pexpr {
+
+template <typename ValueT>
+struct TypeImpl<ap::kernel_dispatch::DispatchCtx<ValueT>>
+    : public std::monostate {
+  using value_type = ap::kernel_dispatch::DispatchCtx<ValueT>;
+
+  const char* Name() const { return "DispatchCtx"; }
+};
+
+}  // namespace pexpr

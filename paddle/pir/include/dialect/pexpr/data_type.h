@@ -15,6 +15,7 @@
 #pragma once
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/pstring.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
@@ -112,6 +113,13 @@ struct DataType : public DataTypeImpl {
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });
   }
+};
+
+template <>
+struct TypeImpl<DataType> : public std::monostate {
+  using value_type = DataType;
+
+  const char* Name() const { return "DataType"; }
 };
 
 }  // namespace pexpr

@@ -16,7 +16,6 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/dialect/pexpr/data_type.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 
 namespace pexpr {
 

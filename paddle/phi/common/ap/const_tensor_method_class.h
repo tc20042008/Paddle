@@ -16,7 +16,6 @@
 
 #include "paddle/phi/common/ap/const_tensor.h"
 #include "paddle/pir/include/dialect/pexpr/data_type_util.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_dispatch {
@@ -27,7 +26,6 @@ using pexpr::BuiltinUnaryFuncT;
 using pexpr::CppDataType;
 using pexpr::CppPointerType;
 using pexpr::DataType;
-using pexpr::DataValue;
 using pexpr::Method;
 using pexpr::MethodClass;
 using pexpr::PointerType;
@@ -87,8 +85,6 @@ template <typename ValueT>
 struct ConstTensorMethodClass {
   using Self = ConstTensorMethodClass;
 
-  static const char* Name() { return "ConstTensor"; }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return std::nullopt;
@@ -125,8 +121,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, ap::kernel_dispatch::ConstTensor<ValueT>> {
   using method_class = ap::kernel_dispatch::ConstTensorMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -137,5 +131,10 @@ struct MethodClassImpl<ValueT, ap::kernel_dispatch::ConstTensor<ValueT>> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT,
+                       TypeImpl<ap::kernel_dispatch::ConstTensor<ValueT>>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

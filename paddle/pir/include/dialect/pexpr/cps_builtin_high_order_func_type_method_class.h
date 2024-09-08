@@ -24,8 +24,6 @@ template <typename ValueT>
 struct CpsBuiltinHighOrderFuncTypeMethodClass {
   using Self = CpsBuiltinHighOrderFuncTypeMethodClass;
 
-  static const char* Name() { return "cps_builtin_high_order_function"; }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return std::nullopt;
@@ -41,8 +39,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, CpsBuiltinHighOrderFuncType<ValueT>> {
   using method_class = CpsBuiltinHighOrderFuncTypeMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -53,5 +49,9 @@ struct MethodClassImpl<ValueT, CpsBuiltinHighOrderFuncType<ValueT>> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<CpsBuiltinHighOrderFuncType<ValueT>>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

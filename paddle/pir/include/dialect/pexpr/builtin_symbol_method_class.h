@@ -16,7 +16,6 @@
 
 #include "paddle/pir/include/dialect/pexpr/builtin_symbol.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
@@ -24,8 +23,6 @@ namespace pexpr {
 template <typename ValueT>
 struct BuiltinSymbolMethodClass {
   using Self = BuiltinSymbolMethodClass;
-
-  static const char* Name() { return "builtin_symbol"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -42,8 +39,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, builtin_symbol::Symbol> {
   using method_class = BuiltinSymbolMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -54,5 +49,9 @@ struct MethodClassImpl<ValueT, builtin_symbol::Symbol> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<builtin_symbol::Symbol>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

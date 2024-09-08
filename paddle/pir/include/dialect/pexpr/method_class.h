@@ -18,35 +18,38 @@
 #include <string>
 #include <type_traits>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/builtin_func_type.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
 
 namespace pexpr {
 
 template <typename ValueT>
 using BuiltinUnaryFuncT = adt::Result<ValueT> (*)(const ValueT&);
+
+template <typename ValueT, BuiltinFuncType<ValueT> BuiltinFunc>
+adt::Result<ValueT> UnaryFuncReturnCapturedValue(const ValueT&) {
+  return BuiltinFunc;
+}
+
 template <typename ValueT>
 using BuiltinBinaryFuncT = adt::Result<ValueT> (*)(const ValueT&,
                                                    const ValueT&);
 
-template <typename ValueT, typename T>
-struct UndefinedMethodClass {};
-
-template <typename ValueT, typename T>
-struct MethodClassImpl {
-  using method_class = UndefinedMethodClass<ValueT, T>;
-
-  static const char* Name() { return method_class::Name(); }
-
+template <typename ValueT>
+struct EmptyMethodClass {
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
+    return std::nullopt;
   }
 
   template <typename BultinBinarySymbol>
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
+    return std::nullopt;
   }
 };
+
+template <typename ValueT, typename T>
+struct MethodClassImpl;
 
 template <typename ValueT>
 struct MethodClass {
@@ -58,15 +61,14 @@ struct MethodClass {
       return val.template Get<T>();
     }
     return adt::errors::TypeError{
-        std::string() +
-        "cast failed. expected type: " + MethodClassImpl<ValueT, T>::Name() +
+        std::string() + "cast failed. expected type: " + TypeImpl<T>{}.Name() +
         ", actual type: " + Self::Name(val)};
   }
 
   static const char* Name(const ValueT& val) {
     return val.Match([](const auto& impl) -> const char* {
       using T = std::decay_t<decltype(impl)>;
-      return MethodClassImpl<ValueT, T>::Name();
+      return TypeImpl<T>{}.Name();
     });
   }
 
@@ -76,8 +78,17 @@ struct MethodClass {
     return val.Match(
         [](const auto& impl) -> std::optional<BuiltinUnaryFuncT<ValueT>> {
           using T = std::decay_t<decltype(impl)>;
-          return MethodClassImpl<ValueT, T>::template GetBuiltinUnaryFunc<
-              BultinUnarySymbol>();
+          if constexpr (IsType<T>()) {
+            return impl.Match([](const auto& type_impl)
+                                  -> std::optional<BuiltinUnaryFuncT<ValueT>> {
+              using TT = std::decay_t<decltype(type_impl)>;
+              return MethodClassImpl<ValueT, TT>::template GetBuiltinUnaryFunc<
+                  BultinUnarySymbol>();
+            });
+          } else {
+            return MethodClassImpl<ValueT, T>::template GetBuiltinUnaryFunc<
+                BultinUnarySymbol>();
+          }
         });
   }
 
@@ -87,8 +98,17 @@ struct MethodClass {
     return val.Match(
         [](const auto& impl) -> std::optional<BuiltinBinaryFuncT<ValueT>> {
           using T = std::decay_t<decltype(impl)>;
-          return MethodClassImpl<ValueT, T>::template GetBuiltinBinaryFunc<
-              BultinBinarySymbol>();
+          if constexpr (IsType<T>()) {
+            return impl.Match([](const auto& type_impl)
+                                  -> std::optional<BuiltinBinaryFuncT<ValueT>> {
+              using TT = std::decay_t<decltype(type_impl)>;
+              return MethodClassImpl<ValueT, TT>::template GetBuiltinBinaryFunc<
+                  BultinBinarySymbol>();
+            });
+          } else {
+            return MethodClassImpl<ValueT, T>::template GetBuiltinBinaryFunc<
+                BultinBinarySymbol>();
+          }
         });
   }
 };

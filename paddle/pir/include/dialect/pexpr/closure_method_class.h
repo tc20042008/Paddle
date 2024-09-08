@@ -16,43 +16,16 @@
 
 #include "paddle/pir/include/dialect/pexpr/closure.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
 
 template <typename ValueT>
-struct ClosureMethodClass {
-  using Self = ClosureMethodClass;
-
-  static const char* Name() { return "closure"; }
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
-  }
-};
+struct MethodClassImpl<ValueT, Closure<ValueT>>
+    : public EmptyMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, Closure<ValueT>> {
-  using method_class = ClosureMethodClass<ValueT>;
-
-  static const char* Name() { return method_class::Name(); }
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, TypeImpl<Closure<ValueT>>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

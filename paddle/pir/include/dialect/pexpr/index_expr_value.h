@@ -16,11 +16,11 @@
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
 #include "paddle/pir/include/dialect/pexpr/core_expr.h"
+#include "paddle/pir/include/dialect/pexpr/dim_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
 #include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 #include "paddle/pir/include/dialect/pexpr/value.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pexpr::index_expr {
@@ -29,6 +29,7 @@ template <typename ValueT>
 using ValueImpl = ValueBase<ValueT,
                             symbol::DimExpr,
                             Slice,
+                            Object<ValueT>,
                             IndexExpr,
                             IndexTupleExpr,
                             InIndexTupleExprSignature,

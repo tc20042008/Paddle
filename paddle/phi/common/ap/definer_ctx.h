@@ -18,6 +18,7 @@
 #include "paddle/phi/common/ap/data_type.h"
 #include "paddle/phi/common/ap/definer_raw_ctx.h"
 #include "paddle/pir/include/dialect/pexpr/object.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace ap::kernel_define {
 
@@ -35,3 +36,14 @@ template <typename ValueT>
 DEFINE_ADT_RC(DefinerCtx, DefinerCtxImpl<ValueT>);
 
 }  // namespace ap::kernel_define
+
+namespace pexpr {
+
+template <typename ValueT>
+struct TypeImpl<ap::kernel_define::DefinerCtx<ValueT>> : public std::monostate {
+  using value_type = ap::kernel_define::DefinerCtx<ValueT>;
+
+  const char* Name() const { return "DefinerCtx"; }
+};
+
+}  // namespace pexpr

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 namespace pexpr {
 
 #define PEXPR_FOR_EACH_BINARY_OP(_) \
@@ -40,5 +42,23 @@ namespace pexpr {
   };
 PEXPR_FOR_EACH_BINARY_OP(DEFINE_ARITHMETIC_BINARY_OP);
 #undef DEFINE_ARITHMETIC_BINARY_OP
+
+template <typename ArithmeticOp>
+struct BoolIntDoubleBinary {
+  static constexpr const char* Name() { return ArithmeticOp::Name(); }
+  template <typename LhsT, typename RhsT>
+  static auto Call(LhsT lhs, RhsT rhs) {
+    auto ret = ArithmeticOp::Call(lhs, rhs);
+    using T = decltype(ret);
+    if constexpr (std::is_same_v<T, bool>) {
+      return ret;
+    } else if constexpr (std::is_integral_v<T>) {
+      return static_cast<int64_t>(ret);
+    } else {
+      static_assert(std::is_floating_point<T>::value, "");
+      return static_cast<double>(ret);
+    }
+  }
+};
 
 }  // namespace pexpr

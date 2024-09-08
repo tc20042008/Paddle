@@ -23,10 +23,12 @@ using adt::errors::Error;
 using adt::errors::IndexError;
 using adt::errors::InvalidArgumentError;
 using adt::errors::NameError;
+using adt::errors::NotImplementedError;
 using adt::errors::RuntimeError;
 using adt::errors::SyntaxError;
 using adt::errors::TypeError;
 using adt::errors::ValueError;
+using adt::errors::ZeroDivisionError;
 
 template <typename T>
 using Result = adt::Result<T>;

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
@@ -24,8 +23,6 @@ template <typename ValueT>
 struct IndexExprMethodClass {
   using Self = IndexExprMethodClass;
 
-  static const char* Name() { return "index_expr"; }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return std::nullopt;
@@ -35,21 +32,11 @@ struct IndexExprMethodClass {
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
     return std::nullopt;
   }
-
-  static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
-    return std::nullopt;
-  }
-
-  static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
-    return std::nullopt;
-  }
 };
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, IndexExpr> {
   using method_class = IndexExprMethodClass<ValueT>;
-
-  static const char* Name() { return method_class::Name(); }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -59,6 +46,19 @@ struct MethodClassImpl<ValueT, IndexExpr> {
   template <typename BultinBinarySymbol>
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
+  }
+};
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<IndexExpr>> {
+  template <typename BuiltinUnarySymbol>
+  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+    return std::nullopt;
+  }
+
+  template <typename BultinBinarySymbol>
+  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+    return std::nullopt;
   }
 };
 

@@ -16,7 +16,6 @@
 
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
@@ -24,8 +23,6 @@ namespace pexpr {
 template <typename ValueT>
 struct ListMethodClass {
   using Self = ListMethodClass;
-
-  static const char* Name() { return "list"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -47,14 +44,7 @@ struct ListMethodClass {
     ADT_RETURN_IF_ERROR(opt_lst);
     const auto& lst = opt_lst.GetOkValue();
     return idx.Match(
-        [&](const DataValue& arithmetic_idx) -> Result<ValueT> {
-          const auto& int64_idx =
-              arithmetic_idx.StaticCastTo(CppDataType<int64_t>{});
-          ADT_RETURN_IF_ERROR(int64_idx);
-          const auto& opt_index =
-              int64_idx.GetOkValue().template TryGet<int64_t>();
-          ADT_RETURN_IF_ERROR(opt_index);
-          int64_t index = opt_index.GetOkValue();
+        [&](int64_t index) -> Result<ValueT> {
           if (index < 0) {
             index += lst->size();
           }
@@ -75,8 +65,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, adt::List<ValueT>> {
   using method_class = ListMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -87,5 +75,9 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<adt::List<ValueT>>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

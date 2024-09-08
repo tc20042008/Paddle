@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
@@ -24,8 +23,6 @@ namespace pexpr {
 template <typename ValueT>
 struct MethodMethodClass {
   using Self = MethodMethodClass;
-
-  static const char* Name() { return "method"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -42,8 +39,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, Method<ValueT>> {
   using method_class = MethodMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -54,5 +49,9 @@ struct MethodClassImpl<ValueT, Method<ValueT>> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<Method<ValueT>>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

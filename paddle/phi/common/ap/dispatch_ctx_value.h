@@ -28,6 +28,11 @@ namespace ap::kernel_dispatch {
 
 template <typename ValueT>
 using ValueImpl = pexpr::ValueBase<ValueT,
+                                   pexpr::DataType,
+                                   pexpr::DataValue,
+                                   pexpr::PointerType,
+                                   pexpr::PointerValue,
+                                   pexpr::Object<ValueT>,
                                    ConstTensor<ValueT>,
                                    MutableTensor<ValueT>,
                                    DispatchRawCtx<ValueT>,

@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/common/ap/func_declare.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_define {
@@ -23,8 +22,6 @@ namespace ap::kernel_define {
 template <typename ValueT>
 struct FuncDeclareMethodClass {
   using Self = FuncDeclareMethodClass;
-
-  static const char* Name() { return "func_declare"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -45,8 +42,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, ap::kernel_define::FuncDeclare> {
   using method_class = ap::kernel_define::FuncDeclareMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -57,5 +52,9 @@ struct MethodClassImpl<ValueT, ap::kernel_define::FuncDeclare> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<ap::kernel_define::FuncDeclare>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/index_expr.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace pexpr {
@@ -93,6 +94,13 @@ using IndexTupleExprBase = std::variant<UndefinedIndexTupleExpr,
 struct IndexTupleExpr : public IndexTupleExprBase<IndexTupleExpr> {
   using IndexTupleExprBase<IndexTupleExpr>::IndexTupleExprBase;
   DEFINE_ADT_VARIANT_METHODS(IndexTupleExprBase<IndexTupleExpr>);
+};
+
+template <>
+struct TypeImpl<IndexTupleExpr> : public std::monostate {
+  using value_type = IndexTupleExpr;
+
+  const char* Name() const { return "IndexTupleExpr"; }
 };
 
 }  // namespace pexpr

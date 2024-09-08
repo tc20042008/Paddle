@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace pexpr {
@@ -23,8 +22,6 @@ namespace pexpr {
 template <typename ValueT>
 struct NothingMethodClass {
   using Self = NothingMethodClass;
-
-  static const char* Name() { return "None"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -47,24 +44,22 @@ struct NothingMethodClass {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
-    return rhs_val.Match([](adt::Nothing) -> DataValue { return true; },
-                         [](const auto&) -> DataValue { return false; });
+    return rhs_val.Match([](adt::Nothing) -> ValueT { return true; },
+                         [](const auto&) -> ValueT { return false; });
   }
 
   static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
-    return rhs_val.Match([](adt::Nothing) -> DataValue { return false; },
-                         [](const auto&) -> DataValue { return true; });
+    return rhs_val.Match([](adt::Nothing) -> ValueT { return false; },
+                         [](const auto&) -> ValueT { return true; });
   }
 };
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, adt::Nothing> {
   using method_class = NothingMethodClass<ValueT>;
-
-  static const char* Name() { return method_class::Name(); }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -76,5 +71,9 @@ struct MethodClassImpl<ValueT, adt::Nothing> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<adt::Nothing>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

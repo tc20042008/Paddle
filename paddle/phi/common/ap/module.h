@@ -18,6 +18,7 @@
 #include "paddle/phi/common/ap/arg_type.h"
 #include "paddle/phi/common/ap/data_type.h"
 #include "paddle/phi/common/ap/source_code.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace ap::kernel_define {
 
@@ -33,3 +34,14 @@ struct ModuleImpl {
 DEFINE_ADT_RC(Module, ModuleImpl);
 
 }  // namespace ap::kernel_define
+
+namespace pexpr {
+
+template <>
+struct TypeImpl<ap::kernel_define::Module> : public std::monostate {
+  using value_type = ap::kernel_define::Module;
+
+  const char* Name() const { return "Module"; }
+};
+
+}  // namespace pexpr

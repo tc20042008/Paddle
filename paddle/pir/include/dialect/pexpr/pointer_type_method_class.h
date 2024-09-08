@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/pointer_type.h"
 
@@ -24,8 +23,6 @@ namespace pexpr {
 template <typename ValueT>
 struct PointerTypeMethodClass {
   using Self = PointerTypeMethodClass;
-
-  static const char* Name() { return "PointerType"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -54,7 +51,7 @@ struct PointerTypeMethodClass {
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {
           return std::is_same_v<decltype(lhs), decltype(rhs)>;
         }};
     return std::visit(pattern_match, lhs.variant(), rhs.variant());
@@ -70,7 +67,7 @@ struct PointerTypeMethodClass {
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {
           return !std::is_same_v<decltype(lhs), decltype(rhs)>;
         }};
     return std::visit(pattern_match, lhs.variant(), rhs.variant());
@@ -80,8 +77,6 @@ struct PointerTypeMethodClass {
 template <typename ValueT>
 struct MethodClassImpl<ValueT, PointerType> {
   using method_class = PointerTypeMethodClass<ValueT>;
-
-  static const char* Name() { return method_class::Name(); }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -93,5 +88,9 @@ struct MethodClassImpl<ValueT, PointerType> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<PointerType>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

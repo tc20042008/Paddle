@@ -16,6 +16,7 @@
 
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
@@ -31,5 +32,12 @@ struct MethodImpl {
 
 template <typename ValueT>
 DEFINE_ADT_RC(Method, const MethodImpl<ValueT>);
+
+template <typename ValueT>
+struct TypeImpl<Method<ValueT>> : public std::monostate {
+  using value_type = Method<ValueT>;
+
+  const char* Name() const { return "method"; }
+};
 
 }  // namespace pexpr

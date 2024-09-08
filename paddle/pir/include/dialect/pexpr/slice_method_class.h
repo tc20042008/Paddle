@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/slice.h"
 
@@ -23,8 +22,6 @@ namespace pexpr {
 template <typename ValueT>
 struct SliceMethodClass {
   using Self = SliceMethodClass;
-
-  static const char* Name() { return "index_expr"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -41,8 +38,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, Slice> {
   using method_class = SliceMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -53,5 +48,9 @@ struct MethodClassImpl<ValueT, Slice> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<Slice>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

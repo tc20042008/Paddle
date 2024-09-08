@@ -17,6 +17,7 @@
 #include "paddle/phi/common/ap/data_type.h"
 #include "paddle/phi/common/ap/typed_buffer.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace phi {
 
@@ -65,3 +66,15 @@ template <typename ValueT>
 DEFINE_ADT_RC(MutableTensor, MutableTensorImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch
+
+namespace pexpr {
+
+template <typename ValueT>
+struct TypeImpl<ap::kernel_dispatch::MutableTensor<ValueT>>
+    : public std::monostate {
+  using value_type = ap::kernel_dispatch::MutableTensor<ValueT>;
+
+  const char* Name() const { return "MutableTensor"; }
+};
+
+}  // namespace pexpr

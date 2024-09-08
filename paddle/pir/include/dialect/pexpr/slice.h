@@ -16,6 +16,7 @@
 
 #include <vector>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace pexpr {
@@ -32,5 +33,12 @@ struct SliceImpl {
 };
 
 DEFINE_ADT_RC(Slice, const SliceImpl);
+
+template <>
+struct TypeImpl<Slice> : public std::monostate {
+  using value_type = Slice;
+
+  const char* Name() const { return "Slice"; }
+};
 
 }  // namespace pexpr

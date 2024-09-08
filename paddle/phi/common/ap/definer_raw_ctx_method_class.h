@@ -16,7 +16,6 @@
 
 #include "paddle/phi/common/ap/definer_ctx.h"
 #include "paddle/phi/common/ap/definer_raw_ctx.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 
 namespace ap::kernel_define {
@@ -28,8 +27,6 @@ using pexpr::MethodClass;
 template <typename ValueT>
 struct DefinerRawCtxMethodClass {
   using Self = DefinerRawCtxMethodClass;
-
-  static const char* Name() { return "DefinerRawCtx"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -116,8 +113,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, ap::kernel_define::DefinerRawCtx> {
   using method_class = ap::kernel_define::DefinerRawCtxMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -128,5 +123,9 @@ struct MethodClassImpl<ValueT, ap::kernel_define::DefinerRawCtx> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<ap::kernel_define::DefinerRawCtx>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

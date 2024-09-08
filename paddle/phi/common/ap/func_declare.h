@@ -17,6 +17,7 @@
 #include "paddle/phi/common/ap/adt.h"
 #include "paddle/phi/common/ap/arg_type.h"
 #include "paddle/phi/common/ap/data_type.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace ap::kernel_define {
 
@@ -33,3 +34,14 @@ struct FuncDeclareImpl {
 DEFINE_ADT_RC(FuncDeclare, FuncDeclareImpl);
 
 }  // namespace ap::kernel_define
+
+namespace pexpr {
+
+template <>
+struct TypeImpl<ap::kernel_define::FuncDeclare> : public std::monostate {
+  using value_type = ap::kernel_define::FuncDeclare;
+
+  const char* Name() const { return "FuncDeclare"; }
+};
+
+}  // namespace pexpr

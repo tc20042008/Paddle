@@ -14,20 +14,18 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
+#include <cstdint>
+#include "paddle/pir/include/dialect/pexpr/adt.h"
+#include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
-template <typename ValueT>
-struct CastUtil {
-  template <typename T>
-  static adt::Result<T> ToDataValue(const ValueT& value) {
-    const auto& opt_data_value =
-        MethodClass<ValueT>::template TryGet<DataValue>(value);
-    ADT_RETURN_IF_ERROR(opt_data_value);
-    const auto& data_value = opt_data_value.GetOkValue();
-    return data_value.template TryGet<T>();
-  }
+template <>
+struct TypeImpl<int64_t> : public std::monostate {
+  using value_type = int64_t;
+
+  const char* Name() const { return "int"; }
 };
 
 }  // namespace pexpr

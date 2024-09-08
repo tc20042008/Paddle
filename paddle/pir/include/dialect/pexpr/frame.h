@@ -14,44 +14,29 @@
 
 #pragma once
 
-#include <unordered_map>
+#include <string>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
-#include "paddle/pir/include/dialect/pexpr/error.h"
-#include "paddle/pir/include/dialect/pexpr/type.h"
+#include "paddle/pir/include/dialect/pexpr/object.h"
 
 namespace pexpr {
 
 template <typename ValueT>
-struct ObjectImpl {
-  std::unordered_map<std::string, ValueT> storage;
-
-  size_t size() const { return storage.size(); }
-
-  void clear() { storage.clear(); }
-
+struct Frame {
   Result<ValueT> Get(const std::string& var) const {
-    const auto& iter = storage.find(var);
-    if (iter == storage.end()) {
-      return AttributeError{"object has no attribute '" + var + "'"};
-    }
-    return iter->second;
+    return frame_obj->Get(var);
   }
 
   bool Set(const std::string& var, const ValueT& val) {
-    return storage.insert({var, val}).second;
+    return frame_obj->Set(var, val);
   }
 
-  bool operator==(const ObjectImpl& other) const { return &other == this; }
-};
+  bool HasVar(const std::string& var) const {
+    return frame_obj->find(var) != frame_obj->end();
+  }
 
-template <typename ValueT>
-DEFINE_ADT_RC(Object, ObjectImpl<ValueT>);
+  void ClearFrame() { frame_obj->clear(); }
 
-template <typename ValueT>
-struct TypeImpl<Object<ValueT>> : public std::monostate {
-  using value_type = Object<ValueT>;
-
-  const char* Name() const { return "object"; }
+  Object<ValueT> frame_obj;
 };
 
 }  // namespace pexpr

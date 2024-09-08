@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/pir/include/dialect/pexpr/constants.h"
-#include "paddle/pir/include/dialect/pexpr/data_value.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
 #include "paddle/pir/include/dialect/pexpr/pointer_value.h"
 
@@ -24,8 +23,6 @@ namespace pexpr {
 template <typename ValueT>
 struct PointerValueMethodClass {
   using Self = PointerValueMethodClass;
-
-  static const char* Name() { return "PointerValue"; }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -54,7 +51,7 @@ struct PointerValueMethodClass {
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {
           if constexpr (std::is_same_v<decltype(lhs), decltype(rhs)>) {
             return lhs == rhs;
           } else {
@@ -74,7 +71,7 @@ struct PointerValueMethodClass {
     ADT_RETURN_IF_ERROR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
-        ::common::Overloaded{[](auto lhs, auto rhs) -> DataValue {
+        ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {
           if constexpr (std::is_same_v<decltype(lhs), decltype(rhs)>) {
             return lhs != rhs;
           } else {
@@ -89,8 +86,6 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, PointerValue> {
   using method_class = PointerValueMethodClass<ValueT>;
 
-  static const char* Name() { return method_class::Name(); }
-
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
@@ -101,5 +96,9 @@ struct MethodClassImpl<ValueT, PointerValue> {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<PointerValue>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

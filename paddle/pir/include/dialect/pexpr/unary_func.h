@@ -32,4 +32,22 @@ namespace pexpr {
 PEXPR_FOR_EACH_UNARY_OP(DEFINE_ARITHMETIC_UNARY_OP);
 #undef DEFINE_ARITHMETIC_UNARY_OP
 
+template <typename ArithmeticOp>
+struct BoolIntDoubleUnary {
+  static constexpr const char* Name() { return ArithmeticOp::Name(); }
+  template <typename T>
+  static auto Call(T operand) {
+    auto ret = ArithmeticOp::Call(operand);
+    using RetT = decltype(ret);
+    if constexpr (std::is_same_v<RetT, bool>) {
+      return ret;
+    } else if constexpr (std::is_integral_v<RetT>) {
+      return static_cast<int64_t>(ret);
+    } else {
+      static_assert(std::is_floating_point<RetT>::value, "");
+      return static_cast<double>(ret);
+    }
+  }
+};
+
 }  // namespace pexpr

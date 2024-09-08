@@ -76,7 +76,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
 
   Result<adt::Ok> InterpretComposedCall(
       ComposedCallImpl<ValueT>* composed_call) {
-    using TypeT = decltype(std::get<0>(std::declval<ValueT>()));
+    using TypeT = typename TypeTrait<ValueT>::TypeT;
     return composed_call->inner_func.Match(
         [&](const TypeT& type) -> Result<adt::Ok> {
           return InterpretConstruct(type, composed_call);

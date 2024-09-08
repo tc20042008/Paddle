@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <utility>
 #include <variant>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 
@@ -64,5 +65,11 @@ template <typename T>
 constexpr bool IsType() {
   return detail::IsTypeHelper<T>::value;
 }
+
+template <typename ValueT>
+struct TypeTrait {
+  using VariantT = std::decay_t<decltype(std::declval<ValueT>().variant())>;
+  using TypeT = std::variant_alternative_t<0, VariantT>;
+};
 
 }  // namespace pexpr

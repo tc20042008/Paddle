@@ -31,7 +31,7 @@ Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
                      std::to_string(args.size()) + "were given."};
   }
   const auto& cond = args.at(0);
-  using TypeT = decltype(std::get<0>(std::declval<Val>()));
+  using TypeT = typename TypeTrait<Val>::TypeT;
   Result<bool> select_true_branch_res = cond.Match(
       [](const TypeT&) -> Result<bool> { return true; },
       [](const bool c) -> Result<bool> { return c; },

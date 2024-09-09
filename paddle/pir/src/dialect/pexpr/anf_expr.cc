@@ -42,6 +42,10 @@ Json ConvertAtomicAnfExprToJson(const Atomic<AnfExpr>& atomic_expr) {
         Json j = c;
         return j;
       },
+      [&](double c) {
+        Json j = c;
+        return j;
+      },
       [&](const std::string& c) {
         Json j;
         j[AnfExpr::kString()] = c;

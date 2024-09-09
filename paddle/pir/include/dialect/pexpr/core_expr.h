@@ -113,6 +113,9 @@ inline size_t GetHashValue(const Atomic<CoreExpr>& atomic) {
       [](const Symbol& symbol) -> size_t { return symbol.GetHashValue(); },
       [](const bool val) -> size_t { return val; },
       [](const int64_t val) -> size_t { return val; },
+      [](const double val) -> size_t {
+        return *reinterpret_cast<const size_t*>(&val);
+      },
       [](const std::string& val) -> size_t {
         return std::hash<std::string>()(val);
       },

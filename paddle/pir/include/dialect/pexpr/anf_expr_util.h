@@ -123,6 +123,7 @@ struct AnfExprToCoreExprConverter {
         [&](const tVar<std::string>& var) { return ConvertVar(var); },
         [&](bool c) { return ConvertBool(c); },
         [&](int64_t c) { return ConvertInt64(c); },
+        [&](double c) { return ConvertDouble(c); },
         [&](const std::string& c) { return ConvertString(c); },
         [&](const Lambda<AnfExpr>& lambda) { return ConvertLambda(lambda); });
   }
@@ -142,6 +143,7 @@ struct AnfExprToCoreExprConverter {
 
   value_type ConvertBool(const bool c) { return CoreVal(core_.Bool(c)); }
   value_type ConvertInt64(const int64_t c) { return CoreVal(core_.Int64(c)); }
+  value_type ConvertDouble(const double c) { return CoreVal(core_.Double(c)); }
   value_type ConvertString(const std::string& c) {
     return CoreVal(core_.String(c));
   }
@@ -305,7 +307,7 @@ struct ParseJsonToAnfExprHelper<bool> {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_boolean()) {
       return JsonParseMismatch(
-          j_obj, "ParseJsonToAnfExpr<bool>: json objects should be booleans");
+          j_obj, "ParseJsonToAnfExpr<bool>: json object should be a boolean.");
     }
     bool c = j_obj.get<bool>();
     return AnfExpr{AnfExprBuilder().Bool(c)};
@@ -316,12 +318,25 @@ template <>
 struct ParseJsonToAnfExprHelper<int64_t> {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_number_integer()) {
-      return JsonParseMismatch(
-          j_obj,
-          "ParseJsonToAnfExpr<int64_t>: json objects should be  numbers");
+      return JsonParseMismatch(j_obj,
+                               "ParseJsonToAnfExpr<int64_t>: json object "
+                               "should be a intergral number.");
     }
     auto c = j_obj.get<Json::number_integer_t>();
     return AnfExpr{AnfExprBuilder().Int64(c)};
+  }
+};
+
+template <>
+struct ParseJsonToAnfExprHelper<double> {
+  static Result<AnfExpr> Call(const Json& j_obj) {
+    if (!j_obj.is_number_float()) {
+      return JsonParseMismatch(j_obj,
+                               "ParseJsonToAnfExpr<double>: json object should "
+                               "be a floating point number.");
+    }
+    auto c = j_obj.template get<double>();
+    return AnfExpr{AnfExprBuilder().Double(c)};
   }
 };
 
@@ -570,6 +585,7 @@ inline const std::vector<JsonParseFuncType>& GetJsonParseFuncs() {
       &ParseJsonToAnfExpr<tVar<std::string>>,
       &ParseJsonToAnfExpr<bool>,
       &ParseJsonToAnfExpr<int64_t>,
+      &ParseJsonToAnfExpr<double>,
       &ParseJsonToAnfExpr<std::string>,
   };
   return vec;

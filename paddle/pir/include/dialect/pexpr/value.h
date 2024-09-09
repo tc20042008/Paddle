@@ -25,6 +25,7 @@
 #include "paddle/pir/include/dialect/pexpr/environment.h"
 #include "paddle/pir/include/dialect/pexpr/environment_mgr.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
+#include "paddle/pir/include/dialect/pexpr/float.h"
 #include "paddle/pir/include/dialect/pexpr/frame.h"
 #include "paddle/pir/include/dialect/pexpr/int.h"
 #include "paddle/pir/include/dialect/pexpr/list.h"
@@ -44,6 +45,7 @@ template <typename ValueT, typename... Ts>
 using ValueBase = std::variant<Type<Nothing,
                                     bool,
                                     int64_t,
+                                    double,
                                     std::string,
                                     Closure<ValueT>,
                                     Method<ValueT>,
@@ -55,6 +57,7 @@ using ValueBase = std::variant<Type<Nothing,
                                Nothing,
                                bool,
                                int64_t,
+                               double,
                                std::string,
                                Closure<ValueT>,
                                Method<ValueT>,

@@ -33,6 +33,8 @@ class AtomicExprBuilder {
 
   Atomic<Expr> Int64(int64_t c) { return Atomic<Expr>{c}; }
 
+  Atomic<Expr> Double(double c) { return Atomic<Expr>{c}; }
+
   Atomic<Expr> String(const std::string& str) { return Atomic<Expr>{str}; }
 
   Atomic<Expr> Lambda(const std::vector<tVar<std::string>>& args,

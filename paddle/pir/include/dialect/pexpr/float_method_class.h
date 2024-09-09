@@ -14,16 +14,17 @@
 
 #pragma once
 
-#include <string>
+#include <cstdint>
 #include "paddle/pir/include/dialect/pexpr/bool_int_double_arithmetic_util.h"
 #include "paddle/pir/include/dialect/pexpr/constants.h"
 #include "paddle/pir/include/dialect/pexpr/method_class.h"
+#include "paddle/pir/include/dialect/pexpr/type.h"
 
 namespace pexpr {
 
 template <typename ValueT>
-struct BoolMethodClass {
-  using Self = BoolMethodClass;
+struct FloatMethodClass {
+  using Self = FloatMethodClass;
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -52,9 +53,9 @@ struct BoolMethodClass {
   template <typename ArithmeticOp>
   static adt::Result<ValueT> BinaryFunc(const ValueT& lhs_val,
                                         const ValueT& rhs_val) {
-    const auto& opt_lhs = MethodClass<ValueT>::template TryGet<bool>(lhs_val);
+    const auto& opt_lhs = MethodClass<ValueT>::template TryGet<double>(lhs_val);
     ADT_RETURN_IF_ERROR(opt_lhs);
-    bool lhs = opt_lhs.GetOkValue();
+    double lhs = opt_lhs.GetOkValue();
     return rhs_val.Match(
         [&](bool rhs) -> adt::Result<ValueT> {
           return BoolIntDoubleArithmeticBinaryFunc<ArithmeticOp, ValueT>(lhs,
@@ -70,25 +71,25 @@ struct BoolMethodClass {
         },
         [&](const auto& impl) -> adt::Result<ValueT> {
           using T = std::decay_t<decltype(impl)>;
-          return adt::errors::TypeError{
-              std::string() + "unsupported operand type(s) for " +
-              ArithmeticOp::Name() + ": 'bool' and '" + TypeImpl<T>{}.Name() +
-              "'"};
+          return adt::errors::TypeError{std::string() +
+                                        "unsupported operand type(s) for " +
+                                        ArithmeticOp::Name() + ": 'int' and '" +
+                                        TypeImpl<T>{}.Name() + "'"};
         });
   }
 
   template <typename ArithmeticOp>
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
-    const auto& opt_operand = MethodClass<ValueT>::template TryGet<bool>(val);
+    const auto& opt_operand = MethodClass<ValueT>::template TryGet<double>(val);
     ADT_RETURN_IF_ERROR(opt_operand);
-    bool operand = opt_operand.GetOkValue();
+    double operand = opt_operand.GetOkValue();
     return BoolIntDoubleArithmeticUnaryFunc<ArithmeticOp, ValueT>(operand);
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, bool> {
-  using method_class = BoolMethodClass<ValueT>;
+struct MethodClassImpl<ValueT, double> {
+  using method_class = FloatMethodClass<ValueT>;
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -102,7 +103,7 @@ struct MethodClassImpl<ValueT, bool> {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<bool>>
+struct MethodClassImpl<ValueT, TypeImpl<double>>
     : public EmptyMethodClass<ValueT> {};
 
 }  // namespace pexpr

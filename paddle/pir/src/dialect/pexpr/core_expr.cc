@@ -27,6 +27,7 @@ std::string AtomicExprToSExpression(const Atomic<CoreExpr>& core_expr) {
       [](const Symbol& symbol) { return symbol.Name(); },
       [](const bool c) { return c ? std::string("#t") : std::string("#f"); },
       [](const int64_t c) { return std::to_string(c); },
+      [](const double c) { return std::to_string(c); },
       [](const std::string& str) {
         std::ostringstream ss;
         ss << std::quoted(str);

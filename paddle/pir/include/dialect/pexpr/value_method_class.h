@@ -21,6 +21,7 @@
 #include "paddle/pir/include/dialect/pexpr/cps_builtin_high_order_func_type_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/data_type_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/data_value_method_class.h"
+#include "paddle/pir/include/dialect/pexpr/float_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/int_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/list_method_class.h"
 #include "paddle/pir/include/dialect/pexpr/method_method_class.h"

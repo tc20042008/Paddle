@@ -36,6 +36,7 @@ Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
       [](const TypeT&) -> Result<bool> { return true; },
       [](const bool c) -> Result<bool> { return c; },
       [](const int64_t c) -> Result<bool> { return c != 0; },
+      [](const double c) -> Result<bool> { return c != 0; },
       [](const std::string& c) -> Result<bool> { return !c.empty(); },
       [](const Nothing&) -> Result<bool> { return false; },
       [](const adt::List<Val>& list) -> Result<bool> {

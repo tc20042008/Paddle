@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cmath>
 #include "paddle/pir/include/dialect/pexpr/adt.h"
 #include "paddle/pir/include/dialect/pexpr/binary_func.h"
 #include "paddle/pir/include/dialect/pexpr/error.h"
@@ -28,13 +29,24 @@ Result<ValueT> BoolIntDoubleArithmeticUnaryFunc(const T& value) {
 
 template <typename ArithmeticOp, typename ValueT, typename T0, typename T1>
 Result<ValueT> BoolIntDoubleArithmeticBinaryFunc(const T0& lhs, const T1& rhs) {
-  if constexpr (std::is_same_v<ArithmeticOp, builtin_symbol::Div> ||
-                std::is_same_v<ArithmeticOp, builtin_symbol::Mod>) {
+  if constexpr (std::is_same_v<ArithmeticOp, ArithmeticDiv>) {
     if (rhs == 0) {
-      return adt::errors::ZeroDivisionError{"division or modulo by zero"};
+      return adt::errors::ZeroDivisionError{"division by zero"};
     }
   }
-  return BoolIntDoubleBinary<ArithmeticOp>::Call(lhs, rhs);
+  if constexpr (std::is_same_v<ArithmeticOp, ArithmeticMod>) {
+    if (rhs == 0) {
+      return adt::errors::ZeroDivisionError{"modulo by zero"};
+    }
+    if constexpr (std::is_floating_point<T0>::value  // NOLINT
+                  || std::is_floating_point<T1>::value) {
+      return std::fmod(lhs, rhs);
+    } else {
+      return BoolIntDoubleBinary<ArithmeticOp>::Call(lhs, rhs);
+    }
+  } else {
+    return BoolIntDoubleBinary<ArithmeticOp>::Call(lhs, rhs);
+  }
 }
 
 }  // namespace pexpr

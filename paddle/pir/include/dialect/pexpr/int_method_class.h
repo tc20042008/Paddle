@@ -66,6 +66,10 @@ struct IntMethodClass {
           return BoolIntDoubleArithmeticBinaryFunc<ArithmeticOp, ValueT>(lhs,
                                                                          rhs);
         },
+        [&](double rhs) -> adt::Result<ValueT> {
+          return BoolIntDoubleArithmeticBinaryFunc<ArithmeticOp, ValueT>(lhs,
+                                                                         rhs);
+        },
         [&](const auto& impl) -> adt::Result<ValueT> {
           using T = std::decay_t<decltype(impl)>;
           return adt::errors::TypeError{std::string() +

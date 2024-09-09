@@ -144,8 +144,9 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                     [&](const auto&) -> Result<ValueT> { return symbol; });
               });
         },
-        [&](int64_t c) -> Result<ValueT> { return c; },
         [&](bool c) -> Result<ValueT> { return c; },
+        [&](int64_t c) -> Result<ValueT> { return c; },
+        [&](double c) -> Result<ValueT> { return c; },
         [&](const std::string& val) -> Result<ValueT> { return val; });
   }
 

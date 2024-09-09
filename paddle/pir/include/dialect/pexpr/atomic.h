@@ -49,6 +49,7 @@ template <typename Expr>
 using AtomicBase = std::variant<typename ExprSymbolTrait<Expr>::symbol_type,
                                 bool,
                                 int64_t,
+                                double,
                                 std::string,
                                 Lambda<Expr>>;
 

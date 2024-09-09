@@ -367,4 +367,62 @@ TEST(CpsExprInterpreter, vector_getitem) {
   ASSERT_EQ(int_val.GetOkValue(), 666);
 }
 
+TEST(CpsExprInterpreter, test_float) {
+  const std::string json_str = R"(
+    [
+      "lambda",
+      [
+        "v"
+      ],
+      [
+        "__builtin_let__",
+        [
+          [
+            "__lambda_expr_tmp0",
+            [
+              "__builtin_Add__",
+              "v",
+              1.0
+            ]
+          ],
+          [
+            "__lambda_expr_tmp1",
+            [
+              "__builtin_return__",
+              "__lambda_expr_tmp0"
+            ]
+          ]
+        ],
+        [
+          "__builtin_identity__",
+          "__lambda_expr_tmp1"
+        ]
+      ]
+    ]
+  )";
+  const auto& anf_expr = pexpr::MakeAnfExprFromJsonString(json_str);
+  if (anf_expr.HasError()) {
+    LOG(ERROR) << "error-type: " << anf_expr.GetError().class_name()
+               << ", error-msg: " << anf_expr.GetError().msg();
+  }
+  ASSERT_TRUE(anf_expr.HasOkValue());
+  const auto& core_expr = ConvertAnfExprToCoreExpr(anf_expr.GetOkValue());
+  ASSERT_TRUE(core_expr.Has<Atomic<CoreExpr>>());
+  const auto& atomic = core_expr.Get<Atomic<CoreExpr>>();
+  ASSERT_TRUE(atomic.Has<Lambda<CoreExpr>>());
+  const auto& lambda = atomic.Get<Lambda<CoreExpr>>();
+  CpsExprInterpreter<Val> interpreter{};
+  double float_val = -1;
+  const auto& interpret_ret = interpreter.Interpret(lambda, {float_val});
+  if (!interpret_ret.HasOkValue()) {
+    LOG(ERROR) << interpret_ret.GetError().class_name() << ": "
+               << interpret_ret.GetError().msg();
+  }
+  ASSERT_TRUE(interpret_ret.HasOkValue());
+  const auto& val = interpret_ret.GetOkValue();
+  const auto& int_val = MethodClass<Val>::TryGet<double>(val);
+  ASSERT_TRUE(int_val.HasOkValue());
+  ASSERT_EQ(int_val.GetOkValue(), 0.0);
+}
+
 }  // namespace pexpr::tests

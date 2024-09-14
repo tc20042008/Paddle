@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/pir/include/dialect/pexpr/builtin_functions.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr_value.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr_value_method_class.h"
-#include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
+#include "ap/axpr/builtin_functions.h"
+#include "ap/axpr/index_expr_util.h"
+#include "ap/axpr/index_expr_value.h"
+#include "ap/axpr/index_expr_value_method_class.h"
+#include "ap/axpr/valid_index_expr_builder.h"
 
-namespace pexpr::index_expr {
+namespace ap::axpr::index_expr {
 
 template <typename T>
 inline Maybe<T> TryGetConcretIndexExprValue(const Val& val) {
@@ -281,10 +281,9 @@ Result<Val> MakeIndexTupleExprReshape(const Val&,
                     opt_expr.variant());
 }
 
-Result<adt::Ok> MakeIndexTupleExprTransform(
-    CpsInterpreterBase<Val>* interpreter,
-    ComposedCallImpl<Val>* composed_call) {
-  const auto& args = composed_call->args;
+Result<Val> MakeIndexTupleExprTransform(const ApplyT<Val>& Apply,
+                                        const Val&,
+                                        const std::vector<Val>& args) {
   if (args.size() < 1) {
     return TypeError{
         "IndexTupleExprTransform takes at least 1 argument but 0 were given."};
@@ -326,8 +325,7 @@ Result<adt::Ok> MakeIndexTupleExprTransform(
     }
     int idx = i - 1;
     IndexExprDomain domain{dim_exprs->at(idx)};
-    const auto& ret_lambda_call =
-        interpreter->Interpret(closure, {Val{domain}});
+    const auto& ret_lambda_call = Apply(closure, {Val{domain}});
     ADT_RETURN_IF_ERROR(ret_lambda_call);
     const auto& ret_index_expr =
         TryGetConcretIndexExprValue<IndexExpr>(ret_lambda_call.GetOkValue());
@@ -338,14 +336,10 @@ Result<adt::Ok> MakeIndexTupleExprTransform(
     transform_index_exprs->push_back(ret_index_expr.Get<IndexExpr>());
   }
   ValidIndexExprBuilder builder{};
-  const auto& opt_ret =
-      ConvertResult(builder.Transform(transform_index_exprs, indexes_expr));
-  ADT_RETURN_IF_ERROR(opt_ret);
-  const auto& ret = opt_ret.GetOkValue();
-  composed_call->args = {ret};
-  composed_call->inner_func = composed_call->outter_func;
-  composed_call->outter_func = &BuiltinHalt<Val>;
-  return adt::Ok{};
+  ADT_LET_CONST_REF(
+      ret,
+      ConvertResult(builder.Transform(transform_index_exprs, indexes_expr)));
+  return ret;
 }
 
 Result<Val> MakeOpIndexTupleExprSignature(const Val&,
@@ -402,4 +396,4 @@ Result<Val> MakeOutIndexTupleExprSignature(const Val&,
   return OutIndexTupleExprSignature{indexes_exprs};
 }
 
-}  // namespace pexpr::index_expr
+}  // namespace ap::axpr::index_expr

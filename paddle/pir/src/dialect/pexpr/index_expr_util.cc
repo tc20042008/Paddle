@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/adt.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr.h"
-#include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
+#include "ap/axpr/index_expr_util.h"
+#include "ap/axpr/adt.h"
+#include "ap/axpr/index_expr.h"
+#include "ap/axpr/index_tuple_expr.h"
 
-namespace pexpr {
+namespace ap::axpr {
 
 Maybe<int64_t> IndexTupleExprGetRank(const IndexTupleExpr& expr) {
   return expr.Match(
@@ -159,4 +159,4 @@ Maybe<adt::List<symbol::DimExpr>> IndexTupleExprGetRanges(
       });
 }
 
-}  // namespace pexpr
+}  // namespace ap::axpr

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/pexpr/core_expr.h"
+#include "ap/axpr/core_expr.h"
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>
-#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
+#include "ap/axpr/core_expr_builder.h"
 
-namespace pexpr {
+namespace ap::axpr {
 
 namespace {
 
@@ -77,4 +77,4 @@ std::string CoreExpr::ToSExpression() const {
       });
 }
 
-}  // namespace pexpr
+}  // namespace ap::axpr

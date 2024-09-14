@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/ap/ap_cuda_jit_util.h"
+#include "ap/kernel/ap_cuda_jit_util.h"
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"

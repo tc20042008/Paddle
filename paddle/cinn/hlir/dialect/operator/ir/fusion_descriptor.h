@@ -14,14 +14,14 @@
 
 #pragma once
 
+#include "ap/axpr/core_expr.h"
+#include "ap/axpr/index_closure.h"
+#include "ap/axpr/index_expr.h"
+#include "ap/axpr/op_index_tuple_expr_signature.h"
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/op_result.h"
 #include "paddle/pir/include/core/operation.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr.h"
-#include "paddle/pir/include/dialect/pexpr/index_closure.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr.h"
-#include "paddle/pir/include/dialect/pexpr/op_index_tuple_expr_signature.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace ap {
@@ -133,8 +133,8 @@ struct OpOrArg : public OpOrArgImpl {
 };
 
 struct OpArg2OpIndexesExprSignature {
-  OpArgTo<pexpr::OpIndexTupleExprSignature> in_arg2signature;
-  OpArgTo<pexpr::OpIndexTupleExprSignature> out_arg2signature;
+  OpArgTo<ap::axpr::OpIndexTupleExprSignature> in_arg2signature;
+  OpArgTo<ap::axpr::OpIndexTupleExprSignature> out_arg2signature;
 };
 
 struct Op2Anchor2IndexesExprSignatureImpl {
@@ -153,7 +153,7 @@ DEFINE_ADT_RC(Op2Anchor2IndexesExprSignature,
 struct TrivialFusionDescriptorImpl {
   Op2Anchor2IndexesExprSignature op2anchor2indexes_expr_signature;
   // the input indexes_expr of YieldOp is loop indexes_expr.
-  OpArgTo<pexpr::index_expr::RecordableIndexClosure>
+  OpArgTo<ap::axpr::index_expr::RecordableIndexClosure>
       yield_op_arg2custom_index_lambda;
 
   bool operator==(const TrivialFusionDescriptorImpl& other) const {

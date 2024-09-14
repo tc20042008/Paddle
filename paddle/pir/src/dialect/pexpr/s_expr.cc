@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/pexpr/s_expr.h"
+#include "ap/axpr/s_expr.h"
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>
 
-namespace pexpr {
+namespace ap::axpr {
 
 namespace {
 
@@ -75,4 +75,4 @@ std::string SExpr::ToSExpression() const {
       });
 }
 
-}  // namespace pexpr
+}  // namespace ap::axpr

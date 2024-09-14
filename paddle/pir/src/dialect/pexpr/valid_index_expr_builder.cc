@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/pexpr/valid_index_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/index_tuple_expr.h"
+#include "ap/axpr/valid_index_expr_builder.h"
+#include "ap/axpr/index_expr.h"
+#include "ap/axpr/index_expr_util.h"
+#include "ap/axpr/index_tuple_expr.h"
 
-namespace pexpr::index_expr {
+namespace ap::axpr::index_expr {
 
 Result<IndexExpr> ValidIndexExprBuilder::BroadcastMask(
     const symbol::DimExpr& dim_expr, const IndexExpr& index_expr) {
   return IndexExprBroadcastMask<IndexExpr>{dim_expr, index_expr};
 }
 
-Result<IndexExpr> ValidIndexExprBuilder::Slice(const pexpr::Slice& slice,
+Result<IndexExpr> ValidIndexExprBuilder::Slice(const ap::axpr::Slice& slice,
                                                const symbol::DimExpr& range,
                                                const IndexExpr& index_expr) {
   return IndexExprSlice<IndexExpr>{slice, range, index_expr};
 }
 
-Result<IndexExpr> ValidIndexExprBuilder::Affine(const pexpr::Slice& slice,
+Result<IndexExpr> ValidIndexExprBuilder::Affine(const ap::axpr::Slice& slice,
                                                 const symbol::DimExpr& range,
                                                 const IndexExpr& index_expr) {
   return IndexExprAffine<IndexExpr>{slice, range, index_expr};
@@ -52,7 +52,7 @@ Result<IndexExpr> ValidIndexExprBuilder::DisjointUnion(
         "domain of `lhs_index_expr' does not equal to domain of "
         "`rhs_index_expr'"};
   }
-  return pexpr::DisjointUnion<IndexExpr>{lhs_index_expr, rhs_index_expr};
+  return ap::axpr::DisjointUnion<IndexExpr>{lhs_index_expr, rhs_index_expr};
 }
 
 namespace {
@@ -236,4 +236,4 @@ Result<IndexTupleExpr> ValidIndexExprBuilder::Compose(
       });
 }
 
-}  // namespace pexpr::index_expr
+}  // namespace ap::axpr::index_expr

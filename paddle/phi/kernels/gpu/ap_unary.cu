@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
 
-#include "paddle/phi/core/ap/ap_unary_kernel.h"
+#include "ap/kernel/ap_unary_kernel.h"
 
 namespace phi {
 

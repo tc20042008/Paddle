@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/ap/ap_unary_kernel.h"
+#include "ap/kernel/ap_unary_kernel.h"
 
 #include <mutex>
 #include <unordered_map>
@@ -20,44 +20,44 @@
 #include "jitify.hpp"  // NOLINT
 #include "paddle/common/enforce.h"
 
+#include "ap/axpr/anf_expr_util.h"
+#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/kernel/ap_cuda_jit_util.h"
+#include "ap/kernel/define_ctx_value.h"
+#include "ap/kernel/define_ctx_value_method_class.h"
+#include "ap/kernel/dispatch_ctx_value.h"
+#include "ap/kernel/dispatch_ctx_value_method_class.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
-#include "paddle/phi/common/ap/define_ctx_value.h"
-#include "paddle/phi/common/ap/define_ctx_value_method_class.h"
-#include "paddle/phi/common/ap/dispatch_ctx_value.h"
-#include "paddle/phi/common/ap/dispatch_ctx_value_method_class.h"
-#include "paddle/phi/core/ap/ap_cuda_jit_util.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
 
 namespace ap {
 
-using MakeCoreExprT = adt::Result<pexpr::Lambda<pexpr::CoreExpr>> (*)(
+using MakeCoreExprT = adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> (*)(
     const std::string& json_str);
 
-adt::Result<pexpr::Lambda<pexpr::CoreExpr>> ConvertToCoreExpr(
+adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> ConvertToCoreExpr(
     const std::string& json_str) {
-  const auto& anf_expr = pexpr::MakeAnfExprFromJsonString(json_str);
+  const auto& anf_expr = ap::axpr::MakeAnfExprFromJsonString(json_str);
   ADT_RETURN_IF_ERROR(anf_expr);
   const auto& core_expr =
-      pexpr::ConvertAnfExprToCoreExpr(anf_expr.GetOkValue());
-  if (!core_expr.Has<pexpr::Atomic<pexpr::CoreExpr>>()) {
+      ap::axpr::ConvertAnfExprToCoreExpr(anf_expr.GetOkValue());
+  if (!core_expr.Has<ap::axpr::Atomic<ap::axpr::CoreExpr>>()) {
     return adt::errors::TypeError{
         std::string() + "json_str can not be converted to atomic AnfExpr."};
   }
-  const auto& atomic = core_expr.Get<pexpr::Atomic<pexpr::CoreExpr>>();
-  if (!atomic.Has<pexpr::Lambda<pexpr::CoreExpr>>()) {
+  const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+  if (!atomic.Has<ap::axpr::Lambda<ap::axpr::CoreExpr>>()) {
     return adt::errors::TypeError{
         std::string() + "json_str can not be converted to lambda AnfExpr."};
   }
-  return atomic.Get<pexpr::Lambda<pexpr::CoreExpr>>();
+  return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
 }
 
 template <MakeCoreExprT MakeCoreExpr>
-adt::Result<pexpr::Lambda<pexpr::CoreExpr>> CacheCoreExpr(
+adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> CacheCoreExpr(
     const std::string& json_str) {
   static std::unordered_map<std::string,
-                            adt::Result<pexpr::Lambda<pexpr::CoreExpr>>>
+                            adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>>>
       json_str2cache;
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
@@ -155,18 +155,18 @@ adt::Result<ApUnaryCudaModule> CacheCudaModule(
 adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
     const std::string& kernel_definer_lambda,
     const std::string& define_ctx_maker_lambda) {
-  pexpr::CpsExprInterpreter<Val> cps_interpreter;
+  ap::axpr::CpsExprInterpreter<Val> cps_interpreter;
   const auto& define_ctx_maker_core_expr =
       MakeOrGetCoreExpr(define_ctx_maker_lambda);
   ADT_RETURN_IF_ERROR(define_ctx_maker_core_expr);
-  const pexpr::Lambda<pexpr::CoreExpr>& ctx_maker =
+  const ap::axpr::Lambda<ap::axpr::CoreExpr>& ctx_maker =
       define_ctx_maker_core_expr.GetOkValue();
   DefinerRawCtx raw_ctx{};
   const Result<Val>& ctx = cps_interpreter.Interpret(ctx_maker, {raw_ctx});
   const auto& kernel_definer_core_expr =
       MakeOrGetCoreExpr(kernel_definer_lambda);
   ADT_RETURN_IF_ERROR(kernel_definer_core_expr);
-  const pexpr::Lambda<pexpr::CoreExpr>& definer =
+  const ap::axpr::Lambda<ap::axpr::CoreExpr>& definer =
       kernel_definer_core_expr.GetOkValue();
   const Result<Val>& interpret_ret =
       cps_interpreter.Interpret(definer, {ctx.GetOkValue()});
@@ -236,7 +236,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
     const std::string& kernel_dispatcher_lambda,
     const std::string& dispatch_ctx_maker_lambda,
     std::vector<phi::DenseTensor*> outs) {
-  pexpr::CpsExprInterpreter<Val> cps_interpreter;
+  ap::axpr::CpsExprInterpreter<Val> cps_interpreter;
   const adt::Result<kernel_define::ApUnaryCudaModule>& m =
       kernel_define::MakeOrGetApUnaryCudaModule(kernel_definer_lambda,
                                                 define_ctx_maker_lambda);
@@ -254,10 +254,10 @@ adt::Result<adt::Ok> ApUnaryKernel(
   const auto& ctx_maker_lambda = dispatch_ctx_maker_core_expr.GetOkValue();
   const auto& ctx = cps_interpreter.Interpret(ctx_maker_lambda, {raw_ctx});
   ADT_RETURN_IF_ERROR(ctx);
-  const adt::Result<pexpr::Lambda<pexpr::CoreExpr>>&
+  const adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>>&
       kernel_dispatcher_core_expr = MakeOrGetCoreExpr(kernel_dispatcher_lambda);
   ADT_RETURN_IF_ERROR(kernel_dispatcher_core_expr);
-  const pexpr::Lambda<pexpr::CoreExpr>& lambda =
+  const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda =
       kernel_dispatcher_core_expr.GetOkValue();
   const adt::Result<Val>& dispatch_ret =
       cps_interpreter.Interpret(lambda, {ctx.GetOkValue()});

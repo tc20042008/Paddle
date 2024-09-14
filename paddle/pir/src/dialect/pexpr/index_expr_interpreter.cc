@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/pir/include/dialect/pexpr/index_expr_interpreter.h"
-#include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr_builtin_functions.h"
+#include "ap/axpr/index_expr_interpreter.h"
+#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/index_expr_builtin_functions.h"
 
-namespace pexpr::index_expr {
+namespace ap::axpr::index_expr {
 
 class IndexExprInterpreterImpl : public CpsExprInterpreter<Val> {
  public:
@@ -29,7 +29,6 @@ class IndexExprInterpreterImpl : public CpsExprInterpreter<Val> {
  private:
   static Object<Val> InitBuiltins() {
     return Object<Val>{std::unordered_map<std::string, Val>{
-        {"list", Val{&BuiltinList<Val>}},
         {"kUndefinedIndexTupleExpr",
          Val{IndexTupleExpr{UndefinedIndexTupleExpr{}}}},
         {"kNothingIndexTupleExpr",
@@ -86,4 +85,4 @@ Result<Val> IndexExprInterpreter::operator()(
   return ret;
 }
 
-}  // namespace pexpr::index_expr
+}  // namespace ap::axpr::index_expr

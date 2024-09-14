@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -350,6 +351,14 @@ struct [[nodiscard]] Error : public ErrorBase {
     return Match(
         [](const auto& impl) -> const std::string& { return impl.msg; });
   }
+
+  Error operator<<(Error&& replacement) const { return std::move(replacement); }
+
+  Error operator<<(const Error& replacement) const { return replacement; }
+
+  Error operator<<(const std::function<Error(const Error&)>& Replace) const {
+    return Replace(*this);
+  }
 };
 
 }  // namespace errors
@@ -369,10 +378,31 @@ struct [[nodiscard]] Result : public Either<T, errors::Error> {
   const T& GetOkValue() const { return this->template Get<T>(); }
 };
 
-#define ADT_RETURN_IF_ERROR(result) \
-  if (result.HasError()) {          \
-    return result.GetError();       \
+template <typename T>
+adt::Result<std::shared_ptr<T>> WeakPtrLock(const std::weak_ptr<T>& weak_ptr) {
+  const auto& ptr = weak_ptr.lock();
+  if (!ptr) {
+    return errors::RuntimeError{"weak_ptr.lock() failed."};
   }
+  return ptr;
+}
+
+#define ADT_CHECK(...)                                                       \
+  if (!(__VA_ARGS__)) return ::cinn::adt::errors::Error { /* NOLINT */       \
+      ::cinn::adt::errors::ValueError { "Check '" #__VA_ARGS__ "' failed." } \
+    }
+
+#define ADT_RETURN_IF_ERROR(...)                    \
+  if (const auto& __result##__LINE__ = __VA_ARGS__; \
+      __result##__LINE__.HasError())                \
+  return __result##__LINE__.GetError()
+
+#define ADT_LET_CONST_REF(var, ...)                                         \
+  const auto& __result_##var = __VA_ARGS__;                                 \
+  const auto* __ptr_##var =                                                 \
+      (__result_##var.HasError() ? nullptr : &__result_##var.GetOkValue()); \
+  const auto& var = *__ptr_##var;                                           \
+  ADT_RETURN_IF_ERROR(__result_##var)
 
 }  // namespace adt
 }  // namespace cinn

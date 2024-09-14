@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/pexpr/anf_expr.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
+#include "ap/axpr/anf_expr.h"
+#include "ap/axpr/anf_expr_builder.h"
 
 #include <glog/logging.h>
 #include <exception>
 #include <unordered_map>
 #include "nlohmann/json.hpp"
 
-namespace pexpr {
+namespace ap::axpr {
 
 using adt::Result;
 
@@ -126,4 +126,4 @@ std::string AnfExpr::DumpToJsonString(int indent) {
   return ConvertAnfExprToJson(*this).dump(indent);
 }
 
-}  // namespace pexpr
+}  // namespace ap::axpr

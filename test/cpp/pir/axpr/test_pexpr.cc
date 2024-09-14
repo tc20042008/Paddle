@@ -16,13 +16,13 @@
 #include <thread>  // NOLINT
 #include "gtest/gtest.h"
 
+#include "ap/axpr/anf_expr_builder.h"
+#include "ap/axpr/anf_expr_util.h"
+#include "ap/axpr/core_expr_builder.h"
+#include "ap/axpr/lambda_expr_builder.h"
 #include "paddle/common/errors.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
 
-namespace pexpr::tests {
+namespace ap::axpr::tests {
 
 TEST(CoreExpr, operator_eq_0) {
   CoreExprBuilder core{};
@@ -30,7 +30,7 @@ TEST(CoreExpr, operator_eq_0) {
   CoreExpr lhs = core.ComposedCallAtomic(
       core.Lambda({Var{"c"}},
                   core.ComposedCallAtomic(core.Var(kBuiltinId()),
-                                          core.Var("list"),
+                                          core.Var(kBuiltinList()),
                                           {
                                               core.Var("a"),
                                               core.Var("b"),
@@ -39,7 +39,7 @@ TEST(CoreExpr, operator_eq_0) {
       core.Var("op2"),
       {});
   CoreExpr rhs = core.ComposedCallAtomic(core.Var(kBuiltinId()),
-                                         core.Var("list"),
+                                         core.Var(kBuiltinList()),
                                          {
                                              core.Var("a"),
                                              core.Var("a"),
@@ -57,7 +57,7 @@ TEST(CoreExpr, operator_eq_1) {
           core.ComposedCallAtomic(
               core.Lambda({Var{"c"}},
                           core.ComposedCallAtomic(core.Var(kBuiltinId()),
-                                                  core.Var("list"),
+                                                  core.Var(kBuiltinList()),
                                                   {
                                                       core.Var("a"),
                                                       core.Var("b"),
@@ -70,7 +70,7 @@ TEST(CoreExpr, operator_eq_1) {
   CoreExpr rhs = core.ComposedCallAtomic(
       core.Lambda({Var{"c"}},
                   core.ComposedCallAtomic(core.Var(kBuiltinId()),
-                                          core.Var("list"),
+                                          core.Var(kBuiltinList()),
                                           {
                                               core.Var("a"),
                                               core.Var("a"),
@@ -128,14 +128,14 @@ TEST(LambdaExprBuilder, Let) {
           anf.Bind("a", anf.Call(anf.Var("op0"), {})),
           anf.Bind("b", anf.Call(anf.Var("op1"), {})),
       },
-      anf.Call(anf.Var("list"), {anf.Var("a"), anf.Var("b")}));
+      anf.Call(anf.Var(kBuiltinList()), {anf.Var("a"), anf.Var("b")}));
   size_t seq_no = 0;
   const auto& GenSeqNo = [&]() { return seq_no++; };
   LambdaExprBuilder lmbd(GenSeqNo);
   AnfExpr lmbd_expr = lmbd.Let([](auto& ctx) {
     ctx.Var("a") = ctx.Call("op0");
     ctx.Var("b") = ctx.Call("op1");
-    return ctx.Call("list", ctx.Var("a"), ctx.Var("b"));
+    return ctx.Call(kBuiltinList(), ctx.Var("a"), ctx.Var("b"));
   });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
   const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
@@ -148,12 +148,12 @@ TEST(LambdaExprBuilder, LetTmpVar) {
       {
           anf.Bind("__lambda_expr_tmp0", anf.Call(anf.Var("op0"), {})),
       },
-      anf.Call(anf.Var("list"), {anf.Var("__lambda_expr_tmp0")}));
+      anf.Call(anf.Var(kBuiltinList()), {anf.Var("__lambda_expr_tmp0")}));
   size_t seq_no = 0;
   const auto& GenSeqNo = [&]() { return seq_no++; };
   LambdaExprBuilder lmbd(GenSeqNo);
-  AnfExpr lmbd_expr =
-      lmbd.Let([](auto& ctx) { return ctx.Call("list", ctx.Call("op0")); });
+  AnfExpr lmbd_expr = lmbd.Let(
+      [](auto& ctx) { return ctx.Call(kBuiltinList(), ctx.Call("op0")); });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
   const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
   ASSERT_EQ(core_expr, expected);
@@ -165,15 +165,15 @@ TEST(LambdaExprBuilder, Lambda) {
       {
           anf.Bind("__lambda_expr_tmp0", anf.Call(anf.Var("op0"), {})),
       },
-      anf.Call(anf.Var("list"), {anf.Var("__lambda_expr_tmp0")}));
+      anf.Call(anf.Var(kBuiltinList()), {anf.Var("__lambda_expr_tmp0")}));
   size_t seq_no0 = 0;
   const auto& GenSeqNo0 = [&]() { return seq_no0++; };
   LambdaExprBuilder lmbd(GenSeqNo0);
-  AnfExpr lmbd_expr =
-      lmbd.Let([](auto& ctx) { return ctx.Call("list", ctx.Call("op0")); });
+  AnfExpr lmbd_expr = lmbd.Let(
+      [](auto& ctx) { return ctx.Call(kBuiltinList(), ctx.Call("op0")); });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
   const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
   ASSERT_EQ(core_expr, expected);
 }
 
-}  // namespace pexpr::tests
+}  // namespace ap::axpr::tests

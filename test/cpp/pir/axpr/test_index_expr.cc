@@ -16,14 +16,14 @@
 #include <thread>  // NOLINT
 #include "gtest/gtest.h"
 
+#include "ap/axpr/anf_expr_builder.h"
+#include "ap/axpr/anf_expr_util.h"
+#include "ap/axpr/core_expr_builder.h"
+#include "ap/axpr/index_expr_interpreter.h"
+#include "ap/axpr/lambda_expr_builder.h"
 #include "paddle/common/errors.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/core_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/index_expr_interpreter.h"
-#include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
 
-namespace pexpr::index_expr::tests {
+namespace ap::axpr::index_expr::tests {
 
 TEST(IndexExpr, kNothingIndexTupleExpr) {
   size_t seq_no0 = 0;
@@ -51,7 +51,7 @@ TEST(IndexExpr, IndexTupleExprReshape) {
   LambdaExprBuilder lmbd(GenSeqNo0);
   AnfExpr lmbd_expr = lmbd.Lambda({"expr"}, [](auto& ctx) {
     const auto& dim_expr =
-        ctx.Call("list", ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
+        ctx.Call(kBuiltinList(), ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
     return ctx.Call("IndexTupleExprReshape", dim_expr, ctx.Var("expr"));
   });
   CoreExpr core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
@@ -82,7 +82,7 @@ TEST(IndexExpr, IndexTupleExprReshape_failed) {
   LambdaExprBuilder lmbd(GenSeqNo0);
   AnfExpr lmbd_expr = lmbd.Lambda({"expr"}, [](auto& ctx) {
     const auto& dim_expr =
-        ctx.Call("list", ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
+        ctx.Call(kBuiltinList(), ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
     return ctx.Call("IndexTupleExprReshape", dim_expr, ctx.Var("expr"));
   });
   CoreExpr core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
@@ -98,4 +98,4 @@ TEST(IndexExpr, IndexTupleExprReshape_failed) {
               symbol::DimExpr{5}, symbol::DimExpr{4}}}}}});
   ASSERT_TRUE(result.Has<Error>());
 }
-}  // namespace pexpr::index_expr::tests
+}  // namespace ap::axpr::index_expr::tests

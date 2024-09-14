@@ -16,15 +16,15 @@
 #include <thread>  // NOLINT
 #include "gtest/gtest.h"
 
+#include "ap/axpr/anf_expr_util.h"
+#include "ap/axpr/const_std_vector_ptr.h"
+#include "ap/axpr/const_std_vector_ptr_method_class.h"
+#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/lambda_expr_builder.h"
+#include "ap/axpr/value_method_class.h"
 #include "paddle/common/errors.h"
-#include "paddle/pir/include/dialect/pexpr/anf_expr_util.h"
-#include "paddle/pir/include/dialect/pexpr/const_std_vector_ptr.h"
-#include "paddle/pir/include/dialect/pexpr/const_std_vector_ptr_method_class.h"
-#include "paddle/pir/include/dialect/pexpr/cps_expr_interpreter.h"
-#include "paddle/pir/include/dialect/pexpr/lambda_expr_builder.h"
-#include "paddle/pir/include/dialect/pexpr/value_method_class.h"
 
-namespace pexpr::tests {
+namespace ap::axpr::tests {
 
 namespace {
 
@@ -283,7 +283,7 @@ TEST(CpsExprInterpreter, data_value) {
       ]
     ]
   )";
-  const auto& anf_expr = pexpr::MakeAnfExprFromJsonString(json_str);
+  const auto& anf_expr = ap::axpr::MakeAnfExprFromJsonString(json_str);
   if (anf_expr.HasError()) {
     LOG(ERROR) << "error-type: " << anf_expr.GetError().class_name()
                << ", error-msg: " << anf_expr.GetError().msg();
@@ -342,7 +342,7 @@ TEST(CpsExprInterpreter, vector_getitem) {
       ]
     ]
   )";
-  const auto& anf_expr = pexpr::MakeAnfExprFromJsonString(json_str);
+  const auto& anf_expr = ap::axpr::MakeAnfExprFromJsonString(json_str);
   if (anf_expr.HasError()) {
     LOG(ERROR) << "error-type: " << anf_expr.GetError().class_name()
                << ", error-msg: " << anf_expr.GetError().msg();
@@ -400,7 +400,7 @@ TEST(CpsExprInterpreter, test_float) {
       ]
     ]
   )";
-  const auto& anf_expr = pexpr::MakeAnfExprFromJsonString(json_str);
+  const auto& anf_expr = ap::axpr::MakeAnfExprFromJsonString(json_str);
   if (anf_expr.HasError()) {
     LOG(ERROR) << "error-type: " << anf_expr.GetError().class_name()
                << ", error-msg: " << anf_expr.GetError().msg();
@@ -425,4 +425,4 @@ TEST(CpsExprInterpreter, test_float) {
   ASSERT_EQ(int_val.GetOkValue(), 0.0);
 }
 
-}  // namespace pexpr::tests
+}  // namespace ap::axpr::tests

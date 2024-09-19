@@ -38,7 +38,7 @@ using MakeCoreExprT = adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> (*)(
 adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> ConvertToCoreExpr(
     const std::string& json_str) {
   const auto& anf_expr = ap::axpr::MakeAnfExprFromJsonString(json_str);
-  ADT_RETURN_IF_ERROR(anf_expr);
+  ADT_RETURN_IF_ERR(anf_expr);
   const auto& core_expr =
       ap::axpr::ConvertAnfExprToCoreExpr(anf_expr.GetOkValue());
   if (!core_expr.Has<ap::axpr::Atomic<ap::axpr::CoreExpr>>()) {
@@ -158,24 +158,24 @@ adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
   ap::axpr::CpsExprInterpreter<Val> cps_interpreter;
   const auto& define_ctx_maker_core_expr =
       MakeOrGetCoreExpr(define_ctx_maker_lambda);
-  ADT_RETURN_IF_ERROR(define_ctx_maker_core_expr);
+  ADT_RETURN_IF_ERR(define_ctx_maker_core_expr);
   const ap::axpr::Lambda<ap::axpr::CoreExpr>& ctx_maker =
       define_ctx_maker_core_expr.GetOkValue();
   DefinerRawCtx raw_ctx{};
   const Result<Val>& ctx = cps_interpreter.Interpret(ctx_maker, {raw_ctx});
   const auto& kernel_definer_core_expr =
       MakeOrGetCoreExpr(kernel_definer_lambda);
-  ADT_RETURN_IF_ERROR(kernel_definer_core_expr);
+  ADT_RETURN_IF_ERR(kernel_definer_core_expr);
   const ap::axpr::Lambda<ap::axpr::CoreExpr>& definer =
       kernel_definer_core_expr.GetOkValue();
   const Result<Val>& interpret_ret =
       cps_interpreter.Interpret(definer, {ctx.GetOkValue()});
-  ADT_RETURN_IF_ERROR(interpret_ret);
+  ADT_RETURN_IF_ERR(interpret_ret);
   const Result<Module>& m =
       MethodClass<Val>::TryGet<Module>(interpret_ret.GetOkValue());
-  ADT_RETURN_IF_ERROR(m);
+  ADT_RETURN_IF_ERR(m);
   const auto& cuda_module = MakeBackendCudaModule(m.GetOkValue());
-  ADT_RETURN_IF_ERROR(cuda_module);
+  ADT_RETURN_IF_ERR(cuda_module);
   return ApUnaryCudaModule(m.GetOkValue(), cuda_module.GetOkValue());
 }
 
@@ -240,7 +240,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
   const adt::Result<kernel_define::ApUnaryCudaModule>& m =
       kernel_define::MakeOrGetApUnaryCudaModule(kernel_definer_lambda,
                                                 define_ctx_maker_lambda);
-  ADT_RETURN_IF_ERROR(m);
+  ADT_RETURN_IF_ERR(m);
   const auto& cuda_module = m.GetOkValue();
   adt::List<Val> inputs = MakeConstTensors(xs);
   adt::List<Val> outputs = MakeMutableTensors(&outs);
@@ -250,18 +250,18 @@ adt::Result<adt::Ok> ApUnaryKernel(
                               MakeFuncName2ArgTypes(cuda_module->GetModule())};
   const auto& dispatch_ctx_maker_core_expr =
       MakeOrGetCoreExpr(dispatch_ctx_maker_lambda);
-  ADT_RETURN_IF_ERROR(dispatch_ctx_maker_core_expr);
+  ADT_RETURN_IF_ERR(dispatch_ctx_maker_core_expr);
   const auto& ctx_maker_lambda = dispatch_ctx_maker_core_expr.GetOkValue();
   const auto& ctx = cps_interpreter.Interpret(ctx_maker_lambda, {raw_ctx});
-  ADT_RETURN_IF_ERROR(ctx);
+  ADT_RETURN_IF_ERR(ctx);
   const adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>>&
       kernel_dispatcher_core_expr = MakeOrGetCoreExpr(kernel_dispatcher_lambda);
-  ADT_RETURN_IF_ERROR(kernel_dispatcher_core_expr);
+  ADT_RETURN_IF_ERR(kernel_dispatcher_core_expr);
   const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda =
       kernel_dispatcher_core_expr.GetOkValue();
   const adt::Result<Val>& dispatch_ret =
       cps_interpreter.Interpret(lambda, {ctx.GetOkValue()});
-  ADT_RETURN_IF_ERROR(dispatch_ret);
+  ADT_RETURN_IF_ERR(dispatch_ret);
   return adt::Ok{};
 }
 

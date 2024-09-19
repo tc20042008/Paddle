@@ -13,16 +13,11 @@
 // limitations under the License.
 
 #pragma once
-
-#include "ap/adt/adt.h"
+#include <functional>
 
 namespace ap::graph {
 
-// graph node
-DEFINE_ADT_TAG(tNodeId);
+template <typename FeatureT>
+using HashValueType = std::size_t;
 
-// dst node input index
-
-DEFINE_ADT_TAG(tDstInIdx);
-
-}  // namespace ap::graph
+}

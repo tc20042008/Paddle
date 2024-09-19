@@ -14,11 +14,16 @@
 
 #pragma once
 
-#include <optional>
+#include <list>
+#include <variant>
+#include <vector>
 #include "ap/adt/adt.h"
+#include "ap/graph/node_list.h"
 #include "ap/graph/tags.h"
 
 namespace ap::graph {
+
+DEFINE_ADT_TAG(tIsUpstream);
 
 template <typename T>
 class NodeArena;
@@ -40,9 +45,13 @@ struct Node {
   }
 
   adt::Result<T> Get() const;
-  adt::Result<std::optional<adt::List<Node<T>>>> DownstreamNodes() const;
-  adt::Result<std::optional<adt::List<Node<T>>>> UpStreamNodes() const;
-  adt::Result<adt::Ok> ConnectTo(const Node& dst_node) const;
+  adt::Result<NodeList<T>> DownstreamNodes() const;
+  adt::Result<NodeList<T>> UpstreamNodes() const;
+
+  adt::Result<adt::Ok> ConnectTo(
+      const Node& dst_node,
+      const ValidListTag<std::monostate>& src_downstream_type,
+      const ValidListTag<std::monostate>& dst_unstream_type) const;
 
   bool operator<(const Node& other) const {
     if (!(this->node_id_ == other.node_id_)) {

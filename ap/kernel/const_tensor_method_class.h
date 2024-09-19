@@ -50,7 +50,7 @@ Result<Val> ConstTensorDataGetAttr(const ConstTensor<Val>& tensor,
                                    const std::string&) {
   phi::DataType dtype = tensor->tensor_data.dtype();
   const auto& data_type = ap::axpr::GetDataTypeFromPhiDataType(dtype);
-  ADT_RETURN_IF_ERROR(data_type);
+  ADT_RETURN_IF_ERR(data_type);
   return data_type.GetOkValue().Match(
       [&](const adt::Undefined&) -> Result<Val> {
         return TypeError{"dtype is invalid."};
@@ -103,11 +103,11 @@ struct ConstTensorMethodClass {
                                      const ValueT& attr_name_val) {
     const auto& opt_obj =
         MethodClass<ValueT>::template TryGet<ConstTensor<Val>>(obj_val);
-    ADT_RETURN_IF_ERROR(opt_obj);
+    ADT_RETURN_IF_ERR(opt_obj);
     const auto& obj = opt_obj.GetOkValue();
     const auto& opt_attr_name =
         MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERROR(opt_attr_name);
+    ADT_RETURN_IF_ERR(opt_attr_name);
     const auto& attr_name = opt_attr_name.GetOkValue();
     return detail::TensorGetAttr<Val>(obj, attr_name);
   }

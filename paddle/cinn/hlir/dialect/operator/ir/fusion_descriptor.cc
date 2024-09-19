@@ -679,7 +679,7 @@ adt::Result<OpArgStep> ConvertToOpStep(const OpOrArg& opt_src,
 adt::Result<OpArgPath> ConvertToOpArgPath(const OpOrArgPath& op_or_arg_path) {
   if (op_or_arg_path.size() == 1) {
     const auto& op_arg = ConvertToOpArg(op_or_arg_path.at(0));
-    ADT_RETURN_IF_ERROR(op_arg);
+    ADT_RETURN_IF_ERR(op_arg);
     return OpArgPath{
         .src = op_arg.GetOkValue(),
         .op_steps = std::vector<OpArgStep>{},
@@ -696,18 +696,18 @@ adt::Result<OpArgPath> ConvertToOpArgPath(const OpOrArgPath& op_or_arg_path) {
   }
   OpArgPath ret;
   const auto& src_op_arg = ConvertToOpArg(op_or_arg_path.at(0));
-  ADT_RETURN_IF_ERROR(src_op_arg);
+  ADT_RETURN_IF_ERR(src_op_arg);
   ret.src = src_op_arg.GetOkValue();
   for (int i = 1; (i + 3) < op_or_arg_path.size() - 1; i += 3) {
     const auto& op_step = ConvertToOpStep(op_or_arg_path.at(i),
                                           op_or_arg_path.at(i + 1),
                                           op_or_arg_path.at(i + 2));
-    ADT_RETURN_IF_ERROR(op_step);
+    ADT_RETURN_IF_ERR(op_step);
     ret.op_steps.emplace_back(op_step.GetOkValue());
   }
   const auto& dst_op_arg =
       ConvertToOpArg(op_or_arg_path.at(op_or_arg_path.size()));
-  ADT_RETURN_IF_ERROR(dst_op_arg);
+  ADT_RETURN_IF_ERR(dst_op_arg);
   ret.dst = dst_op_arg.GetOkValue();
   return std::move(ret);
 }
@@ -719,7 +719,7 @@ adt::Result<OpArgPaths> ConvertPathsToOpArgPaths(
     OpArgTo<OpArgPath> op_arg_path{};
     for (const auto& [dst_op_arg, op_or_arg_path] : dst2paths->data) {
       const auto& converted = ConvertToOpArgPath(op_or_arg_path);
-      ADT_RETURN_IF_ERROR(converted);
+      ADT_RETURN_IF_ERR(converted);
       op_arg_path->data.emplace(dst_op_arg, converted.GetOkValue());
     }
     op_arg_paths->paths->data.emplace(src_op_arg, std::move(op_arg_path));
@@ -815,7 +815,7 @@ adt::Result<IndexTupleExpr> GetIndexesExpr(
   const OpArg2OpIndexesExprSignature& anchor2signature = iter->second;
   const auto& signature = GetOpIndexesExprSignature(
       anchor2signature, op_step.src, op_step.op->name());
-  ADT_RETURN_IF_ERROR(signature);
+  ADT_RETURN_IF_ERR(signature);
   return GetIndexTupleExprFromSignature(signature.GetOkValue(), op_step.dst);
 }
 
@@ -827,17 +827,17 @@ adt::Result<TrackedIndexesTransform> MakeIndexesTransformByPath(
   }
   const auto& opt_indexes_expr = GetIndexesExpr(
       op_arg_path.op_steps.at(0), op2anchor2indexes_expr_signature);
-  ADT_RETURN_IF_ERROR(opt_indexes_expr);
+  ADT_RETURN_IF_ERR(opt_indexes_expr);
   IndexTupleExpr indexes_expr = opt_indexes_expr.GetOkValue();
   ValidIndexExprBuilder builder{};
   for (int i = 1; i < op_arg_path.op_steps.size(); ++i) {
     const auto& op_step = op_arg_path.op_steps.at(i);
     const auto& outter_indexes_expr = GetIndexesExpr(
         op_arg_path.op_steps.at(i), op2anchor2indexes_expr_signature);
-    ADT_RETURN_IF_ERROR(outter_indexes_expr);
+    ADT_RETURN_IF_ERR(outter_indexes_expr);
     const auto& composed_indexes_expr =
         builder.Compose(outter_indexes_expr.GetOkValue(), indexes_expr);
-    ADT_RETURN_IF_ERROR(composed_indexes_expr);
+    ADT_RETURN_IF_ERR(composed_indexes_expr);
     indexes_expr = composed_indexes_expr.GetOkValue();
   }
   return TrackedIndexesTransform{indexes_expr};
@@ -862,7 +862,7 @@ InferOpIndexesTransformSignatureByOpArgPath(
     const OpArgPath& op_arg_path = iter->second;
     const auto& transform_descriptor = MakeIndexesTransformByPath(
         op_arg_path, op2anchor2indexes_expr_signature);
-    ADT_RETURN_IF_ERROR(transform_descriptor);
+    ADT_RETURN_IF_ERR(transform_descriptor);
     in_sig.descriptors->emplace_back(transform_descriptor.GetOkValue());
   }
   // yield op has no output.
@@ -909,10 +909,10 @@ adt::Result<OpArgTo<RecordableIndexClosure>> GetOpArg2IndexClosure(
   }
   adt::Result<OpOrArgPaths> op_or_arg_paths =
       GetPathsBetweenYieldOpInArgs(walker, yield_op.value());
-  ADT_RETURN_IF_ERROR(op_or_arg_paths);
+  ADT_RETURN_IF_ERR(op_or_arg_paths);
   adt::Result<OpArgPaths> op_arg_paths =
       ConvertPathsToOpArgPaths(op_or_arg_paths.GetOkValue());
-  ADT_RETURN_IF_ERROR(op_arg_paths);
+  ADT_RETURN_IF_ERR(op_arg_paths);
   return InferRecordableIndexClosuresByOpArgPaths(
       yield_op.value(),
       op_arg_paths.GetOkValue(),
@@ -938,7 +938,7 @@ adt::Result<FusionDescriptor> GetFusionDescriptor(
   auto interpreter = std::make_shared<IndexExprInterpreter>();
   auto DimExprs4Value = MakeDimExpr4Value(fusion_op, shape_analysis);
   auto Nice2IndexLambdas4Op = MakeNice2IndexLambdas4Op(fusion_op);
-  ADT_RETURN_IF_ERROR(Nice2IndexLambdas4Op);
+  ADT_RETURN_IF_ERR(Nice2IndexLambdas4Op);
   auto IndexClosure4Op = MakeIndexClosure4Op(interpreter,
                                              DimExprs4Value,
                                              Nice2IndexLambdas4Op.GetOkValue(),
@@ -956,7 +956,7 @@ adt::Result<FusionDescriptor> GetFusionDescriptor(
   adt::Result<OpArgTo<RecordableIndexClosure>> yield_op_arg2index_closure =
       GetOpArg2IndexClosure(
           anchorable_walker, fusion_op, op2anchor2indexes_expr_signature);
-  ADT_RETURN_IF_ERROR(yield_op_arg2index_closure);
+  ADT_RETURN_IF_ERR(yield_op_arg2index_closure);
   TrivialFusionDescriptor trivial_fusion_descriptor{
       op2anchor2indexes_expr_signature,
       yield_op_arg2index_closure.GetOkValue()};

@@ -46,11 +46,11 @@ struct DefinerRawCtxMethodClass {
                                      const ValueT& attr_name_val) {
     const auto& opt_obj =
         MethodClass<ValueT>::template TryGet<DefinerRawCtx>(obj_val);
-    ADT_RETURN_IF_ERROR(opt_obj);
+    ADT_RETURN_IF_ERR(opt_obj);
     const auto& obj = opt_obj.GetOkValue();
     const auto& opt_attr_name =
         MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERROR(opt_attr_name);
+    ADT_RETURN_IF_ERR(opt_attr_name);
     const auto& attr_name = opt_attr_name.GetOkValue();
     return Self::DefinerRawCtxGetAttr(obj, attr_name);
   }
@@ -86,7 +86,7 @@ struct DefinerRawCtxMethodClass {
 
     const auto& raw_ctx =
         MethodClass<ValueT>::template TryGet<DefinerRawCtx>(obj);
-    ADT_RETURN_IF_ERROR(raw_ctx);
+    ADT_RETURN_IF_ERR(raw_ctx);
     const Result<ap::axpr::Object<ValueT>>& object = args.at(0).Match(
         [&](const ap::axpr::Object<ValueT>& obj)
             -> Result<ap::axpr::Object<ValueT>> { return obj; },
@@ -99,7 +99,7 @@ struct DefinerRawCtxMethodClass {
               "the first argument of 'DefinerRawCtx.DefinerCtx' "
               "must be an object."};
         });
-    ADT_RETURN_IF_ERROR(object);
+    ADT_RETURN_IF_ERR(object);
     return DefinerCtx<ValueT>{raw_ctx.GetOkValue(), object.GetOkValue()};
   }
 };

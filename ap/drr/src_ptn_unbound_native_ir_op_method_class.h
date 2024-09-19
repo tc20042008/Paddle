@@ -88,7 +88,7 @@ struct SrcPtnUnboundNativeIrOp {
           output, axpr::TryGetImpl<UnboundIrValue<ValueT, NodeT>>(output_val));
       outputs->emplace_back(output);
     }
-    ADT_RETURN_IF_ERROR(CheckNoRedundentTensorNames(inputs, outputs));
+    ADT_RETURN_IF_ERR(CheckNoRedundentTensorNames(inputs, outputs));
     ADT_LET_CONST_REF(native_inputs, ConvertInputs(inputs));
     ADT_LET_CONST_REF(native_outputs, ConvertOutputs(outputs));
     ADT_LET_CONST_REF(native_op,

@@ -14,15 +14,19 @@
 
 #pragma once
 
+#include <map>
 #include "ap/adt/adt.h"
+#include "ap/graph/jump.h"
+#include "ap/graph/path_ptn.h"
+#include "ap/graph/size_to_features.h"
 
 namespace ap::graph {
 
-// graph node
-DEFINE_ADT_TAG(tNodeId);
+struct TopoLocalPathPtnsImpl {
+  SizeToFeatures<PathPtn<UpJump>> size_to_up_paths;
+  SizeToFeatures<PathPtn<DownJump>> size_to_down_paths;
+};
 
-// dst node input index
-
-DEFINE_ADT_TAG(tDstInIdx);
+DEFINE_ADT_RC(TopoLocalPathPtns, TopoLocalPathPtnsImpl);
 
 }  // namespace ap::graph

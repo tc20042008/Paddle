@@ -32,13 +32,13 @@ Result<Val> ArgValueStaticCast(const Val& self, const std::vector<Val>& args) {
   }
   const Result<DataValue>& arg_value =
       MethodClass<Val>::template TryGet<DataValue>(self);
-  ADT_RETURN_IF_ERROR(arg_value);
+  ADT_RETURN_IF_ERR(arg_value);
   const Result<DataType>& arg_type =
       MethodClass<Val>::template TryGet<DataType>(args.at(0));
-  ADT_RETURN_IF_ERROR(arg_type);
+  ADT_RETURN_IF_ERR(arg_type);
   const auto& data_value =
       arg_value.GetOkValue().StaticCastTo(arg_type.GetOkValue());
-  ADT_RETURN_IF_ERROR(data_value);
+  ADT_RETURN_IF_ERR(data_value);
   return data_value.GetOkValue();
 }
 
@@ -89,11 +89,11 @@ struct DataValueMethodClass {
                                      const ValueT& attr_name_val) {
     const auto& opt_obj =
         MethodClass<ValueT>::template TryGet<DataValue>(obj_val);
-    ADT_RETURN_IF_ERROR(opt_obj);
+    ADT_RETURN_IF_ERR(opt_obj);
     const auto& obj = opt_obj.GetOkValue();
     const auto& opt_attr_name =
         MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERROR(opt_attr_name);
+    ADT_RETURN_IF_ERR(opt_attr_name);
     const auto& attr_name = opt_attr_name.GetOkValue();
     return detail::DataValueGetAttr<ValueT>(obj, attr_name);
   }
@@ -103,14 +103,14 @@ struct DataValueMethodClass {
                                         const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<DataValue>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     const auto& opt_rhs =
         MethodClass<ValueT>::template TryGet<DataValue>(rhs_val);
-    ADT_RETURN_IF_ERROR(opt_rhs);
+    ADT_RETURN_IF_ERR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& ret = ArithmeticBinaryFunc<ArithmeticOp>(lhs, rhs);
-    ADT_RETURN_IF_ERROR(ret);
+    ADT_RETURN_IF_ERR(ret);
     return ret.GetOkValue();
   }
 
@@ -118,10 +118,10 @@ struct DataValueMethodClass {
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
     const auto& opt_operand =
         MethodClass<ValueT>::template TryGet<DataValue>(val);
-    ADT_RETURN_IF_ERROR(opt_operand);
+    ADT_RETURN_IF_ERR(opt_operand);
     const auto& operand = opt_operand.GetOkValue();
     const auto& ret = ArithmeticUnaryFunc<ArithmeticOp>(operand);
-    ADT_RETURN_IF_ERROR(ret);
+    ADT_RETURN_IF_ERR(ret);
     return ret.GetOkValue();
   }
 };

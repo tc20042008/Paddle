@@ -54,15 +54,15 @@ Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
       [](const auto&) -> Result<bool> {
         return TypeError{"index expr could not be a condition"};
       });
-  ADT_RETURN_IF_ERROR(select_true_branch_res);
+  ADT_RETURN_IF_ERR(select_true_branch_res);
   bool select_true_branch = select_true_branch_res.GetOkValue();
   const auto& opt_true_closure =
       MethodClass<Val>::template TryGet<Closure<Val>>(args.at(1));
-  ADT_RETURN_IF_ERROR(opt_true_closure);
+  ADT_RETURN_IF_ERR(opt_true_closure);
   const auto& true_closure = opt_true_closure.GetOkValue();
   const auto& opt_false_closure =
       MethodClass<Val>::template TryGet<Closure<Val>>(args.at(2));
-  ADT_RETURN_IF_ERROR(opt_false_closure);
+  ADT_RETURN_IF_ERR(opt_false_closure);
   const auto& false_closure = opt_true_closure.GetOkValue();
   Closure<Val> closure{select_true_branch ? true_closure : false_closure};
   return interpreter->InterpretLambdaCall(closure->environment,
@@ -119,7 +119,7 @@ Result<ValueT> BuiltinList(const ValueT&, const std::vector<ValueT>& args) {
           l->emplace_back(arg);
           return adt::Ok{};
         });
-    ADT_RETURN_IF_ERROR(arg_ret);
+    ADT_RETURN_IF_ERR(arg_ret);
   }
   return ValueT{l};
 }

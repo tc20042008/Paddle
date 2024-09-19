@@ -42,7 +42,7 @@ struct ConstStdVectorPtrMethodClass {
                                      const ValueT& idx) {
     const auto& opt_vect =
         MethodClass<ValueT>::template TryGet<const std::vector<T>*>(vect_value);
-    ADT_RETURN_IF_ERROR(opt_vect);
+    ADT_RETURN_IF_ERR(opt_vect);
     const auto& vect = opt_vect.GetOkValue();
     return idx.Match(
         [&](int64_t index) -> Result<ValueT> {

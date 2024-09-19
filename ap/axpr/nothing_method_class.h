@@ -43,7 +43,7 @@ struct NothingMethodClass {
   static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     return rhs_val.Match([](adt::Nothing) -> ValueT { return true; },
                          [](const auto&) -> ValueT { return false; });
   }
@@ -51,7 +51,7 @@ struct NothingMethodClass {
   static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     return rhs_val.Match([](adt::Nothing) -> ValueT { return false; },
                          [](const auto&) -> ValueT { return true; });
   }

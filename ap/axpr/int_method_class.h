@@ -55,7 +55,7 @@ struct IntMethodClass {
                                         const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<int64_t>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     int64_t lhs = opt_lhs.GetOkValue();
     return rhs_val.Match(
         [&](bool rhs) -> adt::Result<ValueT> {
@@ -83,7 +83,7 @@ struct IntMethodClass {
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
     const auto& opt_operand =
         MethodClass<ValueT>::template TryGet<int64_t>(val);
-    ADT_RETURN_IF_ERROR(opt_operand);
+    ADT_RETURN_IF_ERR(opt_operand);
     int64_t operand = opt_operand.GetOkValue();
     return BoolIntDoubleArithmeticUnaryFunc<ArithmeticOp, ValueT>(operand);
   }

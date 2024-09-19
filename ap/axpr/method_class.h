@@ -182,13 +182,8 @@ struct BuiltinMethodHelper {
 
   template <adt::Result<ValueT> (*UnaryFunc)(const T&)>
   static adt::Result<ValueT> MakeBuiltinUnaryFunc(const ValueT& obj_val) {
-    LOG(ERROR) << "MakeBuiltinUnaryFunc " << BuiltinSymbol::Name()
-               << " before Alternative<ValueT, T>::TryGet";
     ADT_LET_CONST_REF(obj, Alternative<ValueT, T>::TryGet(obj_val));
-    LOG(ERROR) << "MakeBuiltinUnaryFunc " << BuiltinSymbol::Name()
-               << " before UnaryFunc";
     const auto& ret = UnaryFunc(obj);
-    LOG(ERROR) << "MakeBuiltinUnaryFunc " << BuiltinSymbol::Name() << " leave";
     return ret;
   }
 

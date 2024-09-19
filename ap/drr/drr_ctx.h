@@ -22,10 +22,10 @@ namespace ap::drr {
 
 template <typename ValueT, typename NodeT>
 struct DrrCtxImpl {
-  std::shared_ptr<graph::NodeArena<NodeT>> node_arena;
   std::optional<std::string> pass_name;
   std::optional<SourcePatternCtx<ValueT, NodeT>> source_pattern_ctx;
   std::optional<ResultPatternCtx<ValueT, NodeT>> result_pattern_ctx;
+  std::optional<SourcePatternCtx<ValueT, NodeT>> demo_graph_source_pattern_ctx;
 
   bool operator==(const DrrCtxImpl& other) const { return this == &other; }
 };

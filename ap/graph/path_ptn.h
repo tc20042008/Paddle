@@ -14,15 +14,12 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
+#include <map>
+#include "ap/graph/adt.h"
 
 namespace ap::graph {
 
-// graph node
-DEFINE_ADT_TAG(tNodeId);
+template <typename JumpT>
+using PathPtn = SmallVector<JumpT>;
 
-// dst node input index
-
-DEFINE_ADT_TAG(tDstInIdx);
-
-}  // namespace ap::graph
+}

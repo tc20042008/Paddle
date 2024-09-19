@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <list>
 #include "ap/adt/adt.h"
 #include "ap/graph/node.h"
 #include "ap/graph/tags.h"
@@ -37,9 +38,8 @@ class NodeArena : public std::enable_shared_from_this<NodeArena<T>> {
   template <typename ConstructorT>
   const T& New(const ConstructorT& Constructor) {
     tNodeId<size_t> node_id{nodes_.size()};
-    nodes_.emplace_back(
-        Constructor(Node<T>{node_id, this->shared_from_this()}));
-    return nodes_.at(nodes_.size() - 1);
+    const auto& node = Constructor(Node<T>{node_id, this->shared_from_this()});
+    return EmplaceBackNode(node);
   }
 
   template <typename ConstructorT>
@@ -47,63 +47,105 @@ class NodeArena : public std::enable_shared_from_this<NodeArena<T>> {
     tNodeId<size_t> node_id{nodes_.size()};
     ADT_LET_CONST_REF(node,
                       Constructor(Node<T>{node_id, this->shared_from_this()}));
-    nodes_.emplace_back(node);
-    return nodes_.at(nodes_.size() - 1);
+    return EmplaceBackNode(node);
   }
 
-  adt::Result<std::optional<adt::List<Node<T>>>> DstNodes4SrcNodeId(
+  adt::Result<NodeList<T>> DownstreamNodes4SrcNodeId(
       const tNodeId<size_t>& src_id) {
-    if (src_id >= src_node_id2dst_nodes.size()) {
+    if (src_id.value() >= src_node_id2downstream_nodes_.size()) {
       return adt::errors::IndexError{"src node_id out of ranges."};
     }
-    return src_node_id2dst_nodes.at(src_id);
+    return src_node_id2downstream_nodes_.at(src_id.value());
   }
 
-  adt::Result<std::optional<adt::List<Node<T>>>> SrcNodes4DstNodeId(
+  adt::Result<NodeList<T>> UpstreamNodes4DstNodeId(
       const tNodeId<size_t>& dst_id) {
-    if (dst_id >= dst_node_id2src_nodes.size()) {
+    if (dst_id.value() >= dst_node_id2upstream_nodes_.size()) {
       return adt::errors::IndexError{"dst node_id out of ranges."};
     }
-    return dst_node_id2src_nodes.at(dst_id);
+    return dst_node_id2upstream_nodes_.at(dst_id.value());
   }
 
-  adt::Result<adt::Ok> Connect(const Node<T>& src_node,
-                               const Node<T>& dst_node) {
+  adt::Result<adt::Ok> Connect(
+      const Node<T>& src_node,
+      const ValidListTag<std::monostate>& src_downstream_type,
+      const Node<T>& dst_node,
+      const ValidListTag<std::monostate>& dst_unstream_type) {
     const auto& src_id = src_node.node_id();
     if (src_node.node_arena().lock() != this->shared_from_this()) {
       return adt::errors::RuntimeError{
           "Connection between nodes from different arena is not supported. "};
     }
-    if (src_id.value() >= src_node_id2dst_nodes.size()) {
-      src_node_id2dst_nodes.resize(src_id.value() + 1);
-    }
-    auto* dst_nodes_ptr = &src_node_id2dst_nodes[src_id.value()];
-    if (!dst_nodes_ptr->has_value()) {
-      *dst_nodes_ptr = adt::List<Node<T>>{};
+    if (src_id.value() >= this->src_node_id2downstream_nodes_.size()) {
+      return adt::errors::IndexError{
+          "src_id.value() is out of range "
+          "this->src_node_id2downstream_nodes_."};
     }
     const auto& dst_id = dst_node.node_id();
-    dst_nodes_ptr->value()->emplace_back(
-        Node<T>{dst_id, this->shared_from_this()});
     if (dst_node.node_arena().lock() != this->shared_from_this()) {
       return adt::errors::RuntimeError{
           "Connection between nodes from different arena is not supported. "};
     }
-    if (dst_id.value() >= dst_node_id2src_nodes.size()) {
-      dst_node_id2src_nodes.resize(dst_id.value() + 1);
+    if (dst_id.value() >= this->dst_node_id2upstream_nodes_.size()) {
+      return adt::errors::IndexError{
+          "src_id.value() is out of range this->dst_node_id2upstream_nodes_."};
     }
-    auto* src_nodes_ptr = &dst_node_id2src_nodes[dst_id.value()];
-    if (!src_nodes_ptr->has_value()) {
-      *src_nodes_ptr = adt::List<Node<T>>{};
-    }
-    src_nodes_ptr->value()->emplace_back(
+    ADT_LET_CONST_REF(
+        downstream_nodes_data,
+        GetNodeListData(&src_node_id2downstream_nodes_[src_id.value()],
+                        src_downstream_type));
+    downstream_nodes_data->emplace_back(
+        Node<T>{dst_id, this->shared_from_this()});
+    ADT_LET_CONST_REF(
+        upstream_nodes_data,
+        GetNodeListData(&dst_node_id2upstream_nodes_[dst_id.value()],
+                        dst_unstream_type));
+    upstream_nodes_data->emplace_back(
         Node<T>{src_id, this->shared_from_this()});
     return adt::Ok{};
   }
 
+  const std::vector<T>& nodes() const { return nodes_; }
+
  private:
+  adt::Result<adt::List<Node<T>>> GetNodeListData(
+      NodeList<T>* node_list, const ValidListTag<std::monostate>& type) {
+    using RetDataT = adt::List<Node<T>>;
+    using RetT = adt::Result<RetDataT>;
+    if (node_list->template Has<UndefinedTag<RetDataT>>()) {
+      return type.Match(
+          [&](const IndexedTag<std::monostate>&) -> RetT {
+            IndexedTag<RetDataT> data{RetDataT{}};
+            *node_list = data;
+            return data.data;
+          },
+          [&](const UnindexedTag<std::monostate>&) -> RetT {
+            UnindexedTag<RetDataT> data{RetDataT{}};
+            *node_list = data;
+            return data.data;
+          });
+    }
+    const auto& pattern_match = ::common::Overloaded{
+        [&](const IndexedTag<RetDataT>& l,
+            const IndexedTag<std::monostate>&) -> RetT { return l.data; },
+        [&](const UnindexedTag<RetDataT>& l,
+            const UnindexedTag<std::monostate>&) -> RetT { return l.data; },
+        [&](const auto&, const auto&) -> RetT {
+          return adt::errors::TypeError{"ap graph node list type mismatch."};
+        }};
+    return std::visit(pattern_match, node_list->variant(), type.variant());
+  }
+
+  const T& EmplaceBackNode(const T& node) {
+    nodes_.emplace_back(node);
+    src_node_id2downstream_nodes_.resize(nodes_.size());
+    dst_node_id2upstream_nodes_.resize(nodes_.size());
+    return nodes_.at(nodes_.size() - 1);
+  }
+
   std::vector<T> nodes_;
-  std::vector<std::optional<adt::List<Node<T>>>> src_node_id2dst_nodes;
-  std::vector<std::optional<adt::List<Node<T>>>> dst_node_id2src_nodes;
+  std::vector<NodeList<T>> src_node_id2downstream_nodes_;
+  std::vector<NodeList<T>> dst_node_id2upstream_nodes_;
 };
 
 template <typename T>
@@ -113,22 +155,25 @@ adt::Result<T> Node<T>::Get() const {
 }
 
 template <typename T>
-adt::Result<std::optional<adt::List<Node<T>>>> Node<T>::DownstreamNodes()
-    const {
+adt::Result<NodeList<T>> Node<T>::DownstreamNodes() const {
   ADT_LET_CONST_REF(arena, adt::WeakPtrLock(this->node_arena()));
-  return arena->DstNodes4SrcNodeId(this->node_id());
+  return arena->DownstreamNodes4SrcNodeId(this->node_id());
 }
 
 template <typename T>
-adt::Result<std::optional<adt::List<Node<T>>>> Node<T>::UpStreamNodes() const {
+adt::Result<NodeList<T>> Node<T>::UpstreamNodes() const {
   ADT_LET_CONST_REF(arena, adt::WeakPtrLock(this->node_arena()));
-  return arena->SrcNodes4DstNodeId(this->node_id());
+  return arena->UpstreamNodes4DstNodeId(this->node_id());
 }
 
 template <typename T>
-adt::Result<adt::Ok> Node<T>::ConnectTo(const Node& dst_node) const {
+adt::Result<adt::Ok> Node<T>::ConnectTo(
+    const Node& dst_node,
+    const ValidListTag<std::monostate>& src_downstream_type,
+    const ValidListTag<std::monostate>& dst_unstream_type) const {
   ADT_LET_CONST_REF(arena, adt::WeakPtrLock(this->node_arena()));
-  return arena->Connect(*this, dst_node);
+  return arena->Connect(
+      *this, src_downstream_type, dst_node, dst_unstream_type);
 }
 
 }  // namespace ap::graph

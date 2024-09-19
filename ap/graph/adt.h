@@ -13,16 +13,20 @@
 // limitations under the License.
 
 #pragma once
-
 #include "ap/adt/adt.h"
+#include "llvm/ADT/SmallSet.h"
+#include "llvm/ADT/SmallVector.h"
+#include "paddle/cinn/adt/bfs_walker.h"
+#include "paddle/cinn/adt/topo_walker.h"
 
 namespace ap::graph {
 
-// graph node
-DEFINE_ADT_TAG(tNodeId);
+static constexpr int kSmallFeatureSize() { return 11; }
 
-// dst node input index
+template <typename T>
+using SmallVector = llvm::SmallVector<T, kSmallFeatureSize()>;
 
-DEFINE_ADT_TAG(tDstInIdx);
+template <typename T>
+using SmallSet = llvm::SmallSet<T, kSmallFeatureSize()>;
 
 }  // namespace ap::graph

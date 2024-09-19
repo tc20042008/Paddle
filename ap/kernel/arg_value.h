@@ -56,11 +56,11 @@ struct ArgValue : public ArgValueImpl {
     if constexpr (std::is_pointer_v<T>) {
       const auto& pointer_value =
           this->template TryGet<ap::axpr::PointerValue>();
-      ADT_RETURN_IF_ERROR(pointer_value);
+      ADT_RETURN_IF_ERR(pointer_value);
       return pointer_value.GetOkValue().template TryGet<T>();
     } else {
       const auto& data_value = this->template TryGet<ap::axpr::DataValue>();
-      ADT_RETURN_IF_ERROR(data_value);
+      ADT_RETURN_IF_ERR(data_value);
       return data_value.GetOkValue().template TryGet<T>();
     }
   }

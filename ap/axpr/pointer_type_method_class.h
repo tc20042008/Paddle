@@ -44,11 +44,11 @@ struct PointerTypeMethodClass {
   static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<PointerType>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     const auto& opt_rhs =
         MethodClass<ValueT>::template TryGet<PointerType>(rhs_val);
-    ADT_RETURN_IF_ERROR(opt_rhs);
+    ADT_RETURN_IF_ERR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
         ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {
@@ -60,11 +60,11 @@ struct PointerTypeMethodClass {
   static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<PointerType>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     const auto& opt_rhs =
         MethodClass<ValueT>::template TryGet<PointerType>(rhs_val);
-    ADT_RETURN_IF_ERROR(opt_rhs);
+    ADT_RETURN_IF_ERR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
         ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {

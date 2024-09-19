@@ -16,6 +16,7 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/demo_graph_helper.h"
 #include "ap/drr/drr_ctx.h"
 #include "ap/drr/ir_op.h"
 #include "ap/drr/ir_value.h"
@@ -37,6 +38,10 @@ struct DrrCtxMethodClass {
       return axpr::Method<ValueT>{self, &This::InitSourcePattern};
     } else if (attr_name == "result_pattern") {
       return axpr::Method<ValueT>{self, &This::InitResultPattern};
+    } else if (attr_name == "demo_graph") {
+      return axpr::Method<ValueT>{self, &This::InitDemoGraph};
+    } else if (attr_name == "test_source_pattern_by_demo_graph") {
+      return axpr::Method<ValueT>{self, &This::TestSourcePatternByDemoGraph};
     } else {
       return adt::errors::AttributeError{std::string() +
                                          "'DrrCtx' object has no attribute '" +
@@ -82,21 +87,67 @@ struct DrrCtxMethodClass {
           std::string() + "DrrCtx.source_pattern takes 1 argument. but " +
           std::to_string(args.size()) + " were given."};
     }
+    auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
     SourcePatternCtx<ValueT, NodeT> source_pattern_ctx{
-        self->node_arena,
+        node_arena,
         OpPatternCtx<ValueT, NodeT>{
-            self->node_arena,
+            node_arena,
             std::map<std::string, IrOp<ValueT, NodeT>>{},
         },
-        TensorPatternCtx<ValueT, NodeT>{self->node_arena,
+        TensorPatternCtx<ValueT, NodeT>{node_arena,
                                         std::map<std::string, IrValue<NodeT>>{},
                                         self.shared_ptr()}};
     self.shared_ptr()->source_pattern_ctx = source_pattern_ctx;
-    ADT_RETURN_IF_ERROR(
-        Apply(args.at(0),
-              {SrcPtn(source_pattern_ctx->op_pattern_ctx),
-               SrcPtn(source_pattern_ctx->tensor_pattern_ctx)}));
+    ADT_RETURN_IF_ERR(Apply(args.at(0),
+                            {SrcPtn(source_pattern_ctx->op_pattern_ctx),
+                             SrcPtn(source_pattern_ctx->tensor_pattern_ctx)}));
     return adt::Nothing{};
+  }
+
+  static adt::Result<ValueT> InitDemoGraph(const axpr::ApplyT<ValueT>& Apply,
+                                           const ValueT& self_val,
+                                           const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+    if (self->demo_graph_source_pattern_ctx.has_value()) {
+      return adt::errors::ValueError{
+          "'DrrCtx.demo_graph' has been initialized."};
+    }
+    if (args.size() != 1) {
+      return adt::errors::TypeError{
+          std::string() + "DrrCtx.demo_graph takes 1 argument. but " +
+          std::to_string(args.size()) + " were given."};
+    }
+    auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
+    SourcePatternCtx<ValueT, NodeT> demo_graph_source_pattern_ctx{
+        node_arena,
+        OpPatternCtx<ValueT, NodeT>{
+            node_arena,
+            std::map<std::string, IrOp<ValueT, NodeT>>{},
+        },
+        TensorPatternCtx<ValueT, NodeT>{node_arena,
+                                        std::map<std::string, IrValue<NodeT>>{},
+                                        self.shared_ptr()}};
+    self.shared_ptr()->demo_graph_source_pattern_ctx =
+        demo_graph_source_pattern_ctx;
+    ADT_RETURN_IF_ERR(
+        Apply(args.at(0),
+              {SrcPtn(demo_graph_source_pattern_ctx->op_pattern_ctx),
+               SrcPtn(demo_graph_source_pattern_ctx->tensor_pattern_ctx)}));
+    return adt::Nothing{};
+  }
+
+  static adt::Result<ValueT> TestSourcePatternByDemoGraph(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+    ADT_CHECK(self->demo_graph_source_pattern_ctx.has_value());
+    ADT_CHECK(self->source_pattern_ctx.has_value());
+    const auto& obj_node_arena =
+        self->demo_graph_source_pattern_ctx.value()->node_arena;
+    const auto& ptn_node_arena = self->source_pattern_ctx.value()->node_arena;
+    ADT_LET_CONST_REF(is_matched,
+                      DemoGraphHelper<ValueT>{}.IsGraphMatched(
+                          *obj_node_arena, *ptn_node_arena));
+    return is_matched;
   }
 
   static adt::Result<ValueT> InitResultPattern(
@@ -117,21 +168,21 @@ struct DrrCtxMethodClass {
           std::string() + "DrrCtx.result_pattern takes 1 argument. but " +
           std::to_string(args.size()) + " were given."};
     }
+    auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
     ResultPatternCtx<ValueT, NodeT> result_pattern_ctx{
-        self->node_arena,
+        node_arena,
         OpPatternCtx<ValueT, NodeT>{
-            self->node_arena,
+            node_arena,
             std::map<std::string, IrOp<ValueT, NodeT>>{},
         },
-        TensorPatternCtx<ValueT, NodeT>{self->node_arena,
+        TensorPatternCtx<ValueT, NodeT>{node_arena,
                                         std::map<std::string, IrValue<NodeT>>{},
                                         self.shared_ptr()},
         self->source_pattern_ctx.value()};
     self.shared_ptr()->result_pattern_ctx = result_pattern_ctx;
-    ADT_RETURN_IF_ERROR(
-        Apply(args.at(0),
-              {ResPtn(result_pattern_ctx->op_pattern_ctx),
-               ResPtn(result_pattern_ctx->tensor_pattern_ctx)}));
+    ADT_RETURN_IF_ERR(Apply(args.at(0),
+                            {ResPtn(result_pattern_ctx->op_pattern_ctx),
+                             ResPtn(result_pattern_ctx->tensor_pattern_ctx)}));
     return adt::Nothing{};
   }
 };

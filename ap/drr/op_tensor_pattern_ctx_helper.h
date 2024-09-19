@@ -34,6 +34,11 @@ struct OpTensorPatternCtxHelper {
       const NativeIrOp<ValueT, NodeT>& native_ir_op,
       const adt::List<NativeIrValue<NodeT>>& inputs,
       const adt::List<NativeIrValue<NodeT>>& outputs) {
+    ADT_LET_CONST_REF(op_upstream_nodes, native_ir_op->node.UpstreamNodes());
+    ADT_CHECK(op_upstream_nodes.size() == 0);
+    ADT_LET_CONST_REF(op_downstream_nodes,
+                      native_ir_op->node.DownstreamNodes());
+    ADT_CHECK(op_downstream_nodes.size() == 0);
     ADT_LET_CONST_REF(
         op_pattern_ctx,
         adt::WeakPtrLock(native_ir_op->op_declare->op_pattern_ctx));
@@ -42,15 +47,30 @@ struct OpTensorPatternCtxHelper {
       const auto& native_ir_op_operand = node_arena->New([&](const auto& node) {
         return NativeIrOpOperand<NodeT>{node, i};
       });
-      inputs->at(i)->node.ConnectTo(native_ir_op_operand.node());
-      native_ir_op_operand.node().ConnectTo(native_ir_op->node);
+      ADT_RETURN_IF_ERR(
+          inputs->at(i)->node.ConnectTo(native_ir_op_operand.node(),
+                                        graph::UnindexedTag<std::monostate>{},
+                                        graph::IndexedTag<std::monostate>{}));
+      ADT_RETURN_IF_ERR(native_ir_op_operand.node().ConnectTo(
+          native_ir_op->node,
+          graph::IndexedTag<std::monostate>{},
+          graph::IndexedTag<std::monostate>{}));
     }
     for (int i = 0; i < outputs->size(); ++i) {
+      ADT_LET_CONST_REF(output_upstream_nodes,
+                        outputs->at(i)->node.UpstreamNodes());
+      ADT_CHECK(output_upstream_nodes.size() == 0);
       const auto& native_ir_op_result = node_arena->New([&](const auto& node) {
         return NativeIrOpResult<NodeT>{node, i};
       });
-      native_ir_op->node.ConnectTo(native_ir_op_result.node());
-      native_ir_op_result.node().ConnectTo(outputs->at(i)->node);
+      ADT_RETURN_IF_ERR(
+          native_ir_op->node.ConnectTo(native_ir_op_result.node(),
+                                       graph::IndexedTag<std::monostate>{},
+                                       graph::IndexedTag<std::monostate>{}));
+      ADT_RETURN_IF_ERR(native_ir_op_result.node().ConnectTo(
+          outputs->at(i)->node,
+          graph::IndexedTag<std::monostate>{},
+          graph::IndexedTag<std::monostate>{}));
     }
     SetIrOpByUid(op_pattern_ctx, native_ir_op->name, native_ir_op);
     return adt::Nothing{};
@@ -60,6 +80,11 @@ struct OpTensorPatternCtxHelper {
       const PackedIrOp<ValueT, NodeT>& packed_ir_op,
       const adt::List<IrValue<NodeT>>& inputs,
       const adt::List<IrValue<NodeT>>& outputs) {
+    ADT_LET_CONST_REF(op_upstream_nodes, packed_ir_op->node.UpstreamNodes());
+    ADT_CHECK(op_upstream_nodes.size() == 0);
+    ADT_LET_CONST_REF(op_downstream_nodes,
+                      packed_ir_op->node.DownstreamNodes());
+    ADT_CHECK(op_downstream_nodes.size() == 0);
     ADT_LET_CONST_REF(
         op_pattern_ctx,
         adt::WeakPtrLock(packed_ir_op->op_declare->op_pattern_ctx));
@@ -68,15 +93,30 @@ struct OpTensorPatternCtxHelper {
       const auto& packed_ir_op_operand = node_arena->New([&](const auto& node) {
         return PackedIrOpOperand<NodeT>{node, i};
       });
-      inputs->at(i).node().ConnectTo(packed_ir_op_operand.node());
-      packed_ir_op_operand.node().ConnectTo(packed_ir_op->node);
+      ADT_RETURN_IF_ERR(
+          inputs->at(i).node().ConnectTo(packed_ir_op_operand.node(),
+                                         graph::UnindexedTag<std::monostate>{},
+                                         graph::IndexedTag<std::monostate>{}));
+      ADT_RETURN_IF_ERR(packed_ir_op_operand.node().ConnectTo(
+          packed_ir_op->node,
+          graph::IndexedTag<std::monostate>{},
+          graph::UnindexedTag<std::monostate>{}));
     }
     for (int i = 0; i < outputs->size(); ++i) {
+      ADT_LET_CONST_REF(output_upstream_nodes,
+                        outputs->at(i).node().UpstreamNodes());
+      ADT_CHECK(output_upstream_nodes.size() == 0);
       const auto& packed_ir_op_result = node_arena->New([&](const auto& node) {
         return PackedIrOpResult<NodeT>{node, i};
       });
-      packed_ir_op->node.ConnectTo(packed_ir_op_result.node());
-      packed_ir_op_result.node().ConnectTo(outputs->at(i).node());
+      ADT_RETURN_IF_ERR(
+          packed_ir_op->node.ConnectTo(packed_ir_op_result.node(),
+                                       graph::UnindexedTag<std::monostate>{},
+                                       graph::IndexedTag<std::monostate>{}));
+      ADT_RETURN_IF_ERR(packed_ir_op_result.node().ConnectTo(
+          outputs->at(i).node(),
+          graph::IndexedTag<std::monostate>{},
+          graph::IndexedTag<std::monostate>{}));
     }
     SetIrOpByUid(op_pattern_ctx, packed_ir_op->name, packed_ir_op);
     return adt::Nothing{};

@@ -13,20 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "ap/adt/adt.h"
-#include "ap/drr/result_pattern_ctx.h"
-#include "ap/drr/source_pattern_ctx.h"
-#include "ap/graph/tags.h"
 
-namespace ap::drr {
+#include "ap/graph/size_to_features.h"
 
-template <typename ValueT, typename NodeT>
-struct DrrCtxImpl {
-  SourcePatternCtx<ValueT, NodeT> source_pattern_ctx;
-  ResultPatternCtx<ValueT, NodeT> result_pattern_ctx;
-};
+namespace ap::graph {
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(DrrCtx, DrrCtxImpl<ValueT, NodeT>);
+template <typename T>
+using Distance2Features = SizeToFeatures<T>;
 
-}  // namespace ap::drr
+}

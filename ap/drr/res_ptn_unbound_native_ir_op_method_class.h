@@ -83,7 +83,7 @@ struct ResPtnUnboundNativeIrOp {
                  axpr::GetTypeName(output_val) + "'."};
       outputs->emplace_back(output.value());
     }
-    ADT_RETURN_IF_ERROR(CheckNoRedundentTensorNames(inputs, outputs));
+    ADT_RETURN_IF_ERR(CheckNoRedundentTensorNames(inputs, outputs));
     ADT_LET_CONST_REF(native_op,
                       Helper{}.GetNativeIrOpByUnboundNativeIrOp(self.value()));
     Helper{}.ConnectIrOpAndIrValue(native_op, inputs, outputs);

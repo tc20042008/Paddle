@@ -316,7 +316,7 @@ Result<Val> MakeIndexTupleExprTransform(const ApplyT<Val>& Apply,
   for (int i = 1; i < args.size(); ++i) {
     const auto& opt_closure =
         MethodClass<Val>::template TryGet<Closure<Val>>(args.at(i));
-    ADT_RETURN_IF_ERROR(opt_closure);
+    ADT_RETURN_IF_ERR(opt_closure);
     const auto& closure = opt_closure.GetOkValue();
 
     if (closure->lambda->args.size() != 1) {
@@ -326,7 +326,7 @@ Result<Val> MakeIndexTupleExprTransform(const ApplyT<Val>& Apply,
     int idx = i - 1;
     IndexExprDomain domain{dim_exprs->at(idx)};
     const auto& ret_lambda_call = Apply(closure, {Val{domain}});
-    ADT_RETURN_IF_ERROR(ret_lambda_call);
+    ADT_RETURN_IF_ERR(ret_lambda_call);
     const auto& ret_index_expr =
         TryGetConcretIndexExprValue<IndexExpr>(ret_lambda_call.GetOkValue());
     if (!ret_index_expr.Has<IndexExpr>()) {
@@ -352,12 +352,12 @@ Result<Val> MakeOpIndexTupleExprSignature(const Val&,
   const auto& in_sig = args.at(0);
   const auto& opt_in =
       MethodClass<Val>::template TryGet<InIndexTupleExprSignature>(in_sig);
-  ADT_RETURN_IF_ERROR(opt_in);
+  ADT_RETURN_IF_ERR(opt_in);
   const auto& in = opt_in.GetOkValue();
   const auto& out_sig = args.at(1);
   const auto& opt_out =
       MethodClass<Val>::template TryGet<OutIndexTupleExprSignature>(out_sig);
-  ADT_RETURN_IF_ERROR(opt_out);
+  ADT_RETURN_IF_ERR(opt_out);
   const auto& out = opt_out.GetOkValue();
   return OpIndexTupleExprSignature{in, out};
 }

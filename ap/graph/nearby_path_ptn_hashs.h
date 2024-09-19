@@ -14,15 +14,20 @@
 
 #pragma once
 
+#include <set>
 #include "ap/adt/adt.h"
+#include "ap/graph/distance_to_features.h"
+#include "ap/graph/hash_value_type.h"
+#include "ap/graph/topo_path_ptn_hashs.h"
 
 namespace ap::graph {
 
-// graph node
-DEFINE_ADT_TAG(tNodeId);
+struct NearbyPathPtnHashsImpl {
+  TopoPathPtnHashs topo_path_ptn_hashs;
+  Distance2Features<HashValueType<TopoLocalPathPtns>>
+      distance2nearby_hash_values;
+};
 
-// dst node input index
-
-DEFINE_ADT_TAG(tDstInIdx);
+DEFINE_ADT_RC(NearbyPathPtnHashs, NearbyPathPtnHashsImpl);
 
 }  // namespace ap::graph

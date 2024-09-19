@@ -52,7 +52,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                            const std::vector<ValueT>& args) override {
     ComposedCallImpl<ValueT> composed_call{&BuiltinHalt<ValueT>, func, args};
     const auto& ret = InterpretComposedCallUntilHalt(&composed_call);
-    ADT_RETURN_IF_ERROR(ret);
+    ADT_RETURN_IF_ERR(ret);
     if (!IsHalt(composed_call.inner_func)) {
       return RuntimeError{"CpsExprInterpreter does not halt."};
     }
@@ -68,12 +68,8 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
   Result<adt::Ok> InterpretComposedCallUntilHalt(
       ComposedCallImpl<ValueT>* composed_call) {
     while (!IsHalt(composed_call->inner_func)) {
-      LOG(ERROR) << "before InterpretComposedCall: func_type: "
-                 << MethodClass<ValueT>::Name(composed_call->inner_func);
       const auto& ret = InterpretComposedCall(composed_call);
-      LOG(ERROR) << "after InterpretComposedCall: func_type: "
-                 << MethodClass<ValueT>::Name(composed_call->inner_func);
-      ADT_RETURN_IF_ERROR(ret);
+      ADT_RETURN_IF_ERR(ret);
     }
     return adt::Ok{};
   }
@@ -231,7 +227,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                        MethodClass<ValueT>::Name(operand) + "'"};
     }
     const auto& opt_ret = opt_func.value()(operand);
-    ADT_RETURN_IF_ERROR(opt_ret);
+    ADT_RETURN_IF_ERR(opt_ret);
     const auto& ret = opt_ret.GetOkValue();
     ret_composed_call->args = {ret};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
@@ -250,7 +246,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                        type.Name() + "'"};
     }
     const auto& opt_constructor = opt_func.value()(ValueT{type});
-    ADT_RETURN_IF_ERROR(opt_constructor);
+    ADT_RETURN_IF_ERR(opt_constructor);
     ret_composed_call->inner_func = opt_constructor.GetOkValue();
     return adt::Ok{};
   }
@@ -274,7 +270,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
     }
     const auto& rhs = ret_composed_call->args.at(1);
     const auto& opt_ret = opt_func.value()(lhs, rhs);
-    ADT_RETURN_IF_ERROR(opt_ret);
+    ADT_RETURN_IF_ERR(opt_ret);
     const auto& ret = opt_ret.GetOkValue();
     ret_composed_call->args = {ret};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
@@ -315,7 +311,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
     return lambda->body.Match(
         [&](const Atomic<CoreExpr>& atomic) -> Result<adt::Ok> {
           const auto& val = InterpretAtomic(env, atomic);
-          ADT_RETURN_IF_ERROR(val);
+          ADT_RETURN_IF_ERR(val);
           ret_composed_call->outter_func = outter_func;
           ret_composed_call->inner_func = &BuiltinIdentity<ValueT>;
           ret_composed_call->args = {val.GetOkValue()};
@@ -331,14 +327,14 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
       const ComposedCallAtomic<CoreExpr>& core_expr,
       ComposedCallImpl<ValueT>* ret_composed_call) {
     const auto& new_outter_func = InterpretAtomic(env, core_expr->outter_func);
-    ADT_RETURN_IF_ERROR(new_outter_func);
+    ADT_RETURN_IF_ERR(new_outter_func);
     const auto& new_inner_func = InterpretAtomic(env, core_expr->inner_func);
-    ADT_RETURN_IF_ERROR(new_inner_func);
+    ADT_RETURN_IF_ERR(new_inner_func);
     std::vector<ValueT> args;
     args.reserve(core_expr->args.size());
     for (const auto& arg_expr : core_expr->args) {
       const auto& arg = InterpretAtomic(env, arg_expr);
-      ADT_RETURN_IF_ERROR(arg);
+      ADT_RETURN_IF_ERR(arg);
       args.emplace_back(arg.GetOkValue());
     }
     ret_composed_call->outter_func = new_outter_func.GetOkValue();
@@ -367,7 +363,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
       ComposedCallImpl<ValueT>* composed_call) {
     const auto original_outter_func = composed_call->outter_func;
     const auto& opt_inner_ret = func(obj, composed_call->args);
-    ADT_RETURN_IF_ERROR(opt_inner_ret);
+    ADT_RETURN_IF_ERR(opt_inner_ret);
     const auto& inner_ret = opt_inner_ret.GetOkValue();
     if (original_outter_func.template Has<Closure<ValueT>>()) {
       const auto& closure =
@@ -394,7 +390,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
     };
     const auto original_outter_func = composed_call->outter_func;
     const auto& opt_inner_ret = func(Apply, obj, composed_call->args);
-    ADT_RETURN_IF_ERROR(opt_inner_ret);
+    ADT_RETURN_IF_ERR(opt_inner_ret);
     const auto& inner_ret = opt_inner_ret.GetOkValue();
     if (original_outter_func.template Has<Closure<ValueT>>()) {
       const auto& closure =

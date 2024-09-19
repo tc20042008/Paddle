@@ -215,6 +215,26 @@ struct Maybe : public Either<T, Nothing> {
   using Either<T, Nothing>::Either;
 };
 
+struct BreakException {
+  std::string msg{""};
+
+  bool operator==(const BreakException& other) const {
+    return other.msg == this->msg;
+  }
+
+  const char* class_name() const { return "BreakException"; }
+};
+
+struct ContinueException {
+  std::string msg{""};
+
+  bool operator==(const ContinueException& other) const {
+    return other.msg == this->msg;
+  }
+
+  const char* class_name() const { return "ContinueException"; }
+};
+
 namespace errors {
 
 struct RuntimeError {
@@ -297,6 +317,16 @@ struct IndexError {
   const char* class_name() const { return "IndexError"; }
 };
 
+struct KeyError {
+  std::string msg;
+
+  bool operator==(const KeyError& other) const {
+    return other.msg == this->msg;
+  }
+
+  const char* class_name() const { return "KeyError"; }
+};
+
 struct MismatchError {
   std::string msg;
 
@@ -335,9 +365,12 @@ using ErrorBase = std::variant<RuntimeError,
                                ZeroDivisionError,
                                TypeError,
                                IndexError,
+                               KeyError,
                                MismatchError,
                                NotImplementedError,
-                               SyntaxError>;
+                               SyntaxError,
+                               BreakException,
+                               ContinueException>;
 
 struct [[nodiscard]] Error : public ErrorBase {
   using ErrorBase::ErrorBase;
@@ -392,7 +425,7 @@ adt::Result<std::shared_ptr<T>> WeakPtrLock(const std::weak_ptr<T>& weak_ptr) {
       ::cinn::adt::errors::ValueError { "Check '" #__VA_ARGS__ "' failed." } \
     }
 
-#define ADT_RETURN_IF_ERROR(...)                    \
+#define ADT_RETURN_IF_ERR(...)                      \
   if (const auto& __result##__LINE__ = __VA_ARGS__; \
       __result##__LINE__.HasError())                \
   return __result##__LINE__.GetError()
@@ -402,7 +435,7 @@ adt::Result<std::shared_ptr<T>> WeakPtrLock(const std::weak_ptr<T>& weak_ptr) {
   const auto* __ptr_##var =                                                 \
       (__result_##var.HasError() ? nullptr : &__result_##var.GetOkValue()); \
   const auto& var = *__ptr_##var;                                           \
-  ADT_RETURN_IF_ERROR(__result_##var)
+  ADT_RETURN_IF_ERR(__result_##var)
 
 }  // namespace adt
 }  // namespace cinn

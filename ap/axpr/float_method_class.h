@@ -54,7 +54,7 @@ struct FloatMethodClass {
   static adt::Result<ValueT> BinaryFunc(const ValueT& lhs_val,
                                         const ValueT& rhs_val) {
     const auto& opt_lhs = MethodClass<ValueT>::template TryGet<double>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     double lhs = opt_lhs.GetOkValue();
     return rhs_val.Match(
         [&](bool rhs) -> adt::Result<ValueT> {
@@ -81,7 +81,7 @@ struct FloatMethodClass {
   template <typename ArithmeticOp>
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
     const auto& opt_operand = MethodClass<ValueT>::template TryGet<double>(val);
-    ADT_RETURN_IF_ERROR(opt_operand);
+    ADT_RETURN_IF_ERR(opt_operand);
     double operand = opt_operand.GetOkValue();
     return BoolIntDoubleArithmeticUnaryFunc<ArithmeticOp, ValueT>(operand);
   }

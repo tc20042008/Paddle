@@ -47,7 +47,7 @@ struct StringMethodClass {
                                         const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<std::string>(lhs_val);
-    ADT_RETURN_IF_ERROR(opt_lhs);
+    ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     return BuiltinStringBinary<ArithmeticOp>(lhs, rhs_val);
   }

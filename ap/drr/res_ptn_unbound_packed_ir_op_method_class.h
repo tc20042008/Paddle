@@ -71,7 +71,7 @@ struct ResPtnUnboundPackedIrOp {
       ADT_LET_CONST_REF(output, CastToIrValue(output_val));
       outputs->emplace_back(output);
     }
-    ADT_RETURN_IF_ERROR(CheckNoRedundentTensorNames(inputs, outputs));
+    ADT_RETURN_IF_ERR(CheckNoRedundentTensorNames(inputs, outputs));
     ADT_LET_CONST_REF(packed_op,
                       Helper{}.GetPackedIrOpByUnboundPackedIrOp(self.value()));
     Helper{}.ConnectIrOpAndIrValue(packed_op, inputs, outputs);

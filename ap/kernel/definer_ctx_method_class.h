@@ -64,12 +64,12 @@ Result<Val> DefinerCtxMakeModule(const Val& self,
 template <typename Val>
 Result<adt::List<ArgType>> GetFuncArgTypes(const Val& val) {
   const auto& list = MethodClass<Val>::template TryGet<adt::List<Val>>(val);
-  ADT_RETURN_IF_ERROR(list);
+  ADT_RETURN_IF_ERR(list);
   adt::List<ArgType> ret;
   ret->reserve(list.GetOkValue()->size());
   for (const auto& elt : *list.GetOkValue()) {
     const auto& arg_type = CastToArgType(elt);
-    ADT_RETURN_IF_ERROR(arg_type);
+    ADT_RETURN_IF_ERR(arg_type);
     ret->emplace_back(arg_type.GetOkValue());
   }
   return ret;
@@ -85,9 +85,9 @@ Result<Val> DefinerCtxMakeDeclareFunc(const Val& self,
   }
   const Result<FuncId>& func_id =
       MethodClass<Val>::template TryGet<std::string>(args.at(0));
-  ADT_RETURN_IF_ERROR(func_id);
+  ADT_RETURN_IF_ERR(func_id);
   const Result<adt::List<ArgType>>& arg_types = GetFuncArgTypes(args.at(1));
-  ADT_RETURN_IF_ERROR(arg_types);
+  ADT_RETURN_IF_ERR(arg_types);
   return FuncDeclare{func_id.GetOkValue(), arg_types.GetOkValue()};
 }
 
@@ -185,11 +185,11 @@ struct DefinerCtxMethodClass {
                                      const ValueT& attr_name_val) {
     const auto& opt_ctx =
         MethodClass<ValueT>::template TryGet<DefinerCtx<Val>>(obj);
-    ADT_RETURN_IF_ERROR(opt_ctx);
+    ADT_RETURN_IF_ERR(opt_ctx);
     const auto& ctx = opt_ctx.GetOkValue();
     const auto& opt_attr_name =
         MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERROR(opt_attr_name);
+    ADT_RETURN_IF_ERR(opt_attr_name);
     const auto& attr_name = opt_attr_name.GetOkValue();
     return detail::DefinerCtxGetAttr<Val>(ctx, attr_name);
   }

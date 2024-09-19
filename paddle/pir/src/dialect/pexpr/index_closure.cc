@@ -42,7 +42,7 @@ adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::CallLambda(
                                                     closure_data.in_vars,
                                                     Val{indexes_expr}};
   const auto& opt_ret = (*this->interpreter)(lambda, args);
-  ADT_RETURN_IF_ERROR(opt_ret);
+  ADT_RETURN_IF_ERR(opt_ret);
   const auto& ret = opt_ret.GetOkValue();
   return MethodClass<Val>::TryGet<OpIndexTupleExprSignature>(ret);
 }
@@ -57,14 +57,14 @@ adt::Result<OpIndexTupleExprSignature> OpIndexesTransformApply(
   for (const auto& transform :
        *indexes_transform_signature.in_signature.descriptors) {
     const auto& converted = IndexesTransformApply(transform);
-    ADT_RETURN_IF_ERROR(converted);
+    ADT_RETURN_IF_ERR(converted);
     in_sig.descriptors->emplace_back(converted.GetOkValue());
   }
   OutIndexTupleExprSignature out_sig;
   for (const auto& transform :
        *indexes_transform_signature.out_signature.descriptors) {
     const auto& converted = IndexesTransformApply(transform);
-    ADT_RETURN_IF_ERROR(converted);
+    ADT_RETURN_IF_ERR(converted);
     out_sig.descriptors->emplace_back(converted.GetOkValue());
   }
   return OpIndexTupleExprSignature{in_sig, out_sig};

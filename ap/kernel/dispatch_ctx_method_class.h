@@ -90,12 +90,12 @@ template <typename Val>
 Result<adt::List<ArgValue>> GetKernelArgs(const Val& args) {
   const Result<adt::List<Val>>& arg_list =
       MethodClass<Val>::template TryGet<adt::List<Val>>(args);
-  ADT_RETURN_IF_ERROR(arg_list);
+  ADT_RETURN_IF_ERR(arg_list);
   adt::List<ArgValue> ret;
   ret->reserve(arg_list.GetOkValue()->size());
   for (const auto& arg : *arg_list.GetOkValue()) {
     const Result<ArgValue>& arg_value = CastToArgValue(arg);
-    ADT_RETURN_IF_ERROR(arg_value);
+    ADT_RETURN_IF_ERR(arg_value);
     ret->emplace_back(arg_value.GetOkValue());
   }
   return ret;
@@ -111,24 +111,24 @@ Result<Val> LaunchCuda(const Val& self, const std::vector<Val>& args) {
   }
   const Result<DispatchCtx<Val>>& ctx =
       MethodClass<Val>::template TryGet<DispatchCtx<Val>>(self);
-  ADT_RETURN_IF_ERROR(ctx);
+  ADT_RETURN_IF_ERR(ctx);
   const Result<std::string>& func_name =
       MethodClass<Val>::template TryGet<std::string>(args.at(0));
-  ADT_RETURN_IF_ERROR(func_name);
+  ADT_RETURN_IF_ERR(func_name);
   const Result<int64_t>& num_blocks =
       MethodClass<Val>::template TryGet<int64_t>(args.at(1));
-  ADT_RETURN_IF_ERROR(num_blocks);
+  ADT_RETURN_IF_ERR(num_blocks);
   const Result<int64_t>& num_threads =
       MethodClass<Val>::template TryGet<int64_t>(args.at(2));
-  ADT_RETURN_IF_ERROR(num_threads);
+  ADT_RETURN_IF_ERR(num_threads);
   const Result<adt::List<ArgValue>>& kernel_args = GetKernelArgs(args.at(3));
-  ADT_RETURN_IF_ERROR(kernel_args);
+  ADT_RETURN_IF_ERR(kernel_args);
   const Result<adt::Ok>& ret =
       ctx.GetOkValue()->raw_ctx->LaunchCudaKernel(func_name.GetOkValue(),
                                                   num_blocks.GetOkValue(),
                                                   num_threads.GetOkValue(),
                                                   kernel_args.GetOkValue());
-  ADT_RETURN_IF_ERROR(ret);
+  ADT_RETURN_IF_ERR(ret);
   return adt::Nothing{};
 }
 
@@ -225,11 +225,11 @@ struct DispatchCtxMethodClass {
                                      const ValueT& attr_name_val) {
     const auto& opt_obj =
         MethodClass<ValueT>::template TryGet<DispatchCtx<ValueT>>(obj_val);
-    ADT_RETURN_IF_ERROR(opt_obj);
+    ADT_RETURN_IF_ERR(opt_obj);
     const auto& obj = opt_obj.GetOkValue();
     const auto& opt_attr_name =
         MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERROR(opt_attr_name);
+    ADT_RETURN_IF_ERR(opt_attr_name);
     const auto& attr_name = opt_attr_name.GetOkValue();
     return detail::DispatchCtxGetAttr<Val>(obj, attr_name);
   }

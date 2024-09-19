@@ -56,7 +56,7 @@ Result<Val> MakeDispatchCtx(const Val& self, const std::vector<Val>& args) {
   }
   const Result<DispatchRawCtx<Val>>& raw_ctx =
       MethodClass<Val>::template TryGet<DispatchRawCtx<Val>>(self);
-  ADT_RETURN_IF_ERROR(raw_ctx);
+  ADT_RETURN_IF_ERR(raw_ctx);
   const Result<ap::axpr::Object<Val>>& object = args.at(0).Match(
       [&](const ap::axpr::Object<Val>& obj) -> Result<ap::axpr::Object<Val>> {
         return obj;
@@ -69,7 +69,7 @@ Result<Val> MakeDispatchCtx(const Val& self, const std::vector<Val>& args) {
                          "the first argument of 'DispatchRawCtx.DispatchCtx' "
                          "must be an object."};
       });
-  ADT_RETURN_IF_ERROR(object);
+  ADT_RETURN_IF_ERR(object);
   return DispatchCtx<Val>{raw_ctx.GetOkValue(), object.GetOkValue()};
 }
 
@@ -119,11 +119,11 @@ struct DispatchRawCtxMethodClass {
                                      const ValueT& attr_name_val) {
     const auto& opt_obj =
         MethodClass<ValueT>::template TryGet<DispatchRawCtx<ValueT>>(obj_val);
-    ADT_RETURN_IF_ERROR(opt_obj);
+    ADT_RETURN_IF_ERR(opt_obj);
     const auto& obj = opt_obj.GetOkValue();
     const auto& opt_attr_name =
         MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERROR(opt_attr_name);
+    ADT_RETURN_IF_ERR(opt_attr_name);
     const auto& attr_name = opt_attr_name.GetOkValue();
     return detail::DispatchRawCtxGetAttr<Val>(obj, attr_name);
   }

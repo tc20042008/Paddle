@@ -17,6 +17,7 @@
 #include "ap/adt/adt.h"
 #include "ap/drr/tags.h"
 #include "ap/graph/node.h"
+#include "ap/graph/node_cstr.h"
 
 namespace ap::drr {
 
@@ -27,6 +28,10 @@ struct PackedIrValueImpl {
 
   bool operator==(const PackedIrValueImpl& other) const {
     return this->node == other.node && this->name == other.name;
+  }
+
+  graph::PackedIrValueCstr node_cstr() const {
+    return graph::PackedIrValueCstr{};
   }
 };
 

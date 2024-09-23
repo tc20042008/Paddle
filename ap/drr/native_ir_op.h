@@ -18,6 +18,7 @@
 #include "ap/drr/native_ir_op_declare.h"
 #include "ap/drr/tags.h"
 #include "ap/graph/node.h"
+#include "ap/graph/node_cstr.h"
 
 namespace ap::drr {
 
@@ -30,6 +31,10 @@ struct NativeIrOpImpl {
   bool operator==(const NativeIrOpImpl& other) const {
     return this->node == other.node && this->op_declare == other.op_declare &&
            this->name == other.name;
+  }
+
+  graph::NativeIrOpCstr node_cstr() const {
+    return graph::NativeIrOpCstr{this->op_declare->op_name};
   }
 };
 

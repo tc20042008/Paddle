@@ -14,27 +14,16 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
+#include <sstream>
+#include <unordered_map>
+#include "ap/graph/adt.h"
 #include "ap/graph/node.h"
-#include "ap/graph/node_cstr.h"
 
-namespace ap::drr {
+namespace ap::graph {
 
 template <typename NodeT>
-struct NativeIrOpOperandImpl {
-  graph::Node<NodeT> node;
-  std::size_t index;
-
-  bool operator==(const NativeIrOpOperandImpl& other) const {
-    return this->node == other.node && this->index == other.index;
-  }
-
-  graph::NativeIrOpOperandCstr node_cstr() const {
-    return graph::NativeIrOpOperandCstr{index};
-  }
+struct NodeDescriptor {
+  std::string DebugId(const NodeT&);
 };
 
-template <typename NodeT>
-DEFINE_ADT_RC(NativeIrOpOperand, NativeIrOpOperandImpl<NodeT>);
-
-}  // namespace ap::drr
+}  // namespace ap::graph

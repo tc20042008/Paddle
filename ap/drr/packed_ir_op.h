@@ -17,6 +17,7 @@
 #include "ap/adt/adt.h"
 #include "ap/drr/packed_ir_op_declare.h"
 #include "ap/graph/node.h"
+#include "ap/graph/node_cstr.h"
 
 namespace ap::drr {
 
@@ -29,6 +30,10 @@ struct PackedIrOpImpl {
   bool operator==(const PackedIrOpImpl& other) const {
     return this->node == other.node && this->op_declare == other.op_declare &&
            this->name == other.name;
+  }
+
+  graph::PackedIrOpCstr node_cstr() const {
+    return graph::PackedIrOpCstr{this->op_declare->op_name};
   }
 };
 

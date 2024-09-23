@@ -16,6 +16,7 @@
 
 #include <map>
 #include "ap/graph/adt.h"
+#include "ap/graph/graph_descriptor.h"
 #include "ap/graph/graph_match_ctx.h"
 #include "ap/graph/node.h"
 #include "ap/graph/node_arena.h"
@@ -24,107 +25,121 @@
 
 namespace ap::graph {
 
-template <typename ObjT, typename PtnT>
+template <typename bg_node_t, typename sg_node_t>
 struct GraphMatcher {
-  using obj_node_t = graph::Node<ObjT>;
-  using ptn_node_t = graph::Node<PtnT>;
+  GraphMatcher(const GraphDescriptor<bg_node_t>& bg_descriptor,
+               const GraphDescriptor<sg_node_t>& sg_descriptor)
+      : bg_descriptor_(bg_descriptor), sg_descriptor_(sg_descriptor) {}
 
-  GraphMatcher(
-      const std::function<adt::Result<bool>(const PtnT&)>& IgnoredPtnVal,
-      const std::function<adt::Result<bool>(const ObjT&, const PtnT&)>&
-          ObjMatchVal)
-      : IgnoredPtn(IgnoredPtnVal), ObjMatch(ObjMatchVal) {}
+  GraphMatcher(const GraphMatcher&) = delete;
+  GraphMatcher(GraphMatcher&&) = delete;
 
-  adt::Result<GraphMatchCtx<ObjT, PtnT>> Match(
-      const NodeArena<ObjT>& obj_node_arena,
-      const NodeArena<PtnT>& ptn_node_arena) {
-    ADT_LET_CONST_REF(anchor, FindAnchor(ptn_node_arena));
-    VLOG(10) << "anchor.node_id: " << anchor.node().node_id().value();
-    for (const auto& obj : obj_node_arena.nodes()) {
-      ADT_LET_CONST_REF(matched, ObjMatch(obj, anchor));
-      if (matched) {
-        const auto& opt_graph_ctx = MatchByAnchor(obj.node(), anchor.node());
-        if (opt_graph_ctx.HasOkValue()) {
-          return opt_graph_ctx.GetOkValue();
-        } else {
-          ADT_CHECK(opt_graph_ctx.GetError()
-                        .template Has<adt::errors::MismatchError>())
-              << opt_graph_ctx.GetError();
-          VLOG(10) << opt_graph_ctx.GetError().class_name() << ": "
-                   << opt_graph_ctx.GetError().msg()
-                   << " obj_node_id: " << obj.node().node_id().value();
-        }
+  adt::Result<GraphMatchCtx<bg_node_t, sg_node_t>> Match() {
+    ADT_LET_CONST_REF(anchor, FindAnchor());
+    VLOG(10) << "anchor.node_id: "
+             << NodeDescriptor<sg_node_t>{}.DebugId(anchor);
+    ADT_LET_CONST_REF(anchor_cstr, sg_descriptor_.GetNodeConstraint(anchor));
+    std::optional<GraphMatchCtx<bg_node_t, sg_node_t>> ret;
+    const auto& TryMatchBgNode =
+        [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(matched, bg_descriptor_.Satisfy(bg_node, anchor_cstr));
+      if (!matched) {
+        return adt::Ok{};
       }
-    }
-    return adt::errors::MismatchError{"no anchor matched."};
+      const auto& opt_graph_ctx = MatchByAnchor(bg_node, anchor);
+      if (opt_graph_ctx.HasError()) {
+        ADT_CHECK(
+            opt_graph_ctx.GetError().template Has<adt::errors::MismatchError>())
+            << opt_graph_ctx.GetError();
+        VLOG(10) << opt_graph_ctx.GetError().class_name() << ": "
+                 << opt_graph_ctx.GetError().msg() << " bg_node_id: "
+                 << NodeDescriptor<bg_node_t>{}.DebugId(anchor);
+        return adt::Ok{};
+      }
+      ret = opt_graph_ctx.GetOkValue();
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(bg_descriptor_.VisitAllNodes(TryMatchBgNode));
+    ADT_CHECK(ret.has_value())
+        << adt::errors::MismatchError{"no anchor matched."};
+    return ret.value();
   }
 
-  adt::Result<PtnT> FindAnchor(const NodeArena<PtnT>& ptn_node_arena) {
-    const auto topo_walker = GetPtnTopoWalker();
-    const auto IsSource = [](const PtnT& ptn) -> adt::Result<bool> {
-      ADT_LET_CONST_REF(upstreams, ptn.node().UpstreamNodes());
-      return upstreams.size() == 0;
+  adt::Result<sg_node_t> FindAnchor() {
+    const auto topo_walker = GetSmallGraphTopoWalker();
+    const auto IsSource = [&](const sg_node_t& sg_node) -> adt::Result<bool> {
+      bool has_source = false;
+      auto SetHasSource = [&](const sg_node_t&) -> adt::Result<adt::Ok> {
+        has_source = true;
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(
+          sg_descriptor_.VisitUpstreamNodes(sg_node, SetHasSource));
+      return !has_source;
     };
-    const auto IsSink = [](const PtnT& ptn) -> adt::Result<bool> {
-      ADT_LET_CONST_REF(downstreams, ptn.node().DownstreamNodes());
-      return downstreams.size() == 0;
+    const auto IsSink = [&](const sg_node_t& sg_node) -> adt::Result<bool> {
+      bool has_sink = false;
+      auto SetHasSink = [&](const sg_node_t&) -> adt::Result<adt::Ok> {
+        has_sink = true;
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(
+          sg_descriptor_.VisitDownstreamNodes(sg_node, SetHasSink));
+      return !has_sink;
     };
-    ADT_LET_CONST_REF(starts,
-                      [&]() -> adt::Result<std::unordered_set<ptn_node_t>> {
-                        std::unordered_set<ptn_node_t> starts;
-                        for (const auto& ptn : ptn_node_arena.nodes()) {
-                          ADT_LET_CONST_REF(ignored, IgnoredPtn(ptn));
-                          if (ignored) {
-                            continue;
-                          }
-                          ADT_LET_CONST_REF(is_source, IsSource(ptn));
-                          ADT_LET_CONST_REF(is_sink, IsSink(ptn));
-                          if (is_source || is_sink) {
-                            starts.insert(ptn.node());
-                          }
-                        }
-                        return starts;
-                      }());
+    std::unordered_set<sg_node_t> starts;
+    auto CollectStarts = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(ignored, sg_descriptor_.IgnoredNode(sg_node));
+      if (ignored) {
+        return adt::Ok{};
+      }
+      ADT_LET_CONST_REF(is_source, IsSource(sg_node));
+      ADT_LET_CONST_REF(is_sink, IsSink(sg_node));
+      if (is_source || is_sink) {
+        starts.insert(sg_node);
+      }
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(sg_descriptor_.VisitAllNodes(CollectStarts));
     ADT_CHECK(starts.size() > 0);
-    const auto bfs_walker = GetPtnBfsWalker();
-    std::unordered_map<ptn_node_t, size_t> node2depth;
-    std::map<size_t, std::vector<ptn_node_t>> depth2nodes;
-    ADT_RETURN_IF_ERR(bfs_walker(
-        starts.begin(),
-        starts.end(),
-        [&](const ptn_node_t& ptn_node) -> adt::Result<adt::Ok> {
-          size_t max_depth = 0;
-          ADT_RETURN_IF_ERR(bfs_walker.VisitNextNodes(
-              ptn_node, [&](const ptn_node_t& prev) -> adt::Result<adt::Ok> {
-                const auto& iter = node2depth.find(prev);
-                if (iter != node2depth.end()) {
-                  max_depth = std::max(max_depth, iter->second);
-                }
-                return adt::Ok{};
-              }));
-          node2depth[ptn_node] = max_depth;
-          depth2nodes[max_depth].push_back(ptn_node);
-          return adt::Ok{};
-        }));
+    const auto bfs_walker = GetSmallGraphBfsWalker();
+    std::unordered_map<sg_node_t, size_t> node2depth;
+    std::map<size_t, std::vector<sg_node_t>> depth2nodes;
+    auto UpdateNodeDepth =
+        [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
+      size_t max_depth = 0;
+      ADT_RETURN_IF_ERR(bfs_walker.VisitNextNodes(
+          sg_node, [&](const sg_node_t& prev) -> adt::Result<adt::Ok> {
+            const auto& iter = node2depth.find(prev);
+            if (iter != node2depth.end()) {
+              max_depth = std::max(max_depth, iter->second);
+            }
+            return adt::Ok{};
+          }));
+      node2depth[sg_node] = max_depth;
+      depth2nodes[max_depth].push_back(sg_node);
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(
+        bfs_walker(starts.begin(), starts.end(), UpdateNodeDepth));
     const auto& last = depth2nodes.rbegin();
     ADT_CHECK(last != depth2nodes.rend());
     ADT_CHECK(last->second.size() > 0);
-    return last->second.at(0).Get();
+    return last->second.at(0);
   }
 
-  adt::Result<GraphMatchCtx<ObjT, PtnT>> MatchByAnchor(
-      const obj_node_t& obj_node, const ptn_node_t& anchor_node) {
-    ADT_LET_CONST_REF(anchor_matched, ObjNodeMatch(obj_node, anchor_node));
-    ADT_CHECK(anchor_matched);
+  adt::Result<GraphMatchCtx<bg_node_t, sg_node_t>> MatchByAnchor(
+      const bg_node_t& bg_node, const sg_node_t& anchor_node) {
     ADT_LET_CONST_REF(graph_match_ctx,
-                      MakeGraphMatchCtxFromAnchor(obj_node, anchor_node));
+                      MakeGraphMatchCtxFromAnchor(bg_node, anchor_node));
     ADT_RETURN_IF_ERR(UpdateByConnectionsUntilDone(
         &*graph_match_ctx.shared_ptr(), anchor_node));
     return graph_match_ctx;
   }
 
   adt::Result<adt::Ok> UpdateByConnectionsUntilDone(
-      GraphMatchCtxImpl<ObjT, PtnT>* ctx, const ptn_node_t& anchor_node) {
+      GraphMatchCtxImpl<bg_node_t, sg_node_t>* ctx,
+      const sg_node_t& anchor_node) {
     size_t kDeadloopDectionSize = 999999;
     while (true) {
       ADT_LET_CONST_REF(updated, UpdateAllByConnections(ctx, anchor_node));
@@ -138,209 +153,200 @@ struct GraphMatcher {
     return adt::Ok{};
   }
 
-  adt::Result<bool> IsGraphMatched(const GraphMatchCtx<ObjT, PtnT>& ctx,
-                                   const ptn_node_t& anchor_node) {
-    adt::BfsWalker<ptn_node_t> bfs_walker = GetPtnBfsWalker();
-    std::size_t num_ptn_nodes = 0;
-    const auto& ret = bfs_walker(
-        anchor_node, [&](const ptn_node_t& ptn_node) -> adt::Result<adt::Ok> {
-          ADT_CHECK(ctx->HasObjNode(ptn_node)) << adt::errors::MismatchError{
-              "IsGraphMatched: ptn_node not matched."};
-          ADT_LET_CONST_REF(obj_nodes, ctx->GetObjNodes(ptn_node));
-          ADT_CHECK(obj_nodes.size() == 1) << adt::errors::MismatchError{
-              "IsGraphMatched: more than 1 obj_nodes matched to one ptn_node."};
-          ++num_ptn_nodes;
-          return adt::Ok{};
-        });
+  adt::Result<bool> IsGraphMatched(
+      const GraphMatchCtx<bg_node_t, sg_node_t>& ctx,
+      const sg_node_t& anchor_node) {
+    adt::BfsWalker<sg_node_t> bfs_walker = GetSmallGraphBfsWalker();
+    std::size_t num_sg_nodes = 0;
+    auto AccNumSgNodes = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
+      ADT_CHECK(ctx->HasObjNode(sg_node))
+          << adt::errors::MismatchError{"IsGraphMatched: sg_node not matched."};
+      ADT_LET_CONST_REF(bg_nodes, ctx->GetObjNodes(sg_node));
+      ADT_CHECK(bg_nodes.size() == 1) << adt::errors::MismatchError{
+          "IsGraphMatched: more than 1 bg_nodes matched to one sg_node."};
+      ++num_sg_nodes;
+      return adt::Ok{};
+    };
+    const auto& ret = bfs_walker(anchor_node, AccNumSgNodes);
     if (ret.HasError()) {
       ADT_CHECK(ret.GetError().template Has<adt::errors::MismatchError>())
           << ret.GetError();
       return false;
     }
-    return num_ptn_nodes == ctx->num_matched_obj_nodes();
+    return num_sg_nodes == ctx->num_matched_bg_nodes();
   }
 
-  adt::BfsWalker<ptn_node_t> GetPtnBfsWalker() {
-    const auto& IgnoredPtnFunc = this->IgnoredPtn;
+  adt::BfsWalker<sg_node_t> GetSmallGraphBfsWalker() {
+    auto small_graph = this->sg_descriptor_;
     const auto& ForEachNext =
-        [IgnoredPtnFunc](const ptn_node_t& node,
-                         const auto& VisitNext) -> adt::Result<adt::Ok> {
-      auto DoEach = [&](const ptn_node_t& next) -> adt::Result<adt::Ok> {
-        ADT_LET_CONST_REF(next_obj, next.Get());
-        ADT_LET_CONST_REF(is_ignored, IgnoredPtnFunc(next_obj));
+        [small_graph](const sg_node_t& node,
+                      const auto& VisitNext) -> adt::Result<adt::Ok> {
+      auto DoEach = [&](const sg_node_t& next) -> adt::Result<adt::Ok> {
+        ADT_LET_CONST_REF(is_ignored, small_graph.IgnoredNode(next));
         if (is_ignored) {
           return adt::Ok{};
         }
         return VisitNext(next);
       };
-      ADT_LET_CONST_REF(downstream_nodes, node.DownstreamNodes());
-      ADT_RETURN_IF_ERR(downstream_nodes.VisitNodes(DoEach));
-      ADT_LET_CONST_REF(upstream_nodes, node.UpstreamNodes());
-      ADT_RETURN_IF_ERR(upstream_nodes.VisitNodes(DoEach));
+      ADT_RETURN_IF_ERR(small_graph.VisitDownstreamNodes(node, DoEach));
+      ADT_RETURN_IF_ERR(small_graph.VisitUpstreamNodes(node, DoEach));
       return adt::Ok{};
     };
-    return adt::BfsWalker<ptn_node_t>(ForEachNext);
+    return adt::BfsWalker<sg_node_t>(ForEachNext);
   }
 
-  adt::TopoWalker<ptn_node_t> GetPtnTopoWalker() {
-    const auto& IgnoredPtnFunc = this->IgnoredPtn;
+  adt::TopoWalker<sg_node_t> GetSmallGraphTopoWalker() {
+    auto small_graph = this->sg_descriptor_;
     const auto& ForEachPrev =
-        [IgnoredPtnFunc](const ptn_node_t& node,
-                         const auto& VisitNext) -> adt::Result<adt::Ok> {
-      auto DoEach = [&](const ptn_node_t& next) -> adt::Result<adt::Ok> {
-        ADT_LET_CONST_REF(next_obj, next.Get());
-        ADT_LET_CONST_REF(is_ignored, IgnoredPtnFunc(next_obj));
+        [small_graph](const sg_node_t& node,
+                      const auto& VisitPrev) -> adt::Result<adt::Ok> {
+      auto DoEach = [&](const sg_node_t& prev) -> adt::Result<adt::Ok> {
+        ADT_LET_CONST_REF(is_ignored, small_graph.IgnoredNode(prev));
         if (is_ignored) {
           return adt::Ok{};
         }
-        return VisitNext(next);
+        return VisitPrev(prev);
       };
-      ADT_LET_CONST_REF(upstream_nodes, node.UpstreamNodes());
-      ADT_RETURN_IF_ERR(upstream_nodes.VisitNodes(DoEach));
-      return adt::Ok{};
+      return small_graph.VisitUpstreamNodes(node, DoEach);
     };
     const auto& ForEachNext =
-        [IgnoredPtnFunc](const ptn_node_t& node,
-                         const auto& VisitNext) -> adt::Result<adt::Ok> {
-      auto DoEach = [&](const ptn_node_t& next) -> adt::Result<adt::Ok> {
-        ADT_LET_CONST_REF(next_obj, next.Get());
-        ADT_LET_CONST_REF(is_ignored, IgnoredPtnFunc(next_obj));
+        [small_graph](const sg_node_t& node,
+                      const auto& VisitNext) -> adt::Result<adt::Ok> {
+      auto DoEach = [&](const sg_node_t& next) -> adt::Result<adt::Ok> {
+        ADT_LET_CONST_REF(is_ignored, small_graph.IgnoredNode(next));
         if (is_ignored) {
           return adt::Ok{};
         }
         return VisitNext(next);
       };
-      ADT_LET_CONST_REF(downstream_nodes, node.DownstreamNodes());
-      ADT_RETURN_IF_ERR(downstream_nodes.VisitNodes(DoEach));
-      return adt::Ok{};
+      return small_graph.VisitDownstreamNodes(node, DoEach);
     };
-    return adt::TopoWalker<ptn_node_t>(ForEachPrev, ForEachNext);
+    return adt::TopoWalker<sg_node_t>(ForEachPrev, ForEachNext);
   }
 
  private:
-  adt::Result<GraphMatchCtx<ObjT, PtnT>> MakeGraphMatchCtxFromAnchor(
-      const obj_node_t& obj_node, const ptn_node_t& anchor_node) {
-    GraphMatchCtx<ObjT, PtnT> match_ctx{};
-    const auto& ptn_bfs_walker = GetPtnBfsWalker();
-    const auto& walker_ret = ptn_bfs_walker(
-        anchor_node, [&](const ptn_node_t& ptn_node) -> adt::Result<adt::Ok> {
-          if (ptn_node == anchor_node) {
-            SmallSet<obj_node_t> obj_nodes;
-            obj_nodes.insert(obj_node);
-            ADT_RETURN_IF_ERR(match_ctx->InitObjNodes(anchor_node, obj_nodes));
-          } else {
-            ADT_RETURN_IF_ERR(GraphMatchCtxInitNode(&*match_ctx, ptn_node));
-          }
-          return adt::Ok{};
-        });
-    ADT_RETURN_IF_ERR(walker_ret);
-    return match_ctx;
-  }
-
-  adt::Result<bool> UpdateAllByConnections(GraphMatchCtxImpl<ObjT, PtnT>* ctx,
-                                           const ptn_node_t& anchor_node) {
-    const auto& ptn_bfs_walker = GetPtnBfsWalker();
-    bool updated = false;
-    ADT_RETURN_IF_ERR(ptn_bfs_walker(
-        anchor_node, [&](const ptn_node_t& ptn_node) -> adt::Result<adt::Ok> {
-          ADT_LET_CONST_REF(current_updated,
-                            UpdateByConnections(ctx, ptn_node));
-          updated = updated || current_updated;
-          return adt::Ok{};
-        }));
-    return updated;
-  }
-
-  adt::Result<bool> UpdateByConnections(GraphMatchCtxImpl<ObjT, PtnT>* ctx,
-                                        const ptn_node_t& ptn_node) {
-    ADT_LET_CONST_REF(obj_nodes_ptr, ctx->GetObjNodes(ptn_node));
-    const size_t old_num_obj_nodes = obj_nodes_ptr->size();
-    auto Update = [&](const ptn_node_t& node,
-                      tIsUpstream<bool> is_upstream) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(
-          obj_nodes,
-          GetMatchedObjNodesFromConnected(*ctx, ptn_node, node, is_upstream));
-      ADT_RETURN_IF_ERR(ctx->UpdateObjNodes(ptn_node, obj_nodes));
-      return adt::Ok{};
-    };
-    ADT_RETURN_IF_ERR(ForEachInitedUpstream(*ctx, ptn_node, Update));
-    ADT_RETURN_IF_ERR(ForEachInitedDownstream(*ctx, ptn_node, Update));
-    return old_num_obj_nodes != obj_nodes_ptr->size();
-  }
-
-  adt::Result<adt::Ok> GraphMatchCtxInitNode(GraphMatchCtxImpl<ObjT, PtnT>* ctx,
-                                             const ptn_node_t& ptn_node) {
-    ADT_CHECK(!ctx->HasObjNode(ptn_node));
-    bool inited = false;
-    auto InitOrUpdate =
-        [&](const ptn_node_t& node,
-            tIsUpstream<bool> is_upstream) -> adt::Result<adt::Ok> {
-      if (!inited) {
-        ADT_LET_CONST_REF(
-            obj_nodes,
-            GetMatchedObjNodesFromConnected(*ctx, ptn_node, node, is_upstream));
-        ADT_RETURN_IF_ERR(ctx->InitObjNodes(ptn_node, obj_nodes));
-        inited = (obj_nodes.size() > 0);
+  adt::Result<GraphMatchCtx<bg_node_t, sg_node_t>> MakeGraphMatchCtxFromAnchor(
+      const bg_node_t& bg_node, const sg_node_t& anchor_node) {
+    GraphMatchCtx<bg_node_t, sg_node_t> match_ctx{};
+    const auto& ptn_bfs_walker = GetSmallGraphBfsWalker();
+    auto InitMatchCtx = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
+      if (sg_node == anchor_node) {
+        SmallSet<bg_node_t> bg_nodes;
+        bg_nodes.insert(bg_node);
+        ADT_RETURN_IF_ERR(match_ctx->InitObjNodes(anchor_node, bg_nodes));
       } else {
-        ADT_LET_CONST_REF(
-            obj_nodes,
-            GetMatchedObjNodesFromConnected(*ctx, ptn_node, node, is_upstream));
-        ADT_RETURN_IF_ERR(ctx->UpdateObjNodes(ptn_node, obj_nodes));
+        ADT_RETURN_IF_ERR(GraphMatchCtxInitNode(&*match_ctx, sg_node));
       }
       return adt::Ok{};
     };
-    ADT_RETURN_IF_ERR(ForEachInitedUpstream(*ctx, ptn_node, InitOrUpdate));
-    ADT_RETURN_IF_ERR(ForEachInitedDownstream(*ctx, ptn_node, InitOrUpdate));
+    ADT_RETURN_IF_ERR(ptn_bfs_walker(anchor_node, InitMatchCtx));
+    return match_ctx;
+  }
+
+  adt::Result<bool> UpdateAllByConnections(
+      GraphMatchCtxImpl<bg_node_t, sg_node_t>* ctx,
+      const sg_node_t& anchor_node) {
+    const auto& ptn_bfs_walker = GetSmallGraphBfsWalker();
+    bool updated = false;
+    auto Update = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(current_updated, UpdateByConnections(ctx, sg_node));
+      updated = updated || current_updated;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(ptn_bfs_walker(anchor_node, Update));
+    return updated;
+  }
+
+  adt::Result<bool> UpdateByConnections(
+      GraphMatchCtxImpl<bg_node_t, sg_node_t>* ctx, const sg_node_t& sg_node) {
+    ADT_LET_CONST_REF(bg_nodes_ptr, ctx->GetObjNodes(sg_node));
+    const size_t old_num_bg_nodes = bg_nodes_ptr->size();
+    auto Update = [&](const sg_node_t& node,
+                      tIsUpstream<bool> is_upstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(
+          bg_nodes,
+          GetMatchedObjNodesFromConnected(*ctx, sg_node, node, is_upstream));
+      ADT_RETURN_IF_ERR(ctx->UpdateObjNodes(sg_node, bg_nodes));
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(ForEachInitedUpstream(*ctx, sg_node, Update));
+    ADT_RETURN_IF_ERR(ForEachInitedDownstream(*ctx, sg_node, Update));
+    return old_num_bg_nodes != bg_nodes_ptr->size();
+  }
+
+  adt::Result<adt::Ok> GraphMatchCtxInitNode(
+      GraphMatchCtxImpl<bg_node_t, sg_node_t>* ctx, const sg_node_t& sg_node) {
+    ADT_CHECK(!ctx->HasObjNode(sg_node));
+    bool inited = false;
+    auto InitOrUpdate =
+        [&](const sg_node_t& node,
+            tIsUpstream<bool> is_upstream) -> adt::Result<adt::Ok> {
+      if (!inited) {
+        ADT_LET_CONST_REF(
+            bg_nodes,
+            GetMatchedObjNodesFromConnected(*ctx, sg_node, node, is_upstream));
+        ADT_RETURN_IF_ERR(ctx->InitObjNodes(sg_node, bg_nodes));
+        inited = (bg_nodes.size() > 0);
+      } else {
+        ADT_LET_CONST_REF(
+            bg_nodes,
+            GetMatchedObjNodesFromConnected(*ctx, sg_node, node, is_upstream));
+        ADT_RETURN_IF_ERR(ctx->UpdateObjNodes(sg_node, bg_nodes));
+      }
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(ForEachInitedUpstream(*ctx, sg_node, InitOrUpdate));
+    ADT_RETURN_IF_ERR(ForEachInitedDownstream(*ctx, sg_node, InitOrUpdate));
     ADT_CHECK(inited) << adt::errors::MismatchError{
-        "ptn_node not successfully inited."};
+        "sg_node not successfully inited."};
     return adt::Ok{};
   }
 
-  adt::Result<SmallSet<obj_node_t>> GetMatchedObjNodesFromConnected(
-      const GraphMatchCtxImpl<ObjT, PtnT>& ctx,
-      const ptn_node_t& ptn_node,
-      const ptn_node_t& from_node,
+  adt::Result<SmallSet<bg_node_t>> GetMatchedObjNodesFromConnected(
+      const GraphMatchCtxImpl<bg_node_t, sg_node_t>& ctx,
+      const sg_node_t& sg_node,
+      const sg_node_t& from_node,
       tIsUpstream<bool> is_from_node_upstream) {
-    SmallSet<obj_node_t> obj_nodes;
+    SmallSet<bg_node_t> bg_nodes;
     const auto& DoEachMatched =
-        [&](const obj_node_t& obj_node) -> adt::Result<adt::Ok> {
-      obj_nodes.insert(obj_node);
+        [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
+      bg_nodes.insert(bg_node);
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitMatchedObjNodesFromConnected(
-        ctx, ptn_node, from_node, is_from_node_upstream, DoEachMatched));
-    return obj_nodes;
+        ctx, sg_node, from_node, is_from_node_upstream, DoEachMatched));
+    return bg_nodes;
   }
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitMatchedObjNodesFromConnected(
-      const GraphMatchCtxImpl<ObjT, PtnT>& ctx,
-      const ptn_node_t& ptn_node,
-      const ptn_node_t& from_node,
+      const GraphMatchCtxImpl<bg_node_t, sg_node_t>& ctx,
+      const sg_node_t& sg_node,
+      const sg_node_t& from_node,
       tIsUpstream<bool> is_from_node_upstream,
       const DoEachT& DoEach) {
+    ADT_LET_CONST_REF(sg_node_cstr, sg_descriptor_.GetNodeConstraint(sg_node));
     const auto& VisitObjNode =
-        [&](const obj_node_t& obj_node) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(matched, ObjNodeMatch(obj_node, ptn_node));
+        [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(matched, bg_descriptor_.Satisfy(bg_node, sg_node_cstr));
       if (!matched) {
         return adt::Ok{};
       }
-      const auto& opt_matched_ptn_node = ctx.GetMatchedPtnNode(obj_node);
-      if (!opt_matched_ptn_node.has_value() ||
-          opt_matched_ptn_node.value() == ptn_node) {
-        return DoEach(obj_node);
+      const auto& opt_matched_sg_node = ctx.GetMatchedPtnNode(bg_node);
+      if (!opt_matched_sg_node.has_value() ||
+          opt_matched_sg_node.value() == sg_node) {
+        return DoEach(bg_node);
       }
       return adt::Ok{};
     };
-    ADT_LET_CONST_REF(from_obj_nodes_ptr, ctx.GetObjNodes(from_node));
-    for (const auto& from_obj_node : *from_obj_nodes_ptr) {
+    ADT_LET_CONST_REF(from_bg_nodes_ptr, ctx.GetObjNodes(from_node));
+    for (const bg_node_t& from_bg_node : *from_bg_nodes_ptr) {
       if (is_from_node_upstream.value()) {
-        ADT_LET_CONST_REF(downstream_obj_nodes,
-                          from_obj_node.DownstreamNodes());
-        ADT_RETURN_IF_ERR(downstream_obj_nodes.VisitNodes(VisitObjNode));
+        ADT_RETURN_IF_ERR(
+            bg_descriptor_.VisitDownstreamNodes(from_bg_node, VisitObjNode));
       } else {
-        ADT_LET_CONST_REF(upstream_obj_nodes, from_obj_node.UpstreamNodes());
-        ADT_RETURN_IF_ERR(upstream_obj_nodes.VisitNodes(VisitObjNode));
+        ADT_RETURN_IF_ERR(
+            bg_descriptor_.VisitUpstreamNodes(from_bg_node, VisitObjNode));
       }
     }
     return adt::Ok{};
@@ -348,46 +354,34 @@ struct GraphMatcher {
 
   template <typename DoEachT>
   adt::Result<adt::Ok> ForEachInitedUpstream(
-      const GraphMatchCtxImpl<ObjT, PtnT>& ctx,
-      const ptn_node_t& ptn_node,
+      const GraphMatchCtxImpl<bg_node_t, sg_node_t>& ctx,
+      const sg_node_t& sg_node,
       const DoEachT& DoEach) {
-    ADT_LET_CONST_REF(upstreams, ptn_node.UpstreamNodes());
-    return upstreams.VisitNodes([&](const auto& src) -> adt::Result<adt::Ok> {
+    auto Visit = [&](const sg_node_t& src) -> adt::Result<adt::Ok> {
       if (ctx.HasObjNode(src)) {
         return DoEach(src, tIsUpstream<bool>{true});
       }
       return adt::Ok{};
-    });
+    };
+    return sg_descriptor_.VisitUpstreamNodes(sg_node, Visit);
   }
 
   template <typename DoEachT>
   adt::Result<adt::Ok> ForEachInitedDownstream(
-      const GraphMatchCtxImpl<ObjT, PtnT>& ctx,
-      const ptn_node_t& ptn_node,
+      const GraphMatchCtxImpl<bg_node_t, sg_node_t>& ctx,
+      const sg_node_t& sg_node,
       const DoEachT& DoEach) {
-    ADT_LET_CONST_REF(downstreams, ptn_node.DownstreamNodes());
-    return downstreams.VisitNodes([&](const auto& dst) -> adt::Result<adt::Ok> {
+    auto Visit = [&](const sg_node_t& dst) -> adt::Result<adt::Ok> {
       if (ctx.HasObjNode(dst)) {
         return DoEach(dst, tIsUpstream<bool>{false});
       }
       return adt::Ok{};
-    });
+    };
+    return sg_descriptor_.VisitDownstreamNodes(sg_node, Visit);
   }
 
-  adt::Result<bool> IgnoredPtnNode(const ptn_node_t& ptn_node) {
-    ADT_LET_CONST_REF(ptn, ptn_node.Get());
-    return IgnoredPtn(ptn);
-  }
-
-  adt::Result<bool> ObjNodeMatch(const obj_node_t& obj_node,
-                                 const ptn_node_t& ptn_node) {
-    ADT_LET_CONST_REF(obj, obj_node.Get());
-    ADT_LET_CONST_REF(ptn, ptn_node.Get());
-    return ObjMatch(obj, ptn);
-  }
-
-  std::function<adt::Result<bool>(const PtnT&)> IgnoredPtn;
-  std::function<adt::Result<bool>(const ObjT&, const PtnT&)> ObjMatch;
+  GraphDescriptor<bg_node_t> bg_descriptor_;
+  GraphDescriptor<sg_node_t> sg_descriptor_;
 };
 
 }  // namespace ap::graph

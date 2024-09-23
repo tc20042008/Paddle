@@ -16,6 +16,7 @@
 
 #include "ap/adt/adt.h"
 #include "ap/graph/node.h"
+#include "ap/graph/node_cstr.h"
 
 namespace ap::drr {
 
@@ -26,6 +27,10 @@ struct PackedIrOpResultImpl {
 
   bool operator==(const PackedIrOpResultImpl& other) const {
     return this->node == other.node && this->local_uid == other.local_uid;
+  }
+
+  graph::PackedIrOpResultCstr node_cstr() const {
+    return graph::PackedIrOpResultCstr{};
   }
 };
 

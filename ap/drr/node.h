@@ -22,6 +22,7 @@
 #include "ap/drr/packed_ir_op_operand.h"
 #include "ap/drr/packed_ir_op_result.h"
 #include "ap/drr/packed_ir_value.h"
+#include "ap/graph/node_cstr.h"
 
 namespace ap::drr {
 
@@ -44,6 +45,11 @@ struct Node : public NodeImpl<ValueT, Node<ValueT>> {
     return Match([](const auto& impl) -> const graph::Node<Node<ValueT>>& {
       return impl->node;
     });
+  }
+
+  graph::NodeCstr node_cstr() const {
+    return Match(
+        [](const auto& impl) -> graph::NodeCstr { return impl->node_cstr(); });
   }
 };
 

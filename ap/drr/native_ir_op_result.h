@@ -16,6 +16,7 @@
 
 #include "ap/adt/adt.h"
 #include "ap/graph/node.h"
+#include "ap/graph/node_cstr.h"
 
 namespace ap::drr {
 
@@ -26,6 +27,10 @@ struct NativeIrOpResultImpl {
 
   bool operator==(const NativeIrOpResultImpl& other) const {
     return this->node == other.name && this->index == other.index;
+  }
+
+  graph::NativeIrOpResultCstr node_cstr() const {
+    return graph::NativeIrOpResultCstr{index};
   }
 };
 

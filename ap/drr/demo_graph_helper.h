@@ -15,7 +15,8 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/drr/demo_graph_match_util.h"
+#include "ap/drr/drr_graph_descriptor.h"
+#include "ap/drr/drr_node_descriptor.h"
 #include "ap/drr/node.h"
 #include "ap/graph/graph_matcher.h"
 #include "ap/graph/node_arena.h"
@@ -24,15 +25,19 @@ namespace ap::drr {
 
 template <typename ValueT>
 struct DemoGraphHelper {
-  using NodeT = drr::Node<ValueT>;
+  using DrrNodeT = drr::Node<ValueT>;
+  using NodeT = graph::Node<DrrNodeT>;
+  using GraphDescriptor = graph::GraphDescriptor<NodeT>;
 
   adt::Result<bool> IsGraphMatched(
-      const graph::NodeArena<NodeT>& obj_node_area,
-      const graph::NodeArena<NodeT>& ptn_node_area) {
-    graph::GraphMatcher<NodeT, NodeT> graph_matcher{
-        &IsIgnoredPackedNode<ValueT>, &IsObjMatch<ValueT>};
-    const auto& opt_graph_ctx =
-        graph_matcher.Match(obj_node_area, ptn_node_area);
+      const graph::NodeArena<DrrNodeT>& obj_node_area,
+      const graph::NodeArena<DrrNodeT>& ptn_node_area) {
+    GraphDescriptor big_graph{
+        DrrGraphDescriptor<ValueT>{obj_node_area.shared_from_this()}};
+    GraphDescriptor small_graph{
+        DrrGraphDescriptor<ValueT>{ptn_node_area.shared_from_this()}};
+    graph::GraphMatcher<NodeT, NodeT> graph_matcher(big_graph, small_graph);
+    const auto& opt_graph_ctx = graph_matcher.Match();
     if (opt_graph_ctx.HasError()) {
       ADT_CHECK(
           opt_graph_ctx.GetError().template Has<adt::errors::MismatchError>())

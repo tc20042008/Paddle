@@ -18,94 +18,92 @@
 #include <unordered_map>
 #include "ap/graph/adt.h"
 #include "ap/graph/node.h"
+#include "ap/graph/node_descriptor.h"
 
 namespace ap::graph {
 
-template <typename ObjectGraphNodeT, typename PatternGraphNodeT>
+template <typename bg_node_t /*big graph node type*/,
+          typename sg_node_t /*small graph node type*/>
 struct GraphMatchCtxImpl {
   GraphMatchCtxImpl() {}
   GraphMatchCtxImpl(const GraphMatchCtxImpl&) = default;
   GraphMatchCtxImpl(GraphMatchCtxImpl&&) = default;
 
-  using obj_node_t = graph::Node<ObjectGraphNodeT>;
-  using ptn_node_t = graph::Node<PatternGraphNodeT>;
-
-  bool HasObjNode(const ptn_node_t& node) const {
-    return this->ptn_node2obj_nodes_.count(node) > 0;
+  bool HasObjNode(const sg_node_t& node) const {
+    return this->sg_node2bg_nodes_.count(node) > 0;
   }
 
-  adt::Result<const SmallSet<obj_node_t>*> GetObjNodes(
-      const ptn_node_t& node) const {
-    const auto& iter = this->ptn_node2obj_nodes_.find(node);
-    if (iter == this->ptn_node2obj_nodes_.end()) {
+  adt::Result<const SmallSet<bg_node_t>*> GetObjNodes(
+      const sg_node_t& node) const {
+    const auto& iter = this->sg_node2bg_nodes_.find(node);
+    if (iter == this->sg_node2bg_nodes_.end()) {
       return adt::errors::KeyError{std::string() + "no node_id " +
-                                   std::to_string(node.node_id().value()) +
+                                   NodeDescriptor<bg_node_t>{}.DebugId(node) +
                                    " found."};
     }
     return &iter->second;
   }
 
-  std::optional<ptn_node_t> GetMatchedPtnNode(
-      const obj_node_t& obj_node) const {
-    const auto& iter = matched_obj_node2ptn_node_.find(obj_node);
-    if (iter == matched_obj_node2ptn_node_.end()) {
+  std::optional<sg_node_t> GetMatchedPtnNode(const bg_node_t& bg_node) const {
+    const auto& iter = matched_bg_node2sg_node_.find(bg_node);
+    if (iter == matched_bg_node2sg_node_.end()) {
       return std::nullopt;
     }
     return iter->second;
   }
 
-  adt::Result<adt::Ok> InitObjNodes(const ptn_node_t& ptn_node,
-                                    const SmallSet<obj_node_t>& val) {
-    VLOG(10) << "InitObjNodes. ptn_node: " << ptn_node.node_id().value()
+  adt::Result<adt::Ok> InitObjNodes(const sg_node_t& sg_node,
+                                    const SmallSet<bg_node_t>& val) {
+    VLOG(10) << "InitObjNodes. sg_node: "
+             << NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
              << ", val:" << [&] {
                   std::ostringstream ss;
                   for (const auto& val_node : val) {
-                    ss << val_node.node_id().value() << " ";
+                    ss << NodeDescriptor<bg_node_t>{}.DebugId(val_node) << " ";
                   }
                   return ss.str();
                 }();
-    auto* ptr = &this->ptn_node2obj_nodes_[ptn_node];
+    auto* ptr = &this->sg_node2bg_nodes_[sg_node];
     ADT_CHECK(ptr->empty()) << adt::errors::KeyError{
-        "InitObjNodes failed. 'ptn_node' has been matched to existed "
-        "obj_nodes"};
+        "InitObjNodes failed. 'sg_node' has been matched to existed "
+        "bg_nodes"};
     ADT_CHECK(!val.empty()) << adt::errors::MismatchError{
-        "GraphMatchCtxImpl::InitObjNodes: ptn_node should not be matched to "
+        "GraphMatchCtxImpl::InitObjNodes: sg_node should not be matched to "
         "empty."};
-    for (const auto& obj_node : val) {
-      ADT_CHECK(!GetMatchedPtnNode(obj_node).has_value())
+    for (const auto& bg_node : val) {
+      ADT_CHECK(!GetMatchedPtnNode(bg_node).has_value())
           << adt::errors::KeyError{
                  "GraphMatchCtxImpl::InitObjNodes failed. there is matched "
-                 "obj_node in 'val'"};
+                 "bg_node in 'val'"};
     }
     *ptr = val;
     if (ptr->size() == 1) {
-      ADT_CHECK(
-          matched_obj_node2ptn_node_.emplace(*val.begin(), ptn_node).second);
+      ADT_CHECK(matched_bg_node2sg_node_.emplace(*val.begin(), sg_node).second);
     }
     return adt::Ok{};
   }
 
-  adt::Result<adt::Ok> UpdateObjNodes(const ptn_node_t& ptn_node,
-                                      const SmallSet<obj_node_t>& val) {
-    for (const auto& obj_node : val) {
-      const auto& opt_matched = GetMatchedPtnNode(obj_node);
-      ADT_CHECK(!opt_matched.has_value() || opt_matched.value() == ptn_node)
+  adt::Result<adt::Ok> UpdateObjNodes(const sg_node_t& sg_node,
+                                      const SmallSet<bg_node_t>& val) {
+    for (const auto& bg_node : val) {
+      const auto& opt_matched = GetMatchedPtnNode(bg_node);
+      ADT_CHECK(!opt_matched.has_value() || opt_matched.value() == sg_node)
           << adt::errors::KeyError{
-                 "UpdateObjNodes failed. there is matched obj_node in 'val'"};
+                 "UpdateObjNodes failed. there is matched bg_node in 'val'"};
     }
-    SmallSet<obj_node_t> intersection;
-    auto* ptr = &this->ptn_node2obj_nodes_[ptn_node];
+    SmallSet<bg_node_t> intersection;
+    auto* ptr = &this->sg_node2bg_nodes_[sg_node];
     for (const auto& lhs : *ptr) {
       if (val.count(lhs) > 0) {
         intersection.insert(lhs);
       }
     }
-    VLOG(10) << "UpdateObjNodes. ptn_node: " << ptn_node.node_id().value()
-             << ", old_val:" <<
+    VLOG(10) << "UpdateObjNodes. sg_node: "
+             << NodeDescriptor<sg_node_t>{}.DebugId(sg_node) << ", old_val:" <<
         [&] {
           std::ostringstream ss;
           for (const auto& val_node : *ptr) {
-            ss << val_node.node_id().value() << " ";
+            ss << NodeDescriptor<bg_node_t>{}.DebugId(val_node) << " ";
           }
           return ss.str();
         }()
@@ -113,14 +111,14 @@ struct GraphMatchCtxImpl {
         [&] {
           std::ostringstream ss;
           for (const auto& val_node : val) {
-            ss << val_node.node_id().value() << " ";
+            ss << NodeDescriptor<bg_node_t>{}.DebugId(val_node) << " ";
           }
           return ss.str();
         }()
              << ", intersection: " << [&] {
                   std::ostringstream ss;
                   for (const auto& val_node : intersection) {
-                    ss << val_node.node_id().value() << " ";
+                    ss << NodeDescriptor<bg_node_t>{}.DebugId(val_node) << " ";
                   }
                   return ss.str();
                 }();
@@ -129,8 +127,8 @@ struct GraphMatchCtxImpl {
         "GraphMatchCtxImpl::UpdateObjNodes: intersection is empty."};
     if (ptr->size() == 1) {
       const auto& iter =
-          matched_obj_node2ptn_node_.emplace(*ptr->begin(), ptn_node).first;
-      ADT_CHECK(iter->second == ptn_node);
+          matched_bg_node2sg_node_.emplace(*ptr->begin(), sg_node).first;
+      ADT_CHECK(iter->second == sg_node);
     }
     return adt::Ok{};
   }
@@ -139,17 +137,17 @@ struct GraphMatchCtxImpl {
     return this == &other;
   }
 
-  std::size_t num_matched_obj_nodes() const {
-    return matched_obj_node2ptn_node_.size();
+  std::size_t num_matched_bg_nodes() const {
+    return matched_bg_node2sg_node_.size();
   }
 
  private:
-  std::unordered_map<ptn_node_t, SmallSet<obj_node_t>> ptn_node2obj_nodes_;
-  std::unordered_map<obj_node_t, ptn_node_t> matched_obj_node2ptn_node_;
+  std::unordered_map<sg_node_t, SmallSet<bg_node_t>> sg_node2bg_nodes_;
+  std::unordered_map<bg_node_t, sg_node_t> matched_bg_node2sg_node_;
 };
 
-template <typename ObjectGraphNodeT, typename PatternGraphNodeT>
-DEFINE_ADT_RC(GraphMatchCtx,
-              GraphMatchCtxImpl<ObjectGraphNodeT, PatternGraphNodeT>);
+template <typename bg_node_t /*big graph node type*/,
+          typename sg_node_t /*small graph node type*/>
+DEFINE_ADT_RC(GraphMatchCtx, GraphMatchCtxImpl<bg_node_t, sg_node_t>);
 
 }  // namespace ap::graph

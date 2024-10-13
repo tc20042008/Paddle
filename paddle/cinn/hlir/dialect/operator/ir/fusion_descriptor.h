@@ -15,16 +15,16 @@
 #pragma once
 
 #include "ap/axpr/core_expr.h"
-#include "ap/axpr/index_closure.h"
-#include "ap/axpr/index_expr.h"
-#include "ap/axpr/op_index_tuple_expr_signature.h"
+#include "ap/index_expr/index_closure.h"
+#include "ap/index_expr/index_expr.h"
+#include "ap/index_expr/op_index_tuple_expr_signature.h"
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/op_result.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
-namespace ap {
+namespace ap::paddle {
 
 namespace adt = ::cinn::adt;
 
@@ -42,7 +42,7 @@ class FusionOp;
 
 }
 
-namespace ap {
+namespace ap::paddle {
 
 using OpInArg = pir::OpOperand;
 
@@ -64,20 +64,20 @@ struct OpOutArg {
   static std::optional<OpOutArg> MakeFromValue(pir::Value);
 };
 
-}  // namespace ap
+}  // namespace ap::paddle
 
 namespace std {
 
 template <>
-struct hash<ap::OpOutArg> {
-  std::size_t operator()(const ap::OpOutArg& out_arg) const {
+struct hash<ap::paddle::OpOutArg> {
+  std::size_t operator()(const ap::paddle::OpOutArg& out_arg) const {
     return out_arg.GetHashValue();
   }
 };
 
 }  // namespace std
 
-namespace ap {
+namespace ap::paddle {
 
 using OpArgImpl = std::variant<OpInArg, OpOutArg>;
 
@@ -92,24 +92,24 @@ struct OpArg : public OpArgImpl {
   }
 };
 
-}  // namespace ap
+}  // namespace ap::paddle
 
 namespace std {
 
 template <>
-struct hash<ap::OpArg> {
-  size_t operator()(const ap::OpArg& op_arg) const {
+struct hash<ap::paddle::OpArg> {
+  size_t operator()(const ap::paddle::OpArg& op_arg) const {
     return op_arg.GetHashValue();
   }
 };
 
 }  // namespace std
 
-namespace ap {
+namespace ap::paddle {
 
 template <typename T>
 struct OpArgToImpl {
-  std::unordered_map<ap::OpArg, const T> data;
+  std::unordered_map<ap::paddle::OpArg, const T> data;
 
   bool operator==(const OpArgToImpl& other) const {
     return other.data == this->data;
@@ -133,12 +133,13 @@ struct OpOrArg : public OpOrArgImpl {
 };
 
 struct OpArg2OpIndexesExprSignature {
-  OpArgTo<ap::axpr::OpIndexTupleExprSignature> in_arg2signature;
-  OpArgTo<ap::axpr::OpIndexTupleExprSignature> out_arg2signature;
+  OpArgTo<ap::index_expr::OpIndexTupleExprSignature> in_arg2signature;
+  OpArgTo<ap::index_expr::OpIndexTupleExprSignature> out_arg2signature;
 };
 
 struct Op2Anchor2IndexesExprSignatureImpl {
-  std::unordered_map<pir::Operation*, OpArg2OpIndexesExprSignature>
+  using AnchorOpArg2OpIndexesExprSignature = OpArg2OpIndexesExprSignature;
+  std::unordered_map<pir::Operation*, AnchorOpArg2OpIndexesExprSignature>
       op2sigatures;
 
   bool operator==(const Op2Anchor2IndexesExprSignatureImpl& other) const {
@@ -153,7 +154,7 @@ DEFINE_ADT_RC(Op2Anchor2IndexesExprSignature,
 struct TrivialFusionDescriptorImpl {
   Op2Anchor2IndexesExprSignature op2anchor2indexes_expr_signature;
   // the input indexes_expr of YieldOp is loop indexes_expr.
-  OpArgTo<ap::axpr::index_expr::RecordableIndexClosure>
+  OpArgTo<ap::index_expr::RecordableIndexClosure>
       yield_op_arg2custom_index_lambda;
 
   bool operator==(const TrivialFusionDescriptorImpl& other) const {
@@ -174,4 +175,4 @@ adt::Result<FusionDescriptor> GetFusionDescriptor(
     const cinn::dialect::FusionOp& op,
     pir::ShapeConstraintIRAnalysis* shape_analysis);
 
-}  // namespace ap
+}  // namespace ap::paddle

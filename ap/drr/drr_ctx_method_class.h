@@ -93,7 +93,7 @@ struct DrrCtxMethodClass {
         OpPatternCtx<ValueT, NodeT>{
             node_arena,
             std::map<std::string, IrOp<ValueT, NodeT>>{},
-        },
+            self.shared_ptr()},
         TensorPatternCtx<ValueT, NodeT>{node_arena,
                                         std::map<std::string, IrValue<NodeT>>{},
                                         self.shared_ptr()}};
@@ -123,7 +123,7 @@ struct DrrCtxMethodClass {
         OpPatternCtx<ValueT, NodeT>{
             node_arena,
             std::map<std::string, IrOp<ValueT, NodeT>>{},
-        },
+            self.shared_ptr()},
         TensorPatternCtx<ValueT, NodeT>{node_arena,
                                         std::map<std::string, IrValue<NodeT>>{},
                                         self.shared_ptr()}};
@@ -174,7 +174,7 @@ struct DrrCtxMethodClass {
         OpPatternCtx<ValueT, NodeT>{
             node_arena,
             std::map<std::string, IrOp<ValueT, NodeT>>{},
-        },
+            self.shared_ptr()},
         TensorPatternCtx<ValueT, NodeT>{node_arena,
                                         std::map<std::string, IrValue<NodeT>>{},
                                         self.shared_ptr()},

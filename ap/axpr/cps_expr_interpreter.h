@@ -30,10 +30,14 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
  public:
   using EnvMgr = EnvironmentManager<ValueT>;
   using Env = Environment<ValueT>;
-  CpsExprInterpreter() : env_mgr_(new EnvMgr()), builtin_env_() {}
   CpsExprInterpreter(const std::shared_ptr<EnvMgr>& env_mgr,
                      const Frame<ValueT>& frame)
       : env_mgr_(env_mgr), builtin_env_(env_mgr->NewInitEnv(frame)) {}
+  explicit CpsExprInterpreter(const Frame<ValueT>& frame)
+      : CpsExprInterpreter(std::make_shared<EnvMgr>(), frame) {}
+  CpsExprInterpreter()
+      : CpsExprInterpreter(std::make_shared<EnvMgr>(),
+                           Frame<ValueT>{ValueT::GetExportedTypes()}) {}
   CpsExprInterpreter(const CpsExprInterpreter&) = delete;
   CpsExprInterpreter(CpsExprInterpreter&&) = delete;
 

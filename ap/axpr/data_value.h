@@ -34,16 +34,6 @@ struct DataValue : public DataValueImpl {
         [](auto impl) -> DataType { return CppDataType<decltype(impl)>{}; });
   }
 
-  template <typename T>
-  Result<T> TryGet() const {
-    if (!Has<T>()) {
-      return adt::errors::TypeError{
-          std::string() + "DataValue::TryGet() failed. expected_type: " +
-          CppDataType<T>{}.Name() + ", actual_type: " + GetType().Name()};
-    }
-    return Get<T>();
-  }
-
   Result<DataValue> StaticCastTo(const DataType& dst_type) const {
     const auto& pattern_match = ::common::Overloaded{
         [&](auto arg_type_impl, auto cpp_value_impl) -> Result<DataValue> {

@@ -22,26 +22,26 @@ namespace ap::axpr {
 template <typename T>
 struct GetPointerTypeNameHelper;
 
-#define SPECIALIZE_GET_CPP_TYPE_NAME(cpp_type, enum_type)        \
-  template <>                                                    \
-  struct GetPointerTypeNameHelper<cpp_type*> {                   \
-    static const char* Call() { return #cpp_type "*"; }          \
-  };                                                             \
-  template <>                                                    \
-  struct GetPointerTypeNameHelper<const cpp_type*> {             \
-    static const char* Call() { return "const " #cpp_type "*"; } \
+#define SPECIALIZE_GET_CPP_TYPE_NAME(cpp_type, enum_type)           \
+  template <>                                                       \
+  struct GetPointerTypeNameHelper<cpp_type*> {                      \
+    static const char* Call() { return #cpp_type "_ptr"; }          \
+  };                                                                \
+  template <>                                                       \
+  struct GetPointerTypeNameHelper<const cpp_type*> {                \
+    static const char* Call() { return "const_" #cpp_type "_ptr"; } \
   };
 PD_FOR_EACH_DATA_TYPE(SPECIALIZE_GET_CPP_TYPE_NAME);
 #undef SPECIALIZE_GET_CPP_TYPE_NAME
 
 template <>
 struct GetPointerTypeNameHelper<void*> {
-  static const char* Call() { return "void*"; }
+  static const char* Call() { return "void_ptr"; }
 };
 
 template <>
 struct GetPointerTypeNameHelper<const void*> {
-  static const char* Call() { return "const void*"; }
+  static const char* Call() { return "const_void_ptr"; }
 };
 
 template <typename T>

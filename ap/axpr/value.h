@@ -29,15 +29,18 @@
 #include "ap/axpr/float.h"
 #include "ap/axpr/frame.h"
 #include "ap/axpr/int.h"
+#include "ap/axpr/lambda.h"
 #include "ap/axpr/list.h"
 #include "ap/axpr/method.h"
 #include "ap/axpr/nothing.h"
 #include "ap/axpr/object.h"
+#include "ap/axpr/packed_args.h"
 #include "ap/axpr/pointer_type.h"
 #include "ap/axpr/pointer_value.h"
 #include "ap/axpr/starred.h"
 #include "ap/axpr/string.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/type_util.h"
 
 namespace ap::axpr {
 
@@ -50,6 +53,9 @@ using ValueBase = std::variant<Type<Nothing,
                                     double,
                                     std::string,
                                     adt::List<ValueT>,
+                                    axpr::Object<ValueT>,
+                                    PackedArgs<ValueT>,
+                                    Lambda<CoreExpr>,
                                     Closure<ValueT>,
                                     Method<ValueT>,
                                     builtin_symbol::Symbol,
@@ -64,6 +70,9 @@ using ValueBase = std::variant<Type<Nothing,
                                double,
                                std::string,
                                adt::List<ValueT>,
+                               axpr::Object<ValueT>,
+                               PackedArgs<ValueT>,
+                               Lambda<CoreExpr>,
                                Closure<ValueT>,
                                Method<ValueT>,
                                builtin_symbol::Symbol,
@@ -75,5 +84,12 @@ using ValueBase = std::variant<Type<Nothing,
 
 template <typename ValueT>
 using Builtin = ValueBase<ValueT>;
+
+template <typename ValueT>
+ValueT GetType(const ValueT& value) {
+  return value.Match([](const auto& impl) -> ValueT {
+    return TypeImpl<std::decay_t<decltype(impl)>>{};
+  });
+}
 
 }  // namespace ap::axpr

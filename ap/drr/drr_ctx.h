@@ -27,6 +27,16 @@ struct DrrCtxImpl {
   std::optional<ResultPatternCtx<ValueT, NodeT>> result_pattern_ctx;
   std::optional<SourcePatternCtx<ValueT, NodeT>> demo_graph_source_pattern_ctx;
 
+  adt::Result<SourcePatternCtx<ValueT, NodeT>> GetSourcePatternCtx() const {
+    ADT_CHECK(this->source_pattern_ctx.has_value());
+    return this->source_pattern_ctx.value();
+  }
+
+  adt::Result<ResultPatternCtx<ValueT, NodeT>> GetResultPatternCtx() const {
+    ADT_CHECK(this->result_pattern_ctx.has_value());
+    return this->result_pattern_ctx.value();
+  }
+
   bool operator==(const DrrCtxImpl& other) const { return this == &other; }
 };
 

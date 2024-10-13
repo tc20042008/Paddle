@@ -14,9 +14,14 @@
 
 #pragma once
 
+#include "ap/axpr/data_type.h"
 #include "ap/axpr/pointer_type.h"
 
 namespace ap::axpr {
+
+PointerType RemoveConst(const PointerType& ptr_type);
+PointerType GetConstPointerTypeFromDataType(const DataType& data_type);
+PointerType GetMutablePointerTypeFromDataType(const DataType& data_type);
 
 namespace detail {
 
@@ -48,10 +53,33 @@ struct TypeConverter<CppPointerType<const void*>> {
 
 }  // namespace detail
 
-PointerType RemoveConst(const PointerType& ptr_type) const {
+inline PointerType RemoveConst(const PointerType& ptr_type) {
   return ptr_type.Match([](auto impl) {
     return PointerType{
         typename detail::TypeConverter<decltype(impl)>::remove_const_type{}};
+  });
+}
+
+inline PointerType GetConstPointerTypeFromDataType(const DataType& data_type) {
+  return data_type.Match([&](const auto& impl) -> PointerType {
+    using T = typename std::decay_t<decltype(impl)>::type;
+    if constexpr (std::is_same_v<T, adt::Undefined>) {
+      return CppPointerType<const void*>{};
+    } else {
+      return CppPointerType<const T*>{};
+    }
+  });
+}
+
+inline PointerType GetMutablePointerTypeFromDataType(
+    const DataType& data_type) {
+  return data_type.Match([&](const auto& impl) -> PointerType {
+    using T = typename std::decay_t<decltype(impl)>::type;
+    if constexpr (std::is_same_v<T, adt::Undefined>) {
+      return CppPointerType<void*>{};
+    } else {
+      return CppPointerType<T*>{};
+    }
   });
 }
 

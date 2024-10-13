@@ -16,7 +16,6 @@
 
 #include <map>
 #include "ap/graph/adt.h"
-#include "ap/graph/graph_match_ctx.h"
 #include "ap/graph/node.h"
 #include "ap/graph/node_cstr.h"
 #include "glog/logging.h"
@@ -29,9 +28,6 @@ struct GraphDescriptor {
   GraphDescriptor(GraphDescriptor&&) = default;
 
   template <typename DoEachT>
-  adt::Result<adt::Ok> VisitAllNodes(const DoEachT& DoEach) const;
-
-  template <typename DoEachT>
   adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT&,
                                           const DoEachT& DoEach) const;
 
@@ -42,6 +38,8 @@ struct GraphDescriptor {
   adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT&) const;
 
   adt::Result<bool> IgnoredNode(const NodeT&) const;
+
+  adt::Result<bool> IsOpNode(const NodeT&) const;
 
   adt::Result<bool> Satisfy(const NodeT&, const NodeCstr&) const;
 };

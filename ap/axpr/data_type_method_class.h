@@ -16,6 +16,7 @@
 
 #include "ap/axpr/constants.h"
 #include "ap/axpr/data_type.h"
+#include "ap/axpr/int_data_type.h"
 #include "ap/axpr/method_class.h"
 
 namespace ap::axpr {
@@ -75,22 +76,47 @@ struct DataTypeMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, DataType> {
-  using method_class = DataTypeMethodClass<ValueT>;
+struct MethodClassImpl<ValueT, DataType> : public DataTypeMethodClass<ValueT> {
+};
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
+template <typename ValueT>
+struct TypeImplDataTypeMethodClass {
+  using This = TypeImplDataTypeMethodClass;
+  using Self = TypeImpl<DataType>;
 
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
+  adt::Result<ValueT> GetAttr(const Self&, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, TryGetImpl<std::string>(attr_name_val));
+    static const std::unordered_map<std::string, DataType> map{
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                              \
+  {axpr::CppDataType<cpp_type>{}.Name(), DataType{CppDataType<cpp_type>{}}}, \
+      {axpr::CppDataType<const cpp_type>{}.Name(),                           \
+       DataType{                                                             \
+           CppDataType<cpp_type>{}}},  // it's not a typo, DataType.const_int8
+                                       // and DataType.int8 are treated
+                                       // identical.
+
+        PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
+#undef MAKE_CPP_TYPE_CASE
+
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)              \
+  {#cpp_type, DataType{CppDataType<cpp_type##_t>{}}}, \
+      {"const_" #cpp_type, DataType{CppDataType<cpp_type##_t>{}}},
+
+            AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
+#undef MAKE_INT_CPP_TYPE_CASE
+    };
+    const auto iter = map.find(attr_name);
+    if (iter != map.end()) {
+      return iter->second;
+    }
+    return adt::errors::AttributeError{
+        std::string() + "class 'DataType' has no static attribute '" +
+        attr_name + "'."};
   }
 };
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<DataType>>
-    : public EmptyMethodClass<ValueT> {};
+    : public TypeImplDataTypeMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

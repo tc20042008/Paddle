@@ -24,9 +24,13 @@
 namespace ap::drr {
 
 template <typename ValueT, typename NodeT>
+struct DrrCtxImpl;
+
+template <typename ValueT, typename NodeT>
 struct OpPatternCtxImpl {
   std::shared_ptr<graph::NodeArena<NodeT>> node_arena;
   mutable std::map<std::string, IrOp<ValueT, NodeT>> uid2ir_op;
+  std::weak_ptr<DrrCtxImpl<ValueT, NodeT>> drr_ctx;
 
   bool operator==(const OpPatternCtxImpl& other) const {
     return this == &other;

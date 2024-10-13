@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/axpr/index_closure.h"
-#include "ap/axpr/op_index_tuple_expr_signature.h"
-#include "ap/axpr/valid_index_expr_builder.h"
+#include "ap/index_expr/index_closure.h"
+#include "ap/index_expr/op_index_tuple_expr_signature.h"
+#include "ap/index_expr/valid_index_expr_builder.h"
 
-namespace ap::axpr::index_expr {
+namespace ap::index_expr {
 
 adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::operator()(
     const IndexTupleExpr& indexes_expr) const {
@@ -30,21 +30,22 @@ adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::operator()(
       ++count;
     }
   }
-  return ValueError{std::string() + "all index closure failed. tried count: " +
-                    std::to_string(count)};
+  return adt::errors::ValueError{
+      std::string() +
+      "all index closure failed. tried count: " + std::to_string(count)};
 }
 
 adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::CallLambda(
     const Lambda<CoreExpr>& lambda, const IndexTupleExpr& indexes_expr) const {
-  const std::vector<ap::axpr::index_expr::Val> args{closure_data.ctx,
-                                                    closure_data.inputs_meta,
-                                                    closure_data.outputs_meta,
-                                                    closure_data.in_vars,
-                                                    Val{indexes_expr}};
+  const std::vector<ap::index_expr::Val> args{closure_data.ctx,
+                                              closure_data.inputs_meta,
+                                              closure_data.outputs_meta,
+                                              closure_data.in_vars,
+                                              Val{indexes_expr}};
   const auto& opt_ret = (*this->interpreter)(lambda, args);
   ADT_RETURN_IF_ERR(opt_ret);
   const auto& ret = opt_ret.GetOkValue();
-  return MethodClass<Val>::TryGet<OpIndexTupleExprSignature>(ret);
+  return axpr::MethodClass<Val>::TryGet<OpIndexTupleExprSignature>(ret);
 }
 
 namespace {
@@ -94,4 +95,4 @@ adt::Result<OpIndexTupleExprSignature> IndexClosure::operator()(
   return Match([&](const auto& impl) { return (*impl)(indexes_expr); });
 }
 
-}  // namespace ap::axpr::index_expr
+}  // namespace ap::index_expr

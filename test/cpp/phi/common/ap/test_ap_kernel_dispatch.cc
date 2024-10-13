@@ -20,9 +20,9 @@
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/cps_expr_interpreter.h"
 #include "ap/axpr/lambda_expr_builder.h"
-#include "ap/kernel/define_ctx_value.h"
-#include "ap/kernel/dispatch_ctx_value.h"
-#include "ap/kernel/dispatch_ctx_value_method_class.h"
+#include "ap/kernel_define/dispatch_ctx_value.h"
+#include "ap/kernel_define/dispatch_ctx_value_method_class.h"
+#include "ap/kernel_define/value.h"
 #include "gtest/gtest.h"
 
 namespace ap::kernel_dispatch::test {

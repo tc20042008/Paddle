@@ -14,19 +14,7 @@
 
 #pragma once
 #include "ap/adt/adt.h"
-#include "llvm/ADT/SmallSet.h"
-#include "llvm/ADT/SmallVector.h"
 #include "paddle/cinn/adt/bfs_walker.h"
 #include "paddle/cinn/adt/topo_walker.h"
 
-namespace ap::graph {
-
-static constexpr int kSmallFeatureSize() { return 11; }
-
-template <typename T>
-using SmallVector = llvm::SmallVector<T, kSmallFeatureSize()>;
-
-template <typename T>
-using SmallSet = llvm::SmallSet<T, kSmallFeatureSize()>;
-
-}  // namespace ap::graph
+namespace ap::graph {}  // namespace ap::graph

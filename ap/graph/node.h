@@ -23,8 +23,6 @@
 
 namespace ap::graph {
 
-DEFINE_ADT_TAG(tIsUpstream);
-
 template <typename T>
 class NodeArena;
 

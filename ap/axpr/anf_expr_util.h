@@ -19,10 +19,141 @@
 #include "ap/axpr/anf_expr_builder.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/core_expr_builder.h"
+#include "glog/logging.h"
 #include "nlohmann/json.hpp"
 #include "paddle/common/enforce.h"
 
 namespace ap::axpr {
+
+AnfExpr ConvertCoreExprToAnfExpr(const CoreExpr& core_expr);
+
+namespace detail {
+
+struct CoreExprToAnfExprConverter {
+  AnfExpr ConvertCoreExprToAnfExpr(const CoreExpr& core_expr) {
+    return core_expr.Match(
+        [&](const Atomic<CoreExpr>& atomic) -> AnfExpr {
+          return ConvertAtomic(atomic);
+        },
+        [&](const ComposedCall<Atomic<CoreExpr>>& composed_call) -> AnfExpr {
+          return ConvertComposedCall(composed_call);
+        });
+  }
+
+ private:
+  Atomic<AnfExpr> ConvertAtomic(const Atomic<CoreExpr>& atomic) {
+    return atomic.Match(
+        [&](const Lambda<CoreExpr>& lambda) -> Atomic<AnfExpr> {
+          return ConvertLambda(lambda);
+        },
+        [&](const Symbol& symbol) -> Atomic<AnfExpr> {
+          return symbol.Match(
+              [&](const tVar<std::string>& var) -> Atomic<AnfExpr> {
+                return Atomic<AnfExpr>{var};
+              },
+              [&](const builtin_symbol::Symbol& symbol) -> Atomic<AnfExpr> {
+                tVar<std::string> var{symbol.Name()};
+                return Atomic<AnfExpr>{var};
+              });
+        },
+        [&](bool c) -> Atomic<AnfExpr> { return Atomic<AnfExpr>{c}; },
+        [&](int64_t c) -> Atomic<AnfExpr> { return Atomic<AnfExpr>{c}; },
+        [&](double c) -> Atomic<AnfExpr> { return Atomic<AnfExpr>{c}; },
+        [&](const std::string& val) -> Atomic<AnfExpr> {
+          return Atomic<AnfExpr>{val};
+        });
+  }
+
+  Atomic<AnfExpr> ConvertLambda(const Lambda<CoreExpr>& lambda) {
+    return Lambda<AnfExpr>{lambda->args,
+                           ConvertCoreExprToAnfExpr(lambda->body)};
+  }
+
+  AnfExpr ConvertComposedCall(
+      const ComposedCall<Atomic<CoreExpr>>& composed_call) {
+    const auto& outter_func = composed_call->outter_func;
+    return outter_func.Match(
+        [&](const Lambda<CoreExpr>& lambda) -> AnfExpr {
+          std::vector<Bind<AnfExpr>> bindings;
+          return ConvertComposedCallToLet(composed_call, &bindings);
+        },
+        [&](const Symbol& symbol) -> AnfExpr {
+          return symbol.Match(
+              [&](const tVar<std::string>& var) -> AnfExpr {
+                CHECK_EQ(var.value(), kBuiltinReturn());
+                return ConvertComposedCallToCombined(composed_call);
+              },
+              [&](const builtin_symbol::Symbol& symbol) -> AnfExpr {
+                LOG(FATAL) << "outter_func should be a lambda or "
+                           << kBuiltinReturn();
+                return Atomic<AnfExpr>{""};
+              });
+        },
+        [&](const auto& c) -> AnfExpr {
+          LOG(FATAL) << "outter_func should be a lambda or "
+                     << kBuiltinReturn();
+          return Atomic<AnfExpr>(c);
+        });
+  }
+
+  Combined<AnfExpr> ConvertComposedCallToCombined(
+      const ComposedCall<Atomic<CoreExpr>>& composed_call) {
+    const auto& f = ConvertAtomic(composed_call->inner_func);
+    std::vector<Atomic<AnfExpr>> args;
+    args.reserve(composed_call->args.size());
+    for (const auto& arg : composed_call->args) {
+      args.push_back(ConvertAtomic(arg));
+    }
+    return Combined<AnfExpr>{Call<AnfExpr>{f, std::move(args)}};
+  }
+
+  AnfExpr ConvertComposedCallToLet(
+      const ComposedCall<Atomic<CoreExpr>>& composed_call,
+      std::vector<Bind<AnfExpr>>* bindings) {
+    const auto& outter_func = composed_call->outter_func;
+    return outter_func.Match(
+        [&](const Lambda<CoreExpr>& lambda) -> AnfExpr {
+          CHECK_EQ(lambda->args.size(), 1);
+          const auto& val = ConvertComposedCallToCombined(composed_call);
+          Bind<AnfExpr> binding{lambda->args.at(0), val};
+          bindings->emplace_back(std::move(binding));
+          const auto& body = lambda->body;
+          return body.Match(
+              [&](const Atomic<CoreExpr>& atomic_body) -> AnfExpr {
+                return Let<AnfExpr>{*bindings, ConvertAtomic(atomic_body)};
+              },
+              [&](const ComposedCall<Atomic<CoreExpr>>& composed_call_body)
+                  -> AnfExpr {
+                return ConvertComposedCallToLet(composed_call_body, bindings);
+              });
+        },
+        [&](const Symbol& symbol) -> AnfExpr {
+          return symbol.Match(
+              [&](const tVar<std::string>& var) -> AnfExpr {
+                CHECK_EQ(var.value(), kBuiltinReturn());
+                const auto& body = ConvertComposedCallToCombined(composed_call);
+                return Let<AnfExpr>{*bindings, body};
+              },
+              [&](const builtin_symbol::Symbol& symbol) -> AnfExpr {
+                LOG(FATAL) << "outter_func should be a lambda or "
+                           << kBuiltinReturn();
+                return Atomic<AnfExpr>{""};
+              });
+        },
+        [&](const auto& c) -> AnfExpr {
+          LOG(FATAL) << "outter_func should be a lambda or "
+                     << kBuiltinReturn();
+          return Atomic<AnfExpr>(c);
+        });
+  }
+};
+
+}  // namespace detail
+
+AnfExpr ConvertCoreExprToAnfExpr(const CoreExpr& core_expr) {
+  return detail::CoreExprToAnfExprConverter().ConvertCoreExprToAnfExpr(
+      core_expr);
+}
 
 namespace detail {
 

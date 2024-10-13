@@ -32,6 +32,8 @@ class LetVar {
 
   const std::string& name() const { return name_; }
 
+  explicit operator AnfExpr() const { return tVar<std::string>{name()}; }
+
   LetVar& Attr(const std::string& atttr_name);
   LetVar& At(int64_t idx);
 
@@ -66,6 +68,7 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
   }
 
   using CallArgBase = std::variant<LetVar, AnfExpr>;
+
   struct CallArg : public CallArgBase {
     using CallArgBase::CallArgBase;
     const CallArgBase& variant() const {
@@ -109,7 +112,21 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
     return CallImpl(f, args);
   }
 
+  AnfExpr Call(const std::string& f, const std::vector<AnfExpr>& vars) {
+    std::vector<CallArg> args;
+    args.reserve(vars.size());
+    for (const auto& var : vars) {
+      args.emplace_back(var);
+    }
+    return CallImpl(f, args);
+  }
+
   const std::vector<Bind<AnfExpr>>& bindings() { return bindings_; }
+
+  std::string NewTmpVarName() {
+    static const std::string prefix = "__lambda_expr_tmp";
+    return prefix + std::to_string(SeqNoGenerator_());
+  }
 
  private:
   friend class LetVar;
@@ -136,7 +153,7 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
   }
 
   tVar<std::string> BindToTmpVar(const AnfExpr& anf_val) {
-    const tVar<std::string> tmp_var_name{GetTmpVarName()};
+    const tVar<std::string> tmp_var_name{NewTmpVarName()};
     AddBinding(tmp_var_name.value(), anf_val);
     return tmp_var_name;
   }
@@ -146,7 +163,7 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
     anf_val.Match(
         [&](const Atomic<AnfExpr>& atomic) {
           const auto& combined =
-              anf.Call(tVar<std::string>{kBuiltinId()}, {atomic});
+              anf.Call(tVar<std::string>{kBuiltinIdentity()}, {atomic});
           bindings_.push_back(anf.Bind(name, combined));
         },
         [&](const Combined<AnfExpr>& combined) {
@@ -159,11 +176,6 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
         });
   }
 
-  std::string GetTmpVarName() {
-    static const std::string prefix = "__lambda_expr_tmp";
-    return prefix + std::to_string(SeqNoGenerator_());
-  }
-
   std::unordered_map<std::string, std::unique_ptr<LetVar>> let_var_storage_;
   std::vector<Bind<AnfExpr>> bindings_;
   std::function<size_t()> SeqNoGenerator_;
@@ -171,7 +183,7 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
 
 inline LetVar& LetVar::operator=(const LetVar& let_var) {
   AnfExprBuilder anf{};
-  return *this = anf.Call(tVar<std::string>{kBuiltinId()},
+  return *this = anf.Call(tVar<std::string>{kBuiltinIdentity()},
                           {tVar<std::string>{let_var.name()}});
 }
 
@@ -208,29 +220,6 @@ class LambdaExprBuilder {
   LambdaExprBuilder(const LambdaExprBuilder&) = delete;
   LambdaExprBuilder(LambdaExprBuilder&&) = delete;
 
-  AnfExpr NestedLambda(
-      const std::vector<std::vector<std::string>>& multi_layer_args,
-      const std::function<AnfExpr(LetContext&)>& GetBody) {
-    AnfExpr anf_expr = Let(GetBody);
-    AnfExpr lambda_or_body = anf_expr.Match(
-        [&](const ap::axpr::Let<AnfExpr>& let) {
-          if (let->bindings.empty()) {
-            return let->body;
-          } else {
-            return anf_expr;
-          }
-        },
-        [&](const auto&) { return anf_expr; });
-    if (multi_layer_args.empty()) {
-      return anf_.Lambda({}, lambda_or_body);
-    }
-    for (int i = multi_layer_args.size() - 1; i >= 0; --i) {
-      lambda_or_body =
-          anf_.Lambda(MakeLambdaArgs(multi_layer_args.at(i)), lambda_or_body);
-    }
-    return lambda_or_body;
-  }
-
   AnfExpr Lambda(const std::vector<std::string>& args,
                  const std::function<LetVar(LetContext&)>& GetBody) {
     std::function<AnfExpr(LetContext&)> GetAnfExprBody =
@@ -258,6 +247,13 @@ class LambdaExprBuilder {
   AnfExpr Let(const std::function<AnfExpr(LetContext&)>& GetBody) {
     LetContext let_ctx{SeqNoGenerator_};
     AnfExpr ret = GetBody(let_ctx);
+    return anf_.Let(let_ctx.bindings(), ret);
+  }
+
+  adt::Result<AnfExpr> Let(
+      const std::function<adt::Result<AnfExpr>(LetContext&)>& GetBody) {
+    LetContext let_ctx{SeqNoGenerator_};
+    ADT_LET_CONST_REF(ret, GetBody(let_ctx));
     return anf_.Let(let_ctx.bindings(), ret);
   }
 

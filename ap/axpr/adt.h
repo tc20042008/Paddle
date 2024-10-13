@@ -28,17 +28,4 @@ using adt::Result;
 template <typename T>
 using Maybe = adt::Maybe<T>;
 
-template <typename T>
-struct DisjointUnionImpl {
-  T lhs;
-  T rhs;
-
-  bool operator==(const DisjointUnionImpl& other) const {
-    return (other.lhs == this->lhs) && (other.rhs == this->rhs);
-  }
-};
-
-template <typename T>
-DEFINE_ADT_RC(DisjointUnion, const DisjointUnionImpl<T>);
-
 }  // namespace ap::axpr

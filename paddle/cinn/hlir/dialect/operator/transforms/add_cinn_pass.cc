@@ -44,6 +44,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/simplify_dim_expr_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/single_op_fallback_to_phi.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_lower_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
@@ -209,7 +210,9 @@ void ApplyCinnLowerPass(
     VLOG(0) << "Enable Fusion Fallback Pass";
     pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
   }
-  if (has_dynamic_shape && !force_static_shape) {
+  if (FLAGS_enable_ap) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateApLowerFusionOpPass());
+  } else if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
   } else {

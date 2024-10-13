@@ -21,11 +21,25 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, Closure<ValueT>>
-    : public EmptyMethodClass<ValueT> {};
+struct ClosureMethodClass {
+  using This = ClosureMethodClass;
+  using Self = Closure<ValueT>;
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, TryGetImpl<std::string>(attr_name_val));
+    if (attr_name == "__code__") {
+      return self->lambda;
+    }
+    return adt::errors::AttributeError{std::string() +
+                                       "closure object has not attribute '" +
+                                       attr_name + "'."};
+  }
+};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<Closure<ValueT>>>
-    : public EmptyMethodClass<ValueT> {};
+struct MethodClassImpl<ValueT, Closure<ValueT>>
+    : public ClosureMethodClass<ValueT> {};
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<Closure<ValueT>>> {};
 
 }  // namespace ap::axpr

@@ -74,7 +74,15 @@ struct Rc {
     using ::cinn::adt::Rc<__VA_ARGS__>::Rc;                 \
   };
 
-#define DEFINE_ADT_VARIANT_METHODS(...)                                \
+#define DEFINE_ADT_VARIANT_METHODS(...)                  \
+  DEFINE_ADT_VARIANT_METHODS_WHITOUT_TRYGET(__VA_ARGS__) \
+  template <typename __ADT_T>                            \
+  ::cinn::adt::Result<__ADT_T> TryGet() const {          \
+    ADT_CHECK(this->template Has<__ADT_T>());            \
+    return this->template Get<__ADT_T>();                \
+  }
+
+#define DEFINE_ADT_VARIANT_METHODS_WHITOUT_TRYGET(...)                 \
   DEFINE_MATCH_METHOD();                                               \
   const __VA_ARGS__& variant() const {                                 \
     return reinterpret_cast<const __VA_ARGS__&>(*this);                \
@@ -207,32 +215,12 @@ using EitherImpl = std::variant<T0, T1>;
 template <typename T0, typename T1>
 struct Either : public EitherImpl<T0, T1> {
   using EitherImpl<T0, T1>::EitherImpl;
-  DEFINE_ADT_VARIANT_METHODS(EitherImpl<T0, T1>);
+  DEFINE_ADT_VARIANT_METHODS_WHITOUT_TRYGET(EitherImpl<T0, T1>);
 };
 
 template <typename T>
 struct Maybe : public Either<T, Nothing> {
   using Either<T, Nothing>::Either;
-};
-
-struct BreakException {
-  std::string msg{""};
-
-  bool operator==(const BreakException& other) const {
-    return other.msg == this->msg;
-  }
-
-  const char* class_name() const { return "BreakException"; }
-};
-
-struct ContinueException {
-  std::string msg{""};
-
-  bool operator==(const ContinueException& other) const {
-    return other.msg == this->msg;
-  }
-
-  const char* class_name() const { return "ContinueException"; }
 };
 
 namespace errors {
@@ -368,13 +356,11 @@ using ErrorBase = std::variant<RuntimeError,
                                KeyError,
                                MismatchError,
                                NotImplementedError,
-                               SyntaxError,
-                               BreakException,
-                               ContinueException>;
+                               SyntaxError>;
 
 struct [[nodiscard]] Error : public ErrorBase {
   using ErrorBase::ErrorBase;
-  DEFINE_ADT_VARIANT_METHODS(ErrorBase);
+  DEFINE_ADT_VARIANT_METHODS_WHITOUT_TRYGET(ErrorBase);
 
   const char* class_name() const {
     return Match([](const auto& impl) { return impl.class_name(); });
@@ -409,6 +395,22 @@ struct [[nodiscard]] Result : public Either<T, errors::Error> {
   }
 
   const T& GetOkValue() const { return this->template Get<T>(); }
+};
+
+struct Break : public std::monostate {
+  using std::monostate::monostate;
+};
+
+struct Continue : public std::monostate {
+  using std::monostate::monostate;
+};
+
+using LoopCtrlImpl = std::variant<Break, Continue>;
+
+struct LoopCtrl : public LoopCtrlImpl {
+  using LoopCtrlImpl::LoopCtrlImpl;
+
+  DEFINE_ADT_VARIANT_METHODS(LoopCtrlImpl);
 };
 
 template <typename T>

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/kernel/ap_cuda_jit_util.h"
+#include "ap/kernel_dispatch/ap_cuda_jit_util.h"
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"
@@ -21,7 +21,7 @@
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/common/enforce.h"
 
-namespace ap {
+namespace ap::paddle {
 
 CUDAModule::CUDAModule(const std::string& data, Kind kind)
     : data_(data), kind_(kind) {
@@ -480,4 +480,4 @@ std::string Compiler::ReadFile(const std::string& file_name,
   return std::move(file_data);
 }
 
-}  // namespace ap
+}  // namespace ap::paddle

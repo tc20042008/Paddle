@@ -13,22 +13,26 @@
 // limitations under the License.
 
 #pragma once
-#include "ap/axpr/index_expr_interpreter.h"
+#include "ap/index_expr/index_expr_interpreter.h"
 #include "ap/axpr/cps_expr_interpreter.h"
-#include "ap/axpr/index_expr_builtin_functions.h"
+#include "ap/index_expr/index_expr_builtin_functions.h"
 
-namespace ap::axpr::index_expr {
+namespace ap::index_expr {
 
-class IndexExprInterpreterImpl : public CpsExprInterpreter<Val> {
+using axpr::CoreExpr;
+using axpr::Lambda;
+
+class IndexExprInterpreterImpl : public axpr::CpsExprInterpreter<Val> {
  public:
   explicit IndexExprInterpreterImpl(const std::shared_ptr<EnvMgr>& env_mgr)
-      : CpsExprInterpreter<Val>(env_mgr, Frame<Val>{InitBuiltins()}) {}
+      : axpr::CpsExprInterpreter<Val>(env_mgr,
+                                      axpr::Frame<Val>{InitBuiltins()}) {}
   IndexExprInterpreterImpl(const IndexExprInterpreterImpl&) = delete;
   IndexExprInterpreterImpl(IndexExprInterpreterImpl&&) = delete;
 
  private:
-  static Object<Val> InitBuiltins() {
-    return Object<Val>{std::unordered_map<std::string, Val>{
+  static axpr::Object<Val> InitBuiltins() {
+    return axpr::Object<Val>{std::unordered_map<std::string, Val>{
         {"kUndefinedIndexTupleExpr",
          Val{IndexTupleExpr{UndefinedIndexTupleExpr{}}}},
         {"kNothingIndexTupleExpr",
@@ -36,18 +40,19 @@ class IndexExprInterpreterImpl : public CpsExprInterpreter<Val> {
         {"kIntArrayLikeIndexTupleExpr",
          Val{IndexTupleExpr{IntArrayLikeIndexTupleExpr{}}}},
         {"kUndefinedIndexExpr", Val{IndexExpr{UndefinedIndexExpr{}}}},
-        {"PtrGetItem", Val{&MakePtrGetItem}},
-        {"IndexExprBroadcastMask", Val{&MakeIndexExprBroadcastMask}},
-        {"Slice", Val{&MakeSlice}},
-        {"IndexExprSlice", Val{&MakeIndexExprSlice}},
-        {"IndexExprAffine", Val{&MakeIndexExprAffine}},
-        {"DisjointUnion", Val{&MakeDisjointUnion}},
-        {"IndexTupleExprPermute", Val{&MakeIndexTupleExprPermute}},
-        {"IndexTupleExprReshape", Val{&MakeIndexTupleExprReshape}},
-        {"IndexTupleExprTransform", Val{&MakeIndexTupleExprTransform}},
-        {"OpIndexTupleExprSignature", Val{&MakeOpIndexTupleExprSignature}},
-        {"InIndexTupleExprSignature", Val{&MakeInIndexTupleExprSignature}},
-        {"OutIndexTupleExprSignature", Val{&MakeOutIndexTupleExprSignature}},
+        {"PtrGetItem", Val{&MakePtrGetItem<Val>}},
+        {"IndexExprBroadcastMask", Val{&MakeIndexExprBroadcastMask<Val>}},
+        {"Slice", Val{&MakeSlice<Val>}},
+        {"IndexExprSlice", Val{&MakeIndexExprSlice<Val>}},
+        {"IndexExprAffine", Val{&MakeIndexExprAffine<Val>}},
+        {"DisjointUnion", Val{&MakeDisjointUnion<Val>}},
+        {"IndexTupleExprPermute", Val{&MakeIndexTupleExprPermute<Val>}},
+        {"IndexTupleExprReshape", Val{&MakeIndexTupleExprReshape<Val>}},
+        {"IndexTupleExprTransform", Val{&MakeIndexTupleExprTransform<Val>}},
+        {"OpIndexTupleExprSignature", Val{&MakeOpIndexTupleExprSignature<Val>}},
+        {"InIndexTupleExprSignature", Val{&MakeInIndexTupleExprSignature<Val>}},
+        {"OutIndexTupleExprSignature",
+         Val{&MakeOutIndexTupleExprSignature<Val>}},
     }};
   }
 };
@@ -62,27 +67,28 @@ IndexExprInterpreter::IndexExprInterpreter(
       impl_(std::make_unique<IndexExprInterpreterImpl>(env_mgr)) {}
 
 Result<Val> IndexExprInterpreter::operator()(
-    const Lambda<CoreExpr>& lambda, const std::vector<Val>& args) const {
+    const axpr::Lambda<axpr::CoreExpr>& lambda,
+    const std::vector<Val>& args) const {
   const auto& env = env_mgr_->New(impl_->builtin_env());
-  Closure<Val> closure{lambda, env};
-  Result<Val> ret = impl_->Interpret(closure, args);
+  axpr::Closure<Val> closure{lambda, env};
+  adt::Result<Val> ret = impl_->Interpret(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;
 }
 
 Result<Val> IndexExprInterpreter::operator()(
-    const std::unordered_map<std::string, BuiltinFuncType<Val>>&
+    const std::unordered_map<std::string, axpr::BuiltinFuncType<Val>>&
         global_functions,
-    const Lambda<CoreExpr>& lambda,
+    const axpr::Lambda<axpr::CoreExpr>& lambda,
     const std::vector<Val>& args) const {
   const auto& env = env_mgr_->New(impl_->builtin_env());
   for (const auto& [name, val] : global_functions) {
     env->Set(name, Val{val});
   }
-  Closure<Val> closure{lambda, env};
-  Result<Val> ret = impl_->Interpret(closure, args);
+  axpr::Closure<Val> closure{lambda, env};
+  adt::Result<Val> ret = impl_->Interpret(closure, args);
   env_mgr_->ClearAllFrames();
   return ret;
 }
 
-}  // namespace ap::axpr::index_expr
+}  // namespace ap::index_expr

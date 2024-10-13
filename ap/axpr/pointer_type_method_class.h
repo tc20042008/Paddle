@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/axpr/constants.h"
+#include "ap/axpr/int_data_type.h"
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/pointer_type.h"
 
@@ -22,7 +23,7 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct PointerTypeMethodClass {
-  using Self = PointerTypeMethodClass;
+  using This = PointerTypeMethodClass;
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -32,10 +33,10 @@ struct PointerTypeMethodClass {
   template <typename BultinBinarySymbol>
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
     if constexpr (std::is_same_v<BultinBinarySymbol, builtin_symbol::EQ>) {
-      return &Self::EQ;
+      return &This::EQ;
     } else if constexpr (std::is_same_v<BultinBinarySymbol,  // NOLINT
                                         builtin_symbol::NE>) {
-      return &Self::NE;
+      return &This::NE;
     } else {
       std::nullopt;
     }
@@ -75,22 +76,52 @@ struct PointerTypeMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, PointerType> {
-  using method_class = PointerTypeMethodClass<ValueT>;
+struct MethodClassImpl<ValueT, PointerType>
+    : public PointerTypeMethodClass<ValueT> {};
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
+template <typename ValueT>
+struct TypeImplPointerTypeMethodClass {
+  using This = TypeImplPointerTypeMethodClass;
+  using Self = TypeImpl<PointerType>;
+
+  template <typename T>
+  const char* PtrTypeName() {
+    return axpr::CppPointerType<T>{}.Name();
   }
 
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
+  template <typename T>
+  PointerType PtrType() {
+    return PointerType{CppPointerType<T>{}};
+  }
+
+  adt::Result<ValueT> GetAttr(const Self&, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, TryGetImpl<std::string>(attr_name_val));
+    static const std::unordered_map<std::string, PointerType> map{
+#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)     \
+  {PtrTypeName<cpp_type*>(), PtrType<cpp_type*>()}, \
+      {PtrTypeName<const cpp_type*>(), PtrType<const cpp_type*>()},
+        PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
+#undef MAKE_CPP_TYPE_CASE
+#define MAKE_INT_CPP_TYPE_CASE(cpp_type)        \
+  {#cpp_type "_ptr", PtrType<cpp_type##_t*>()}, \
+      {"const_" #cpp_type "_ptr", PtrType<const cpp_type##_t*>()},
+            AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
+#undef MAKE_INT_CPP_TYPE_CASE
+                {PtrTypeName<void*>(), PtrType<void*>()},
+        {PtrTypeName<const void*>(), PtrType<const void*>()},
+    };
+    const auto iter = map.find(attr_name);
+    if (iter != map.end()) {
+      return iter->second;
+    }
+    return adt::errors::AttributeError{
+        std::string() + "class 'PointerType' has no static attribute '" +
+        attr_name + "'."};
   }
 };
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<PointerType>>
-    : public EmptyMethodClass<ValueT> {};
+    : public TypeImplPointerTypeMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

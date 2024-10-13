@@ -14,10 +14,17 @@
 
 #pragma once
 
+#include <unordered_set>
+#include "llvm/ADT/SmallVector.h"
 #include "paddle/cinn/adt/adt.h"
 
 namespace ap {
 
 namespace adt = ::cinn::adt;
 
-}
+static constexpr int kSmallFeatureSize() { return 11; }
+
+template <typename T>
+using SmallVector = llvm::SmallVector<T, kSmallFeatureSize()>;
+
+}  // namespace ap

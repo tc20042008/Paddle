@@ -26,17 +26,6 @@ struct DrrGraphDescriptor {
   using DrrNodeT = drr::Node<ValueT>;
   using NodeT = graph::Node<DrrNodeT>;
 
-  std::shared_ptr<const graph::NodeArena<DrrNodeT>> node_arena;
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitAllNodes(const DoEachT& DoEach) const {
-    for (const auto& drr_node : node_arena->nodes()) {
-      const NodeT& node = drr_node.node();
-      ADT_RETURN_IF_ERR(DoEach(node));
-    }
-    return adt::Ok{};
-  }
-
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT& node,
                                           const DoEachT& DoEach) const {
@@ -77,6 +66,14 @@ struct DrrGraphDescriptor {
         [](const auto&) -> adt::Result<bool> { return false; });
   }
 
+  adt::Result<bool> IsOpNode(const NodeT& node) const {
+    ADT_LET_CONST_REF(drr_node, node.Get());
+    return drr_node.Match(
+        [&](const NativeIrOp<ValueT, DrrNodeT>&) -> bool { return true; },
+        [&](const PackedIrOp<ValueT, DrrNodeT>&) -> bool { return true; },
+        [&](const auto&) -> bool { return false; });
+  }
+
   adt::Result<bool> Satisfy(const NodeT& node,
                             const graph::NodeCstr& node_cstr) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
@@ -90,40 +87,7 @@ struct DrrGraphDescriptor {
 namespace ap::graph {
 
 template <typename ValueT>
-struct GraphDescriptor<graph::Node<drr::Node<ValueT>>> {
-  drr::DrrGraphDescriptor<ValueT> drr_graph;
-  using DrrNodeT = drr::Node<ValueT>;
-  using NodeT = graph::Node<DrrNodeT>;
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitAllNodes(const DoEachT& DoEach) const {
-    return drr_graph.VisitAllNodes(DoEach);
-  }
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT& node,
-                                          const DoEachT& DoEach) const {
-    return drr_graph.VisitUpstreamNodes(node, DoEach);
-  }
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitDownstreamNodes(const NodeT& node,
-                                            const DoEachT& DoEach) const {
-    return drr_graph.VisitDownstreamNodes(node, DoEach);
-  }
-
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT& node) const {
-    return drr_graph.GetNodeConstraint(node);
-  }
-
-  adt::Result<bool> IgnoredNode(const NodeT& node) const {
-    return drr_graph.IgnoredNode(node);
-  }
-
-  adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::NodeCstr& node_cstr) const {
-    return drr_graph.Satisfy(node, node_cstr);
-  }
-};
+struct GraphDescriptor<graph::Node<drr::Node<ValueT>>>
+    : public drr::DrrGraphDescriptor<ValueT> {};
 
 }  // namespace ap::graph

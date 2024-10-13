@@ -106,8 +106,8 @@ struct SrcPtnOpPatternCtxMethodClass {
         std::string() +
         "SrcPtnOpPatternCtx.ap_trivial_fusion_op takes 0 arguments. but " +
         std::to_string(args.size()) + " were given."};
-    PackedIrOpDeclare<ValueT, NodeT> op_declare{"ap_trivial_fusion_op",
-                                                self.value().shared_ptr()};
+    PackedIrOpDeclare<ValueT, NodeT> op_declare{
+        "ap_trivial_fusion_op", self.value().shared_ptr(), std::nullopt};
     return SrcPtn(op_declare);
   }
 

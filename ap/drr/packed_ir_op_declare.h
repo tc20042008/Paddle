@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include <sstream>
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/packed_ir_op_declare_data.h"
 #include "ap/drr/tags.h"
 
 namespace ap::drr {
@@ -27,10 +29,32 @@ template <typename ValueT, typename NodeT>
 struct PackedIrOpDeclareImpl {
   std::string op_name;
   std::weak_ptr<OpPatternCtxImpl<ValueT, NodeT>> op_pattern_ctx;
+  std::optional<std::shared_ptr<PackedIrOpDeclareData>> data;
 
   bool operator==(const PackedIrOpDeclareImpl& other) const {
     return this->op_name == other.op_name &&
            this->op_pattern_ctx.lock() == other.op_pattern_ctx.lock();
+  }
+
+  template <typename T>
+  adt::Result<T*> cast_data() const {
+    auto ThisToString = [&]() {
+      const void* address = static_cast<const void*>(this);
+      std::ostringstream ss;
+      ss << address;
+      return ss.str();
+    };
+    ADT_CHECK(data.has_value())
+        << adt::errors::ValueError{std::string() + "((PackedIrOpDeclareImpl*)" +
+                                   ThisToString() + ")->data is nullopt"};
+    ADT_CHECK(data.value().get() != nullptr) << adt::errors::ValueError{
+        std::string() + "((PackedIrOpDeclareImpl*)" + ThisToString() +
+        ")->data.value() is nullptr"};
+    auto* ptr = dynamic_cast<T*>(data.value().get());
+    ADT_CHECK(data.value().get() != nullptr) << adt::errors::ValueError{
+        std::string() + "((PackedIrOpDeclareImpl*)" + ThisToString() +
+        ")->data.value() cast to " + typeid(T).name() + " failed."};
+    return ptr;
   }
 };
 

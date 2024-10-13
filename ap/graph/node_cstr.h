@@ -46,8 +46,9 @@ struct NativeIrOpResultCstr {
   }
 };
 
-struct PackedIrValueCstr : public std::monostate {
-  using std::monostate::monostate;
+struct PackedIrValueCstr {
+  bool operator==(const PackedIrValueCstr&) const { return false; }
+  bool operator!=(const PackedIrValueCstr&) const { return false; }
 };
 
 struct PackedIrOpCstr {

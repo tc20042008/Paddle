@@ -14,9 +14,9 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/fusion_descriptor.h"
 #include <functional>
-#include "ap/axpr/index_expr_interpreter.h"
-#include "ap/axpr/op_index_tuple_expr_signature.h"
-#include "ap/axpr/valid_index_expr_builder.h"
+#include "ap/index_expr/index_expr_interpreter.h"
+#include "ap/index_expr/op_index_tuple_expr_signature.h"
+#include "ap/index_expr/valid_index_expr_builder.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/common/bfs_walker.h"
@@ -27,19 +27,19 @@
 
 COMMON_DECLARE_bool(enable_debug_ap);
 
-namespace ap {
+namespace ap::paddle {
 
-using ap::axpr::IndexTupleExpr;
-using ap::axpr::OpIndexTupleExprSignature;
-using ap::axpr::index_expr::IndexClosure;
-using ap::axpr::index_expr::IndexClosureData;
-using ap::axpr::index_expr::IndexExprInterpreter;
-using ap::axpr::index_expr::Nice2IndexLambdas;
-using ap::axpr::index_expr::OpIndexesTransformSignature;
-using ap::axpr::index_expr::OrderedOneofIndexClosure;
-using ap::axpr::index_expr::RecordableIndexClosure;
-using ap::axpr::index_expr::TrackedIndexesTransform;
-using ap::axpr::index_expr::ValidIndexExprBuilder;
+using ap::index_expr::IndexClosure;
+using ap::index_expr::IndexClosureData;
+using ap::index_expr::IndexExprInterpreter;
+using ap::index_expr::IndexTupleExpr;
+using ap::index_expr::Nice2IndexLambdas;
+using ap::index_expr::OpIndexesTransformSignature;
+using ap::index_expr::OpIndexTupleExprSignature;
+using ap::index_expr::OrderedOneofIndexClosure;
+using ap::index_expr::RecordableIndexClosure;
+using ap::index_expr::TrackedIndexesTransform;
+using ap::index_expr::ValidIndexExprBuilder;
 
 std::optional<OpOutArg> OpOutArg::MakeFromValue(pir::Value value) {
   auto* owner = value.defining_op();
@@ -62,20 +62,20 @@ using Nice2IndexLambdas4OpT =
 using IndexClosure4OpT =
     std::function<std::optional<IndexClosure>(pir::Operation*)>;
 
-}  // namespace ap
+}  // namespace ap::paddle
 
 namespace std {
 
 template <>
-struct hash<ap::OpOrArg> {
-  size_t operator()(const ap::OpOrArg& op_or_arg) const {
+struct hash<ap::paddle::OpOrArg> {
+  size_t operator()(const ap::paddle::OpOrArg& op_or_arg) const {
     return op_or_arg.GetHashValue();
   }
 };
 
 }  // namespace std
 
-namespace ap {
+namespace ap::paddle {
 
 bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
                                                      const OpOrArg& dst) const {
@@ -343,7 +343,7 @@ class OpArg2OpIndexesExprSignatureInferrer final {
       return std::nullopt;
     }
     const auto& res =
-        index_closure(ap::axpr::IndexTupleExprDomain{shape.value()});
+        index_closure(ap::index_expr::IndexTupleExprDomain{shape.value()});
     if (!res.Has<OpIndexTupleExprSignature>()) {
       return std::nullopt;
     }
@@ -351,14 +351,14 @@ class OpArg2OpIndexesExprSignatureInferrer final {
   }
 
   cinn::dialect::FusionOp fusion_op_;
-  ap::axpr::index_expr::IndexExprInterpreter interpreter_;
+  ap::index_expr::IndexExprInterpreter interpreter_;
   DimExprs4ValueT DimExprs4Value;
   IndexClosure4OpT IndexClosure4Op;
 };
 
-ap::axpr::index_expr::Val MakeTensorShapeFromVec(
+ap::index_expr::Val MakeTensorShapeFromVec(
     const std::vector<symbol::DimExpr>& vec) {
-  using ap::axpr::index_expr::Val;
+  using ap::index_expr::Val;
   adt::List<Val> dim_exprs;
   dim_exprs->reserve(vec.size());
   for (const auto& dim_expr : vec) {
@@ -367,22 +367,22 @@ ap::axpr::index_expr::Val MakeTensorShapeFromVec(
   return dim_exprs;
 }
 
-ap::axpr::index_expr::Val MakeTensorShapeImpl(
+ap::index_expr::Val MakeTensorShapeImpl(
     const symbol::TensorShapeOrDataDimExprs& impl) {
   return MakeTensorShapeFromVec(impl.shape());
 }
 
-ap::axpr::index_expr::Val MakeTensorDataImpl(
+ap::index_expr::Val MakeTensorDataImpl(
     const symbol::TensorShapeOrDataDimExprs& impl) {
   if (!impl.data().has_value()) {
-    return ap::axpr::index_expr::Val{adt::Nothing{}};
+    return ap::index_expr::Val{adt::Nothing{}};
   }
   return MakeTensorShapeFromVec(impl.data().value());
 }
 
-ap::axpr::index_expr::Val MakeTensorShapeImpl(
+ap::index_expr::Val MakeTensorShapeImpl(
     const symbol::TensorListShapeOrDataDimExprs& impl) {
-  using ap::axpr::index_expr::Val;
+  using ap::index_expr::Val;
   adt::List<Val> dim_exprs;
   dim_exprs->reserve(impl.size());
   for (const auto& shape_or_data : impl) {
@@ -391,9 +391,9 @@ ap::axpr::index_expr::Val MakeTensorShapeImpl(
   return Val{dim_exprs};
 }
 
-ap::axpr::index_expr::Val MakeTensorDataImpl(
+ap::index_expr::Val MakeTensorDataImpl(
     const symbol::TensorListShapeOrDataDimExprs& impl) {
-  using ap::axpr::index_expr::Val;
+  using ap::index_expr::Val;
   adt::List<Val> dim_exprs;
   dim_exprs->reserve(impl.size());
   for (const auto& shape_or_data : impl) {
@@ -402,9 +402,9 @@ ap::axpr::index_expr::Val MakeTensorDataImpl(
   return Val{dim_exprs};
 }
 
-ap::axpr::index_expr::Val MakeTensorShape(
+ap::index_expr::Val MakeTensorShape(
     const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  using ap::axpr::index_expr::Val;
+  using ap::index_expr::Val;
   return shape_or_data.Match(
       [&](const symbol::NullShapeOrDataDimExpr& impl) {
         return Val{adt::Nothing{}};
@@ -420,9 +420,9 @@ ap::axpr::index_expr::Val MakeTensorShape(
       });
 }
 
-ap::axpr::index_expr::Val MakeTensorData(
+ap::index_expr::Val MakeTensorData(
     const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  using ap::axpr::index_expr::Val;
+  using ap::index_expr::Val;
   return shape_or_data.Match(
       [&](const symbol::NullShapeOrDataDimExpr& impl) {
         return Val{adt::Nothing{}};
@@ -438,10 +438,10 @@ ap::axpr::index_expr::Val MakeTensorData(
       });
 }
 
-ap::axpr::Object<ap::axpr::index_expr::Val> MakeTensorMetaObject(
+ap::axpr::Object<ap::index_expr::Val> MakeTensorMetaObject(
     const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  return ap::axpr::Object<ap::axpr::index_expr::Val>{
-      std::unordered_map<std::string, ap::axpr::index_expr::Val>{
+  return ap::axpr::Object<ap::index_expr::Val>{
+      std::unordered_map<std::string, ap::index_expr::Val>{
           {"shape", MakeTensorShape(shape_or_data)},
           {"data", MakeTensorData(shape_or_data)},
       }};
@@ -449,7 +449,7 @@ ap::axpr::Object<ap::axpr::index_expr::Val> MakeTensorMetaObject(
 
 std::optional<IndexClosureData> MakeIndexClosureData(
     const DimExprs4ValueT& DimExprs4Value, pir::Operation* op) {
-  using ValueList = adt::List<ap::axpr::index_expr::Val>;
+  using ValueList = adt::List<ap::index_expr::Val>;
   using OptValueList = std::optional<ValueList>;
   const auto& inputs_meta = [&]() -> OptValueList {
     ValueList ret;
@@ -482,17 +482,17 @@ std::optional<IndexClosureData> MakeIndexClosureData(
     return std::nullopt;
   }
   const auto& in_vars = [&] {
-    adt::List<ap::axpr::index_expr::Val> in_vars;
+    adt::List<ap::index_expr::Val> in_vars;
     in_vars->reserve(op->num_operands());
     for (int i = 0; i < op->num_operands(); ++i) {
-      in_vars->push_back(ap::axpr::index_expr::Val{std::string() + "op" +
-                                                   std::to_string(op->id()) +
-                                                   "_in" + std::to_string(i)});
+      in_vars->push_back(ap::index_expr::Val{std::string() + "op" +
+                                             std::to_string(op->id()) + "_in" +
+                                             std::to_string(i)});
     }
     return in_vars;
   }();
   return IndexClosureData{
-      .ctx = ap::axpr::index_expr::Val{adt::Nothing{}},
+      .ctx = ap::index_expr::Val{adt::Nothing{}},
       .inputs_meta = inputs_meta.value(),
       .outputs_meta = outputs_meta.value(),
       .in_vars = in_vars,
@@ -773,12 +773,12 @@ size_t GetArgIndex(const OpArg& op_arg) {
       [](const OpOutArg& impl) -> size_t { return impl.index; });
 }
 
-adt::Result<ap::axpr::OpIndexTupleExprSignature> GetOpIndexesExprSignature(
+adt::Result<OpIndexTupleExprSignature> GetOpIndexesExprSignature(
     const OpArg2OpIndexesExprSignature& anchor2signature,
     const OpArg& op_arg,
     const std::string& op_name) {
   return op_arg.Match(
-      [&](const OpInArg&) -> adt::Result<ap::axpr::OpIndexTupleExprSignature> {
+      [&](const OpInArg&) -> adt::Result<OpIndexTupleExprSignature> {
         const auto& anchor_iter =
             anchor2signature.in_arg2signature->data.find(op_arg);
         if (anchor_iter == anchor2signature.in_arg2signature->data.end()) {
@@ -789,7 +789,7 @@ adt::Result<ap::axpr::OpIndexTupleExprSignature> GetOpIndexesExprSignature(
         }
         return anchor_iter->second;
       },
-      [&](const OpOutArg&) -> adt::Result<ap::axpr::OpIndexTupleExprSignature> {
+      [&](const OpOutArg&) -> adt::Result<OpIndexTupleExprSignature> {
         const auto& anchor_iter =
             anchor2signature.out_arg2signature->data.find(op_arg);
         if (anchor_iter == anchor2signature.out_arg2signature->data.end()) {
@@ -849,7 +849,7 @@ InferOpIndexesTransformSignatureByOpArgPath(
     const OpArgTo<OpArgPath>& op_arg2path,
     const Op2Anchor2IndexesExprSignature& op2anchor2indexes_expr_signature,
     int src_idx) {
-  ap::axpr::InputSignature<TrackedIndexesTransform> in_sig;
+  ap::index_expr::InputSignature<TrackedIndexesTransform> in_sig;
   in_sig.descriptors->reserve(yield_op->num_operands());
   for (int i = 0; i < yield_op->num_operands(); ++i) {
     OpArg in_arg{yield_op->operand(i)};
@@ -868,7 +868,7 @@ InferOpIndexesTransformSignatureByOpArgPath(
   // yield op has no output.
   return OpIndexesTransformSignature{
       in_sig,
-      ap::axpr::OutputSignature<TrackedIndexesTransform>{
+      ap::index_expr::OutputSignature<TrackedIndexesTransform>{
           adt::List<TrackedIndexesTransform>{}}};
 }
 
@@ -963,4 +963,4 @@ adt::Result<FusionDescriptor> GetFusionDescriptor(
   return FusionDescriptor{trivial_fusion_descriptor};
 }
 
-}  // namespace ap
+}  // namespace ap::paddle

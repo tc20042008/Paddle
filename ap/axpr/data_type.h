@@ -78,16 +78,25 @@ constexpr bool IsArithmeticOpSupported() {
 template <typename T>
 struct GetDataTypeNameHelper;
 
-#define SPECIALIZE_GET_CPP_TYPE_NAME(cpp_type, enum_type) \
-  template <>                                             \
-  struct GetDataTypeNameHelper<cpp_type> {                \
-    static const char* Call() { return #cpp_type; }       \
+#define SPECIALIZE_GET_CPP_TYPE_NAME(cpp_type, enum_type)    \
+  template <>                                                \
+  struct GetDataTypeNameHelper<cpp_type> {                   \
+    static const char* Call() { return #cpp_type; }          \
+  };                                                         \
+  template <>                                                \
+  struct GetDataTypeNameHelper<const cpp_type> {             \
+    static const char* Call() { return "const_" #cpp_type; } \
   };
 PD_FOR_EACH_DATA_TYPE(SPECIALIZE_GET_CPP_TYPE_NAME);
 #undef SPECIALIZE_GET_CPP_TYPE_NAME
 template <>
 struct GetDataTypeNameHelper<adt::Undefined> {
-  static const char* Call() { return "undefined"; }
+  static const char* Call() { return "void"; }
+};
+
+template <>
+struct GetDataTypeNameHelper<const adt::Undefined> {
+  static const char* Call() { return "const_void"; }
 };
 
 template <typename T>

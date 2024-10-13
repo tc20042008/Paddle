@@ -163,29 +163,7 @@ TEST(DrrValue, demo) {
         "__builtin_let__",
         [
           [
-            "__lambda_expr_tmp0",
-            [
-              "__builtin_setattr__",
-              "ctx",
-              {
-                "str": "pass_name"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp1",
-            [
-              "__lambda_expr_tmp0",
-              {
-                "str": "pass_name"
-              },
-              {
-                "str": "softmax_prologue"
-              }
-            ]
-          ],
-          [
-            "__lambda_expr_tmp27",
+            "__lambda_expr_tmp25",
             [
               "__builtin_getattr__",
               "ctx",
@@ -195,9 +173,9 @@ TEST(DrrValue, demo) {
             ]
           ],
           [
-            "__lambda_expr_tmp28",
+            "__lambda_expr_tmp26",
             [
-              "__lambda_expr_tmp27",
+              "__lambda_expr_tmp25",
               [
                 "lambda",
                 [
@@ -208,7 +186,7 @@ TEST(DrrValue, demo) {
                   "__builtin_let__",
                   [
                     [
-                      "__lambda_expr_tmp2",
+                      "__lambda_expr_tmp0",
                       [
                         "__builtin_getattr__",
                         "o",
@@ -218,15 +196,35 @@ TEST(DrrValue, demo) {
                       ]
                     ],
                     [
+                      "__lambda_expr_tmp1",
+                      [
+                        "__lambda_expr_tmp0"
+                      ]
+                    ],
+                    [
+                      "__lambda_expr_tmp2",
+                      [
+                        "__builtin_setattr__",
+                        "o",
+                        {
+                          "str": "trivial_op"
+                        }
+                      ]
+                    ],
+                    [
                       "__lambda_expr_tmp3",
                       [
-                        "__lambda_expr_tmp2"
+                        "__lambda_expr_tmp2",
+                        {
+                          "str": "trivial_op"
+                        },
+                        "__lambda_expr_tmp1"
                       ]
                     ],
                     [
                       "__lambda_expr_tmp4",
                       [
-                        "__builtin_setattr__",
+                        "__builtin_getattr__",
                         "o",
                         {
                           "str": "trivial_op"
@@ -236,26 +234,6 @@ TEST(DrrValue, demo) {
                     [
                       "__lambda_expr_tmp5",
                       [
-                        "__lambda_expr_tmp4",
-                        {
-                          "str": "trivial_op"
-                        },
-                        "__lambda_expr_tmp3"
-                      ]
-                    ],
-                    [
-                      "__lambda_expr_tmp6",
-                      [
-                        "__builtin_getattr__",
-                        "o",
-                        {
-                          "str": "trivial_op"
-                        }
-                      ]
-                    ],
-                    [
-                      "__lambda_expr_tmp7",
-                      [
                         "__builtin_getattr__",
                         "t",
                         {
@@ -264,21 +242,21 @@ TEST(DrrValue, demo) {
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp8",
+                      "__lambda_expr_tmp6",
                       [
                         "__builtin_starred__",
-                        "__lambda_expr_tmp7"
+                        "__lambda_expr_tmp5"
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp9",
+                      "__lambda_expr_tmp7",
                       [
                         "__builtin_list__",
-                        "__lambda_expr_tmp8"
+                        "__lambda_expr_tmp6"
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp10",
+                      "__lambda_expr_tmp8",
                       [
                         "__builtin_getattr__",
                         "t",
@@ -288,7 +266,7 @@ TEST(DrrValue, demo) {
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp11",
+                      "__lambda_expr_tmp9",
                       [
                         "__builtin_getattr__",
                         "t",
@@ -298,37 +276,37 @@ TEST(DrrValue, demo) {
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp12",
+                      "__lambda_expr_tmp10",
                       [
                         "__builtin_starred__",
+                        "__lambda_expr_tmp9"
+                      ]
+                    ],
+                    [
+                      "__lambda_expr_tmp11",
+                      [
+                        "__builtin_list__",
+                        "__lambda_expr_tmp8",
+                        "__lambda_expr_tmp10"
+                      ]
+                    ],
+                    [
+                      "__lambda_expr_tmp12",
+                      [
+                        "__lambda_expr_tmp4",
+                        "__lambda_expr_tmp7",
                         "__lambda_expr_tmp11"
                       ]
                     ],
                     [
                       "__lambda_expr_tmp13",
                       [
-                        "__builtin_list__",
-                        "__lambda_expr_tmp10",
+                        "__builtin_identity__",
                         "__lambda_expr_tmp12"
                       ]
                     ],
                     [
                       "__lambda_expr_tmp14",
-                      [
-                        "__lambda_expr_tmp6",
-                        "__lambda_expr_tmp9",
-                        "__lambda_expr_tmp13"
-                      ]
-                    ],
-                    [
-                      "__lambda_expr_tmp15",
-                      [
-                        "__builtin_identity__",
-                        "__lambda_expr_tmp14"
-                      ]
-                    ],
-                    [
-                      "__lambda_expr_tmp16",
                       [
                         "__builtin_getattr__",
                         "o",
@@ -338,16 +316,16 @@ TEST(DrrValue, demo) {
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp17",
+                      "__lambda_expr_tmp15",
                       [
-                        "__lambda_expr_tmp16",
+                        "__lambda_expr_tmp14",
                         {
                           "str": "pd_op.softmax"
                         }
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp18",
+                      "__lambda_expr_tmp16",
                       [
                         "__builtin_setattr__",
                         "o",
@@ -357,17 +335,17 @@ TEST(DrrValue, demo) {
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp19",
+                      "__lambda_expr_tmp17",
                       [
-                        "__lambda_expr_tmp18",
+                        "__lambda_expr_tmp16",
                         {
                           "str": "softmax_op"
                         },
-                        "__lambda_expr_tmp17"
+                        "__lambda_expr_tmp15"
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp20",
+                      "__lambda_expr_tmp18",
                       [
                         "__builtin_getattr__",
                         "o",
@@ -377,12 +355,29 @@ TEST(DrrValue, demo) {
                       ]
                     ],
                     [
-                      "__lambda_expr_tmp21",
+                      "__lambda_expr_tmp19",
                       [
                         "__builtin_getattr__",
                         "t",
                         {
                           "str": "tensor0"
+                        }
+                      ]
+                    ],
+                    [
+                      "__lambda_expr_tmp20",
+                      [
+                        "__builtin_list__",
+                        "__lambda_expr_tmp19"
+                      ]
+                    ],
+                    [
+                      "__lambda_expr_tmp21",
+                      [
+                        "__builtin_getattr__",
+                        "t",
+                        {
+                          "str": "tensor1"
                         }
                       ]
                     ],
@@ -396,39 +391,22 @@ TEST(DrrValue, demo) {
                     [
                       "__lambda_expr_tmp23",
                       [
-                        "__builtin_getattr__",
-                        "t",
-                        {
-                          "str": "tensor1"
-                        }
+                        "__lambda_expr_tmp18",
+                        "__lambda_expr_tmp20",
+                        "__lambda_expr_tmp22"
                       ]
                     ],
                     [
                       "__lambda_expr_tmp24",
                       [
-                        "__builtin_list__",
-                        "__lambda_expr_tmp23"
-                      ]
-                    ],
-                    [
-                      "__lambda_expr_tmp25",
-                      [
-                        "__lambda_expr_tmp20",
-                        "__lambda_expr_tmp22",
-                        "__lambda_expr_tmp24"
-                      ]
-                    ],
-                    [
-                      "__lambda_expr_tmp26",
-                      [
                         "__builtin_identity__",
-                        "__lambda_expr_tmp25"
+                        "__lambda_expr_tmp23"
                       ]
                     ]
                   ],
                   [
                     "__builtin_identity__",
-                    "__lambda_expr_tmp26"
+                    "__lambda_expr_tmp24"
                   ]
                 ]
               ]
@@ -438,7 +416,63 @@ TEST(DrrValue, demo) {
             "SourcePattern",
             [
               "__builtin_identity__",
-              "__lambda_expr_tmp28"
+              "__lambda_expr_tmp26"
+            ]
+          ],
+          [
+            "KernelDefine",
+            [
+              "__builtin_identity__",
+              [
+                "lambda",
+                [
+                  "ctx"
+                ],
+                [
+                  "__builtin_let__",
+                  [
+                    [
+                      "__lambda_expr_tmp27",
+                      [
+                        "__builtin_return__",
+                        "None"
+                      ]
+                    ]
+                  ],
+                  [
+                    "__builtin_identity__",
+                    "__lambda_expr_tmp27"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          [
+            "KernelDispatch",
+            [
+              "__builtin_identity__",
+              [
+                "lambda",
+                [
+                  "ctx"
+                ],
+                [
+                  "__builtin_let__",
+                  [
+                    [
+                      "__lambda_expr_tmp28",
+                      [
+                        "__builtin_return__",
+                        "None"
+                      ]
+                    ]
+                  ],
+                  [
+                    "__builtin_identity__",
+                    "__lambda_expr_tmp28"
+                  ]
+                ]
+              ]
             ]
           ],
           [
@@ -477,7 +511,9 @@ TEST(DrrValue, demo) {
                     [
                       "__lambda_expr_tmp30",
                       [
-                        "__lambda_expr_tmp29"
+                        "__lambda_expr_tmp29",
+                        "KernelDefine",
+                        "KernelDispatch"
                       ]
                     ],
                     [

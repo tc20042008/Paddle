@@ -37,6 +37,27 @@ struct ObjectImpl {
     return iter->second;
   }
 
+  bool Has(const std::string& var) const {
+    return storage.find(var) != storage.end();
+  }
+
+  template <typename T>
+  Result<T> Get(const std::string& var) const {
+    ADT_LET_CONST_REF(val, this->Get(var));
+    ADT_CHECK(val.template Has<T>());
+    return val.template Get<T>();
+  }
+
+  template <typename T>
+  Result<std::optional<T>> GetOpt(const std::string& var) const {
+    if (!this->Has(var)) {
+      return std::nullopt;
+    }
+    ADT_LET_CONST_REF(val, this->Get(var));
+    ADT_CHECK(val.template Has<T>());
+    return val.template Get<T>();
+  }
+
   bool Set(const std::string& var, const ValueT& val) {
     return storage.insert({var, val}).second;
   }

@@ -43,6 +43,7 @@ Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
         return list->size() > 0;
       },
       [](const Object<Val>& obj) -> Result<bool> { return obj->size() > 0; },
+      [](const Lambda<CoreExpr>&) -> Result<bool> { return true; },
       [](const Closure<Val>&) -> Result<bool> { return true; },
       [](const Method<Val>&) -> Result<bool> { return true; },
       [](const builtin_symbol::Symbol&) -> Result<bool> { return true; },
@@ -94,8 +95,9 @@ Result<adt::Ok> CpsBuiltinApply(ComposedCallImpl<Val>* composed_call) {
 template <typename Val>
 Result<Val> BuiltinIdentity(const Val&, const std::vector<Val>& args) {
   if (args.size() != 1) {
-    return TypeError{std::string(kBuiltinId()) + "takes 1 argument, but " +
-                     std::to_string(args.size()) + "were given."};
+    return TypeError{std::string(kBuiltinIdentity()) +
+                     "takes 1 argument, but " + std::to_string(args.size()) +
+                     "were given."};
   }
   return args.at(0);
 }

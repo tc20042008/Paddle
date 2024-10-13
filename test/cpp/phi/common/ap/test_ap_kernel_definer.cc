@@ -21,12 +21,22 @@
 #include "ap/axpr/cps_expr_interpreter.h"
 #include "ap/axpr/lambda_expr_builder.h"
 #include "ap/axpr/value_method_class.h"
-#include "ap/kernel/define_ctx_value.h"
-#include "ap/kernel/define_ctx_value_method_class.h"
+#include "ap/kernel_define/value.h"
+#include "ap/kernel_define/value_method_class.h"
+#include "ap/paddle/pir_node.h"
+#include "ap/paddle/pir_node_method_class.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
 namespace ap::kernel_define::test {
+
+using IrNodeT = ap::paddle::PirNode;
+
+using Val = Value<IrNodeT>;
+
+using Env = ap::axpr::Environment<Val>;
+
+using EnvMgr = ap::axpr::EnvironmentManager<Val>;
 
 TEST(KernelDefine, ArgType) {
   ap::axpr::LambdaExprBuilder lmbd;
@@ -39,7 +49,7 @@ TEST(KernelDefine, ArgType) {
   ASSERT_TRUE(atomic.Has<ap::axpr::Lambda<ap::axpr::CoreExpr>>());
   const auto& lambda = atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
   ap::axpr::CpsExprInterpreter<Val> interpreter;
-  DefinerCtx<Val> ctx{DefinerRawCtx{}, ap::axpr::Object<Val>{}};
+  DefineCtx<IrNodeT> ctx{std::nullopt};
   const Result<Val>& ret = interpreter.Interpret(lambda, {ctx});
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"
@@ -182,7 +192,7 @@ TEST(KernelDefine, FromJson) {
   ASSERT_TRUE(atomic.Has<ap::axpr::Lambda<ap::axpr::CoreExpr>>());
   const auto& lambda = atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
   ap::axpr::CpsExprInterpreter<Val> interpreter;
-  DefinerCtx<Val> ctx{DefinerRawCtx{}, ap::axpr::Object<Val>{}};
+  DefineCtx<IrNodeT> ctx{std::nullopt};
   const Result<Val>& ret = interpreter.Interpret(lambda, {ctx});
   if (ret.HasError()) {
     LOG(ERROR) << "lambda\n"

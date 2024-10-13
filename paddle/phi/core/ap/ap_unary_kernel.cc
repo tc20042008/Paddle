@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/kernel/ap_unary_kernel.h"
+#include "ap/kernel_dispatch/ap_unary_kernel.h"
 
 #include <mutex>
 #include <unordered_map>
@@ -22,11 +22,17 @@
 
 #include "ap/axpr/anf_expr_util.h"
 #include "ap/axpr/cps_expr_interpreter.h"
-#include "ap/kernel/ap_cuda_jit_util.h"
-#include "ap/kernel/define_ctx_value.h"
-#include "ap/kernel/define_ctx_value_method_class.h"
-#include "ap/kernel/dispatch_ctx_value.h"
-#include "ap/kernel/dispatch_ctx_value_method_class.h"
+#include "ap/drr/drr_graph_descriptor.h"
+#include "ap/drr/drr_node_descriptor.h"
+#include "ap/kernel_define/value.h"
+#include "ap/kernel_define/value_method_class.h"
+#include "ap/kernel_dispatch/ap_cuda_jit_util.h"
+#include "ap/kernel_dispatch/dispatch_ctx_value.h"
+#include "ap/kernel_dispatch/dispatch_ctx_value_method_class.h"
+#include "ap/paddle/op_cuda_code_gen_impl.h"
+#include "ap/paddle/pir_node.h"
+#include "ap/paddle/pir_node_descriptor.h"
+#include "ap/paddle/pir_node_method_class.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 
@@ -73,11 +79,23 @@ constexpr MakeCoreExprT MakeOrGetCoreExpr = &CacheCoreExpr<&ConvertToCoreExpr>;
 
 namespace kernel_define {
 
+namespace {
+
+using IrNodeT = ap::paddle::PirNode;
+
+using Val = Value<IrNodeT>;
+
+using Env = ap::axpr::Environment<Val>;
+
+using EnvMgr = ap::axpr::EnvironmentManager<Val>;
+
+}  // namespace
+
 class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
  public:
   explicit ApUnaryCudaModuleImpl(
       const Module& module_val,
-      const std::shared_ptr<ap::CUDAModule>& cuda_module_val)
+      const std::shared_ptr<ap::paddle::CUDAModule>& cuda_module_val)
       : CudaModule(), module_(module_val), cuda_module_(cuda_module_val) {}
 
   ApUnaryCudaModuleImpl& operator=(const ApUnaryCudaModuleImpl& other) {
@@ -109,20 +127,21 @@ class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
 
  private:
   Module module_;
-  std::shared_ptr<ap::CUDAModule> cuda_module_;
+  std::shared_ptr<ap::paddle::CUDAModule> cuda_module_;
 };
 DEFINE_ADT_RC(ApUnaryCudaModule, ApUnaryCudaModuleImpl);
 
-adt::Result<std::shared_ptr<ap::CUDAModule>> MakeBackendCudaModule(
+adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
     const Module& m) {
-  ap::Compiler compiler;
+  ap::paddle::Compiler compiler;
   const std::string& source_code = m->source_code->source_code;
   auto ptx = compiler(source_code);
   if (ptx.empty()) {
     return adt::errors::RuntimeError{
         std::string() + "Compilation failed. source_code: " + source_code};
   }
-  return std::make_shared<ap::CUDAModule>(ptx, ap::CUDAModule::Kind::PTX);
+  return std::make_shared<ap::paddle::CUDAModule>(
+      ptx, ap::paddle::CUDAModule::Kind::PTX);
 }
 
 using MakeCudaModuleT = adt::Result<ApUnaryCudaModule> (*)(
@@ -155,21 +174,19 @@ adt::Result<ApUnaryCudaModule> CacheCudaModule(
 adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
     const std::string& kernel_definer_lambda,
     const std::string& define_ctx_maker_lambda) {
-  ap::axpr::CpsExprInterpreter<Val> cps_interpreter;
+  ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
   const auto& define_ctx_maker_core_expr =
       MakeOrGetCoreExpr(define_ctx_maker_lambda);
   ADT_RETURN_IF_ERR(define_ctx_maker_core_expr);
   const ap::axpr::Lambda<ap::axpr::CoreExpr>& ctx_maker =
       define_ctx_maker_core_expr.GetOkValue();
-  DefinerRawCtx raw_ctx{};
-  const Result<Val>& ctx = cps_interpreter.Interpret(ctx_maker, {raw_ctx});
+  DefineCtx<IrNodeT> ctx{std::nullopt};
   const auto& kernel_definer_core_expr =
       MakeOrGetCoreExpr(kernel_definer_lambda);
   ADT_RETURN_IF_ERR(kernel_definer_core_expr);
   const ap::axpr::Lambda<ap::axpr::CoreExpr>& definer =
       kernel_definer_core_expr.GetOkValue();
-  const Result<Val>& interpret_ret =
-      cps_interpreter.Interpret(definer, {ctx.GetOkValue()});
+  const Result<Val>& interpret_ret = cps_interpreter.Interpret(definer, {ctx});
   ADT_RETURN_IF_ERR(interpret_ret);
   const Result<Module>& m =
       MethodClass<Val>::TryGet<Module>(interpret_ret.GetOkValue());
@@ -221,9 +238,17 @@ adt::List<Val> MakeMutableTensors(std::vector<phi::DenseTensor*>* ys) {
 using FuncName2ArgTypes =
     std::unordered_map<std::string, adt::List<kernel_define::ArgType>>;
 FuncName2ArgTypes MakeFuncName2ArgTypes(const kernel_define::Module& m) {
+  auto GetArgTypes = [&](const auto& declare) {
+    adt::List<kernel_define::ArgType> arg_types;
+    arg_types->reserve(declare->kernel_args->size());
+    for (const auto& kernel_arg : *declare->kernel_args) {
+      arg_types->emplace_back(kernel_arg->arg_type);
+    }
+    return arg_types;
+  };
   FuncName2ArgTypes ret;
   for (const auto& declare : *m->func_declares) {
-    ret[declare->func_id] = declare->arg_types;
+    ret[declare->func_id] = GetArgTypes(declare);
   }
   return ret;
 }

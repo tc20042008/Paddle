@@ -24,10 +24,15 @@ namespace ap::axpr {
 inline constexpr const char* kBuiltinIf() { return "if"; }
 inline constexpr const char* kBuiltinApply() { return "__builtin_apply__"; }
 inline constexpr const char* kBuiltinNothing() { return "None"; }
-inline constexpr const char* kBuiltinId() { return "__builtin_identity__"; }
+inline constexpr const char* kBuiltinIdentity() {
+  return "__builtin_identity__";
+}
 inline constexpr const char* kBuiltinList() { return "__builtin_list__"; }
 inline constexpr const char* kBuiltinStarred() { return "__builtin_starred__"; }
 inline constexpr const char* kBuiltinCall() { return "__builtin_call__"; }
+inline constexpr const char* kBuiltinToString() {
+  return "__builtin_ToString__";
+}
 inline constexpr const char* kBuiltinGetAttr() { return "__builtin_getattr__"; }
 inline constexpr const char* kBuiltinSetAttr() { return "__builtin_setattr__"; }
 inline constexpr const char* kBuiltinGetItem() { return "__builtin_getitem__"; }
@@ -64,7 +69,7 @@ struct Nothing : public std::monostate {
 
 struct Id : public std::monostate {
   using std::monostate::monostate;
-  static constexpr const char* Name() { return kBuiltinId(); }
+  static constexpr const char* Name() { return kBuiltinIdentity(); }
   std::size_t GetHashValue() const { return 0; }
 };
 
@@ -84,6 +89,13 @@ struct Starred : public std::monostate {
 struct Call : public std::monostate {
   using std::monostate::monostate;
   static constexpr const char* Name() { return kBuiltinCall(); }
+  static constexpr int num_operands = 1;
+  std::size_t GetHashValue() const { return 0; }
+};
+
+struct ToString : public std::monostate {
+  using std::monostate::monostate;
+  static constexpr const char* Name() { return kBuiltinToString(); }
   static constexpr int num_operands = 1;
   std::size_t GetHashValue() const { return 0; }
 };
@@ -137,6 +149,7 @@ PEXPR_FOR_EACH_BINARY_OP(DEFINE_BINARY_SYMBOL);
   PEXPR_FOR_EACH_BINARY_OP(_)      \
   PEXPR_FOR_EACH_UNARY_OP(_)       \
   _(Call, ())                      \
+  _(ToString, str)                 \
   _(Starred, *)                    \
   _(GetAttr, .)                    \
   _(SetAttr, .)                    \
@@ -148,6 +161,7 @@ using OpImpl = std::variant<
         PEXPR_FOR_EACH_UNARY_OP(MAKE_OP_IMPL_ALTENATIVE)
 #undef MAKE_OP_IMPL_ALTENATIVE
             Call,
+    ToString,
     Starred,
     GetAttr,
     SetAttr,
@@ -193,6 +207,7 @@ inline adt::Maybe<Symbol> GetSymbolFromString(const std::string& name) {
       {Id::Name(), Id{}},
       {List::Name(), List{}},
       {Call::Name(), Op{Call{}}},
+      {ToString::Name(), Op{ToString{}}},
       {Starred::Name(), Op{Starred{}}},
       {GetAttr::Name(), Op{GetAttr{}}},
       {SetAttr::Name(), Op{SetAttr{}}},

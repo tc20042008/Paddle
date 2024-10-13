@@ -37,16 +37,6 @@ struct PointerValue : public PointerValueImpl {
       return PointerType{CppPointerType<decltype(impl)>{}};
     });
   }
-
-  template <typename T>
-  Result<T> TryGet() const {
-    if (!this->template Has<T>()) {
-      return adt::errors::TypeError{
-          std::string() + "PointerValue::TryGet() failed. expected_type: " +
-          CppPointerType<T>{}.Name() + ", actual_type: " + GetType().Name()};
-    }
-    return this->template Get<T>();
-  }
 };
 
 template <>

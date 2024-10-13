@@ -18,8 +18,9 @@
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
 #include "ap/drr/node.h"
-#include "ap/graph/graph_matcher.h"
+#include "ap/graph/graph_helper.h"
 #include "ap/graph/node_arena.h"
+#include "ap/ir_match/graph_matcher.h"
 
 namespace ap::drr {
 
@@ -32,19 +33,35 @@ struct DemoGraphHelper {
   adt::Result<bool> IsGraphMatched(
       const graph::NodeArena<DrrNodeT>& obj_node_area,
       const graph::NodeArena<DrrNodeT>& ptn_node_area) {
-    GraphDescriptor big_graph{
-        DrrGraphDescriptor<ValueT>{obj_node_area.shared_from_this()}};
-    GraphDescriptor small_graph{
-        DrrGraphDescriptor<ValueT>{ptn_node_area.shared_from_this()}};
-    graph::GraphMatcher<NodeT, NodeT> graph_matcher(big_graph, small_graph);
-    const auto& opt_graph_ctx = graph_matcher.Match();
-    if (opt_graph_ctx.HasError()) {
+    GraphDescriptor big_graph{};
+    GraphDescriptor small_graph{};
+    ir_match::GraphMatcher<NodeT, NodeT> graph_matcher(big_graph, small_graph);
+    ADT_CHECK(ptn_node_area.nodes().size() > 0);
+    const auto& start_ptn_node = ptn_node_area.nodes().at(0).node();
+    ADT_LET_CONST_REF(
+        anchor,
+        graph::GraphHelper<NodeT>(small_graph).FindAnchor(start_ptn_node));
+    ADT_LET_CONST_REF(anchor_cstr, small_graph.GetNodeConstraint(anchor));
+    VLOG(10) << "anchor.node_id: "
+             << graph::NodeDescriptor<NodeT>{}.DebugId(anchor);
+    for (const auto& node : obj_node_area.nodes()) {
+      const auto& obj_node = node.node();
+      ADT_LET_CONST_REF(matched, big_graph.Satisfy(obj_node, anchor_cstr));
+      if (!matched) {
+        continue;
+      }
+      const auto& opt_graph_ctx = graph_matcher.MatchByAnchor(obj_node, anchor);
+      if (opt_graph_ctx.HasOkValue()) {
+        return true;
+      }
       ADT_CHECK(
           opt_graph_ctx.GetError().template Has<adt::errors::MismatchError>())
           << opt_graph_ctx.GetError();
-      return false;
+      VLOG(10) << opt_graph_ctx.GetError().class_name() << ": "
+               << opt_graph_ctx.GetError().msg() << " obj_node_id: "
+               << graph::NodeDescriptor<NodeT>{}.DebugId(anchor);
     }
-    return true;
+    return false;
   }
 };
 

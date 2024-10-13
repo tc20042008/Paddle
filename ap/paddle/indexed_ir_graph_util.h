@@ -16,6 +16,7 @@
 
 #include "ap/index_expr/index_tuple_expr.h"
 #include "ap/paddle/indexed_ir_graph.h"
+#include "ap/paddle/pir_node.h"
 #include "ap/paddle/pir_util.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 

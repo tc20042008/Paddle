@@ -21,20 +21,11 @@
 #include "paddle/common/enforce.h"
 
 #include "ap/axpr/anf_expr_util.h"
-#include "ap/axpr/cps_expr_interpreter.h"
-#include "ap/drr/drr_graph_descriptor.h"
-#include "ap/drr/drr_node_descriptor.h"
-#include "ap/kernel_define/value.h"
-#include "ap/kernel_define/value_method_class.h"
 #include "ap/kernel_dispatch/ap_cuda_jit_util.h"
-#include "ap/kernel_dispatch/dispatch_ctx_value.h"
-#include "ap/kernel_dispatch/dispatch_ctx_value_method_class.h"
-#include "ap/paddle/op_cuda_code_gen_impl.h"
-#include "ap/paddle/pir_node.h"
-#include "ap/paddle/pir_node_descriptor.h"
-#include "ap/paddle/pir_node_method_class.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
+#include "paddle/phi/core/ap/kernel_define_helper.h"
+#include "paddle/phi/core/ap/kernel_dispatch_helper.h"
 
 namespace ap {
 
@@ -78,18 +69,6 @@ adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> CacheCoreExpr(
 constexpr MakeCoreExprT MakeOrGetCoreExpr = &CacheCoreExpr<&ConvertToCoreExpr>;
 
 namespace kernel_define {
-
-namespace {
-
-using IrNodeT = ap::paddle::PirNode;
-
-using Val = Value<IrNodeT>;
-
-using Env = ap::axpr::Environment<Val>;
-
-using EnvMgr = ap::axpr::EnvironmentManager<Val>;
-
-}  // namespace
 
 class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
  public:
@@ -136,10 +115,8 @@ adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
   ap::paddle::Compiler compiler;
   const std::string& source_code = m->source_code->source_code;
   auto ptx = compiler(source_code);
-  if (ptx.empty()) {
-    return adt::errors::RuntimeError{
-        std::string() + "Compilation failed. source_code: " + source_code};
-  }
+  ADT_CHECK(!ptx.empty()) << adt::errors::RuntimeError{
+      std::string() + "Compilation failed. source_code: " + source_code};
   return std::make_shared<ap::paddle::CUDAModule>(
       ptx, ap::paddle::CUDAModule::Kind::PTX);
 }
@@ -174,26 +151,13 @@ adt::Result<ApUnaryCudaModule> CacheCudaModule(
 adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
     const std::string& kernel_definer_lambda,
     const std::string& define_ctx_maker_lambda) {
-  ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
-  const auto& define_ctx_maker_core_expr =
-      MakeOrGetCoreExpr(define_ctx_maker_lambda);
-  ADT_RETURN_IF_ERR(define_ctx_maker_core_expr);
-  const ap::axpr::Lambda<ap::axpr::CoreExpr>& ctx_maker =
-      define_ctx_maker_core_expr.GetOkValue();
-  DefineCtx<IrNodeT> ctx{std::nullopt};
-  const auto& kernel_definer_core_expr =
-      MakeOrGetCoreExpr(kernel_definer_lambda);
-  ADT_RETURN_IF_ERR(kernel_definer_core_expr);
-  const ap::axpr::Lambda<ap::axpr::CoreExpr>& definer =
-      kernel_definer_core_expr.GetOkValue();
-  const Result<Val>& interpret_ret = cps_interpreter.Interpret(definer, {ctx});
-  ADT_RETURN_IF_ERR(interpret_ret);
-  const Result<Module>& m =
-      MethodClass<Val>::TryGet<Module>(interpret_ret.GetOkValue());
-  ADT_RETURN_IF_ERR(m);
-  const auto& cuda_module = MakeBackendCudaModule(m.GetOkValue());
-  ADT_RETURN_IF_ERR(cuda_module);
-  return ApUnaryCudaModule(m.GetOkValue(), cuda_module.GetOkValue());
+  ADT_LET_CONST_REF(kernel_definer_core_expr,
+                    MakeOrGetCoreExpr(kernel_definer_lambda));
+  phi::KernelDefineHelper helper{};
+  ADT_LET_CONST_REF(
+      m, helper.InterpretKernelDefineLambda(kernel_definer_core_expr));
+  ADT_LET_CONST_REF(cuda_module, MakeBackendCudaModule(m));
+  return ApUnaryCudaModule(m, cuda_module);
 }
 
 constexpr MakeCudaModuleT MakeOrGetApUnaryCudaModule =
@@ -261,32 +225,20 @@ adt::Result<adt::Ok> ApUnaryKernel(
     const std::string& kernel_dispatcher_lambda,
     const std::string& dispatch_ctx_maker_lambda,
     std::vector<phi::DenseTensor*> outs) {
-  ap::axpr::CpsExprInterpreter<Val> cps_interpreter;
-  const adt::Result<kernel_define::ApUnaryCudaModule>& m =
-      kernel_define::MakeOrGetApUnaryCudaModule(kernel_definer_lambda,
-                                                define_ctx_maker_lambda);
-  ADT_RETURN_IF_ERR(m);
-  const auto& cuda_module = m.GetOkValue();
+  ADT_LET_CONST_REF(cuda_module,
+                    kernel_define::MakeOrGetApUnaryCudaModule(
+                        kernel_definer_lambda, define_ctx_maker_lambda));
   adt::List<Val> inputs = MakeConstTensors(xs);
   adt::List<Val> outputs = MakeMutableTensors(&outs);
   DispatchRawCtx<Val> raw_ctx{inputs,
                               outputs,
                               cuda_module.shared_ptr(),
                               MakeFuncName2ArgTypes(cuda_module->GetModule())};
-  const auto& dispatch_ctx_maker_core_expr =
-      MakeOrGetCoreExpr(dispatch_ctx_maker_lambda);
-  ADT_RETURN_IF_ERR(dispatch_ctx_maker_core_expr);
-  const auto& ctx_maker_lambda = dispatch_ctx_maker_core_expr.GetOkValue();
-  const auto& ctx = cps_interpreter.Interpret(ctx_maker_lambda, {raw_ctx});
-  ADT_RETURN_IF_ERR(ctx);
-  const adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>>&
-      kernel_dispatcher_core_expr = MakeOrGetCoreExpr(kernel_dispatcher_lambda);
-  ADT_RETURN_IF_ERR(kernel_dispatcher_core_expr);
-  const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda =
-      kernel_dispatcher_core_expr.GetOkValue();
-  const adt::Result<Val>& dispatch_ret =
-      cps_interpreter.Interpret(lambda, {ctx.GetOkValue()});
-  ADT_RETURN_IF_ERR(dispatch_ret);
+  ADT_LET_CONST_REF(lambda, MakeOrGetCoreExpr(kernel_dispatcher_lambda));
+  ADT_LET_CONST_REF(ctx_maker_lambda,
+                    MakeOrGetCoreExpr(dispatch_ctx_maker_lambda));
+  phi::KernelDispatchHelper helper{};
+  ADT_RETURN_IF_ERR(helper.Interpret(lambda, ctx_maker_lambda, raw_ctx));
   return adt::Ok{};
 }
 

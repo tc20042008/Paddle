@@ -14,15 +14,23 @@
 
 #pragma once
 
-#include <memory>
-#include <optional>
-#include "paddle/pir/include/pass/pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_registry_helper.h"
+#include "ap/registry/registry_mgr.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace cinn::dialect::ir {
 
-std::optional<std::unique_ptr<::pir::Pass>> CreateApLowerFusionOpPass();
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+namespace {
+
+using ap::registry::Registry;
+using ap::registry::RegistryMgr;
+using ap::registry::RegistrySingleton;
+
+}  // namespace
+
+adt::Result<Registry> ApRegistryHelper::SingltonRegistry() {
+  ADT_RETURN_IF_ERR(RegistryMgr::Singleton()->LoadAllOnce());
+  ADT_LET_CONST_REF(registry, RegistrySingleton::Singleton());
+  return registry;
+}
+
+}  // namespace cinn::dialect::ir

@@ -52,8 +52,8 @@ struct RegistryMgr {
     }
     ADT_LET_CONST_REF(anf_expr, axpr::MakeAnfExprFromJsonString(file_content));
     const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
-    ADT_LET_CONST_REF(atomic, core_expr.TryGet<axpr::Atomic<axpr::CoreExpr>>());
-    ADT_LET_CONST_REF(lambda, atomic.TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    std::vector<axpr::tVar<std::string>> args{};
+    axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
     axpr::CpsExprInterpreter<registry::Val> cps_expr_interpreter{};
     ADT_RETURN_IF_ERR(cps_expr_interpreter.Interpret(lambda, {}));
     return adt::Ok{};
@@ -68,10 +68,11 @@ struct RegistryMgr {
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachConfigFilePath(const DoEachT& DoEach) {
-    std::string ap_path(std::getenv("AP_PATH"));
-    if (ap_path.empty()) {
+    const char* ap_path_chars = std::getenv("AP_PATH");
+    if (ap_path_chars == nullptr) {
       return adt::Ok{};
     }
+    std::string ap_path(ap_path_chars);
     std::string path;
     std::istringstream ss(ap_path);
     while (std::getline(ss, path, ':')) {

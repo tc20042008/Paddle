@@ -27,18 +27,17 @@
 #include "ap/index_expr/valid_index_expr_builder.h"
 #include "ap/ir_match/graph_matcher.h"
 #include "ap/ir_match/ir_match_ctx.h"
-#include "ap/kernel_define/module.h"
-#include "ap/kernel_define/value.h"
-#include "ap/kernel_define/value_method_class.h"
+#include "ap/kernel_define/compiletime_value.h"
 #include "ap/paddle/indexed_ir_graph_util.h"
-#include "ap/paddle/op_cuda_code_gen_impl.h"
 #include "ap/paddle/pir_graph_descriptor.h"
 #include "ap/paddle/pir_node.h"
 #include "ap/paddle/pir_node_descriptor.h"
-#include "ap/registry/registry_mgr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_drr_helper.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_registry_helper.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -64,8 +63,6 @@ using DrrPackedIrOp = ap::drr::PackedIrOp<DrrValue, DrrNode>;
 using DrrIrOpImpl = std::variant<DrrNativeIrOp, DrrPackedIrOp>;
 
 using IrMatchCtx = ap::ir_match::IrMatchCtx<PirNode>;
-
-using DefineVal = ap::kernel_define::Value<PirNode>;
 
 using ap::axpr::AnfExpr;
 using ap::kernel_define::Module;
@@ -133,7 +130,8 @@ struct ApLowerFusionOpPatternCtx {
               return ir_op->op_declare->op_name;
             },
             [&](const DrrPackedIrOp& ir_op) -> adt::Result<std::string> {
-              return ir_op->op_declare->op_name;
+              return PirNode::GetOpNameFromDrrPackedOpName(
+                  ir_op->op_declare->op_name);
             },
             [&](const auto&) -> adt::Result<std::string> {
               return adt::errors::TypeError{
@@ -158,7 +156,9 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
       pir::PatternRewriter& rewriter) const override {  // // NOLINT
     const auto& ret = TryMatchAndRewrite(op, &rewriter);
     if (ret.HasError()) {
-      VLOG(10) << ret.GetError().class_name() << ": " << ret.GetError().msg();
+      LOG(ERROR) << "\nTraceback (most recent call last):\n"
+                 << ret.GetError().CallStackToString() << "\n"
+                 << ret.GetError().class_name() << ": " << ret.GetError().msg();
       return false;
     }
     return ret.GetOkValue();
@@ -167,6 +167,8 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
   adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
                                        pir::PatternRewriter* rewriter) const {
     ADT_LET_CONST_REF(match_ctx, GetMatchCtx(op));
+    ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
+    LOG(ERROR) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
     return RewriteByResultPattern(match_ctx, op->GetParent(), rewriter);
   }
 
@@ -176,9 +178,6 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
     auto* parent_op = parent_block->GetParentOp();
     ADT_CHECK(!parent_op->isa<cinn::dialect::FusionOp>());
     const auto& anchor = ctx_.anchor;
-    VLOG(10) << "anchor.node_id: "
-             << ap::graph::NodeDescriptor<DrrGraphNode>{}.DebugId(
-                    anchor.node());
     ap::graph::GraphDescriptor<PirNode> pir_graph{};
     ap::graph::GraphDescriptor<DrrGraphNode> src_ptn_graph{};
     ap::ir_match::GraphMatcher<PirNode, DrrGraphNode> graph_matcher(
@@ -213,12 +212,9 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
       pir::Block* block,
       pir::PatternRewriter* rewriter) const {
     std::set<pir::Operation*> new_ops;
-    const auto& ret = TryRewriteByResultPattern(match_ctx, &new_ops, rewriter);
-    if (ret.HasError()) {
-      RollbackBlockByEraseNewOps(block, new_ops);
-      return false;
-    }
-    return ret;
+    ADT_LET_CONST_REF(rewrited,
+                      TryRewriteByResultPattern(match_ctx, &new_ops, rewriter));
+    return rewrited;
   }
 
   struct RewriteCtx {
@@ -333,8 +329,12 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
       const GraphMatchCtx& match_ctx,
       const RewriteCtx& rewrite_ctx,
       const DoEachPairT& DoEachPair) const {
-    for (const auto& drr_ir_value : ctx_.res_ptn_outputs) {
-      ADT_RETURN_IF_ERR(drr_ir_value.Match(
+    for (const auto& res_ptn_drr_ir_value : ctx_.res_ptn_outputs) {
+      const auto& opt_drr_ir_value =
+          SrcPtnIrValue4ResPtnIrValue(res_ptn_drr_ir_value);
+      ADT_CHECK(opt_drr_ir_value.has_value());
+      const auto& drr_ir_value = opt_drr_ir_value.value();
+      const auto& ret = drr_ir_value.Match(
           [&](const DrrNativeIrValue& native_ir_value) -> adt::Result<adt::Ok> {
             ADT_LET_CONST_REF(
                 pir_node,
@@ -350,7 +350,8 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
           [&](const DrrPackedIrValue& ir_value) -> adt::Result<adt::Ok> {
             return adt::errors::NotImplementedError{
                 "PackedIrValue replacement is not supoorted yet."};
-          }));
+          });
+      ADT_RETURN_IF_ERR(ret);
     }
     return adt::Ok{};
   }
@@ -460,7 +461,7 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
       const GraphMatchCtx& match_ctx) const {
     ap::axpr::LambdaExprBuilder lmbd;
     auto ConstructLambdaBody = [&](auto& ctx) -> ap::axpr::AnfExpr {
-      return ctx.Var("ctx").Attr("DispatcherCtx").Call("None");
+      return ctx.Var("ctx").Attr("DispatcherCtx").Call(ctx.None());
     };
     ap::axpr::AnfExpr anf_expr = lmbd.Lambda({"ctx"}, ConstructLambdaBody);
     return anf_expr.DumpToJsonString();
@@ -487,10 +488,8 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
     std::vector<ap::kernel_define::NamedKernelArg> named_kernel_args;
     ap::kernel_define::DefineCtx<PirNode> define_ctx{ir_match_ctx,
                                                      named_kernel_args};
-    ap::axpr::CpsExprInterpreter<DefineVal> cps_expr_interpreter;
-    ADT_LET_CONST_REF(module_val,
-                      cps_expr_interpreter.Interpret(lambda, {define_ctx}));
-    ADT_LET_CONST_REF(m, module_val.template TryGet<Module>())
+    ApKernelDefineHelper helper{};
+    ADT_LET_CONST_REF(m, helper.Interpret(lambda, define_ctx))
         << adt::errors::TypeError{
                "ApLowerFusionOpPattern::GetApKernelModule: kernel_define "
                "lambda returns a non Module object."};
@@ -862,14 +861,6 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
         }));
     return adt::Ok{};
   }
-
-  void RollbackBlockByEraseNewOps(
-      pir::Block* block, const std::set<pir::Operation*>& new_ops) const {
-    for (auto* op : new_ops) {
-      pir::Block::Iterator iter = *op;
-      block->erase(iter);
-    }
-  }
 };
 
 class ApLowerFusionOpPass : public pir::PatternRewritePass {
@@ -881,7 +872,9 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
     pir::RewritePatternSet ps(context);
     const auto& ret = TryInitializePatterns(&ps, context);
     if (ret.HasError()) {
-      LOG(ERROR) << "InitializePatterns " << ret.GetError().class_name() << ": "
+      LOG(ERROR) << "\nTraceback (most recent call last):\n"
+                 << ret.GetError().CallStackToString() << "\n"
+                 << "InitializePatterns " << ret.GetError().class_name() << ": "
                  << ret.GetError().msg();
     }
     return ps;
@@ -895,22 +888,33 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
       ps->Add(std::make_unique<ApLowerFusionOpPattern>(context, pattern_ctx));
       return adt::Ok{};
     };
-    return VisitEachDrrCtx(AddFusionOpPattern);
+    ADT_RETURN_IF_ERR(VisitEachDrrCtx(AddFusionOpPattern));
+    return adt::Ok{};
   }
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachDrrCtx(const DoEachT& DoEach) {
-    ADT_RETURN_IF_ERR(ap::registry::RegistryMgr::Singleton()->LoadAllOnce());
-    ADT_LET_CONST_REF(registry,
-                      ap::registry::RegistrySingleton<PirNode>::Singleton());
+    ADT_LET_CONST_REF(registry, ApRegistryHelper{}.SingltonRegistry());
     const auto& drr_registry_items = registry->drr_registry_items;
     for (const auto& [drr_pass_name, nice2drr_items] : drr_registry_items) {
+      std::optional<DrrCtx> opt_drr_ctx;
       for (const auto& [nice, drr_items] : nice2drr_items) {
+        if (opt_drr_ctx.has_value()) {
+          break;
+        }
         for (const auto& drr_item : drr_items) {
           const auto& drr_ctx = GetDrrCtx(drr_pass_name, drr_item);
           if (drr_ctx.HasOkValue()) {
             ADT_RETURN_IF_ERR(DoEach(drr_ctx.GetOkValue()));
+            opt_drr_ctx = drr_ctx.GetOkValue();
             break;
+          } else {
+            LOG(ERROR) << "\nTraceback (most recent call last):\n"
+                       << drr_ctx.GetError().CallStackToString() << "\n"
+                       << drr_ctx.GetError().class_name()
+                       << ": drr_pass_name: " << drr_pass_name
+                       << " nice: " << nice
+                       << " msg: " << drr_ctx.GetError().msg();
           }
         }
       }
@@ -921,10 +925,9 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
   adt::Result<DrrCtx> GetDrrCtx(const std::string& drr_pass_name,
                                 const ap::registry::DrrRegistryItem& drr_item) {
     DrrCtx drr_ctx{};
-    ap::axpr::CpsExprInterpreter<DrrValue> interpreter{};
-    const auto& lambda = drr_item->lambda->data;
-    ADT_CHECK(lambda.has_value());
-    ADT_RETURN_IF_ERR(interpreter.Interpret(lambda.value(), {drr_ctx}));
+    ADT_CHECK(drr_item->lambda->data.has_value());
+    ADT_RETURN_IF_ERR(
+        ApDrrHelper{}.Interpret(drr_item->lambda->data.value(), drr_ctx));
     if (!drr_ctx->pass_name.has_value()) {
       drr_ctx->pass_name = drr_pass_name;
     }
@@ -932,10 +935,33 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
   }
 };
 
+adt::Result<ap::registry::Registry> TryGetRegistrySingleton() {
+  ADT_LET_CONST_REF(registry, ApRegistryHelper{}.SingltonRegistry());
+  return registry;
+}
+
+std::optional<ap::registry::Registry> GetRegistrySingleton() {
+  const auto& registry = TryGetRegistrySingleton();
+  if (registry.HasOkValue()) {
+    return registry.GetOkValue();
+  } else {
+    LOG(ERROR) << "\nTraceback (most recent call last):\n"
+               << registry.GetError().CallStackToString() << "\n"
+               << registry.GetError().class_name() << ": "
+               << registry.GetError().msg();
+    return std::nullopt;
+  }
+}
+
 }  // namespace
 
-std::unique_ptr<::pir::Pass> CreateApLowerFusionOpPass() {
-  return std::make_unique<ApLowerFusionOpPass>();
+std::optional<std::unique_ptr<::pir::Pass>> CreateApLowerFusionOpPass() {
+  if (GetRegistrySingleton().has_value()) {
+    std::unique_ptr<::pir::Pass> pass = std::make_unique<ApLowerFusionOpPass>();
+    return std::move(pass);
+  } else {
+    return std::nullopt;
+  }
 }
 
 }  // namespace cinn::dialect::ir

@@ -110,6 +110,7 @@ inline size_t GetHashValue(const ComposedCallAtomic<CoreExpr>& composed_call) {
 
 inline size_t GetHashValue(const Atomic<CoreExpr>& atomic) {
   size_t ret = atomic.Match(
+      [](const adt::Nothing) -> size_t { return 0; },
       [](const Symbol& symbol) -> size_t { return symbol.GetHashValue(); },
       [](const bool val) -> size_t { return val; },
       [](const int64_t val) -> size_t { return val; },

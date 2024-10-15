@@ -30,7 +30,7 @@ struct RegistryMethodClass {};
 template <typename ValueT>
 struct TypeImplRegistryMethodClass {
   using This = TypeImplRegistryMethodClass;
-  using Self = axpr::TypeImpl<Registry<ValueT>>;
+  using Self = axpr::TypeImpl<Registry>;
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
@@ -79,7 +79,7 @@ struct TypeImplRegistryMethodClass {
     Cell<axpr::Lambda<axpr::CoreExpr>> lambda{};
     for (const auto& op_name : op_names) {
       OpIndexesExprRegistryItem item{op_name, nice, lambda};
-      RegistrySingleton<ValueT>::Add(item);
+      RegistrySingleton::Add(item);
     }
     return SetterDecorator{lambda};
   }
@@ -103,7 +103,7 @@ struct TypeImplRegistryMethodClass {
                                   "' were given."};
     Cell<axpr::Lambda<axpr::CoreExpr>> lambda{};
     DrrRegistryItem item{drr_name, nice, lambda};
-    RegistrySingleton<ValueT>::Add(item);
+    RegistrySingleton::Add(item);
     return SetterDecorator{lambda};
   }
 
@@ -133,7 +133,7 @@ struct TypeImplRegistryMethodClass {
                                   "' were given."};
     Cell<axpr::Lambda<axpr::CoreExpr>> lambda{};
     OpComputeRegistryItem item{op_name, arch_type, nice, lambda};
-    RegistrySingleton<ValueT>::Add(item);
+    RegistrySingleton::Add(item);
     return SetterDecorator{lambda};
   }
 };
@@ -143,11 +143,11 @@ struct TypeImplRegistryMethodClass {
 namespace ap::axpr {
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, registry::Registry<ValueT>>
+struct MethodClassImpl<ValueT, registry::Registry>
     : public registry::RegistryMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<registry::Registry<ValueT>>>
+struct MethodClassImpl<ValueT, TypeImpl<registry::Registry>>
     : public registry::TypeImplRegistryMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

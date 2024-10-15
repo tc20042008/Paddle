@@ -57,7 +57,9 @@ struct DemoGraphHelper {
       ADT_CHECK(
           opt_graph_ctx.GetError().template Has<adt::errors::MismatchError>())
           << opt_graph_ctx.GetError();
-      VLOG(10) << opt_graph_ctx.GetError().class_name() << ": "
+      VLOG(10) << "call stack\n"
+               << opt_graph_ctx.GetError().CallStackToString() << "\n"
+               << opt_graph_ctx.GetError().class_name() << ": "
                << opt_graph_ctx.GetError().msg() << " obj_node_id: "
                << graph::NodeDescriptor<NodeT>{}.DebugId(anchor);
     }

@@ -16,42 +16,48 @@
 
 namespace ap::paddle {
 
-void GetUsedExternalValueImpl(
-    std::unordered_set<pir::Value>& defined_values,  // NOLINT
-    std::vector<pir::Value>& used_values,            // NOLINT
-    const pir::Operation& op) {
-  for (size_t index = 0; index < op.num_operands(); ++index) {
-    pir::Value value = op.operand_source(index);
-    if (defined_values.find(value) == defined_values.end()) {
-      used_values.push_back(value);
-      defined_values.insert(value);
-    }
-  }
-  for (auto& region : op) {
-    for (auto& block : region) {
-      for (auto value : block.args()) {
-        defined_values.insert(value);
-      }
-      for (const auto& [_, value] : block.kwargs()) {
+struct FreeVarHelper {
+  void GetUsedExternalValueImpl(
+      std::unordered_set<pir::Value>& defined_values,  // NOLINT
+      std::vector<pir::Value>& used_values,            // NOLINT
+      const pir::Operation& op) {
+    for (size_t index = 0; index < op.num_operands(); ++index) {
+      pir::Value value = op.operand_source(index);
+      if (defined_values.find(value) == defined_values.end()) {
+        used_values.push_back(value);
         defined_values.insert(value);
       }
     }
-    for (auto& block : region) {
-      for (auto& inner_op : block) {
-        GetUsedExternalValueImpl(defined_values, used_values, inner_op);
+    for (auto& region : op) {
+      for (auto& block : region) {
+        for (auto value : block.args()) {
+          defined_values.insert(value);
+        }
+        for (const auto& [_, value] : block.kwargs()) {
+          defined_values.insert(value);
+        }
+      }
+      for (auto& block : region) {
+        for (auto& inner_op : block) {
+          GetUsedExternalValueImpl(defined_values, used_values, inner_op);
+        }
       }
     }
+    for (size_t index = 0; index < op.num_results(); ++index) {
+      defined_values.insert(op.result(index));
+    }
   }
-  for (size_t index = 0; index < op.num_results(); ++index) {
-    defined_values.insert(op.result(index));
-  }
-}
 
-std::vector<pir::Value> GetUsedExternalValue(const pir::Operation& op) {
-  std::unordered_set<pir::Value> defined_values{nullptr};
-  std::vector<pir::Value> used_values;
-  GetUsedExternalValueImpl(defined_values, used_values, op);
-  return used_values;
+  std::vector<pir::Value> GetUsedExternalValue(const pir::Operation& op) {
+    std::unordered_set<pir::Value> defined_values{nullptr};
+    std::vector<pir::Value> used_values;
+    GetUsedExternalValueImpl(defined_values, used_values, op);
+    return used_values;
+  }
+};
+
+inline std::vector<pir::Value> GetUsedExternalValue(const pir::Operation& op) {
+  return FreeVarHelper{}.GetUsedExternalValue(op);
 }
 
 }  // namespace ap::paddle

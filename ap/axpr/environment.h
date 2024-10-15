@@ -47,6 +47,8 @@ class Environment {
     frame_.ClearFrame();
   }
 
+  const Frame<ValueT>& frame() const { return frame_; }
+
  private:
   static std::shared_ptr<Environment> New(
       const std::shared_ptr<Environment>& parent) {

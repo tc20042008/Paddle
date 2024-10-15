@@ -47,6 +47,7 @@ struct ExprSymbolTrait {
 
 template <typename Expr>
 using AtomicBase = std::variant<typename ExprSymbolTrait<Expr>::symbol_type,
+                                adt::Nothing,
                                 bool,
                                 int64_t,
                                 double,

@@ -60,9 +60,9 @@ struct GraphMatchCtxImpl {
 
   adt::Result<adt::Ok> InitObjNodes(const sg_node_t& sg_node,
                                     const std::unordered_set<bg_node_t>& val) {
-    VLOG(10) << "InitObjNodes. sg_node: "
-             << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
-             << ", val:" <<
+    VLOG(0) << "InitObjNodes. sg_node: "
+            << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
+            << ", val:" <<
         [&] {
           std::ostringstream ss;
           for (const auto& val_node : val) {
@@ -92,6 +92,7 @@ struct GraphMatchCtxImpl {
 
   adt::Result<adt::Ok> UpdateObjNodes(
       const sg_node_t& sg_node, const std::unordered_set<bg_node_t>& val) {
+    ADT_CHECK(!val.empty());
     for (const auto& bg_node : val) {
       const auto& opt_matched = GetMatchedPtnNode(bg_node);
       ADT_CHECK(!opt_matched.has_value() || opt_matched.value() == sg_node)
@@ -105,9 +106,9 @@ struct GraphMatchCtxImpl {
         intersection.insert(lhs);
       }
     }
-    VLOG(10) << "UpdateObjNodes. sg_node: "
-             << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
-             << ", old_val:" <<
+    VLOG(0) << "UpdateObjNodes. sg_node: "
+            << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
+            << ", old_val:" <<
         [&] {
           std::ostringstream ss;
           for (const auto& val_node : *ptr) {
@@ -115,7 +116,7 @@ struct GraphMatchCtxImpl {
           }
           return ss.str();
         }()
-             << ", new_val:" <<
+            << ", new_val:" <<
         [&] {
           std::ostringstream ss;
           for (const auto& val_node : val) {
@@ -123,7 +124,7 @@ struct GraphMatchCtxImpl {
           }
           return ss.str();
         }()
-             << ", intersection: " <<
+            << ", intersection: " <<
         [&] {
           std::ostringstream ss;
           for (const auto& val_node : intersection) {

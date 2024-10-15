@@ -20,9 +20,8 @@
 
 namespace ap::registry {
 
-template <typename ValueT>
 struct RegistrySingleton {
-  static adt::Result<Registry<ValueT>> Singleton() {
+  static adt::Result<Registry> Singleton() {
     std::unique_lock<std::mutex> lock(*SingletonMutex());
     ADT_CHECK(MutOptSingleton()->has_value())
         << adt::errors::NotImplementedError{
@@ -60,16 +59,16 @@ struct RegistrySingleton {
   }
 
  private:
-  static Registry<ValueT> MutSingleton() {
+  static Registry MutSingleton() {
     std::unique_lock<std::mutex> lock(*SingletonMutex());
     if (!MutOptSingleton()->has_value()) {
-      *MutOptSingleton() = Registry<ValueT>{};
+      *MutOptSingleton() = Registry{};
     }
     return MutOptSingleton()->value();
   }
 
-  static std::optional<Registry<ValueT>>* MutOptSingleton() {
-    static std::optional<Registry<ValueT>> ctx{};
+  static std::optional<Registry>* MutOptSingleton() {
+    static std::optional<Registry> ctx{};
     return &ctx;
   }
 };

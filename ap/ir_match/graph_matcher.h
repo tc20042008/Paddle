@@ -115,6 +115,10 @@ struct GraphMatcher {
         GraphHelper<sg_node_t>(sg_descriptor_).GetBfsWalker();
     bool updated = false;
     auto Update = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
+      // no need to update anchor_node.
+      if (anchor_node == sg_node) {
+        return adt::Ok{};
+      }
       ADT_LET_CONST_REF(current_updated, UpdateByConnections(ctx, sg_node));
       updated = updated || current_updated;
       return adt::Ok{};
@@ -127,17 +131,38 @@ struct GraphMatcher {
       GraphMatchCtxImpl<bg_node_t, sg_node_t>* ctx, const sg_node_t& sg_node) {
     ADT_LET_CONST_REF(bg_nodes_ptr, ctx->GetObjNodes(sg_node));
     const size_t old_num_bg_nodes = bg_nodes_ptr->size();
-    auto Update = [&](const sg_node_t& node,
+    auto Update = [&](const sg_node_t& nearby_node,
                       tIsUpstream<bool> is_upstream) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(
-          bg_nodes,
-          GetMatchedObjNodesFromConnected(*ctx, sg_node, node, is_upstream));
+      ADT_LET_CONST_REF(bg_nodes,
+                        GetMatchedObjNodesFromConnected(
+                            *ctx, sg_node, nearby_node, is_upstream));
+      ADT_CHECK(!bg_nodes.empty()) << adt::errors::RuntimeError{
+          std::string() + "small_graph_node: " +
+          graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node) +
+          ", old_big_graph_nodes: " + GetNodesDebugIds(bg_nodes_ptr) +
+          ", nearby_node: " +
+          graph::NodeDescriptor<sg_node_t>{}.DebugId(nearby_node) +
+          ", is_nearby_node_from_upstream: " +
+          std::to_string(is_upstream.value())};
       ADT_RETURN_IF_ERR(ctx->UpdateObjNodes(sg_node, bg_nodes));
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(ForEachInitedUpstream(*ctx, sg_node, Update));
     ADT_RETURN_IF_ERR(ForEachInitedDownstream(*ctx, sg_node, Update));
     return old_num_bg_nodes != bg_nodes_ptr->size();
+  }
+
+  std::string GetNodesDebugIds(
+      const std::unordered_set<bg_node_t>* nodes) const {
+    std::ostringstream ss;
+    int i = 0;
+    for (const auto& node : *nodes) {
+      if (i++ > 0) {
+        ss << " ";
+      }
+      ss << graph::NodeDescriptor<bg_node_t>{}.DebugId(node);
+    }
+    return ss.str();
   }
 
   adt::Result<adt::Ok> GraphMatchCtxInitNode(

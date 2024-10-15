@@ -15,6 +15,7 @@
 #pragma once
 
 #include <functional>
+#include <list>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -64,6 +65,8 @@ struct Rc {
   }
 
   const std::shared_ptr<T>& shared_ptr() const { return data_; }
+
+  void* __adt_rc_shared_ptr_raw_ptr() const { return data_.get(); }
 
  private:
   std::shared_ptr<T> data_;
@@ -223,13 +226,33 @@ struct Maybe : public Either<T, Nothing> {
   using Either<T, Nothing>::Either;
 };
 
+namespace source_code {
+
+struct CodeLocation {
+  std::string file_name;
+  int line_no;
+  std::string func_name;
+  std::string code;
+
+  bool operator==(const CodeLocation& other) const {
+    return this->file_name == other.file_name &&
+           this->line_no == other.line_no &&
+           this->func_name == other.func_name && this->code == other.code;
+  }
+};
+
+using CallStack = std::list<const CodeLocation*>;
+
+}  // namespace source_code
+
 namespace errors {
 
 struct RuntimeError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const RuntimeError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "RuntimeError"; }
@@ -237,9 +260,10 @@ struct RuntimeError {
 
 struct InvalidArgumentError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const InvalidArgumentError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "InvalidArgumentError"; }
@@ -247,9 +271,10 @@ struct InvalidArgumentError {
 
 struct AttributeError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const AttributeError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "AttributeError"; }
@@ -257,9 +282,10 @@ struct AttributeError {
 
 struct NameError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const NameError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "NameError"; }
@@ -267,9 +293,10 @@ struct NameError {
 
 struct ValueError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const ValueError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "ValueError"; }
@@ -277,9 +304,10 @@ struct ValueError {
 
 struct ZeroDivisionError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const ZeroDivisionError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "ZeroDivisionError"; }
@@ -287,9 +315,10 @@ struct ZeroDivisionError {
 
 struct TypeError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const TypeError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "TypeError"; }
@@ -297,9 +326,10 @@ struct TypeError {
 
 struct IndexError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const IndexError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "IndexError"; }
@@ -307,9 +337,10 @@ struct IndexError {
 
 struct KeyError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const KeyError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "KeyError"; }
@@ -317,9 +348,10 @@ struct KeyError {
 
 struct MismatchError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const MismatchError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "MismatchError"; }
@@ -327,9 +359,10 @@ struct MismatchError {
 
 struct NotImplementedError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const NotImplementedError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "NotImplementedError"; }
@@ -337,9 +370,10 @@ struct NotImplementedError {
 
 struct SyntaxError {
   std::string msg;
+  source_code::CallStack call_stack{};
 
   bool operator==(const SyntaxError& other) const {
-    return other.msg == this->msg;
+    return this->msg == other.msg && this->call_stack == other.call_stack;
   }
 
   const char* class_name() const { return "SyntaxError"; }
@@ -371,12 +405,50 @@ struct [[nodiscard]] Error : public ErrorBase {
         [](const auto& impl) -> const std::string& { return impl.msg; });
   }
 
-  Error operator<<(Error&& replacement) const { return std::move(replacement); }
+  const source_code::CallStack& call_stack() const {
+    return Match([](const auto& impl) -> const source_code::CallStack& {
+      return impl.call_stack;
+    });
+  }
 
-  Error operator<<(const Error& replacement) const { return replacement; }
+  std::string CallStackToString() const {
+    std::ostringstream ss;
+    for (const auto* code_location : call_stack()) {
+      ss << "  File \"" << code_location->file_name << "\", line "
+         << code_location->line_no << ", in " << code_location->func_name
+         << "\n    " << code_location->code << "\n";
+    }
+    return ss.str();
+  }
 
-  Error operator<<(const std::function<Error(const Error&)>& Replace) const {
-    return Replace(*this);
+  Error operator<<(Error&& replacement) const {
+    if (this->call_stack().size() > 0) {
+      replacement.mut_call_stack()->push_front(*this->call_stack().begin());
+    }
+    return std::move(replacement);
+  }
+
+  Error operator<<(const Error& replacement) const {
+    if (this->call_stack().size() > 0) {
+      replacement.mut_call_stack()->push_front(*this->call_stack().begin());
+    }
+    return replacement;
+  }
+
+  Error operator<<(
+      const std::function<Error(const Error&)>& GetReplacement) const {
+    const auto& replacement = GetReplacement(*this);
+    return (*this) << replacement;
+  }
+
+  Error operator<<(const source_code::CodeLocation* code_location) const {
+    mut_call_stack()->push_front(code_location);
+    return *this;
+  }
+
+ private:
+  source_code::CallStack* mut_call_stack() const {
+    return const_cast<source_code::CallStack*>(&call_stack());
   }
 };
 
@@ -422,15 +494,28 @@ adt::Result<std::shared_ptr<T>> WeakPtrLock(const std::weak_ptr<T>& weak_ptr) {
   return ptr;
 }
 
-#define ADT_CHECK(...)                                                       \
-  if (!(__VA_ARGS__)) return ::cinn::adt::errors::Error { /* NOLINT */       \
-      ::cinn::adt::errors::ValueError { "Check '" #__VA_ARGS__ "' failed." } \
-    }
+#define ADT_CURRENT_CODE_LOCATION(filename, line_no, func_name, code) \
+  ([] {                                                               \
+    static const ::cinn::adt::source_code::CodeLocation loc{          \
+        filename, line_no, func_name, code};                          \
+    return &loc;                                                      \
+  }())
 
-#define ADT_RETURN_IF_ERR(...)                      \
-  if (const auto& __result##__LINE__ = __VA_ARGS__; \
-      __result##__LINE__.HasError())                \
-  return __result##__LINE__.GetError()
+// clang-format off
+#define ADT_CHECK(...)                                                  /* NOLINT */  \
+  if (!(__VA_ARGS__))                                                   /* NOLINT */  \
+    return ::cinn::adt::errors::Error{::cinn::adt::errors::ValueError{  /* NOLINT */  \
+        "Check '" #__VA_ARGS__ "' failed."                              /* NOLINT */  \
+    }} << ADT_CURRENT_CODE_LOCATION(                                    /* NOLINT */  \
+      __FILE__, __LINE__, __FUNCTION__, #__VA_ARGS__                    /* NOLINT */  \
+    )
+// clang-format on
+
+#define ADT_RETURN_IF_ERR(...)                                       \
+  if (const auto& __result##__LINE__ = __VA_ARGS__;                  \
+      __result##__LINE__.HasError())                                 \
+  return __result##__LINE__.GetError() << ADT_CURRENT_CODE_LOCATION( \
+             __FILE__, __LINE__, __FUNCTION__, #__VA_ARGS__)
 
 #define ADT_LET_CONST_REF(var, ...)                                         \
   const auto& __result_##var = __VA_ARGS__;                                 \

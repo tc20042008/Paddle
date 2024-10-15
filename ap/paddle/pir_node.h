@@ -172,6 +172,7 @@ struct PirNode : public PirNodeImpl {
   using PirNodeImpl::PirNodeImpl;
   DEFINE_ADT_VARIANT_METHODS(PirNodeImpl);
 
+  using dim_expr_type = ::symbol::DimExpr;
   using native_op_type = NativeIrOp;
   using packed_op_type = PackedIrOp;
   using native_value_type = NativeIrValue;
@@ -184,6 +185,16 @@ struct PirNode : public PirNodeImpl {
   graph::NodeCstr node_cstr() const {
     return Match(
         [](const auto& impl) -> graph::NodeCstr { return impl.node_cstr(); });
+  }
+
+  static adt::Result<std::string> GetOpNameFromDrrPackedOpName(
+      const std::string& drr_packed_op_name) {
+    if (drr_packed_op_name == "ap_trivial_fusion_op") {
+      return "cinn_op.fusion";
+    }
+    return adt::errors::KeyError{
+        std::string() + "no pir op name matched to drr packed op name: '" +
+        drr_packed_op_name + "'"};
   }
 };
 

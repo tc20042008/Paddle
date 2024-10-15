@@ -60,7 +60,7 @@ struct OpCudaCodeGenImpl {
   using IndexTupleExprCodeGenerator =
       index_expr::IndexTupleExprCudaCodeGenerator;
 
-  using Registry = registry::Registry<registry::Val>;
+  using Registry = registry::Registry;
 
   adt::Result<std::string> CodeGen(const OpCodeGenCtx& op_code_gen_ctx,
                                    const IrOp& ir_op) {
@@ -603,8 +603,7 @@ struct OpCudaCodeGenImpl {
                                               const DoEachT& DoEach) {
     ADT_RETURN_IF_ERR(ap::registry::RegistryMgr::Singleton()->LoadAllOnce());
     using RegistryVal = ap::registry::Value;
-    ADT_LET_CONST_REF(
-        registry, ap::registry::RegistrySingleton<RegistryVal>::Singleton());
+    ADT_LET_CONST_REF(registry, ap::registry::RegistrySingleton::Singleton());
     const auto& key2nice2op_computes = registry->op_compute_registry_items;
     const auto& iter = key2nice2op_computes.find(op_name);
     ADT_CHECK(iter != key2nice2op_computes.end())

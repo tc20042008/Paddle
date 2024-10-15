@@ -56,6 +56,9 @@ struct CoreExprToAnfExprConverter {
                 return Atomic<AnfExpr>{var};
               });
         },
+        [&](adt::Nothing) -> Atomic<AnfExpr> {
+          return Atomic<AnfExpr>{adt::Nothing{}};
+        },
         [&](bool c) -> Atomic<AnfExpr> { return Atomic<AnfExpr>{c}; },
         [&](int64_t c) -> Atomic<AnfExpr> { return Atomic<AnfExpr>{c}; },
         [&](double c) -> Atomic<AnfExpr> { return Atomic<AnfExpr>{c}; },
@@ -150,7 +153,7 @@ struct CoreExprToAnfExprConverter {
 
 }  // namespace detail
 
-AnfExpr ConvertCoreExprToAnfExpr(const CoreExpr& core_expr) {
+inline AnfExpr ConvertCoreExprToAnfExpr(const CoreExpr& core_expr) {
   return detail::CoreExprToAnfExprConverter().ConvertCoreExprToAnfExpr(
       core_expr);
 }
@@ -252,6 +255,7 @@ struct AnfExprToCoreExprConverter {
   value_type ConvertAtomic(const Atomic<AnfExpr>& atomic_expr) {
     return atomic_expr.Match(
         [&](const tVar<std::string>& var) { return ConvertVar(var); },
+        [&](const adt::Nothing) { return ConvertNothing(); },
         [&](bool c) { return ConvertBool(c); },
         [&](int64_t c) { return ConvertInt64(c); },
         [&](double c) { return ConvertDouble(c); },
@@ -271,7 +275,7 @@ struct AnfExprToCoreExprConverter {
         [&](const builtin_symbol::Symbol& symbol) -> Symbol { return symbol; },
         [&](const adt::Nothing&) -> Symbol { return var; }));
   }
-
+  value_type ConvertNothing() { return CoreVal(core_.None()); }
   value_type ConvertBool(const bool c) { return CoreVal(core_.Bool(c)); }
   value_type ConvertInt64(const int64_t c) { return CoreVal(core_.Int64(c)); }
   value_type ConvertDouble(const double c) { return CoreVal(core_.Double(c)); }
@@ -393,7 +397,7 @@ struct AnfExprToCoreExprConverter {
 
 }  // namespace detail
 
-CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr& anf_expr) {
+inline CoreExpr ConvertAnfExprToCoreExpr(const AnfExpr& anf_expr) {
   return detail::AnfExprToCoreExprConverter().ConvertAnfExprToCoreExpr(
       anf_expr);
 }
@@ -404,12 +408,13 @@ using adt::Result;
 
 using Json = nlohmann::json;
 
-adt::errors::Error JsonParseFailed(const Json& j_obj, const std::string& msg) {
+inline adt::errors::Error JsonParseFailed(const Json& j_obj,
+                                          const std::string& msg) {
   return adt::errors::TypeError{msg + " json: " + j_obj.dump()};
 }
 
-adt::errors::Error JsonParseMismatch(const Json& j_obj,
-                                     const std::string& msg) {
+inline adt::errors::Error JsonParseMismatch(const Json& j_obj,
+                                            const std::string& msg) {
   return adt::errors::MismatchError{msg};
 }
 
@@ -417,11 +422,7 @@ typedef Result<AnfExpr> (*JsonParseFuncType)(const Json& j_obj);
 
 Result<AnfExpr> ConvertJsonToAnfExpr(const Json& j_obj);
 
-template <typename T>
-struct ParseJsonToAnfExprHelper;
-
-template <>
-struct ParseJsonToAnfExprHelper<tVar<std::string>> {
+struct ParseJsonToAnfExprHelperVar {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_string()) {
       return JsonParseMismatch(j_obj,
@@ -433,8 +434,17 @@ struct ParseJsonToAnfExprHelper<tVar<std::string>> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<bool> {
+struct ParseJsonToAnfExprHelperNull {
+  static Result<AnfExpr> Call(const Json& j_obj) {
+    if (!j_obj.is_null()) {
+      return JsonParseMismatch(
+          j_obj, "ParseJsonToAnfExpr<bool>: json object should be null.");
+    }
+    return AnfExpr{AnfExprBuilder().None()};
+  }
+};
+
+struct ParseJsonToAnfExprHelperBool {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_boolean()) {
       return JsonParseMismatch(
@@ -445,8 +455,7 @@ struct ParseJsonToAnfExprHelper<bool> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<int64_t> {
+struct ParseJsonToAnfExprHelperInt64 {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_number_integer()) {
       return JsonParseMismatch(j_obj,
@@ -458,8 +467,7 @@ struct ParseJsonToAnfExprHelper<int64_t> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<double> {
+struct ParseJsonToAnfExprHelperDouble {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_number_float()) {
       return JsonParseMismatch(j_obj,
@@ -471,8 +479,7 @@ struct ParseJsonToAnfExprHelper<double> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<std::string> {
+struct ParseJsonToAnfExprHelperString {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_object()) {
       return JsonParseMismatch(j_obj,
@@ -500,8 +507,7 @@ struct ParseJsonToAnfExprHelper<std::string> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<Lambda<AnfExpr>> {
+struct ParseJsonToAnfExprHelperLambdaAnfExpr {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_array()) {
       return JsonParseMismatch(j_obj,
@@ -543,8 +549,7 @@ struct ParseJsonToAnfExprHelper<Lambda<AnfExpr>> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<Call<AnfExpr>> {
+struct ParseJsonToAnfExprHelperCallAnfExpr {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_array()) {
       return JsonParseMismatch(
@@ -588,8 +593,7 @@ struct ParseJsonToAnfExprHelper<Call<AnfExpr>> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<If<AnfExpr>> {
+struct ParseJsonToAnfExprHelperIfAnfExpr {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_array()) {
       return JsonParseMismatch(j_obj,
@@ -636,8 +640,7 @@ struct ParseJsonToAnfExprHelper<If<AnfExpr>> {
   }
 };
 
-template <>
-struct ParseJsonToAnfExprHelper<Let<AnfExpr>> {
+struct ParseJsonToAnfExprHelperLetAnfExpr {
   static Result<AnfExpr> Call(const Json& j_obj) {
     if (!j_obj.is_array()) {
       return JsonParseMismatch(
@@ -702,22 +705,18 @@ struct ParseJsonToAnfExprHelper<Let<AnfExpr>> {
   }
 };
 
-template <typename T>
-static Result<AnfExpr> ParseJsonToAnfExpr(const Json& j_obj) {
-  return ParseJsonToAnfExprHelper<T>::Call(j_obj);
-}
-
 inline const std::vector<JsonParseFuncType>& GetJsonParseFuncs() {
   static const std::vector<JsonParseFuncType> vec{
-      &ParseJsonToAnfExpr<Lambda<AnfExpr>>,
-      &ParseJsonToAnfExpr<If<AnfExpr>>,
-      &ParseJsonToAnfExpr<Let<AnfExpr>>,
-      &ParseJsonToAnfExpr<Call<AnfExpr>>,
-      &ParseJsonToAnfExpr<tVar<std::string>>,
-      &ParseJsonToAnfExpr<bool>,
-      &ParseJsonToAnfExpr<int64_t>,
-      &ParseJsonToAnfExpr<double>,
-      &ParseJsonToAnfExpr<std::string>,
+      &ParseJsonToAnfExprHelperLambdaAnfExpr::Call,
+      &ParseJsonToAnfExprHelperIfAnfExpr::Call,
+      &ParseJsonToAnfExprHelperLetAnfExpr::Call,
+      &ParseJsonToAnfExprHelperCallAnfExpr::Call,
+      &ParseJsonToAnfExprHelperVar::Call,
+      &ParseJsonToAnfExprHelperNull::Call,
+      &ParseJsonToAnfExprHelperBool::Call,
+      &ParseJsonToAnfExprHelperInt64::Call,
+      &ParseJsonToAnfExprHelperDouble::Call,
+      &ParseJsonToAnfExprHelperString::Call,
   };
   return vec;
 }
@@ -730,9 +729,10 @@ inline Result<AnfExpr> ConvertJsonToAnfExpr(const Json& j_obj) {
         return ret.GetOkValue();
       }
       if (!ret.GetError().Has<adt::errors::MismatchError>()) {
-        LOG(ERROR) << "ConvertJsonToAnfExpr: error-type: "
+        LOG(ERROR) << "\nTraceback (most recent call last):\n"
+                   << ret.GetError().CallStackToString() << "\n"
                    << ret.GetError().class_name()
-                   << ", error-msg: " << ret.GetError().msg();
+                   << ": ConvertJsonToAnfExpr: " << ret.GetError().msg();
         return ret.GetError();
       }
     }
@@ -743,7 +743,7 @@ inline Result<AnfExpr> ConvertJsonToAnfExpr(const Json& j_obj) {
   return JsonParseFailed(j_obj, "ConvertJsonToAnfExpr: failed to convert.");
 }
 
-Result<AnfExpr> MakeAnfExprFromJsonString(const std::string& json_str) {
+inline Result<AnfExpr> MakeAnfExprFromJsonString(const std::string& json_str) {
   try {
     return detail::ConvertJsonToAnfExpr(Json::parse(json_str));
   } catch (std::exception& e) {
@@ -754,7 +754,8 @@ Result<AnfExpr> MakeAnfExprFromJsonString(const std::string& json_str) {
 
 }  // namespace detail
 
-adt::Result<AnfExpr> MakeAnfExprFromJsonString(const std::string& json_str) {
+inline adt::Result<AnfExpr> MakeAnfExprFromJsonString(
+    const std::string& json_str) {
   return detail::MakeAnfExprFromJsonString(json_str);
 }
 

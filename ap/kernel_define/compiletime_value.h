@@ -34,37 +34,38 @@ namespace ap::kernel_define {
 namespace adt = ::cinn::adt;
 
 template <typename ValueT, typename IrNodeT>
-using ValueImpl = ap::axpr::ValueBase<ValueT,
-                                      axpr::DataType,
-                                      axpr::PointerType,
-                                      symbol::DimExpr,
-                                      index_expr::Slice,
-                                      index_expr::IndexExpr,
-                                      index_expr::IndexTupleExpr,
-                                      typename IrNodeT::native_op_type,
-                                      typename IrNodeT::packed_op_type,
-                                      typename IrNodeT::native_value_type,
-                                      typename IrNodeT::packed_value_type,
-                                      ir_match::IrMatchCtx<IrNodeT>,
-                                      ir_match::OpMatchCtx<IrNodeT>,
-                                      ir_match::TensorMatchCtx<IrNodeT>,
-                                      DefineCtx<IrNodeT>,
-                                      KernelArg,
-                                      FuncDeclare,
-                                      SourceCode,
-                                      Module>;
-
-template <typename IrNodeT>
-struct Value : public ValueImpl<Value<IrNodeT>, IrNodeT> {
-  using ValueImpl<Value<IrNodeT>, IrNodeT>::ValueImpl;
-  using ir_node_type = IrNodeT;
-  DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value<IrNodeT>, IrNodeT>);
-
-  static axpr::Object<Value<IrNodeT>> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value<IrNodeT>,
+using CtValueImpl = ap::axpr::ValueBase<ValueT,
                                         axpr::DataType,
                                         axpr::PointerType,
-                                        symbol::DimExpr,
+                                        index_expr::Slice,
+                                        index_expr::IndexExpr,
+                                        index_expr::IndexTupleExpr,
+                                        ::symbol::DimExpr,
+                                        typename IrNodeT::native_op_type,
+                                        typename IrNodeT::packed_op_type,
+                                        typename IrNodeT::native_value_type,
+                                        typename IrNodeT::packed_value_type,
+                                        ir_match::IrMatchCtx<IrNodeT>,
+                                        ir_match::OpMatchCtx<IrNodeT>,
+                                        ir_match::TensorMatchCtx<IrNodeT>,
+                                        DefineCtx<IrNodeT>,
+                                        KernelArg,
+                                        FuncDeclare,
+                                        SourceCode,
+                                        Module>;
+
+// compile time value
+template <typename IrNodeT>
+struct CtValue : public CtValueImpl<CtValue<IrNodeT>, IrNodeT> {
+  using CtValueImpl<CtValue<IrNodeT>, IrNodeT>::CtValueImpl;
+  using ir_node_type = IrNodeT;
+  DEFINE_ADT_VARIANT_METHODS(CtValueImpl<CtValue<IrNodeT>, IrNodeT>);
+
+  static axpr::Object<CtValue<IrNodeT>> GetExportedTypes() {
+    return axpr::GetObjectTypeName2Type<CtValue<IrNodeT>,
+                                        axpr::DataType,
+                                        axpr::PointerType,
+                                        typename IrNodeT::dim_expr_type,
                                         index_expr::Slice,
                                         index_expr::IndexExpr,
                                         index_expr::IndexTupleExpr,

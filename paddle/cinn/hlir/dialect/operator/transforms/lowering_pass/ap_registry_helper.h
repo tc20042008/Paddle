@@ -15,29 +15,12 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/core_expr.h"
-#include "ap/axpr/value.h"
 #include "ap/registry/registry.h"
-#include "ap/registry/setter_decorator.h"
 
-namespace ap::registry {
+namespace cinn::dialect::ir {
 
-template <typename ValueT>
-using ValueImpl = axpr::ValueBase<ValueT, Registry, SetterDecorator>;
-
-struct Value : public ValueImpl<Value> {
-  using ValueImpl<Value>::ValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
-
-  static axpr::Object<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value, Registry>();
-  }
+struct ApRegistryHelper {
+  adt::Result<ap::registry::Registry> SingltonRegistry();
 };
 
-using Val = Value;
-
-using Env = ap::axpr::Environment<Val>;
-
-using EnvMgr = ap::axpr::EnvironmentManager<Val>;
-
-}  // namespace ap::registry
+}  // namespace cinn::dialect::ir

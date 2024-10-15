@@ -63,7 +63,7 @@ struct BuiltinMethodHelperImpl;
 #define SPECIALIZE_BuiltinMethodHelperImpl(symbol_name, op)                  \
   template <typename ValueT, typename T>                                     \
   struct BuiltinMethodHelperImpl<ValueT, T, builtin_symbol::symbol_name> {   \
-    using Self =                                                             \
+    using This =                                                             \
         BuiltinMethodHelperImpl<ValueT, T, builtin_symbol::symbol_name>;     \
                                                                              \
     template <typename ObjT>                                                 \
@@ -77,7 +77,7 @@ struct BuiltinMethodHelperImpl;
     }                                                                        \
                                                                              \
     static adt::Result<ValueT> UnaryCall(const T& obj) {                     \
-      if constexpr (Self::HasUnaryMethod()) {                                \
+      if constexpr (This::HasUnaryMethod()) {                                \
         return MethodClassImpl<ValueT, T>{}.symbol_name(obj);                \
       } else {                                                               \
         return adt::errors::RuntimeError{"`" #symbol_name                    \
@@ -96,7 +96,7 @@ struct BuiltinMethodHelperImpl;
     }                                                                        \
                                                                              \
     static adt::Result<ValueT> BinaryCall(const T& obj, const ValueT& arg) { \
-      if constexpr (Self::HasBinaryMethod()) {                               \
+      if constexpr (This::HasBinaryMethod()) {                               \
         return MethodClassImpl<ValueT, T>{}.symbol_name(obj, arg);           \
       } else {                                                               \
         return adt::errors::RuntimeError{"`" #symbol_name                    \
@@ -134,12 +134,15 @@ template <typename ValueT,
           template <typename, typename>
           class Alternative>
 struct BuiltinMethodHelper {
-  using Self = BuiltinMethodHelper;
+  using This = BuiltinMethodHelper;
 
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+    static const MethodClassImpl<ValueT, T>
+        detect_specialization_of_method_class_impl;
+    (void)detect_specialization_of_method_class_impl;
     if constexpr (BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::
                       HasUnaryMethod()) {
-      return &Self::MakeBuiltinUnaryFunc<
+      return &This::MakeBuiltinUnaryFunc<
           &BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::UnaryCall>;
     } else if constexpr (HasDefaultUnaryMethod()) {
       return MethodClassImpl<ValueT,
@@ -159,9 +162,12 @@ struct BuiltinMethodHelper {
   }
 
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+    static const MethodClassImpl<ValueT, T>
+        detect_specialization_of_method_class_impl;
+    (void)detect_specialization_of_method_class_impl;
     if constexpr (BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::
                       HasBinaryMethod()) {
-      return &Self::MakeBuiltinBinaryFunc<
+      return &This::MakeBuiltinBinaryFunc<
           &BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::BinaryCall>;
     } else if constexpr (HasDefaultBinaryMethod()) {
       return MethodClassImpl<ValueT,
@@ -199,7 +205,7 @@ struct BuiltinMethodHelper {
 
 template <typename ValueT>
 struct MethodClass {
-  using Self = MethodClass;
+  using This = MethodClass;
 
   template <typename T>
   static adt::Result<T> TryGet(const ValueT& val) {
@@ -208,7 +214,7 @@ struct MethodClass {
     }
     return adt::errors::TypeError{
         std::string() + "cast failed. expected type: " + TypeImpl<T>{}.Name() +
-        ", actual type: " + Self::Name(val)};
+        ", actual type: " + This::Name(val)};
   }
 
   static const char* Name(const ValueT& val) {

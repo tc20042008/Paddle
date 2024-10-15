@@ -25,6 +25,17 @@
 
 namespace ap::index_expr::tests {
 
+using adt::Result;
+using axpr::AnfExpr;
+using axpr::Atomic;
+using axpr::CoreExpr;
+using axpr::Lambda;
+using axpr::LambdaExprBuilder;
+using index_expr::IndexTupleExpr;
+using index_expr::IndexTupleExprDomain;
+using index_expr::IndexTupleExprReshape;
+using index_expr::NothingIndexTupleExpr;
+
 TEST(IndexExpr, kNothingIndexTupleExpr) {
   size_t seq_no0 = 0;
   const auto& GenSeqNo0 = [&]() { return seq_no0++; };
@@ -50,8 +61,8 @@ TEST(IndexExpr, IndexTupleExprReshape) {
   const auto& GenSeqNo0 = [&]() { return seq_no0++; };
   LambdaExprBuilder lmbd(GenSeqNo0);
   AnfExpr lmbd_expr = lmbd.Lambda({"expr"}, [](auto& ctx) {
-    const auto& dim_expr =
-        ctx.Call(kBuiltinList(), ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
+    const auto& dim_expr = ctx.Call(
+        ap::axpr::kBuiltinList(), ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
     return ctx.Call("IndexTupleExprReshape", dim_expr, ctx.Var("expr"));
   });
   CoreExpr core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
@@ -81,8 +92,8 @@ TEST(IndexExpr, IndexTupleExprReshape_failed) {
   const auto& GenSeqNo0 = [&]() { return seq_no0++; };
   LambdaExprBuilder lmbd(GenSeqNo0);
   AnfExpr lmbd_expr = lmbd.Lambda({"expr"}, [](auto& ctx) {
-    const auto& dim_expr =
-        ctx.Call(kBuiltinList(), ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
+    const auto& dim_expr = ctx.Call(
+        ap::axpr::kBuiltinList(), ctx.Int64(2), ctx.Int64(3), ctx.Int64(4));
     return ctx.Call("IndexTupleExprReshape", dim_expr, ctx.Var("expr"));
   });
   CoreExpr core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
@@ -96,6 +107,6 @@ TEST(IndexExpr, IndexTupleExprReshape_failed) {
       {index_expr::Val{
           IndexTupleExpr{IndexTupleExprDomain{adt::List<symbol::DimExpr>{
               symbol::DimExpr{5}, symbol::DimExpr{4}}}}}});
-  ASSERT_TRUE(result.Has<Error>());
+  ASSERT_TRUE(result.Has<adt::errors::Error>());
 }
 }  // namespace ap::index_expr::tests

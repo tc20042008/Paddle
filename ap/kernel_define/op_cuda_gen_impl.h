@@ -17,6 +17,7 @@
 #include "ap/adt/adt.h"
 #include "ap/kernel_define/ir_op.h"
 #include "ap/kernel_define/op_code_gen_ctx.h"
+#include "ap/kernel_define/undefined_ir_node.h"
 
 namespace ap::kernel_define {
 
@@ -24,6 +25,17 @@ template <typename IrNodeT>
 struct OpCudaCodeGenImpl {
   adt::Result<std::string> CodeGen(const OpCodeGenCtx<IrNodeT>& op_code_gen_ctx,
                                    const IrOp<IrNodeT>& ir_op);
+};
+
+template <>
+struct OpCudaCodeGenImpl<UndefinedIrNode> {
+  adt::Result<std::string> CodeGen(
+      const OpCodeGenCtx<UndefinedIrNode>& op_code_gen_ctx,
+      const IrOp<UndefinedIrNode>& ir_op) {
+    return adt::errors::NotImplementedError{
+        "Dead code. invalid to call "
+        "OpCudaCodeGenImpl<UndefinedIrNode>{}.CodeGen"};
+  }
 };
 
 }  // namespace ap::kernel_define

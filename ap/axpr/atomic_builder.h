@@ -35,6 +35,8 @@ class AtomicExprBuilder {
 
   Atomic<Expr> Double(double c) { return Atomic<Expr>{c}; }
 
+  Atomic<Expr> None() { return Atomic<Expr>{adt::Nothing{}}; }
+
   Atomic<Expr> String(const std::string& str) { return Atomic<Expr>{str}; }
 
   Atomic<Expr> Lambda(const std::vector<tVar<std::string>>& args,

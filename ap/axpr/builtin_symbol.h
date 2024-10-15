@@ -23,7 +23,6 @@ namespace ap::axpr {
 
 inline constexpr const char* kBuiltinIf() { return "if"; }
 inline constexpr const char* kBuiltinApply() { return "__builtin_apply__"; }
-inline constexpr const char* kBuiltinNothing() { return "None"; }
 inline constexpr const char* kBuiltinIdentity() {
   return "__builtin_identity__";
 }
@@ -57,13 +56,6 @@ struct If : public std::monostate {
 struct Apply : public std::monostate {
   using std::monostate::monostate;
   static constexpr const char* Name() { return kBuiltinApply(); }
-  std::size_t GetHashValue() const { return 0; }
-};
-
-struct Nothing : public std::monostate {
-  using std::monostate::monostate;
-  static constexpr const char* Name() { return kBuiltinNothing(); }
-
   std::size_t GetHashValue() const { return 0; }
 };
 
@@ -182,7 +174,7 @@ struct Op : public OpImpl {
   }
 };
 
-using SymbolImpl = std::variant<If, Apply, Nothing, Id, List, Op>;
+using SymbolImpl = std::variant<If, Apply, Id, List, Op>;
 
 struct Symbol : public SymbolImpl {
   using SymbolImpl::SymbolImpl;
@@ -203,7 +195,6 @@ inline adt::Maybe<Symbol> GetSymbolFromString(const std::string& name) {
   static const std::unordered_map<std::string, Symbol> map{
       {If::Name(), If{}},
       {Apply::Name(), Apply{}},
-      {Nothing::Name(), Nothing{}},
       {Id::Name(), Id{}},
       {List::Name(), List{}},
       {Call::Name(), Op{Call{}}},

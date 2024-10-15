@@ -111,14 +111,14 @@ struct ResPtnOpPatternCtxMethodClass {
         std::string() +
         "ResPtnOpPatternCtx.ap_pattern_fusion_op takes 2 arguments. but " +
         std::to_string(args.size()) + " were given."};
-    ADT_LET_CONST_REF(kernel_define_lambda, GetLambdaOfClosure(args.at(0)))
-        << adt::errors::TypeError{
-               std::string() +
-               "argument 1 of o.ap_pattern_fusion_op should be a closure"};
-    ADT_LET_CONST_REF(kernel_dispatch_lambda, GetLambdaOfClosure(args.at(1)))
-        << adt::errors::TypeError{
-               std::string() +
-               "argument 2 of o.ap_pattern_fusion_op should be a closure"};
+    ADT_LET_CONST_REF(kernel_define_lambda, CastToLambda(args.at(0)))
+        << adt::errors::TypeError{std::string() +
+                                  "argument 1 of o.ap_pattern_fusion_op should "
+                                  "be a function_code object."};
+    ADT_LET_CONST_REF(kernel_dispatch_lambda, CastToLambda(args.at(1)))
+        << adt::errors::TypeError{std::string() +
+                                  "argument 2 of o.ap_pattern_fusion_op should "
+                                  "be a function_code object"};
     auto data = std::make_shared<ResPtnPackedIrOpDeclareData>(
         kernel_define_lambda, kernel_dispatch_lambda);
     PackedIrOpDeclare<ValueT, NodeT> op_declare{
@@ -126,10 +126,10 @@ struct ResPtnOpPatternCtxMethodClass {
     return ResPtn(op_declare);
   }
 
-  adt::Result<axpr::Lambda<axpr::CoreExpr>> GetLambdaOfClosure(
-      const ValueT& val) {
-    ADT_LET_CONST_REF(closure, val.template TryGet<axpr::Closure<ValueT>>());
-    return closure->lambda;
+  adt::Result<axpr::Lambda<axpr::CoreExpr>> CastToLambda(const ValueT& val) {
+    ADT_LET_CONST_REF(lambda,
+                      val.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return lambda;
   }
 
   adt::Result<ValueT> ApNativeOp(const Self& self) {

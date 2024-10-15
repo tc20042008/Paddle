@@ -27,9 +27,9 @@ struct PirGraphDescriptor {
 
   NodeT CastToIrOpResult(const pir::OpResult& op_result) const {
     if (op_result.owner()->isa<cinn::dialect::FusionOp>()) {
-      return PackedIrOp{op_result.owner()->dyn_cast<cinn::dialect::FusionOp>()};
+      return PackedIrOpResult{op_result};
     } else {
-      return NativeIrOp{op_result.owner()};
+      return NativeIrOpResult{op_result};
     }
   }
 
@@ -48,7 +48,9 @@ struct PirGraphDescriptor {
           // TODO(tianchao): support the following case:
           // o.trivial_op0([*t.inputs], [t.op0_output, *t.op0_output1])
           // o.trivial_op1([*.t.op0_output1], [t.op1_output])
-          return adt::Ok{};
+          return adt::errors::NotImplementedError{
+              "PirGraphDescriptor::VisitUpstreamNodes does not support "
+              "PackedIrValue"};
         },
         [&](const NativeIrOpOperand& impl) -> adt::Result<adt::Ok> {
           NativeIrValue ir_value{impl.op_operand.source()};

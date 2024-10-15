@@ -168,7 +168,7 @@ TEST(LambdaExprBuilder, Let) {
   size_t seq_no = 0;
   const auto& GenSeqNo = [&]() { return seq_no++; };
   LambdaExprBuilder lmbd(GenSeqNo);
-  AnfExpr lmbd_expr = lmbd.Let([](auto& ctx) {
+  AnfExpr lmbd_expr = lmbd.Let([](auto& ctx) -> ap::axpr::AnfExpr {
     ctx.Var("a") = ctx.Call("op0");
     ctx.Var("b") = ctx.Call("op1");
     return ctx.Call(kBuiltinList(), ctx.Var("a"), ctx.Var("b"));
@@ -188,8 +188,9 @@ TEST(LambdaExprBuilder, LetTmpVar) {
   size_t seq_no = 0;
   const auto& GenSeqNo = [&]() { return seq_no++; };
   LambdaExprBuilder lmbd(GenSeqNo);
-  AnfExpr lmbd_expr = lmbd.Let(
-      [](auto& ctx) { return ctx.Call(kBuiltinList(), ctx.Call("op0")); });
+  AnfExpr lmbd_expr = lmbd.Let([](auto& ctx) -> ap::axpr::AnfExpr {
+    return ctx.Call(kBuiltinList(), ctx.Call("op0"));
+  });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
   const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
   ASSERT_EQ(core_expr, expected);
@@ -205,8 +206,9 @@ TEST(LambdaExprBuilder, Lambda) {
   size_t seq_no0 = 0;
   const auto& GenSeqNo0 = [&]() { return seq_no0++; };
   LambdaExprBuilder lmbd(GenSeqNo0);
-  AnfExpr lmbd_expr = lmbd.Let(
-      [](auto& ctx) { return ctx.Call(kBuiltinList(), ctx.Call("op0")); });
+  AnfExpr lmbd_expr = lmbd.Let([](auto& ctx) -> ap::axpr::AnfExpr {
+    return ctx.Call(kBuiltinList(), ctx.Call("op0"));
+  });
   const auto& core_expr = ConvertAnfExprToCoreExpr(lmbd_expr);
   const auto& expected = ConvertAnfExprToCoreExpr(anf_expr);
   ASSERT_EQ(core_expr, expected);

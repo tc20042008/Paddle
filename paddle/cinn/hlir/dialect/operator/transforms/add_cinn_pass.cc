@@ -54,6 +54,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/pir/include/core/ir_printer.h"
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_debug);
@@ -211,16 +212,29 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
   }
   if (FLAGS_enable_ap) {
-    pass_manager->AddPass(cinn::dialect::ir::CreateApLowerFusionOpPass());
-  } else if (has_dynamic_shape && !force_static_shape) {
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
+    if (auto pass = CreateApLowerFusionOpPass()) {
+      pass_manager->AddPass(std::move(pass.value()));
+      pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    }
+    pir::IrPrinter(VLOG(0) << "before ApLowerFusionOpPass:\n")
+        .PrintProgram(program);
+    pass_manager->Run(program);
+    pir::IrPrinter(VLOG(0) << "after ApLowerFusionOpPass:\n")
+        .PrintProgram(program);
+    pass_manager = CreatePassManager();
+    pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
+    pass_manager->Run(program);
   } else {
-    pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+    if (has_dynamic_shape && !force_static_shape) {
+      pass_manager->AddPass(
+          cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
+    } else {
+      pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+    }
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
+    pass_manager->Run(program);
   }
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-  pass_manager->Run(program);
 }
 
 template <typename OP_TYPE>

@@ -250,13 +250,6 @@ class LambdaExprBuilder {
     return anf_.Let(let_ctx.bindings(), ret);
   }
 
-  adt::Result<AnfExpr> Let(
-      const std::function<adt::Result<AnfExpr>(LetContext&)>& GetBody) {
-    LetContext let_ctx{SeqNoGenerator_};
-    ADT_LET_CONST_REF(ret, GetBody(let_ctx));
-    return anf_.Let(let_ctx.bindings(), ret);
-  }
-
   std::vector<tVar<std::string>> MakeLambdaArgs(
       const std::vector<std::string>& args) {
     std::vector<tVar<std::string>> lambda_args;

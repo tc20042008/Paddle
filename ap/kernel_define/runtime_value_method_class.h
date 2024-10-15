@@ -14,15 +14,10 @@
 
 #pragma once
 
-#include <memory>
-#include <optional>
-#include "paddle/pir/include/pass/pass.h"
-
-namespace cinn {
-namespace dialect {
-namespace ir {
-
-std::optional<std::unique_ptr<::pir::Pass>> CreateApLowerFusionOpPass();
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+#include "ap/axpr/data_type_method_class.h"
+#include "ap/axpr/pointer_type_method_class.h"
+#include "ap/axpr/value_method_class.h"
+#include "ap/kernel_define/func_declare_method_class.h"
+#include "ap/kernel_define/kernel_arg_method_class.h"
+#include "ap/kernel_define/module_method_class.h"
+#include "ap/kernel_define/source_code_method_class.h"

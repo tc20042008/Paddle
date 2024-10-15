@@ -25,12 +25,18 @@ struct SetterDecoratorMethodClass {
   using This = SetterDecoratorMethodClass;
   using Self = SetterDecorator;
 
-  adt::Result<ValueT> Call(const Self& self, const std::vector<ValueT>& args) {
+  adt::Result<ValueT> Call(const Self& self) {
+    return axpr::Method<ValueT>{self, &This::StaticCall};
+  }
+
+  static adt::Result<ValueT> StaticCall(const ValueT& self_val,
+                                        const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(closure,
                       axpr::TryGetImpl<axpr::Closure<ValueT>>(args.at(0)))
         << adt::errors::TypeError{"decorator must be applied to a function."};
-    self->lambda->data = closure->lambda;
+    self->lambda.shared_ptr()->data = closure->lambda;
     return adt::Nothing{};
   }
 };

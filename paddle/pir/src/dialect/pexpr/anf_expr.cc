@@ -34,6 +34,10 @@ Json ConvertAtomicAnfExprToJson(const Atomic<AnfExpr>& atomic_expr) {
         Json j = var.value();
         return j;
       },
+      [&](adt::Nothing) {
+        Json j;
+        return j;
+      },
       [&](bool c) {
         Json j = c;
         return j;

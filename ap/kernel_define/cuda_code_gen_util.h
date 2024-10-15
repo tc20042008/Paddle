@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "ap/kernel_define/compiletime_value.h"
 #include "ap/kernel_define/op_cuda_gen_impl.h"
-#include "ap/kernel_define/value.h"
 
 namespace ap::kernel_define {
 

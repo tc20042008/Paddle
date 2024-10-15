@@ -48,16 +48,13 @@ Result<Val> DispatchRawCtxGetOutputs(const DispatchRawCtx<Val>& raw_ctx,
 }
 
 template <typename Val>
-Result<Val> MakeDispatchCtx(const Val& self, const std::vector<Val>& args) {
-  if (args.size() != 1) {
-    return TypeError{std::string() +
-                     "'DispatchRawCtx.DispatchCtx' takes 1 arguments, but " +
-                     std::to_string(args.size()) + "were given."};
-  }
-  const Result<DispatchRawCtx<Val>>& raw_ctx =
-      MethodClass<Val>::template TryGet<DispatchRawCtx<Val>>(self);
-  ADT_RETURN_IF_ERR(raw_ctx);
-  const Result<ap::axpr::Object<Val>>& object = args.at(0).Match(
+Result<Val> MakeDispatchCtx(const Val& self_val, const std::vector<Val>& args) {
+  ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+      std::string() + "'DispatchRawCtx.DispatchCtx' takes 1 arguments, but " +
+      std::to_string(args.size()) + "were given."};
+  ADT_LET_CONST_REF(raw_ctx, self_val.template TryGet<DispatchRawCtx<Val>>());
+  const auto& arg0 = args.at(0);
+  const auto& opt_object = arg0.Match(
       [&](const ap::axpr::Object<Val>& obj) -> Result<ap::axpr::Object<Val>> {
         return obj;
       },
@@ -67,10 +64,11 @@ Result<Val> MakeDispatchCtx(const Val& self, const std::vector<Val>& args) {
       [&](const auto&) -> Result<ap::axpr::Object<Val>> {
         return TypeError{std::string() +
                          "the first argument of 'DispatchRawCtx.DispatchCtx' "
-                         "must be an object."};
+                         "must be an object. the '" +
+                         axpr::GetTypeName(arg0) + "' were given."};
       });
-  ADT_RETURN_IF_ERR(object);
-  return DispatchCtx<Val>{raw_ctx.GetOkValue(), object.GetOkValue()};
+  ADT_LET_CONST_REF(object, opt_object);
+  return DispatchCtx<Val>{raw_ctx, object};
 }
 
 template <typename Val>
@@ -99,33 +97,13 @@ Result<Val> DispatchRawCtxGetAttr(const DispatchRawCtx<Val>& raw_ctx,
 
 template <typename ValueT>
 struct DispatchRawCtxMethodClass {
-  using Self = DispatchRawCtxMethodClass;
+  using This = DispatchRawCtxMethodClass;
+  using Self = DispatchRawCtx<ValueT>;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    if constexpr (std::is_same_v<BultinBinarySymbol,
-                                 ap::axpr::builtin_symbol::GetAttr>) {
-      return &Self::GetAttr;
-    }
-    return std::nullopt;
-  }
-
-  static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
-                                     const ValueT& attr_name_val) {
-    const auto& opt_obj =
-        MethodClass<ValueT>::template TryGet<DispatchRawCtx<ValueT>>(obj_val);
-    ADT_RETURN_IF_ERR(opt_obj);
-    const auto& obj = opt_obj.GetOkValue();
-    const auto& opt_attr_name =
-        MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERR(opt_attr_name);
-    const auto& attr_name = opt_attr_name.GetOkValue();
-    return detail::DispatchRawCtxGetAttr<Val>(obj, attr_name);
+  adt::Result<ValueT> GetAttr(const Self& raw_ctx,
+                              const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    return detail::DispatchRawCtxGetAttr<Val>(raw_ctx, attr_name);
   }
 };
 
@@ -134,23 +112,12 @@ struct DispatchRawCtxMethodClass {
 namespace ap::axpr {
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::kernel_dispatch::DispatchRawCtx<ValueT>> {
-  using method_class = ap::kernel_dispatch::DispatchRawCtxMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, kernel_dispatch::DispatchRawCtx<ValueT>>
+    : public kernel_dispatch::DispatchRawCtxMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT,
-                       TypeImpl<ap::kernel_dispatch::DispatchRawCtx<ValueT>>>
+                       TypeImpl<kernel_dispatch::DispatchRawCtx<ValueT>>>
     : public EmptyMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

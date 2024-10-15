@@ -14,14 +14,20 @@
 
 #pragma once
 
-#include "ap/axpr/dim_expr_method_class.h"
-#include "ap/index_expr/index_expr_method_class.h"
-#include "ap/index_expr/index_tuple_expr_method_class.h"
-#include "ap/index_expr/slice_method_class.h"
-#include "ap/ir_match/ir_match_ctx_method_class.h"
-#include "ap/ir_match/op_match_ctx_method_class.h"
-#include "ap/ir_match/tensor_match_ctx_method_class.h"
-#include "ap/kernel_define/define_ctx_method_class.h"
-#include "ap/kernel_define/func_declare_method_class.h"
-#include "ap/kernel_define/module_method_class.h"
-#include "ap/kernel_define/source_code_method_class.h"
+#include "ap/adt/adt.h"
+#include "ap/drr/drr_value.h"
+
+namespace cinn::dialect::ir {
+
+struct ApDrrHelper {
+  using CoreExpr = ap::axpr::CoreExpr;
+  using Lambda = ap::axpr::Lambda<CoreExpr>;
+
+  using DrrValue = ap::drr::Value;
+  using DrrNode = ap::drr::Node<DrrValue>;
+  using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
+
+  adt::Result<DrrCtx> Interpret(const Lambda& lambda, const DrrCtx& drr_ctx);
+};
+
+}  // namespace cinn::dialect::ir

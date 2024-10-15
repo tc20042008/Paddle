@@ -60,10 +60,12 @@ void ApUnaryKernel(const Context& dev_ctx,
                                          kernel_dispatcher_lambda,
                                          dispatch_ctx_maker_lambda,
                                          outs);
-  PADDLE_ENFORCE(!ret.HasError(),
-                 "ap_kernel failed. error_type: %s, error_msg: %s. ",
-                 ret.GetError().class_name(),
-                 ret.GetError().msg());
+  PADDLE_ENFORCE(
+      !ret.HasError(),
+      "ap_kernel failed. \nTraceback (most recent call last):\n%s\n%s: %s. ",
+      ret.GetError().CallStackToString(),
+      ret.GetError().class_name(),
+      ret.GetError().msg());
 }
 
 }  // namespace phi

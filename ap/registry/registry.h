@@ -26,7 +26,6 @@
 
 namespace ap::registry {
 
-template <typename ValueT>
 struct RegistryImpl {
   Key2Nice2Items<OpIndexesExprRegistryItem> op_indexes_expr_registry_items;
   Key2Nice2Items<DrrRegistryItem> drr_registry_items;
@@ -35,15 +34,14 @@ struct RegistryImpl {
   bool operator==(const RegistryImpl& other) const { return this == &other; }
 };
 
-template <typename ValueT>
-DEFINE_ADT_RC(Registry, RegistryImpl<ValueT>);
+DEFINE_ADT_RC(Registry, RegistryImpl);
 
 }  // namespace ap::registry
 
 namespace ap::axpr {
 
-template <typename ValueT>
-struct TypeImpl<registry::Registry<ValueT>> : public std::monostate {
+template <>
+struct TypeImpl<registry::Registry> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "Registry"; }
 };

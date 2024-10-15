@@ -15,29 +15,17 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/core_expr.h"
-#include "ap/axpr/value.h"
-#include "ap/registry/registry.h"
-#include "ap/registry/setter_decorator.h"
+#include "ap/kernel_define/module.h"
 
-namespace ap::registry {
+namespace phi {
 
-template <typename ValueT>
-using ValueImpl = axpr::ValueBase<ValueT, Registry, SetterDecorator>;
+struct KernelDefineHelper {
+  using CoreExpr = ap::axpr::CoreExpr;
+  using Lambda = ap::axpr::Lambda<CoreExpr>;
+  using Module = ap::kernel_define::Module;
 
-struct Value : public ValueImpl<Value> {
-  using ValueImpl<Value>::ValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
-
-  static axpr::Object<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value, Registry>();
-  }
+  adt::Result<Module> InterpretKernelDefineLambda(
+      const Lambda& kernel_definer_lambda);
 };
 
-using Val = Value;
-
-using Env = ap::axpr::Environment<Val>;
-
-using EnvMgr = ap::axpr::EnvironmentManager<Val>;
-
-}  // namespace ap::registry
+}  // namespace phi

@@ -216,10 +216,9 @@ void ApplyCinnLowerPass(
       pass_manager->AddPass(std::move(pass.value()));
       pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     }
-    pir::IrPrinter(VLOG(0) << "before ApLowerFusionOpPass:\n")
-        .PrintProgram(program);
+    pir::IrPrinter(<< "before ApLowerFusionOpPass:\n").PrintProgram(program);
     pass_manager->Run(program);
-    pir::IrPrinter(VLOG(0) << "after ApLowerFusionOpPass:\n")
+    pir::IrPrinter(LOG(ERROR) << "after ApLowerFusionOpPass:\n")
         .PrintProgram(program);
     pass_manager = CreatePassManager();
     pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());

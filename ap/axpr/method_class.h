@@ -16,6 +16,7 @@
 
 #include <experimental/type_traits>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include "ap/axpr/adt.h"
@@ -135,6 +136,13 @@ template <typename ValueT,
           class Alternative>
 struct BuiltinMethodHelper {
   using This = BuiltinMethodHelper;
+  using Impl = BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>;
+
+  static constexpr bool HasUnaryMethod() { return Impl::HasUnaryMethod(); }
+
+  static constexpr BuiltinUnaryFuncT<ValueT> GetBuiltinUnaryMethod() {
+    return &This::MakeBuiltinUnaryFunc<&Impl::UnaryCall>;
+  }
 
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     static const MethodClassImpl<ValueT, T>
@@ -222,6 +230,52 @@ struct MethodClass {
       using T = std::decay_t<decltype(impl)>;
       return TypeImpl<T>{}.Name();
     });
+  }
+
+  static BuiltinUnaryFuncT<ValueT> ToString(const ValueT& val) {
+    using S = builtin_symbol::ToString;
+    return val.Match([](const auto& impl) -> BuiltinUnaryFuncT<ValueT> {
+      using T = std::decay_t<decltype(impl)>;
+      if constexpr (IsType<T>()) {
+        return impl.Match([](const auto& type_impl)
+                              -> BuiltinUnaryFuncT<ValueT> {
+          using TT = std::decay_t<decltype(type_impl)>;
+          using Helper = detail::
+              BuiltinMethodHelper<ValueT, TT, S, detail::IndirectAlternative>;
+          if constexpr (Helper::HasUnaryMethod()) {
+            return Helper::GetBuiltinUnaryMethod();
+          } else {
+            return &This::DefaultTypeToString<TT>;
+          }
+        });
+      } else {
+        using Helper = detail::
+            BuiltinMethodHelper<ValueT, T, S, detail::DirectAlternative>;
+        if constexpr (Helper::HasUnaryMethod()) {
+          return Helper::GetBuiltinUnaryMethod();
+        } else {
+          return &This::DefaultInstanceToString<T>;
+        }
+      }
+    });
+  }
+
+  template <typename TT>
+  static adt::Result<ValueT> DefaultTypeToString(const ValueT& val) {
+    std::ostringstream ss;
+    ss << "<class '" << TT{}.Name() << "'>";
+    return ss.str();
+  }
+
+  template <typename T>
+  static adt::Result<ValueT> DefaultInstanceToString(const ValueT& val) {
+    std::ostringstream ss;
+    ADT_LET_CONST_REF(impl, This::TryGet<T>(val));
+    // please implement MethodClassImpl<ValueT, T>::ToString if T is not defined
+    // by DEFINE_ADT_RC.
+    const void* ptr = impl.__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << This::Name(val) << " object at " << ptr << ">";
+    return ss.str();
   }
 
   template <typename BultinUnarySymbol>

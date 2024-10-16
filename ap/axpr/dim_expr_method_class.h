@@ -21,33 +21,17 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct DimExprMethodClass {
-  using Self = DimExprMethodClass;
+  using This = DimExprMethodClass;
+  using Self = symbol::DimExpr;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  adt::Result<ValueT> ToString(const Self& self) {
+    return symbol::ToString(self);
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, symbol::DimExpr> {
-  using method_class = DimExprMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, symbol::DimExpr>
+    : public DimExprMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<symbol::DimExpr>>

@@ -28,6 +28,41 @@ struct StringMethodClass {
 
   adt::Result<ValueT> ToString(const Self& self) { return self; }
 
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    if (attr_name == "replace") {
+      return axpr::Method<ValueT>{self, &This::StaticReplace};
+    }
+    return adt::errors::TypeError{};
+  }
+
+  static adt::Result<ValueT> StaticReplace(const ValueT& self_val,
+                                           const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+        std::string() + "'str.replace' takes 2 arguments but " +
+        std::to_string(args.size()) + " were given."};
+    ADT_LET_CONST_REF(pattern, args.at(0).template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "the argument 1 of 'str.replace' should be a str"};
+    ADT_LET_CONST_REF(replacement, args.at(1).template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "the argument 2 of 'str.replace' should be a str"};
+    return This{}.Replace(self, pattern, replacement);
+  }
+
+  std::string Replace(std::string self,
+                      const std::string& pattern,
+                      const std::string& replacement) {
+    std::size_t pos = self.find(pattern);
+    if (pos == std::string::npos) {
+      return self;
+    }
+    return self.replace(pos, pattern.size(), replacement);
+  }
+
   template <typename BultinBinarySymbol>
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<

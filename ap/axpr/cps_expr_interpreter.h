@@ -390,7 +390,29 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
  private:
   static Frame<ValueT> GetBuiltinFrame() {
     Object<ValueT> object{ValueT::GetExportedTypes()};
+    object->Set("print", &This::Print);
     return Frame<ValueT>{object};
+  }
+
+  static adt::Result<ValueT> Print(const ValueT&,
+                                   const std::vector<ValueT>& args) {
+    std::ostringstream ss;
+    int i = 0;
+    for (const auto& obj : args) {
+      if (i++ > 0) {
+        ss << " ";
+      }
+      const auto& func = MethodClass<ValueT>::ToString(obj);
+      ADT_LET_CONST_REF(str_val, func(obj));
+      ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
+          << adt::errors::TypeError{
+                 std::string() + "'" + GetTypeName(obj) +
+                 ".__builtin_ToString__ should return a 'str' but '" +
+                 GetTypeName(str_val) + "' were returned."};
+      ss << str;
+    }
+    LOG(ERROR) << "Print\n" << ss.str();
+    return adt::Nothing{};
   }
 };
 

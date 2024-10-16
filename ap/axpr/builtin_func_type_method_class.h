@@ -22,33 +22,19 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct BuiltinFuncTypeMethodClass {
-  using Self = BuiltinFuncTypeMethodClass;
+  using This = BuiltinFuncTypeMethodClass;
+  using Self = BuiltinFuncType<ValueT>;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  adt::Result<ValueT> ToString(Self func) {
+    std::ostringstream ss;
+    ss << "<" << TypeImpl<Self>{}.Name() << " object at " << func << ">";
+    return ss.str();
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, BuiltinFuncType<ValueT>> {
-  using method_class = BuiltinFuncTypeMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, BuiltinFuncType<ValueT>>
+    : public BuiltinFuncTypeMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<BuiltinFuncType<ValueT>>>

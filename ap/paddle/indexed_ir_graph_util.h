@@ -37,6 +37,10 @@ struct CreatePureElementwiseIndexedIrGraphHelper {
   struct Ctx {
     std::unordered_map<pir::Value, IndexedIrValue<IndexedIrNode>> value2node;
 
+    bool Has(pir::Value value) const {
+      return this->value2node.find(value) != this->value2node.end();
+    }
+
     void Insert(pir::Value value, const IndexedIrValue<IndexedIrNode>& node) {
       this->value2node[value] = node;
     }
@@ -90,6 +94,9 @@ struct CreatePureElementwiseIndexedIrGraphHelper {
       const index_expr::IndexTupleExpr& indexes_expr) {
     auto node_arena = std::make_shared<IndexedIrNodeArena>();
     for (auto& op : *pir_op.fusion_op.block()) {
+      if (op.isa<pir::YieldOp>()) {
+        continue;
+      }
       const auto& ir_op = InsertOpNode(node_arena, &op);
       InsertValueNodes(ctx, node_arena, &op, indexes_expr);
       ADT_RETURN_IF_ERR(ConnectOpOperandEdges(ctx, ir_op));
@@ -134,7 +141,9 @@ struct CreatePureElementwiseIndexedIrGraphHelper {
       });
       const auto& ir_value =
           ir_node.template Get<IndexedIrValue<IndexedIrNode>>();
-      ctx->Insert(value, ir_value);
+      if (!ctx->Has(value)) {
+        ctx->Insert(value, ir_value);
+      }
     });
   }
 

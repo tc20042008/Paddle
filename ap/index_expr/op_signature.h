@@ -21,6 +21,18 @@ template <typename T>
 struct InputSignature {
   adt::List<T> descriptors;
 
+  std::string ToString() const {
+    std::ostringstream ss;
+    int i = 0;
+    for (const auto& elt : *descriptors) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << elt.ToString();
+    }
+    return std::string() + "InputSignature(" + ss.str() + ")";
+  }
+
   bool operator==(const InputSignature& other) const {
     return other.descriptors == this->descriptors;
   }
@@ -29,6 +41,18 @@ struct InputSignature {
 template <typename T>
 struct OutputSignature {
   adt::List<T> descriptors;
+
+  std::string ToString() const {
+    std::ostringstream ss;
+    int i = 0;
+    for (const auto& elt : *descriptors) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << elt.ToString();
+    }
+    return std::string() + "OutputSignature(" + ss.str() + ")";
+  }
 
   bool operator==(const OutputSignature& other) const {
     return other.descriptors == this->descriptors;
@@ -39,6 +63,11 @@ template <typename T>
 struct OpSignature {
   InputSignature<T> in_signature;
   OutputSignature<T> out_signature;
+
+  std::string ToString() const {
+    return std::string() + "OpSignature(" + in_signature.ToString() + ", " +
+           out_signature.ToString() + ")";
+  }
 
   bool operator==(const OpSignature& other) const {
     return other.in_signature == this->in_signature &&

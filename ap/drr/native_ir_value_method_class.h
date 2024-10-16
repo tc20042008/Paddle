@@ -26,6 +26,13 @@ struct MethodClassImpl<ValueT, drr::tSrcPtn<drr::NativeIrValue<NodeT>>> {
   using Self = drr::tSrcPtn<drr::NativeIrValue<NodeT>>;
   using This = MethodClassImpl<ValueT, Self>;
 
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+
   adt::Result<ValueT> Starred(const Self& self) {
     return adt::errors::TypeError{
         std::string() +
@@ -43,6 +50,13 @@ template <typename ValueT, typename NodeT>
 struct MethodClassImpl<ValueT, drr::tResPtn<drr::NativeIrValue<NodeT>>> {
   using Self = drr::tResPtn<drr::NativeIrValue<NodeT>>;
   using This = MethodClassImpl<ValueT, Self>;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 
   adt::Result<ValueT> Starred(const Self& self) {
     return adt::errors::TypeError{

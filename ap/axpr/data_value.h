@@ -43,6 +43,23 @@ struct DataValue : public DataValueImpl {
     return std::visit(pattern_match, dst_type.variant(), this->variant());
   }
 
+  Result<std::string> ToString() const {
+    return Match([](const auto& impl) -> adt::Result<std::string> {
+      using T = std::decay_t<decltype(impl)>;
+      if constexpr (std::is_same_v<T, bool>) {
+        return std::to_string(impl);
+      } else if constexpr (std::is_integral_v<T>) {
+        return std::to_string(impl);
+      } else if constexpr (std::is_same_v<T, float>) {
+        return std::to_string(impl);
+      } else if constexpr (std::is_same_v<T, double>) {
+        return std::to_string(impl);
+      } else {
+        return adt::errors::NotImplementedError{"DataType NotImplemented."};
+      }
+    });
+  }
+
  private:
   template <typename DstT, typename SrcT>
   Result<DataValue> DataValueStaticCast(SrcT v) const {

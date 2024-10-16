@@ -23,7 +23,15 @@ namespace ap::axpr {
 
 template <typename ValueT, typename T>
 struct ConstStdVectorPtrMethodClass {
-  using Self = ConstStdVectorPtrMethodClass;
+  using This = ConstStdVectorPtrMethodClass;
+  using Self = const std::vector<T>*;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self;
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -33,7 +41,7 @@ struct ConstStdVectorPtrMethodClass {
   template <typename BultinBinarySymbol>
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
     if constexpr (std::is_same_v<BultinBinarySymbol, builtin_symbol::GetItem>) {
-      return &Self::GetItem;
+      return &This::GetItem;
     }
     return std::nullopt;
   }
@@ -73,19 +81,8 @@ struct ConstStdVectorPtrMethodClass {
 };
 
 template <typename ValueT, typename T>
-struct MethodClassImpl<ValueT, const std::vector<T>*> {
-  using method_class = ConstStdVectorPtrMethodClass<ValueT, T>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, const std::vector<T>*>
+    : public ConstStdVectorPtrMethodClass<ValueT, T> {};
 
 template <typename ValueT, typename T>
 struct MethodClassImpl<ValueT, TypeImpl<const std::vector<T>*>>

@@ -23,6 +23,8 @@ template <typename ValueT>
 struct SliceMethodClass {
   using This = SliceMethodClass;
   using Self = Slice;
+
+  adt::Result<ValueT> ToString(const Self& self) { return self->ToString(); }
 };
 
 template <typename ValueT>

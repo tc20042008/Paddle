@@ -22,33 +22,19 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct CpsBuiltinHighOrderFuncTypeMethodClass {
-  using Self = CpsBuiltinHighOrderFuncTypeMethodClass;
+  using Self = CpsBuiltinHighOrderFuncType<ValueT>;
+  using This = MethodClassImpl<ValueT, Self>;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  adt::Result<ValueT> ToString(Self func) {
+    std::ostringstream ss;
+    ss << "<" << TypeImpl<Self>{}.Name() << " object at " << func << ">";
+    return ss.str();
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, CpsBuiltinHighOrderFuncType<ValueT>> {
-  using method_class = CpsBuiltinHighOrderFuncTypeMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, CpsBuiltinHighOrderFuncType<ValueT>>
+    : public CpsBuiltinHighOrderFuncTypeMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<CpsBuiltinHighOrderFuncType<ValueT>>>

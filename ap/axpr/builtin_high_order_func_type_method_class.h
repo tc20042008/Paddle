@@ -21,7 +21,16 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, BuiltinHighOrderFuncType<ValueT>> {};
+struct MethodClassImpl<ValueT, BuiltinHighOrderFuncType<ValueT>> {
+  using Self = BuiltinHighOrderFuncType<ValueT>;
+  using This = MethodClassImpl<ValueT, Self>;
+
+  adt::Result<ValueT> ToString(Self func) {
+    std::ostringstream ss;
+    ss << "<" << TypeImpl<Self>{}.Name() << " object at " << func << ">";
+    return ss.str();
+  }
+};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<BuiltinHighOrderFuncType<ValueT>>> {};

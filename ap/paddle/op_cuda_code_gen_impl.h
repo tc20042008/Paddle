@@ -138,6 +138,7 @@ struct OpCudaCodeGenImpl {
       const OpCodeGenCtx& op_code_gen_ctx,
       const PureElementwiseIndexedIrGraph& ir_graph,
       const PackedIrOp& packed_ir_op) {
+    LOG(ERROR) << "CodeGenInputs enter:\n" << ss->str();
     std::unordered_set<pir::Value> registered_values;
     auto DoEachDeclare = [&](const auto& named_kernel_arg,
                              pir::Value value) -> adt::Result<adt::Ok> {
@@ -149,6 +150,8 @@ struct OpCudaCodeGenImpl {
       ADT_LET_CONST_REF(
           node_info, GetInitNodeInfo(op_code_gen_ctx, named_kernel_arg, value));
       ADT_LET_CONST_REF(ir_value, ir_graph->GetIndexedIrValue(value));
+      LOG(ERROR) << "CodeGenInputs value: " << value.impl() << ", node_id: "
+                 << std::to_string(ir_value->node.node_id().value());
       ADT_RETURN_IF_ERR(
           InitIrGraphTranslateCtxNodeInfo(ctx, ir_value, node_info));
       ADT_RETURN_IF_ERR(GenLoadCode(ss, indexes_expr_gen, ir_value, node_info));
@@ -156,6 +159,7 @@ struct OpCudaCodeGenImpl {
     };
     ADT_RETURN_IF_ERR(
         GenKernelInputDeclare(op_code_gen_ctx, packed_ir_op, DoEachDeclare));
+    LOG(ERROR) << "CodeGenInputs leave:\n" << ss->str();
     return adt::Ok{};
   }
 
@@ -179,25 +183,36 @@ struct OpCudaCodeGenImpl {
       const OpCodeGenCtx& op_code_gen_ctx,
       const kernel_define::NamedKernelArg& named_kernel_arg,
       pir::Value value) {
-    ADT_LET_CONST_REF(is_replaced,
-                      IsReplacedWithLocalVar(op_code_gen_ctx, value));
+    return GetInitNodeInfoByNames(op_code_gen_ctx,
+                                  named_kernel_arg.arg_name,
+                                  named_kernel_arg.arg_name + "_local_var",
+                                  value);
+  }
+
+  adt::Result<IrGraphNodeInfo> GetInitNodeInfoByNames(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const std::string& default_global_ptr_name,
+      std::string local_var_name,
+      pir::Value value) {
+    ADT_LET_CONST_REF(opt_local_var_name,
+                      GetReplacedLocalVar(op_code_gen_ctx, value));
     std::optional<std::string> global_ptr_name{};
-    if (is_replaced) {
+    if (opt_local_var_name.has_value()) {
       global_ptr_name = std::nullopt;
+      local_var_name = opt_local_var_name.value();
     } else {
-      global_ptr_name = named_kernel_arg.arg_name;
+      global_ptr_name = default_global_ptr_name;
     }
-    return IrGraphNodeInfo{global_ptr_name,
-                           named_kernel_arg.arg_name + "_local_var"};
+    return IrGraphNodeInfo{global_ptr_name, local_var_name};
   }
 
   adt::Result<adt::Ok> TryRegisterNamedKernelArg(
       const OpCodeGenCtx& op_code_gen_ctx,
       const kernel_define::NamedKernelArg& named_kernel_arg,
       pir::Value value) {
-    ADT_LET_CONST_REF(is_replaced,
-                      IsReplacedWithLocalVar(op_code_gen_ctx, value));
-    if (!is_replaced) {
+    ADT_LET_CONST_REF(opt_replaced,
+                      GetReplacedLocalVar(op_code_gen_ctx, value));
+    if (!opt_replaced.has_value()) {
       ADT_RETURN_IF_ERR(
           RegisterNamedKernelArg(op_code_gen_ctx, named_kernel_arg));
     }
@@ -219,13 +234,18 @@ struct OpCudaCodeGenImpl {
       }
       ADT_RETURN_IF_ERR(
           TryRegisterNamedKernelArg(op_code_gen_ctx, named_kernel_arg, value));
+      ADT_LET_CONST_REF(yield_op_input,
+                        GetYieldOpInputIndexedIrValue(ir_graph, value));
+      ADT_LET_CONST_REF(yield_op_input_node_info,
+                        ctx->Get(yield_op_input->node));
       ADT_LET_CONST_REF(
-          node_info, GetInitNodeInfo(op_code_gen_ctx, named_kernel_arg, value));
-      ADT_LET_CONST_REF(ir_value, ir_graph->GetIndexedIrValue(value));
-      ADT_RETURN_IF_ERR(
-          InitIrGraphTranslateCtxNodeInfo(ctx, ir_value, node_info));
-      ADT_RETURN_IF_ERR(
-          GenStoreCode(ss, indexes_expr_gen, ir_value, node_info));
+          output_node_info,
+          GetInitNodeInfo(op_code_gen_ctx, named_kernel_arg, value));
+      ADT_RETURN_IF_ERR(GenStoreCode(ss,
+                                     indexes_expr_gen,
+                                     yield_op_input->indexes_expr,
+                                     yield_op_input_node_info,
+                                     output_node_info));
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(
@@ -233,19 +253,37 @@ struct OpCudaCodeGenImpl {
     return adt::Ok{};
   }
 
+  adt::Result<IndexedIrValue<IndexedIrNode>> GetYieldOpInputIndexedIrValue(
+      const PureElementwiseIndexedIrGraph& ir_graph, pir::Value output) {
+    ADT_CHECK(ir_graph->yield_op_inputs.size() == ir_graph->outputs.size());
+    std::optional<IndexedIrValue<IndexedIrNode>> yield_op_input;
+    for (int i = 0; i < ir_graph->yield_op_inputs.size(); ++i) {
+      if (ir_graph->outputs.at(i) == output) {
+        yield_op_input = ir_graph->yield_op_inputs.at(i);
+        break;
+      }
+    }
+    ADT_CHECK(yield_op_input.has_value())
+        << adt::errors::KeyError{std::string() + "no yield_op_input found."};
+    return yield_op_input.value();
+  }
+
   adt::Result<adt::Ok> GenStoreCode(
       std::ostringstream* ss,
       IndexTupleExprCodeGenerator* indexes_expr_gen,
-      const IndexedIrValue<IndexedIrNode>& ir_value,
-      const IrGraphNodeInfo& node_info) {
-    if (!node_info->global_ptr_name.has_value()) {
-      return adt::Ok{};
+      const index_expr::IndexTupleExpr& indexes_expr,
+      const IrGraphNodeInfo& yield_op_input_node_info,
+      const IrGraphNodeInfo& output_node_info) {
+    if (!output_node_info->global_ptr_name.has_value()) {
+      (*ss) << output_node_info->local_var_name << " = "
+            << yield_op_input_node_info->local_var_name << ";\n";
+    } else {
+      ADT_LET_CONST_REF(index_var_name,
+                        indexes_expr_gen->CodeGen(indexes_expr));
+      const auto& global_ptr_name = output_node_info->global_ptr_name.value();
+      (*ss) << global_ptr_name << "[" << index_var_name
+            << "] = " << yield_op_input_node_info->local_var_name << ";\n";
     }
-    const auto& global_ptr_name = node_info->global_ptr_name.value();
-    const auto& indexes_expr = ir_value->indexes_expr;
-    ADT_LET_CONST_REF(index_var_name, indexes_expr_gen->CodeGen(indexes_expr));
-    (*ss) << global_ptr_name << "[" << index_var_name
-          << "] = " << node_info->local_var_name << ";\n";
     return adt::Ok{};
   }
 
@@ -264,6 +302,7 @@ struct OpCudaCodeGenImpl {
     auto DoEachDeclare = [&](const auto& value,
                              const auto& lambda) -> adt::Result<adt::Ok> {
       const std::string& arg_name = GetArgName();
+      LOG(ERROR) << "arg_name: " << arg_name;
       ADT_LET_CONST_REF(arg_type, GetConstDataPointerType(value));
       kernel_define::KernelArg kernel_arg{arg_type, lambda};
       kernel_define::NamedKernelArg named_kernel_arg{arg_name, kernel_arg};
@@ -349,8 +388,13 @@ struct OpCudaCodeGenImpl {
       const DrrPackedIrOp& drr_packed_ir_op,
       const DoEachNativeValueT& DoEachNativeValue,
       const DoEachPackedValueT DoEachPackedValue) {
+    LOG(ERROR) << "drr_packed_ir_op: "
+               << graph::NodeDescriptor<DrrGraphNode>{}.DebugId(
+                      drr_packed_ir_op->node);
     auto DoEach = [&](const DrrGraphNode& node) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(drr_node, node.Get());
+      LOG(ERROR) << "drr_packed_ir_op input: "
+                 << graph::NodeDescriptor<DrrGraphNode>{}.DebugId(node);
       return drr_node.Match(
           [&](const DrrNativeIrValue& ir_value) -> adt::Result<adt::Ok> {
             return DoEachNativeValue(ir_value);
@@ -522,15 +566,15 @@ struct OpCudaCodeGenImpl {
     return adt::Ok{};
   }
 
-  adt::Result<bool> IsReplacedWithLocalVar(const OpCodeGenCtx& op_code_gen_ctx,
-                                           pir::Value value) {
+  adt::Result<std::optional<std::string>> GetReplacedLocalVar(
+      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
     ADT_LET_CONST_REF(local_var_bindings, GetLocalVarBindings(op_code_gen_ctx));
-    for (const auto& [_, native_ir_value] : *local_var_bindings) {
+    for (const auto& [local_var_name, native_ir_value] : *local_var_bindings) {
       if (native_ir_value.value == value) {
-        return true;
+        return std::optional<std::string>{local_var_name};
       }
     }
-    return false;
+    return std::optional<std::string>{std::nullopt};
   }
 
   adt::Result<const LocalVarBindingList*> GetLocalVarBindings(

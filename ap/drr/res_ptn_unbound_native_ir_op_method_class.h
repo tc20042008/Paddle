@@ -30,6 +30,13 @@ struct ResPtnUnboundNativeIrOp {
   using This = ResPtnUnboundNativeIrOp;
   using Self = tResPtn<UnboundNativeIrOp<ValueT, NodeT>>;
 
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+
   using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
 
   adt::Result<ValueT> Call(const Self& self) {

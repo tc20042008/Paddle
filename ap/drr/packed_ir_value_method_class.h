@@ -26,6 +26,13 @@ struct MethodClassImpl<ValueT, drr::tSrcPtn<drr::PackedIrValue<NodeT>>> {
   using Self = drr::tSrcPtn<drr::PackedIrValue<NodeT>>;
   using This = MethodClassImpl<ValueT, Self>;
 
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+
   adt::Result<ValueT> Starred(const Self& self) {
     return axpr::Starred<ValueT>{adt::List<ValueT>{self}};
   }
@@ -38,6 +45,15 @@ struct MethodClassImpl<ValueT,
 template <typename ValueT, typename NodeT>
 struct MethodClassImpl<ValueT,
                        drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<NodeT>>>> {
+  using Self = drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<NodeT>>>;
+  using This = MethodClassImpl<ValueT, Self>;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 };
 
 template <typename ValueT, typename NodeT>
@@ -49,6 +65,13 @@ template <typename ValueT, typename NodeT>
 struct MethodClassImpl<ValueT, drr::tResPtn<drr::PackedIrValue<NodeT>>> {
   using Self = drr::tResPtn<drr::PackedIrValue<NodeT>>;
   using This = MethodClassImpl<ValueT, Self>;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 
   adt::Result<ValueT> Starred(const Self& self) {
     return axpr::Starred<ValueT>{adt::List<ValueT>{self}};
@@ -62,6 +85,15 @@ struct MethodClassImpl<ValueT,
 template <typename ValueT, typename NodeT>
 struct MethodClassImpl<ValueT,
                        drr::tStarred<drr::tResPtn<drr::PackedIrValue<NodeT>>>> {
+  using Self = drr::tStarred<drr::tResPtn<drr::PackedIrValue<NodeT>>>;
+  using This = MethodClassImpl<ValueT, Self>;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 };
 
 template <typename ValueT, typename NodeT>

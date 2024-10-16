@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/axpr/object.h"
+#include "ap/axpr/packed_args.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
@@ -50,6 +51,7 @@ Object<ValueT> GetObjectTypeName2Type() {
                                  int64_t,
                                  double,
                                  std::string,
+                                 PackedArgs<ValueT>,
                                  ValueImplTypes...>::Call(&object);
   return object;
 }

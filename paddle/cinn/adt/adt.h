@@ -66,7 +66,7 @@ struct Rc {
 
   const std::shared_ptr<T>& shared_ptr() const { return data_; }
 
-  void* __adt_rc_shared_ptr_raw_ptr() const { return data_.get(); }
+  const void* __adt_rc_shared_ptr_raw_ptr() const { return data_.get(); }
 
  private:
   std::shared_ptr<T> data_;
@@ -522,7 +522,9 @@ adt::Result<std::shared_ptr<T>> WeakPtrLock(const std::weak_ptr<T>& weak_ptr) {
   const auto* __ptr_##var =                                                 \
       (__result_##var.HasError() ? nullptr : &__result_##var.GetOkValue()); \
   const auto& var = *__ptr_##var;                                           \
-  ADT_RETURN_IF_ERR(__result_##var)
+  if (__result_##var.HasError())                                            \
+  return __result_##var.GetError() << ADT_CURRENT_CODE_LOCATION(            \
+             __FILE__, __LINE__, __FUNCTION__, #__VA_ARGS__)
 
 }  // namespace adt
 }  // namespace cinn

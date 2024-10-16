@@ -22,33 +22,17 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct BuiltinSymbolMethodClass {
-  using Self = BuiltinSymbolMethodClass;
+  using This = BuiltinSymbolMethodClass;
+  using Self = builtin_symbol::Symbol;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  adt::Result<ValueT> ToString(const Self& symbol) {
+    return std::string(symbol.Name());
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, builtin_symbol::Symbol> {
-  using method_class = BuiltinSymbolMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, builtin_symbol::Symbol>
+    : public BuiltinSymbolMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<builtin_symbol::Symbol>>

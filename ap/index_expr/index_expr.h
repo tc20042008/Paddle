@@ -24,8 +24,12 @@ namespace ap::index_expr {
 
 struct IndexTupleExpr;
 
+std::string IndexTupleExprToString(const std::shared_ptr<IndexTupleExpr>&);
+
 struct UndefinedIndexExprImpl : public std::monostate {
   using std::monostate::monostate;
+
+  std::string ToString() const { return "IndexExpr.Undefined"; }
 };
 
 DEFINE_ADT_RC(UndefinedIndexExpr, UndefinedIndexExprImpl);
@@ -40,6 +44,12 @@ struct PtrGetItemImpl {
            other.indexes_expr == this->indexes_expr &&
            other.range == this->range;
   }
+
+  std::string ToString() const {
+    return std::string() + "IndexExpr.PtrGetItem(ptr_var_name=" + ptr_var_name +
+           ", indexes_expr=" + IndexTupleExprToString(indexes_expr) +
+           ", range=" + symbol::ToString(range) + ")";
+  }
 };
 
 DEFINE_ADT_RC(PtrGetItem, PtrGetItemImpl);
@@ -49,6 +59,10 @@ struct IndexExprDomainImpl {
 
   bool operator==(const IndexExprDomainImpl& other) const {
     return other.range == this->range;
+  }
+
+  std::string ToString() const {
+    return std::string() + "IndexExpr.Domain(" + symbol::ToString(range) + ")";
   }
 };
 
@@ -61,6 +75,12 @@ struct IndexExprBroadcastMaskImpl {
 
   bool operator==(const IndexExprBroadcastMaskImpl& other) const {
     return other.dim == this->dim && other.index_expr == this->index_expr;
+  }
+
+  std::string ToString() const {
+    return std::string() +
+           "IndexExpr.BroadcastMask(dim=" + symbol::ToString(dim) +
+           ", index_expr=" + index_expr.ToString() + ")";
   }
 };
 
@@ -78,6 +98,11 @@ struct IndexExprSliceImpl {
     return (other.slice == this->slice) && (other.range == this->range) &&
            (other.index_expr == this->index_expr);
   }
+
+  std::string ToString() const {
+    return index_expr.ToString() + ".slice(" + slice->ToString() +
+           ", range=" + symbol::ToString(range) + ")";
+  }
 };
 
 template <typename Expr>
@@ -93,6 +118,11 @@ struct IndexExprAffineImpl {
     return (other.slice == this->slice) && (other.range == this->range) &&
            (other.index_expr == this->index_expr);
   }
+
+  std::string ToString() const {
+    return index_expr.ToString() + ".affine(" + slice->ToString() +
+           ", range=" + symbol::ToString(range) + ")";
+  }
 };
 
 template <typename Expr>
@@ -105,6 +135,11 @@ struct DisjointUnionImpl {
 
   bool operator==(const DisjointUnionImpl& other) const {
     return (other.lhs == this->lhs) && (other.rhs == this->rhs);
+  }
+
+  std::string ToString() const {
+    return std::string() + "IndexExpr.DisjointUnion(" + lhs.ToString() + ", " +
+           rhs.ToString() + ")";
   }
 };
 
@@ -123,6 +158,10 @@ using IndexExprBase = std::variant<UndefinedIndexExpr,
 struct IndexExpr : public IndexExprBase<IndexExpr> {
   using IndexExprBase<IndexExpr>::IndexExprBase;
   DEFINE_ADT_VARIANT_METHODS(IndexExprBase<IndexExpr>);
+
+  std::string ToString() const {
+    return Match([](const auto& impl) { return impl->ToString(); });
+  }
 };
 
 }  // namespace ap::index_expr

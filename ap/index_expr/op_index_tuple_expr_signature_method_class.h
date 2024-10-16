@@ -20,13 +20,25 @@
 namespace ap::index_expr {
 
 template <typename ValueT>
-struct InIndexTupleExprSignatureMethodClass {};
+struct InIndexTupleExprSignatureMethodClass {
+  using Self = index_expr::InIndexTupleExprSignature;
+
+  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+};
 
 template <typename ValueT>
-struct OutIndexTupleExprSignatureMethodClass {};
+struct OutIndexTupleExprSignatureMethodClass {
+  using Self = index_expr::OutIndexTupleExprSignature;
+
+  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+};
 
 template <typename ValueT>
-struct OpIndexTupleExprSignatureMethodClass {};
+struct OpIndexTupleExprSignatureMethodClass {
+  using Self = index_expr::OpIndexTupleExprSignature;
+
+  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+};
 
 }  // namespace ap::index_expr
 

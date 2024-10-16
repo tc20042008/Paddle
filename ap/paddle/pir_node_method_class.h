@@ -22,24 +22,52 @@ template <typename ValueT>
 struct NativeIrValueMethodClass {
   using This = NativeIrValueMethodClass;
   using Self = NativeIrValue;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const auto* ptr = self.value.impl();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 };
 
 template <typename ValueT>
 struct PackedIrValueMethodClass {
   using This = PackedIrValueMethodClass;
   using Self = PackedIrValue;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const pir::Operation* ptr = self.fusion_op;
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 };
 
 template <typename ValueT>
 struct NativeIrOpMethodClass {
   using This = NativeIrOpMethodClass;
   using Self = NativeIrOp;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const auto* ptr = self.op;
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 };
 
 template <typename ValueT>
 struct PackedIrOpMethodClass {
   using This = PackedIrOpMethodClass;
   using Self = PackedIrOp;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const pir::Operation* ptr = self.fusion_op;
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
 };
 
 }  // namespace ap::paddle

@@ -26,6 +26,8 @@ namespace ap::index_expr {
 struct UndefinedIndexTupleExprImpl : public std::monostate {
   using std::monostate::monostate;
 
+  std::string ToString() const { return "IndexTupleExpr.Undefined"; }
+
   const char* TypeName() const { return "UndefinedIndexTupleExpr"; }
 };
 DEFINE_ADT_RC(UndefinedIndexTupleExpr, UndefinedIndexTupleExprImpl);
@@ -33,12 +35,16 @@ DEFINE_ADT_RC(UndefinedIndexTupleExpr, UndefinedIndexTupleExprImpl);
 struct NothingIndexTupleExprImpl : public std::monostate {
   using std::monostate::monostate;
 
+  std::string ToString() const { return "IndexTupleExpr.Nothing"; }
+
   const char* TypeName() const { return "NothingIndexTupleExpr"; }
 };
 DEFINE_ADT_RC(NothingIndexTupleExpr, NothingIndexTupleExprImpl);
 
 struct IntArrayLikeIndexTupleExprImpl : public std::monostate {
   using std::monostate::monostate;
+
+  std::string ToString() const { return "IndexTupleExpr.IntArrayLike"; }
 
   const char* TypeName() const { return "IntArrayLikeIndexTupleExpr"; }
 };
@@ -48,6 +54,20 @@ struct IndexTupleExprDomainImpl {
   adt::List<symbol::DimExpr> ranges;
   bool operator==(const IndexTupleExprDomainImpl& other) const {
     return other.ranges == this->ranges;
+  }
+
+  std::string ToString() const {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (const auto& elt : *ranges) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << symbol::ToString(elt);
+    }
+    ss << "]";
+    return std::string() + "IndexTupleExpr.Domain(" + ss.str() + ")";
   }
 
   const char* TypeName() const { return "IndexTupleExprDomain"; }
@@ -62,6 +82,20 @@ struct IndexTupleExprPermuteImpl {
   bool operator==(const IndexTupleExprPermuteImpl& other) const {
     return other.perms == this->perms &&
            other.indexes_expr == this->indexes_expr;
+  }
+
+  std::string ToString() const {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (int64_t perm : *perms) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << perm;
+    }
+    ss << "]";
+    return indexes_expr.ToString() + ".permute(" + ss.str() + ")";
   }
 
   const char* TypeName() const { return "IndexTupleExprPermute"; }
@@ -80,6 +114,20 @@ struct IndexTupleExprReshapeImpl {
            other.indexes_expr == this->indexes_expr;
   }
 
+  std::string ToString() const {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (const auto& elt : *shape) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << symbol::ToString(elt);
+    }
+    ss << "]";
+    return indexes_expr.ToString() + ".reshape(" + ss.str() + ")";
+  }
+
   const char* TypeName() const { return "IndexTupleExprReshape"; }
 };
 template <typename Expr>
@@ -93,6 +141,20 @@ struct IndexTupleExprTransformImpl {
   bool operator==(const IndexTupleExprTransformImpl& other) const {
     return other.index_exprs == this->index_exprs &&
            other.indexes_expr == this->indexes_expr;
+  }
+
+  std::string ToString() const {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (const auto& elt : *index_exprs) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ss << elt.ToString();
+    }
+    ss << "]";
+    return indexes_expr.ToString() + ".transform(" + ss.str() + ")";
   }
 
   const char* TypeName() const { return "IndexTupleExprTransform"; }
@@ -116,7 +178,16 @@ struct IndexTupleExpr : public IndexTupleExprBase<IndexTupleExpr> {
   const char* TypeName() const {
     return Match([](const auto& impl) { return impl->TypeName(); });
   }
+
+  std::string ToString() const {
+    return Match([](const auto& impl) { return impl->ToString(); });
+  }
 };
+
+inline std::string IndexTupleExprToString(
+    const std::shared_ptr<IndexTupleExpr>& indexes_expr) {
+  return indexes_expr->ToString();
+}
 
 }  // namespace ap::index_expr
 

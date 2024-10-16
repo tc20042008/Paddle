@@ -23,7 +23,29 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, adt::List<ValueT>> {
+  using This = MethodClassImpl<ValueT, adt::List<ValueT>>;
   using Self = adt::List<ValueT>;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    ss << "[";
+    int i = 0;
+    for (const auto& elt : *self) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      const auto& func = MethodClass<ValueT>::ToString(elt);
+      ADT_LET_CONST_REF(str_val, func(elt));
+      ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
+          << adt::errors::TypeError{
+                 std::string() + "'" + GetTypeName(elt) +
+                 ".__builtin_ToString__ should return a 'str' but '" +
+                 GetTypeName(str_val) + "' were returned."};
+      ss << str;
+    }
+    ss << "]";
+    return ss.str();
+  }
 
   adt::Result<ValueT> GetItem(const Self& self, const ValueT& idx) {
     return idx.Match(

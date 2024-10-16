@@ -44,7 +44,7 @@ struct DefineCtxMethodClass {
       return GetMatchCtx(self);
     }
     if (attr_name == "cuda_code_gen") {
-      return &This::StaticCudaCodeGen;
+      return axpr::Method<ValueT>{self, &This::StaticCudaCodeGen};
     }
     return adt::errors::AttributeError{
         std::string("'DefineCtx' object has no attribute '") + attr_name +

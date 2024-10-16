@@ -23,7 +23,12 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct DataTypeMethodClass {
-  using Self = DataTypeMethodClass;
+  using This = DataTypeMethodClass;
+  using Self = DataType;
+
+  adt::Result<ValueT> ToString(const Self& data_type) {
+    return std::string("DataType.") + data_type.Name();
+  }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -33,10 +38,10 @@ struct DataTypeMethodClass {
   template <typename BultinBinarySymbol>
   static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
     if constexpr (std::is_same_v<BultinBinarySymbol, builtin_symbol::EQ>) {
-      return &Self::EQ;
+      return &This::EQ;
     } else if constexpr (std::is_same_v<BultinBinarySymbol,  // NOLINT
                                         builtin_symbol::NE>) {
-      return &Self::NE;
+      return &This::NE;
     } else {
       std::nullopt;
     }

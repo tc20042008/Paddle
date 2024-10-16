@@ -21,26 +21,12 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct NothingMethodClass {
-  using Self = NothingMethodClass;
+  using This = NothingMethodClass;
+  using Self = adt::Nothing;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
+  adt::Result<ValueT> ToString(const Self&) { return std::string(""); }
 
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    if constexpr (std::is_same_v<BultinBinarySymbol, builtin_symbol::EQ>) {
-      return &Self::EQ;
-    } else if constexpr (std::is_same_v<BultinBinarySymbol,  // NOLINT
-                                        builtin_symbol::NE>) {
-      return &Self::NE;
-    } else {
-      std::nullopt;
-    }
-  }
-
-  static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
+  Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
     ADT_RETURN_IF_ERR(opt_lhs);
@@ -48,7 +34,7 @@ struct NothingMethodClass {
                          [](const auto&) -> ValueT { return false; });
   }
 
-  static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
+  Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
     ADT_RETURN_IF_ERR(opt_lhs);
@@ -58,19 +44,8 @@ struct NothingMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, adt::Nothing> {
-  using method_class = NothingMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, adt::Nothing>
+    : public NothingMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<adt::Nothing>>

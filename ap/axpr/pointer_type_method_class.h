@@ -24,6 +24,11 @@ namespace ap::axpr {
 template <typename ValueT>
 struct PointerTypeMethodClass {
   using This = PointerTypeMethodClass;
+  using Self = PointerType;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    return std::string("PointerType.") + self.Name();
+  }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {

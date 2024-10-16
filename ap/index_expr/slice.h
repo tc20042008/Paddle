@@ -30,6 +30,12 @@ struct SliceImpl {
     return (other.start == this->start) && (other.stop == this->stop) &&
            (other.step == this->step);
   }
+
+  std::string ToString() const {
+    return std::string() + "Slice(start=" + symbol::ToString(start) +
+           ", stop=" + symbol::ToString(stop) +
+           ", step=" + symbol::ToString(step) + ")";
+  }
 };
 
 DEFINE_ADT_RC(Slice, const SliceImpl);

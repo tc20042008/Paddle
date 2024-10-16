@@ -56,7 +56,13 @@ adt::Result<ValueT> DataValueGetAttr(const DataValue& data_val,
 
 template <typename ValueT>
 struct DataValueMethodClass {
-  using Self = DataValueMethodClass;
+  using This = DataValueMethodClass;
+  using Self = DataValue;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    ADT_LET_CONST_REF(str, self.ToString());
+    return str;
+  }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -64,7 +70,7 @@ struct DataValueMethodClass {
                       BuiltinUnarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BuiltinUnarySymbol>::arithmetic_op_type;
-      return &Self::UnaryFunc<ArithmeticOp>;
+      return &This::UnaryFunc<ArithmeticOp>;
     } else {
       return std::nullopt;
     }
@@ -76,10 +82,10 @@ struct DataValueMethodClass {
                       BultinBinarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BultinBinarySymbol>::arithmetic_op_type;
-      return &Self::template BinaryFunc<ArithmeticOp>;
+      return &This::template BinaryFunc<ArithmeticOp>;
     } else if constexpr (std::is_same_v<BultinBinarySymbol,  // NOLINT
                                         builtin_symbol::GetAttr>) {
-      return &Self::GetAttr;
+      return &This::GetAttr;
     } else {
       return std::nullopt;
     }
@@ -127,19 +133,8 @@ struct DataValueMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, DataValue> {
-  using method_class = DataValueMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, DataValue>
+    : public DataValueMethodClass<ValueT> {};
 
 namespace detail {
 

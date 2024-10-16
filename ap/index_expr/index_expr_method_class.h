@@ -25,6 +25,8 @@ struct IndexExprMethodClass {
   using This = IndexExprMethodClass;
   using Self = IndexExpr;
 
+  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
     if (attr_name == "slice") {

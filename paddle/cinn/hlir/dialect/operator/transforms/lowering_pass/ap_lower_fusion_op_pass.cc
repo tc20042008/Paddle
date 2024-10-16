@@ -489,10 +489,7 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
     ap::kernel_define::DefineCtx<PirNode> define_ctx{ir_match_ctx,
                                                      named_kernel_args};
     ApKernelDefineHelper helper{};
-    ADT_LET_CONST_REF(m, helper.Interpret(lambda, define_ctx))
-        << adt::errors::TypeError{
-               "ApLowerFusionOpPattern::GetApKernelModule: kernel_define "
-               "lambda returns a non Module object."};
+    ADT_LET_CONST_REF(m, helper.Interpret(lambda, define_ctx));
     return m;
   }
 

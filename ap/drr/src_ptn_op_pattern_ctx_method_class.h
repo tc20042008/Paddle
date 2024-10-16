@@ -34,6 +34,13 @@ struct SrcPtnOpPatternCtxMethodClass {
   using Self = ObjT;
   using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
 
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+
   adt::Result<ValueT> SetAttr(const Self& self, const ValueT& arg) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(arg));
     if (IsBasicAttrName(attr_name)) {

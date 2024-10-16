@@ -23,7 +23,15 @@ namespace ap::axpr {
 
 template <typename ValueT, typename NodeT>
 struct MethodClassImpl<ValueT,
-                       drr::tSrcPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>> {};
+                       drr::tSrcPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>> {
+  using Self = drr::tSrcPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>;
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+};
 
 template <typename ValueT, typename NodeT>
 struct MethodClassImpl<
@@ -32,7 +40,16 @@ struct MethodClassImpl<
 
 template <typename ValueT, typename NodeT>
 struct MethodClassImpl<ValueT,
-                       drr::tResPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>> {};
+                       drr::tResPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>> {
+  using Self = drr::tResPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+};
 
 template <typename ValueT, typename NodeT>
 struct MethodClassImpl<

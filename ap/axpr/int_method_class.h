@@ -24,7 +24,10 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct IntMethodClass {
-  using Self = IntMethodClass;
+  using This = IntMethodClass;
+  using Self = int64_t;
+
+  adt::Result<ValueT> ToString(Self int_val) { return std::to_string(int_val); }
 
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
@@ -32,7 +35,7 @@ struct IntMethodClass {
                       BuiltinUnarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BuiltinUnarySymbol>::arithmetic_op_type;
-      return &Self::UnaryFunc<ArithmeticOp>;
+      return &This::UnaryFunc<ArithmeticOp>;
     } else {
       return std::nullopt;
     }
@@ -44,7 +47,7 @@ struct IntMethodClass {
                       BultinBinarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BultinBinarySymbol>::arithmetic_op_type;
-      return &Self::template BinaryFunc<ArithmeticOp>;
+      return &This::template BinaryFunc<ArithmeticOp>;
     } else {
       return std::nullopt;
     }
@@ -90,19 +93,7 @@ struct IntMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, int64_t> {
-  using method_class = IntMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, int64_t> : public IntMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<int64_t>>

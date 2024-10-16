@@ -22,7 +22,10 @@
 namespace ap::axpr {
 
 template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, drr::NativeIrOp<ValueT, NodeT>> {};
+struct MethodClassImpl<ValueT, drr::NativeIrOp<ValueT, NodeT>> {
+  using Self = drr::NativeIrOp<ValueT, NodeT>;
+  using This = MethodClassImpl<ValueT, Self>;
+};
 
 template <typename ValueT, typename NodeT>
 struct MethodClassImpl<ValueT, TypeImpl<drr::NativeIrOp<ValueT, NodeT>>> {};

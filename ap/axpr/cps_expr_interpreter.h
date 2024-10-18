@@ -107,6 +107,13 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                                       composed_call->args,
                                       composed_call);
         },
+        [&](const Lambda<CoreExpr>& raw_lambda) -> Result<adt::Ok> {
+          Closure<ValueT> closure{raw_lambda, builtin_env()};
+          return InterpretClosureCall(composed_call->outter_func,
+                                      closure,
+                                      composed_call->args,
+                                      composed_call);
+        },
         [&](const builtin_symbol::Symbol& symbol) -> Result<adt::Ok> {
           return InterpretBuiltinSymbolCall(symbol, composed_call);
         },

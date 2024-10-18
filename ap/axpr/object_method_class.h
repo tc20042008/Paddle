@@ -22,33 +22,20 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct ObjectMethodClass {
-  using Self = ObjectMethodClass;
+  using This = ObjectMethodClass;
+  using Self = Object<ValueT>;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    ADT_LET_CONST_REF(val, self->Get(attr_name)) << adt::errors::AttributeError{
+        std::string() + "'object' has no attribute '" + attr_name + "'."};
+    return val;
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, Object<ValueT>> {
-  using method_class = ObjectMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, Object<ValueT>>
+    : public ObjectMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<Object<ValueT>>>

@@ -14,9 +14,21 @@
 
 #pragma once
 
-#include "ap/axpr/data_type_method_class.h"
-#include "ap/axpr/pointer_type_method_class.h"
-#include "ap/axpr/value_method_class.h"
-#include "ap/kernel_define/func_declare_method_class.h"
-#include "ap/kernel_define/module_method_class.h"
-#include "ap/kernel_define/source_code_method_class.h"
+#include <vector>
+#include "ap/adt/adt.h"
+#include "ap/axpr/core_expr.h"
+#include "ap/registry/cell.h"
+#include "ap/registry/nice.h"
+
+namespace ap::registry {
+
+struct ModuleTemplateRegistryItemImpl {
+  std::string template_name;
+  std::string arch_type;
+  Nice nice;
+  Cell<axpr::Lambda<axpr::CoreExpr>> lambda;
+};
+
+DEFINE_ADT_RC(ModuleTemplateRegistryItem, ModuleTemplateRegistryItemImpl);
+
+}  // namespace ap::registry

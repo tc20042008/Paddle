@@ -16,9 +16,9 @@
 
 namespace ap::registry {
 
-constexpr const char* kRegistrySingleton() { return "singleton"; }
 constexpr const char* kOpIndexExpr() { return "op_index_expr"; }
 constexpr const char* kDrr() { return "drr"; }
 constexpr const char* kOpCompute() { return "op_compute"; }
+constexpr const char* kModuleTemplate() { return "module_template"; }
 
 }  // namespace ap::registry

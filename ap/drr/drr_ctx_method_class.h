@@ -29,161 +29,74 @@ namespace ap::drr {
 template <typename ValueT, typename NodeT>
 struct DrrCtxMethodClass {
   using This = DrrCtxMethodClass;
-
   using Self = drr::DrrCtx<ValueT, NodeT>;
+};
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "source_pattern") {
-      return axpr::Method<ValueT>{self, &This::InitSourcePattern};
-    } else if (attr_name == "result_pattern") {
-      return axpr::Method<ValueT>{self, &This::InitResultPattern};
-    } else if (attr_name == "demo_graph") {
-      return axpr::Method<ValueT>{self, &This::InitDemoGraph};
-    } else if (attr_name == "test_source_pattern_by_demo_graph") {
-      return axpr::Method<ValueT>{self, &This::TestSourcePatternByDemoGraph};
-    } else {
-      return adt::errors::AttributeError{std::string() +
-                                         "'DrrCtx' object has no attribute '" +
-                                         attr_name + "'"};
-    }
+template <typename ValueT, typename NodeT>
+struct TypeImplDrrCtxMethodClass {
+  using This = TypeImplDrrCtxMethodClass;
+  using Self = axpr::TypeImpl<DrrCtx<ValueT, NodeT>>;
+
+  adt::Result<ValueT> Call(const Self&) { return &This::StaticConstruct; }
+
+  static adt::Result<ValueT> StaticConstruct(const axpr::ApplyT<ValueT>& Apply,
+                                             const ValueT&,
+                                             const std::vector<ValueT>& args) {
+    return This{}.Construct(Apply, args);
   }
 
-  adt::Result<ValueT> SetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "pass_name") {
-      return axpr::Method<ValueT>{self, &This::SetPassName};
-    } else {
-      return adt::errors::AttributeError{std::string() +
-                                         "'DrrCtx' object has no attribute '" +
-                                         attr_name + "'"};
+  adt::Result<ValueT> Construct(const axpr::ApplyT<ValueT>& Apply,
+                                const std::vector<ValueT>& packed_args_val) {
+    DrrCtx<ValueT, NodeT> self{};
+    const auto& packed_args = axpr::CastToPackedArgs(packed_args_val);
+    const auto& [args, kwargs] = *packed_args;
+    ADT_CHECK(args->size() == 0) << adt::errors::TypeError{
+        "the constructor of DrrCtx takes keyword arguments only."};
+    {
+      ADT_LET_CONST_REF(
+          def_source_pattern,
+          kwargs->template Get<axpr::Closure<ValueT>>("source_pattern"));
+      auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
+      SourcePatternCtx<ValueT, NodeT> source_pattern_ctx{
+          node_arena,
+          OpPatternCtx<ValueT, NodeT>{
+              node_arena,
+              std::map<std::string, IrOp<ValueT, NodeT>>{},
+              self.shared_ptr()},
+          TensorPatternCtx<ValueT, NodeT>{
+              node_arena,
+              std::map<std::string, IrValue<NodeT>>{},
+              self.shared_ptr()}};
+      self.shared_ptr()->source_pattern_ctx = source_pattern_ctx;
+      ADT_RETURN_IF_ERR(
+          Apply(def_source_pattern,
+                {SrcPtn(source_pattern_ctx->op_pattern_ctx),
+                 SrcPtn(source_pattern_ctx->tensor_pattern_ctx)}));
     }
-  }
+    {
+      ADT_LET_CONST_REF(
+          def_result_pattern,
+          kwargs->template Get<axpr::Closure<ValueT>>("result_pattern"));
 
-  static adt::Result<ValueT> SetPassName(const ValueT& self_val,
-                                         const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    ADT_CHECK(args.size() == 2);
-    ADT_LET_CONST_REF(pass_name, axpr::TryGetImpl<std::string>(args.at(1)))
-        << adt::errors::TypeError{
-               std::string() +
-               "DrrCtx.pass_name should be set to a 'str'. but '" +
-               axpr::GetTypeName(args.at(0)) + "' were given."};
-    self.shared_ptr()->pass_name = pass_name;
-    return adt::Nothing{};
-  }
-
-  static adt::Result<ValueT> InitSourcePattern(
-      const axpr::ApplyT<ValueT>& Apply,
-      const ValueT& self_val,
-      const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    if (self->source_pattern_ctx.has_value()) {
-      return adt::errors::ValueError{
-          "'DrrCtx.source_pattern' has been initialized."};
+      auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
+      ResultPatternCtx<ValueT, NodeT> result_pattern_ctx{
+          node_arena,
+          OpPatternCtx<ValueT, NodeT>{
+              node_arena,
+              std::map<std::string, IrOp<ValueT, NodeT>>{},
+              self.shared_ptr()},
+          TensorPatternCtx<ValueT, NodeT>{
+              node_arena,
+              std::map<std::string, IrValue<NodeT>>{},
+              self.shared_ptr()},
+          self->source_pattern_ctx.value()};
+      self.shared_ptr()->result_pattern_ctx = result_pattern_ctx;
+      ADT_RETURN_IF_ERR(
+          Apply(def_result_pattern,
+                {ResPtn(result_pattern_ctx->op_pattern_ctx),
+                 ResPtn(result_pattern_ctx->tensor_pattern_ctx)}));
     }
-    if (args.size() != 1) {
-      return adt::errors::TypeError{
-          std::string() + "DrrCtx.source_pattern takes 1 argument. but " +
-          std::to_string(args.size()) + " were given."};
-    }
-    auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
-    SourcePatternCtx<ValueT, NodeT> source_pattern_ctx{
-        node_arena,
-        OpPatternCtx<ValueT, NodeT>{
-            node_arena,
-            std::map<std::string, IrOp<ValueT, NodeT>>{},
-            self.shared_ptr()},
-        TensorPatternCtx<ValueT, NodeT>{node_arena,
-                                        std::map<std::string, IrValue<NodeT>>{},
-                                        self.shared_ptr()}};
-    self.shared_ptr()->source_pattern_ctx = source_pattern_ctx;
-    ADT_RETURN_IF_ERR(Apply(args.at(0),
-                            {SrcPtn(source_pattern_ctx->op_pattern_ctx),
-                             SrcPtn(source_pattern_ctx->tensor_pattern_ctx)}));
-    return adt::Nothing{};
-  }
-
-  static adt::Result<ValueT> InitDemoGraph(const axpr::ApplyT<ValueT>& Apply,
-                                           const ValueT& self_val,
-                                           const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    if (self->demo_graph_source_pattern_ctx.has_value()) {
-      return adt::errors::ValueError{
-          "'DrrCtx.demo_graph' has been initialized."};
-    }
-    if (args.size() != 1) {
-      return adt::errors::TypeError{
-          std::string() + "DrrCtx.demo_graph takes 1 argument. but " +
-          std::to_string(args.size()) + " were given."};
-    }
-    auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
-    SourcePatternCtx<ValueT, NodeT> demo_graph_source_pattern_ctx{
-        node_arena,
-        OpPatternCtx<ValueT, NodeT>{
-            node_arena,
-            std::map<std::string, IrOp<ValueT, NodeT>>{},
-            self.shared_ptr()},
-        TensorPatternCtx<ValueT, NodeT>{node_arena,
-                                        std::map<std::string, IrValue<NodeT>>{},
-                                        self.shared_ptr()}};
-    self.shared_ptr()->demo_graph_source_pattern_ctx =
-        demo_graph_source_pattern_ctx;
-    ADT_RETURN_IF_ERR(
-        Apply(args.at(0),
-              {SrcPtn(demo_graph_source_pattern_ctx->op_pattern_ctx),
-               SrcPtn(demo_graph_source_pattern_ctx->tensor_pattern_ctx)}));
-    return adt::Nothing{};
-  }
-
-  static adt::Result<ValueT> TestSourcePatternByDemoGraph(
-      const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    ADT_CHECK(self->demo_graph_source_pattern_ctx.has_value());
-    ADT_CHECK(self->source_pattern_ctx.has_value());
-    const auto& obj_node_arena =
-        self->demo_graph_source_pattern_ctx.value()->node_arena;
-    const auto& ptn_node_arena = self->source_pattern_ctx.value()->node_arena;
-    ADT_LET_CONST_REF(is_matched,
-                      DemoGraphHelper<ValueT>{}.IsGraphMatched(
-                          *obj_node_arena, *ptn_node_arena));
-    return is_matched;
-  }
-
-  static adt::Result<ValueT> InitResultPattern(
-      const axpr::ApplyT<ValueT>& Apply,
-      const ValueT& self_val,
-      const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    if (!self->source_pattern_ctx.has_value()) {
-      return adt::errors::ValueError{
-          "'DrrCtx.source_pattern' has not been initialized."};
-    }
-    if (self->result_pattern_ctx.has_value()) {
-      return adt::errors::ValueError{
-          "'DrrCtx.result_pattern' has been initialized."};
-    }
-    if (args.size() != 1) {
-      return adt::errors::TypeError{
-          std::string() + "DrrCtx.result_pattern takes 1 argument. but " +
-          std::to_string(args.size()) + " were given."};
-    }
-    auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
-    ResultPatternCtx<ValueT, NodeT> result_pattern_ctx{
-        node_arena,
-        OpPatternCtx<ValueT, NodeT>{
-            node_arena,
-            std::map<std::string, IrOp<ValueT, NodeT>>{},
-            self.shared_ptr()},
-        TensorPatternCtx<ValueT, NodeT>{node_arena,
-                                        std::map<std::string, IrValue<NodeT>>{},
-                                        self.shared_ptr()},
-        self->source_pattern_ctx.value()};
-    self.shared_ptr()->result_pattern_ctx = result_pattern_ctx;
-    ADT_RETURN_IF_ERR(Apply(args.at(0),
-                            {ResPtn(result_pattern_ctx->op_pattern_ctx),
-                             ResPtn(result_pattern_ctx->tensor_pattern_ctx)}));
-    return adt::Nothing{};
+    return self;
   }
 };
 
@@ -196,6 +109,7 @@ struct MethodClassImpl<ValueT, drr::DrrCtx<ValueT, NodeT>>
     : public drr::DrrCtxMethodClass<ValueT, NodeT> {};
 
 template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, TypeImpl<drr::DrrCtx<ValueT, NodeT>>> {};
+struct MethodClassImpl<ValueT, TypeImpl<drr::DrrCtx<ValueT, NodeT>>>
+    : public drr::TypeImplDrrCtxMethodClass<ValueT, NodeT> {};
 
 }  // namespace ap::axpr

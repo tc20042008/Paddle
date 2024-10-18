@@ -33,9 +33,14 @@ using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
 }  // namespace
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Lambda& lambda,
-                                           const DrrCtx& drr_ctx) {
+                                           const std::string& drr_pass_name) {
   ap::axpr::CpsExprInterpreter<DrrValue> interpreter{};
-  ADT_RETURN_IF_ERR(interpreter.Interpret(lambda, {drr_ctx}));
+  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
+  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
+      << adt::errors::TypeError{
+             std::string() +
+             "drr function should return a 'DrrCtx' object but '" +
+             ap::axpr::GetTypeName(drr_ctx_val) + "' were given."};
   return drr_ctx;
 }
 

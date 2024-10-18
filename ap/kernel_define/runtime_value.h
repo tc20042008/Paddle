@@ -19,7 +19,6 @@
 #include "ap/kernel_define/adt.h"
 #include "ap/kernel_define/data_type.h"
 #include "ap/kernel_define/func_declare.h"
-#include "ap/kernel_define/kernel_arg.h"
 #include "ap/kernel_define/module.h"
 #include "ap/kernel_define/source_code.h"
 #include "ap/kernel_define/undefined_ir_node.h"
@@ -33,7 +32,6 @@ template <typename ValueT, typename IrNodeT>
 using RtValueImpl = ap::axpr::ValueBase<ValueT,
                                         axpr::DataType,
                                         axpr::PointerType,
-                                        KernelArg,
                                         FuncDeclare,
                                         SourceCode,
                                         Module>;
@@ -48,7 +46,6 @@ struct RtValue : public RtValueImpl<RtValue<IrNodeT>, IrNodeT> {
     return axpr::GetObjectTypeName2Type<RtValue<IrNodeT>,
                                         axpr::DataType,
                                         axpr::PointerType,
-                                        KernelArg,
                                         FuncDeclare,
                                         SourceCode,
                                         Module>();

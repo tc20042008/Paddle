@@ -79,10 +79,9 @@ adt::Result<DrrNode> GetApDrrAnchor(const DrrCtx& drr_ctx) {
   auto ptn_node_area = src_ptn_ctx->node_arena;
   ap::graph::GraphDescriptor<DrrGraphNode> source_pattern_graph{};
   ADT_CHECK(ptn_node_area->nodes().size() > 0);
+  ap::graph::GraphHelper<DrrGraphNode> graph_helper(source_pattern_graph);
   const auto& start_ptn_node = ptn_node_area->nodes().at(0).node();
-  ADT_LET_CONST_REF(anchor_node,
-                    ap::graph::GraphHelper<DrrGraphNode>(source_pattern_graph)
-                        .FindAnchor(start_ptn_node));
+  ADT_LET_CONST_REF(anchor_node, graph_helper.FindAnchor(start_ptn_node));
   ADT_LET_CONST_REF(anchor, anchor_node.Get());
   return anchor;
 }
@@ -484,7 +483,7 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
       const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda,
       const GraphMatchCtx& match_ctx) const {
     ADT_LET_CONST_REF(src_ptn_ctx, ctx_.drr_ctx->GetSourcePatternCtx());
-    IrMatchCtx ir_match_ctx{src_ptn_ctx, match_ctx, std::nullopt, std::nullopt};
+    IrMatchCtx ir_match_ctx{src_ptn_ctx, match_ctx};
     std::vector<ap::kernel_define::NamedKernelArg> named_kernel_args;
     ap::kernel_define::DefineCtx<PirNode> define_ctx{ir_match_ctx,
                                                      named_kernel_args};
@@ -505,25 +504,13 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
             return ap::axpr::tVar<std::string>{var.name()};
           });
     };
-    auto ConvertLambda = [&](auto& ctx, const auto& lambda) -> AnfExpr {
-      const auto& var_name = ctx.NewTmpVarName();
-      const auto& anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
-      ctx.Var(var_name) = anf_expr;
-      const auto& code_var = ctx.Var(var_name).Attr("__code__");
-      return ap::axpr::tVar<std::string>(code_var.name());
-    };
-    auto ConvertKernelArg = [&](auto& ctx, const auto& kernel_arg) -> AnfExpr {
-      const auto& arg_type = ConvertArgType(ctx, kernel_arg->arg_type);
-      const auto& getter_lambda = ConvertLambda(ctx, kernel_arg->getter_lambda);
-      return ctx.Call("KernelArg", arg_type, getter_lambda);
-    };
     auto ConvertFuncDeclareCall = [&](auto& ctx,
                                       const auto& func_declare) -> AnfExpr {
       const auto& func_name = ctx.String(func_declare->func_id);
       std::vector<AnfExpr> elts;
-      elts.reserve(func_declare->kernel_args->size());
-      for (const auto& kernel_arg : *func_declare->kernel_args) {
-        elts.emplace_back(ConvertKernelArg(ctx, kernel_arg));
+      elts.reserve(func_declare->arg_types->size());
+      for (const auto& arg_type : *func_declare->arg_types) {
+        elts.emplace_back(ConvertArgType(ctx, arg_type));
       }
       const auto& arg_type_anf_expr = ctx.Call(ap::axpr::kBuiltinList(), elts);
       return ctx.Call("FuncDeclare", func_name, arg_type_anf_expr);
@@ -545,7 +532,7 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
       const auto& source_code = ConvertSourceCodeCall(ctx);
       return ctx.Call("Module", declare, source_code);
     };
-    return ap::axpr::LambdaExprBuilder{}.Lambda({"ctx"}, ConstructLambdaBody);
+    return ap::axpr::LambdaExprBuilder{}.Lambda({}, ConstructLambdaBody);
   }
 
   adt::Result<std::string> GetKernelDispatchLambdaStr(
@@ -921,12 +908,12 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
 
   adt::Result<DrrCtx> GetDrrCtx(const std::string& drr_pass_name,
                                 const ap::registry::DrrRegistryItem& drr_item) {
-    DrrCtx drr_ctx{};
     ADT_CHECK(drr_item->lambda->data.has_value());
-    ADT_RETURN_IF_ERR(
-        ApDrrHelper{}.Interpret(drr_item->lambda->data.value(), drr_ctx));
+    const auto& drr_func = drr_item->lambda->data.value();
+    ADT_LET_CONST_REF(drr_ctx,
+                      ApDrrHelper{}.Interpret(drr_func, drr_pass_name));
     if (!drr_ctx->pass_name.has_value()) {
-      drr_ctx->pass_name = drr_pass_name;
+      drr_ctx.shared_ptr()->pass_name = drr_pass_name;
     }
     return drr_ctx;
   }

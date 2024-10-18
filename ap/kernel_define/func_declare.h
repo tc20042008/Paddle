@@ -15,8 +15,8 @@
 #pragma once
 #include "ap/axpr/type.h"
 #include "ap/kernel_define/adt.h"
+#include "ap/kernel_define/arg_type.h"
 #include "ap/kernel_define/data_type.h"
-#include "ap/kernel_define/kernel_arg.h"
 #include "paddle/cinn/adt/adt.h"
 
 namespace ap::kernel_define {
@@ -25,11 +25,10 @@ using FuncId = std::string;
 
 struct FuncDeclareImpl {
   FuncId func_id;
-  adt::List<KernelArg> kernel_args;
+  adt::List<ArgType> arg_types;
 
   bool operator==(const FuncDeclareImpl& other) const {
-    return other.func_id == this->func_id &&
-           other.kernel_args == this->kernel_args;
+    return other.func_id == this->func_id && other.arg_types == this->arg_types;
   }
 };
 DEFINE_ADT_RC(FuncDeclare, FuncDeclareImpl);

@@ -34,12 +34,17 @@ template <typename ValueT>
 DEFINE_ADT_RC(PackedArgs, PackedArgsImpl<ValueT>);
 
 template <typename ValueT>
-adt::Result<PackedArgs<ValueT>> CastToPackedArgs(
+PackedArgs<ValueT> CastToPackedArgs(
     const std::vector<ValueT>& packed_args_vec) {
-  ADT_CHECK(packed_args_vec.size() == 1);
-  const auto& packed_args_val = packed_args_vec.at(0);
-  ADT_CHECK(packed_args_val.template Has<PackedArgs<ValueT>>());
-  return packed_args_val.template Get<PackedArgs<ValueT>>();
+  if (packed_args_vec.size() == 1 &&
+      packed_args_vec.at(0).template Has<PackedArgs<ValueT>>()) {
+    return packed_args_vec.at(0).template Get<PackedArgs<ValueT>>();
+  } else {
+    adt::List<ValueT> pos_args{};
+    pos_args->reserve(packed_args_vec.size());
+    pos_args->assign(packed_args_vec.begin(), packed_args_vec.end());
+    return PackedArgs<ValueT>{pos_args, Object<ValueT>{}};
+  }
 }
 
 template <typename ValueT>

@@ -34,14 +34,3 @@ struct KernelArgImpl {
 DEFINE_ADT_RC(KernelArg, KernelArgImpl);
 
 }  // namespace ap::kernel_define
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<ap::kernel_define::KernelArg> : public std::monostate {
-  using value_type = ap::kernel_define::KernelArg;
-
-  const char* Name() const { return "KernelArg"; }
-};
-
-}  // namespace ap::axpr

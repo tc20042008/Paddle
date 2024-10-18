@@ -202,14 +202,7 @@ adt::List<Val> MakeMutableTensors(std::vector<phi::DenseTensor*>* ys) {
 using FuncName2ArgTypes =
     std::unordered_map<std::string, adt::List<kernel_define::ArgType>>;
 FuncName2ArgTypes MakeFuncName2ArgTypes(const kernel_define::Module& m) {
-  auto GetArgTypes = [&](const auto& declare) {
-    adt::List<kernel_define::ArgType> arg_types;
-    arg_types->reserve(declare->kernel_args->size());
-    for (const auto& kernel_arg : *declare->kernel_args) {
-      arg_types->emplace_back(kernel_arg->arg_type);
-    }
-    return arg_types;
-  };
+  auto GetArgTypes = [&](const auto& declare) { return declare->arg_types; };
   FuncName2ArgTypes ret;
   for (const auto& declare : *m->func_declares) {
     ret[declare->func_id] = GetArgTypes(declare);

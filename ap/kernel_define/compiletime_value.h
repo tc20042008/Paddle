@@ -17,7 +17,6 @@
 #include "ap/axpr/value.h"
 #include "ap/index_expr/index_expr.h"
 #include "ap/index_expr/index_tuple_expr.h"
-#include "ap/ir_match/ir_match_ctx.h"
 #include "ap/ir_match/op_match_ctx.h"
 #include "ap/ir_match/tensor_match_ctx.h"
 #include "ap/kernel_define/adt.h"
@@ -45,11 +44,9 @@ using CtValueImpl = ap::axpr::ValueBase<ValueT,
                                         typename IrNodeT::packed_op_type,
                                         typename IrNodeT::native_value_type,
                                         typename IrNodeT::packed_value_type,
-                                        ir_match::IrMatchCtx<IrNodeT>,
                                         ir_match::OpMatchCtx<IrNodeT>,
                                         ir_match::TensorMatchCtx<IrNodeT>,
                                         DefineCtx<IrNodeT>,
-                                        KernelArg,
                                         FuncDeclare,
                                         SourceCode,
                                         Module>;
@@ -69,7 +66,6 @@ struct CtValue : public CtValueImpl<CtValue<IrNodeT>, IrNodeT> {
                                         index_expr::Slice,
                                         index_expr::IndexExpr,
                                         index_expr::IndexTupleExpr,
-                                        KernelArg,
                                         FuncDeclare,
                                         SourceCode,
                                         Module>();

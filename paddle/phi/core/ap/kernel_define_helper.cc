@@ -36,8 +36,7 @@ using Val = ap::kernel_define::RtValue<IrNodeT>;
 adt::Result<Module> KernelDefineHelper::InterpretKernelDefineLambda(
     const Lambda& lambda) {
   ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
-  adt::Nothing none{};
-  ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {none}));
+  ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(m, interpret_ret.TryGet<Module>());
   return m;
 }

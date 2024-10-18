@@ -43,25 +43,25 @@ struct TypeImplFuncDeclareMethodClass {
         << adt::errors::TypeError{std::string() +
                                   "the argument 1 of constructor of "
                                   "FuncDeclare should be a 'str'"};
-    ADT_LET_CONST_REF(kernel_args, GetKernelArgs(args.at(1)));
-    return FuncDeclare{func_id, kernel_args};
+    ADT_LET_CONST_REF(arg_types, GetArgTypes(args.at(1)));
+    return FuncDeclare{func_id, arg_types};
   }
 
-  Result<adt::List<KernelArg>> GetKernelArgs(const ValueT& val) {
+  Result<adt::List<ArgType>> GetArgTypes(const ValueT& val) {
     ADT_LET_CONST_REF(list, axpr::TryGetImpl<adt::List<ValueT>>(val))
-        << adt::errors::TypeError{
-               std::string() +
-               "the argument 2 of constructor of FuncDeclare should be a list "
-               "of 'KernelArg's."};
-    adt::List<KernelArg> ret;
+        << adt::errors::TypeError{std::string() +
+                                  "the argument 2 of construct of FuncDeclare "
+                                  "should be a list of DataType "
+                                  "or PointerType."};
+    adt::List<ArgType> ret;
     ret->reserve(list->size());
     for (const auto& elt : *list) {
-      ADT_LET_CONST_REF(kernel_arg, axpr::TryGetImpl<KernelArg>(elt))
-          << adt::errors::TypeError{
-                 std::string() +
-                 "the argument 2 of constructor of FuncDeclare should be a "
-                 "list of 'KernelArg's."};
-      ret->emplace_back(kernel_arg);
+      ADT_LET_CONST_REF(arg_type, CastToArgType(elt))
+          << adt::errors::TypeError{std::string() +
+                                    "the argument 2 of construct of "
+                                    "FuncDeclare should be a list of DataType "
+                                    "or PointerType."};
+      ret->emplace_back(arg_type);
     }
     return ret;
   }

@@ -67,7 +67,7 @@ struct Value : public ValueImpl<Value> {
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 
   static axpr::Object<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value>();
+    return axpr::GetObjectTypeName2Type<Value, DrrCtx<Value, Node<Value>>>();
   }
 };
 

@@ -37,7 +37,14 @@ using Val = ap::kernel_define::CtValue<PirNode>;
 adt::Result<Module> ApKernelDefineHelper::Interpret(
     const Lambda& lambda, const DefineCtx& define_ctx) {
   ap::axpr::CpsExprInterpreter<Val> interpreter;
-  ADT_LET_CONST_REF(module_val, interpreter.Interpret(lambda, {define_ctx}));
+  ADT_CHECK(define_ctx->ir_match_ctx.has_value());
+  const auto& ir_match_ctx = define_ctx->ir_match_ctx.value();
+  ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};
+  ap::ir_match::TensorMatchCtx<PirNode> tensor_match_ctx{
+      ir_match_ctx.shared_ptr()};
+  ADT_LET_CONST_REF(module_val,
+                    interpreter.Interpret(
+                        lambda, {define_ctx, op_match_ctx, tensor_match_ctx}));
   ADT_LET_CONST_REF(m, module_val.template TryGet<Module>());
   return m;
 }

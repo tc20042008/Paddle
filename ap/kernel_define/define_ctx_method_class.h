@@ -21,6 +21,7 @@
 #include "ap/kernel_define/ir_op.h"
 #include "ap/kernel_define/module.h"
 #include "ap/kernel_define/op_code_gen_ctx.h"
+#include "ap/registry/registry_singleton.h"
 
 namespace ap::kernel_define {
 
@@ -40,11 +41,11 @@ struct DefineCtxMethodClass {
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "match_ctx") {
-      return GetMatchCtx(self);
-    }
     if (attr_name == "cuda_code_gen") {
       return axpr::Method<ValueT>{self, &This::StaticCudaCodeGen};
+    }
+    if (attr_name == "render_module_template") {
+      return axpr::Method<ValueT>{self, &This::StaticRenderModuleTemplate};
     }
     return adt::errors::AttributeError{
         std::string("'DefineCtx' object has no attribute '") + attr_name +
@@ -57,11 +58,17 @@ struct DefineCtxMethodClass {
     return This{}.CudaCodeGen(self, args);
   }
 
+  static adt::Result<ValueT> StaticRenderModuleTemplate(
+      const axpr::ApplyT<ValueT>& Apply,
+      const ValueT& self_val,
+      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+    return This{}.RenderModuleTemplate(Apply, self, args);
+  }
+
   adt::Result<ValueT> CudaCodeGen(const Self& self,
                                   const std::vector<ValueT>& packed_args_vec) {
-    ADT_LET_CONST_REF(packed_args, axpr::CastToPackedArgs(packed_args_vec))
-        << adt::errors::TypeError{
-               "'DefineCtx.cuda_code_gen' has no keyword arguments."};
+    const auto& packed_args = axpr::CastToPackedArgs(packed_args_vec);
     const auto& [args, kwargs] = *packed_args;
     ADT_CHECK(args->size() == 1) << adt::errors::TypeError{
         "'DefineCtx.cuda_code_gen' takes 1 positional arguments but " +
@@ -152,10 +159,55 @@ struct DefineCtxMethodClass {
     return code_str;
   }
 
-  adt::Result<ValueT> GetMatchCtx(const Self& self) {
-    ADT_CHECK(self->ir_match_ctx.has_value()) << adt::errors::ValueError{
-        "'DefineCtx.ir_match_ctx' has not been initialized."};
-    return self->ir_match_ctx.value();
+  using Lambda = axpr::Lambda<axpr::CoreExpr>;
+  using Object = axpr::Object<ValueT>;
+
+  adt::Result<ValueT> RenderModuleTemplate(
+      const axpr::ApplyT<ValueT>& Apply,
+      const Self& self,
+      const std::vector<ValueT>& packed_args_vec) {
+    const auto& packed_args = axpr::CastToPackedArgs(packed_args_vec);
+    const auto& [args, kwargs] = *packed_args;
+    ADT_CHECK(args->size() == 1) << adt::errors::TypeError{
+        std::string() +
+        "'DefineCtx.render_module_template' takes 1 postional argument but " +
+        std::to_string(args->size()) + " were given."};
+    ADT_LET_CONST_REF(template_name, args->at(0).template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "the positional argument 1 of "
+               "'DefineCtx.render_module_template' should be a 'str' but '" +
+               axpr::GetTypeName(args->at(0)) + "' were given."};
+    ADT_LET_CONST_REF(lambda, GetHighPriorModuleTemplate(template_name));
+    ADT_LET_CONST_REF(m, CreateModule(Apply, lambda, kwargs));
+    return m;
+  }
+
+  adt::Result<Module> CreateModule(const axpr::ApplyT<ValueT>& Apply,
+                                   const Lambda& lambda,
+                                   const Object& ctx) {
+    ADT_LET_CONST_REF(module_val, Apply(lambda, {ctx}));
+    ADT_LET_CONST_REF(m, module_val.template TryGet<Module>());
+    return m;
+  }
+
+  adt::Result<Lambda> GetHighPriorModuleTemplate(
+      const std::string& template_name) {
+    ADT_LET_CONST_REF(registry, registry::RegistrySingleton::Singleton());
+    const auto& module_templates = registry->module_template_registry_items;
+    const auto& iter = module_templates.find(template_name);
+    ADT_CHECK(iter != module_templates.end())
+        << adt::errors::KeyError{std::string() + "no module template named '" +
+                                 template_name + "' were found."};
+    for (const auto& [nice, templates] : iter->second) {
+      for (const auto& item : templates) {
+        const auto& module_template = item->lambda->data;
+        ADT_CHECK(module_template.has_value());
+        return module_template.value();
+      }
+    }
+    return adt::errors::KeyError{std::string() + "no module template named '" +
+                                 template_name + "' were found."};
   }
 };
 

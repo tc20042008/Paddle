@@ -32,8 +32,6 @@ struct IrMatchCtxImpl {
   using SmallGraphNodeT = graph::Node<DrrNodeT>;
   drr::SourcePatternCtx<drr::Value, DrrNodeT> source_pattern_ctx;
   GraphMatchCtx<IrNodeT, SmallGraphNodeT> graph_match_ctx;
-  std::optional<OpMatchCtx<IrNodeT>> op_match_ctx;
-  std::optional<TensorMatchCtx<IrNodeT>> tensor_match_ctx;
 };
 
 template <typename IrNodeT>

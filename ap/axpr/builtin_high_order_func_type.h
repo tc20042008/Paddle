@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/axpr/adt.h"
+#include "ap/axpr/core_expr.h"
 #include "ap/axpr/error.h"
 #include "ap/axpr/type.h"
 

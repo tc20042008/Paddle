@@ -20,6 +20,7 @@
 #include "ap/axpr/object.h"
 #include "ap/axpr/type.h"
 #include "ap/registry/drr_registry_item.h"
+#include "ap/registry/module_template_registry_item.h"
 #include "ap/registry/nice.h"
 #include "ap/registry/op_compute_registry_item.h"
 #include "ap/registry/op_indexes_expr_registry_item.h"
@@ -30,6 +31,7 @@ struct RegistryImpl {
   Key2Nice2Items<OpIndexesExprRegistryItem> op_indexes_expr_registry_items;
   Key2Nice2Items<DrrRegistryItem> drr_registry_items;
   Key2Nice2Items<OpComputeRegistryItem> op_compute_registry_items;
+  Key2Nice2Items<ModuleTemplateRegistryItem> module_template_registry_items;
 
   bool operator==(const RegistryImpl& other) const { return this == &other; }
 };

@@ -87,8 +87,8 @@ struct AnfExpr : public AnfExprBase {
   static constexpr const char* kIf() { return "if"; }
   static constexpr const char* kLet() { return "__builtin_let__"; }
 
-  std::string DumpToJsonString();
-  std::string DumpToJsonString(int indent);
+  std::string DumpToJsonString() const;
+  std::string DumpToJsonString(int indent) const;
 };
 
 }  // namespace ap::axpr

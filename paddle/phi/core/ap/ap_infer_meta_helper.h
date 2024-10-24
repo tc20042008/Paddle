@@ -15,23 +15,18 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/kernel_define/code_gen_result.h"
-#include "ap/kernel_define/define_ctx.h"
-#include "ap/kernel_define/module.h"
-#include "ap/paddle/pir_node.h"
+#include "ap/axpr/core_expr.h"
+#include "paddle/phi/core/meta_tensor.h"
 
-namespace cinn::dialect::ir {
+namespace phi {
 
-struct ApKernelDefineHelper {
+struct ApInferMetaHelper {
   using CoreExpr = ap::axpr::CoreExpr;
   using Lambda = ap::axpr::Lambda<CoreExpr>;
-  using Module = ap::kernel_define::Module;
-  using PirNode = ap::paddle::PirNode;
-  using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
-  using CodeGenResult = ap::kernel_define::CodeGenResult;
 
-  adt::Result<CodeGenResult> Interpret(const Lambda& lambda,
-                                       const DefineCtx& define_ctx);
+  adt::Result<adt::Ok> InferMeta(const std::string& lambda,
+                                 const std::vector<const MetaTensor*>* inputs,
+                                 std::vector<MetaTensor*>* outputs);
 };
 
-}  // namespace cinn::dialect::ir
+}  // namespace phi

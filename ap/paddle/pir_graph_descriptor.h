@@ -86,7 +86,7 @@ struct PirGraphDescriptor {
           auto* op = impl.op_result.defining_op();
           ADT_CHECK(op->isa<cinn::dialect::FusionOp>());
           PackedIrOp ir_op{op->dyn_cast<cinn::dialect::FusionOp>()};
-          return adt::Ok{};
+          return DoEach(ir_op);
         });
   }
 

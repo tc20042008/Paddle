@@ -14,24 +14,28 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
-#include "ap/kernel_define/code_gen_result.h"
-#include "ap/kernel_define/define_ctx.h"
+#include "ap/axpr/adt.h"
+#include "ap/axpr/core_expr.h"
+#include "ap/axpr/type.h"
 #include "ap/kernel_define/module.h"
-#include "ap/paddle/pir_node.h"
 
-namespace cinn::dialect::ir {
+namespace ap::kernel_define {
 
-struct ApKernelDefineHelper {
-  using CoreExpr = ap::axpr::CoreExpr;
-  using Lambda = ap::axpr::Lambda<CoreExpr>;
-  using Module = ap::kernel_define::Module;
-  using PirNode = ap::paddle::PirNode;
-  using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
-  using CodeGenResult = ap::kernel_define::CodeGenResult;
-
-  adt::Result<CodeGenResult> Interpret(const Lambda& lambda,
-                                       const DefineCtx& define_ctx);
+struct CodeGenResultImpl {
+  Module code_module;
 };
 
-}  // namespace cinn::dialect::ir
+DEFINE_ADT_RC(CodeGenResult, CodeGenResultImpl);
+
+}  // namespace ap::kernel_define
+
+namespace ap::axpr {
+
+template <>
+struct TypeImpl<kernel_define::CodeGenResult> : public std::monostate {
+  using value_type = kernel_define::CodeGenResult;
+
+  const char* Name() const { return "CodeGenResult"; }
+};
+
+}  // namespace ap::axpr

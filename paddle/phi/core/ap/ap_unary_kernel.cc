@@ -122,35 +122,27 @@ adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
 }
 
 using MakeCudaModuleT = adt::Result<ApUnaryCudaModule> (*)(
-    const std::string& kernel_definer_lambda,
-    const std::string& define_ctx_maker_lambda);
+    const std::string& kernel_definer_lambda);
 
 template <MakeCudaModuleT MakeCudaModule>
 adt::Result<ApUnaryCudaModule> CacheCudaModule(
-    const std::string& kernel_definer_lambda,
-    const std::string& define_ctx_maker_lambda) {
-  using CtxMaker2CudaModule =
+    const std::string& kernel_definer_lambda) {
+  using Definer2CudaModule =
       std::unordered_map<std::string, adt::Result<ApUnaryCudaModule>>;
-  using Definer2CtxMaker2CudaModule =
-      std::unordered_map<std::string, CtxMaker2CudaModule>;
-  static Definer2CtxMaker2CudaModule definer2ctx_maker2cuda_module;
+  static Definer2CudaModule definer2cuda_module;
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
-  auto* ctx_maker2cuda_module =
-      &definer2ctx_maker2cuda_module[kernel_definer_lambda];
-  auto iter = ctx_maker2cuda_module->find(define_ctx_maker_lambda);
-  if (iter == ctx_maker2cuda_module->end()) {
-    const auto& cuda_module =
-        MakeCudaModule(kernel_definer_lambda, define_ctx_maker_lambda);
-    iter = ctx_maker2cuda_module->emplace(define_ctx_maker_lambda, cuda_module)
-               .first;
+  auto iter = definer2cuda_module.find(kernel_definer_lambda);
+  if (iter == definer2cuda_module.end()) {
+    const auto& cuda_module = MakeCudaModule(kernel_definer_lambda);
+    iter =
+        definer2cuda_module.emplace(kernel_definer_lambda, cuda_module).first;
   }
   return iter->second;
 }
 
 adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
-    const std::string& kernel_definer_lambda,
-    const std::string& define_ctx_maker_lambda) {
+    const std::string& kernel_definer_lambda) {
   ADT_LET_CONST_REF(kernel_definer_core_expr,
                     MakeOrGetCoreExpr(kernel_definer_lambda));
   phi::KernelDefineHelper helper{};
@@ -214,13 +206,13 @@ adt::Result<adt::Ok> ApUnaryKernel(
     const std::vector<const phi::DenseTensor*>& xs,
     int num_outputs,
     const std::string& kernel_definer_lambda,
-    const std::string& define_ctx_maker_lambda,
+    const std::string& infer_meta_lambda,
     const std::string& kernel_dispatcher_lambda,
     const std::string& dispatch_ctx_maker_lambda,
     std::vector<phi::DenseTensor*> outs) {
-  ADT_LET_CONST_REF(cuda_module,
-                    kernel_define::MakeOrGetApUnaryCudaModule(
-                        kernel_definer_lambda, define_ctx_maker_lambda));
+  ADT_LET_CONST_REF(
+      cuda_module,
+      kernel_define::MakeOrGetApUnaryCudaModule(kernel_definer_lambda));
   adt::List<Val> inputs = MakeConstTensors(xs);
   adt::List<Val> outputs = MakeMutableTensors(&outs);
   DispatchRawCtx<Val> raw_ctx{inputs,

@@ -28,13 +28,14 @@ namespace {
 using CoreExpr = ap::axpr::CoreExpr;
 using Lambda = ap::axpr::Lambda<CoreExpr>;
 using Module = ap::kernel_define::Module;
+using CodeGenResult = ap::kernel_define::CodeGenResult;
 using PirNode = ap::paddle::PirNode;
 using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
 using Val = ap::kernel_define::CtValue<PirNode>;
 
 }  // namespace
 
-adt::Result<Module> ApKernelDefineHelper::Interpret(
+adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
     const Lambda& lambda, const DefineCtx& define_ctx) {
   ap::axpr::CpsExprInterpreter<Val> interpreter;
   ADT_CHECK(define_ctx->ir_match_ctx.has_value());
@@ -42,10 +43,10 @@ adt::Result<Module> ApKernelDefineHelper::Interpret(
   ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};
   ap::ir_match::TensorMatchCtx<PirNode> tensor_match_ctx{
       ir_match_ctx.shared_ptr()};
-  ADT_LET_CONST_REF(module_val,
+  ADT_LET_CONST_REF(result,
                     interpreter.Interpret(
                         lambda, {define_ctx, op_match_ctx, tensor_match_ctx}));
-  ADT_LET_CONST_REF(m, module_val.template TryGet<Module>());
+  ADT_LET_CONST_REF(m, result.template TryGet<CodeGenResult>());
   return m;
 }
 

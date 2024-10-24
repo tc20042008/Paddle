@@ -28,7 +28,21 @@ inline Result<DataType> GetDataTypeFromPhiDataType(::phi::DataType data_type) {
   };
   const auto& iter = map.find(data_type);
   if (iter == map.end()) {
-    return adt::errors::InvalidArgumentError{"Invalid phi data type."};
+    return adt::errors::KeyError{"Invalid phi data type."};
+  }
+  return iter->second;
+}
+
+inline Result<::phi::DataType> GetPhiDataTypeFromDataType(DataType data_type) {
+  static const std::unordered_map<DataType, ::phi::DataType> map{
+#define MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE(cpp_type, enum_type) \
+  {DataType{CppDataType<cpp_type>{}}, ::phi::enum_type},
+      PD_FOR_EACH_DATA_TYPE(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
+#undef MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE
+  };
+  const auto& iter = map.find(data_type);
+  if (iter == map.end()) {
+    return adt::errors::KeyError{"Invalid axpr data type."};
   }
   return iter->second;
 }

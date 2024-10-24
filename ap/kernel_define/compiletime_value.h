@@ -20,6 +20,7 @@
 #include "ap/ir_match/op_match_ctx.h"
 #include "ap/ir_match/tensor_match_ctx.h"
 #include "ap/kernel_define/adt.h"
+#include "ap/kernel_define/code_gen_result.h"
 #include "ap/kernel_define/data_type.h"
 #include "ap/kernel_define/define_ctx.h"
 #include "ap/kernel_define/func_declare.h"
@@ -49,7 +50,8 @@ using CtValueImpl = ap::axpr::ValueBase<ValueT,
                                         DefineCtx<IrNodeT>,
                                         FuncDeclare,
                                         SourceCode,
-                                        Module>;
+                                        Module,
+                                        CodeGenResult>;
 
 // compile time value
 template <typename IrNodeT>
@@ -68,7 +70,8 @@ struct CtValue : public CtValueImpl<CtValue<IrNodeT>, IrNodeT> {
                                         index_expr::IndexTupleExpr,
                                         FuncDeclare,
                                         SourceCode,
-                                        Module>();
+                                        Module,
+                                        CodeGenResult>();
   }
 };
 

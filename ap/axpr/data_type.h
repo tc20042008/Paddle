@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+
+#include <functional>
 #include "ap/axpr/type.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/pstring.h"
@@ -122,6 +124,8 @@ struct DataType : public DataTypeImpl {
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });
   }
+
+  std::size_t GetHashValue() const { return index(); }
 };
 
 template <>
@@ -132,3 +136,14 @@ struct TypeImpl<DataType> : public std::monostate {
 };
 
 }  // namespace ap::axpr
+
+namespace std {
+
+template <>
+struct hash<ap::axpr::DataType> {
+  std::size_t operator()(ap::axpr::DataType dtype) const {
+    return dtype.GetHashValue();
+  }
+};
+
+}  // namespace std

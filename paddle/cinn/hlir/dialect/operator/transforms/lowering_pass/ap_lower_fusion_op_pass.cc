@@ -18,6 +18,7 @@
 
 #include "ap/axpr/anf_expr_util.h"
 #include "ap/axpr/atomic.h"
+#include "ap/axpr/data_type_util.h"
 #include "ap/axpr/lambda_expr_builder.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
@@ -65,6 +66,7 @@ using DrrIrOpImpl = std::variant<DrrNativeIrOp, DrrPackedIrOp>;
 using IrMatchCtx = ap::ir_match::IrMatchCtx<PirNode>;
 
 using ap::axpr::AnfExpr;
+using ap::kernel_define::CodeGenResult;
 using ap::kernel_define::Module;
 
 struct DrrIrOp : public DrrIrOpImpl {
@@ -144,6 +146,7 @@ struct ApLowerFusionOpPatternCtx {
 class ApLowerFusionOpPattern : public pir::RewritePattern {
  private:
   ApLowerFusionOpPatternCtx ctx_;
+  mutable std::unordered_set<pir::Operation*> rewrited_;
 
  public:
   ApLowerFusionOpPattern(pir::IrContext* ir_context,
@@ -153,6 +156,9 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
   bool MatchAndRewrite(
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const override {  // // NOLINT
+    if (rewrited_.count(op) > 0) {
+      return false;
+    }
     const auto& ret = TryMatchAndRewrite(op, &rewriter);
     if (ret.HasError()) {
       LOG(ERROR) << "\nTraceback (most recent call last):\n"
@@ -160,6 +166,9 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
                  << ret.GetError().class_name() << ": " << ret.GetError().msg();
       return false;
     }
+    LOG(ERROR) << "MatchAndRewrite: op: " << op
+               << ", ret: " << ret.GetOkValue();
+    rewrited_.insert(op);
     return ret.GetOkValue();
   }
 
@@ -420,8 +429,8 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
                       InsertCombinedOp(new_ops, rewriter, input_values));
     ADT_LET_CONST_REF(kernel_define_lambda_str,
                       GetKernelDefineLambdaStr(res_ptn_ir_op, match_ctx));
-    ADT_LET_CONST_REF(define_ctx_lambda_str,
-                      GetDefineCtxLambdaStr(res_ptn_ir_op));
+    ADT_LET_CONST_REF(infer_meta_lambda_str,
+                      GetInferMetaLambdaStr(res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(kernel_dispatch_lambda_str,
                       GetKernelDispatchLambdaStr(res_ptn_ir_op));
     ADT_LET_CONST_REF(dispatch_ctx_lambda_str,
@@ -434,7 +443,7 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
                                             combined_value,
                                             num_outputs,
                                             kernel_define_lambda_str,
-                                            define_ctx_lambda_str,
+                                            infer_meta_lambda_str,
                                             kernel_dispatch_lambda_str,
                                             dispatch_ctx_lambda_str));
     ADT_LET_CONST_REF(output_values,
@@ -445,14 +454,149 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
     return adt::Ok{};
   }
 
-  adt::Result<std::string> GetDefineCtxLambdaStr(
-      const DrrPackedIrOp& res_ptn_ir_op) const {
-    ap::axpr::LambdaExprBuilder lmbd;
-    auto ConstructLambdaBody = [&](ap::axpr::LetContext& ctx) {
-      return ctx.Var("ctx");
+  struct InputDimIndex {
+    int input_idx;
+    int tensor_axis;
+  };
+
+  struct OpInferMetaCtx {
+    std::unordered_map<symbol::DimExpr, InputDimIndex> dim_expr2in_dim_index;
+    mutable std::unordered_map<symbol::DimExpr, AnfExpr> dim_expr2anf_expr;
+  };
+
+  struct TensorMeta {
+    std::vector<symbol::DimExpr> shape;
+    pir::Type dtype;
+  };
+
+  adt::Result<std::string> GetInferMetaLambdaStr(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    ADT_LET_CONST_REF(infer_meta_ctx,
+                      GetOpInferMetaCtx(res_ptn_ir_op, match_ctx));
+    ADT_LET_CONST_REF(outputs, GetOpOutputPirValues(res_ptn_ir_op, match_ctx));
+    auto ConstructLambdaBody =
+        [&](ap::axpr::LetContext& ctx) -> adt::Result<AnfExpr> {
+      for (int i = 0; i < outputs.size(); ++i) {
+        const auto& output = outputs.at(i);
+        auto& output_meta_var = ctx.Var("outputs").At(i);
+        ADT_LET_CONST_REF(dim_exprs_ptr, GetShapeDimExprsPtrByValue(output));
+        ADT_LET_CONST_REF(ddim_val,
+                          ConstructDDims(&ctx, infer_meta_ctx, *dim_exprs_ptr));
+        output_meta_var.SetAttr("dims", ddim_val);
+        ADT_LET_CONST_REF(dtype, GetPirDataType(output));
+        ADT_LET_CONST_REF(dtype_val,
+                          ConstructDtype(&ctx, infer_meta_ctx, dtype));
+        output_meta_var.SetAttr("dtype", dtype_val);
+      }
+      return ctx.None();
     };
-    ap::axpr::AnfExpr anf_expr = lmbd.Lambda({"ctx"}, ConstructLambdaBody);
+    ap::axpr::LambdaExprBuilder lmbd;
+    ADT_LET_CONST_REF(
+        anf_expr, lmbd.TryLambda({"inputs", "outputs"}, ConstructLambdaBody));
     return anf_expr.DumpToJsonString();
+  }
+
+  adt::Result<pir::Type> GetPirDataType(pir::Value value) const {
+    if (!value.type().isa<pir::DenseTensorType>()) {
+      return adt::errors::NotImplementedError{
+          "pir value must be of DenseTensorType"};
+    }
+    const auto dense_tensor_type =
+        value.type().dyn_cast<pir::DenseTensorType>();
+    return dense_tensor_type.dtype();
+  }
+
+  adt::Result<std::vector<pir::Value>> GetOpOutputPirValues(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    return GetMatchedPirOutputsOfRestPtnPackedIrOp(res_ptn_ir_op, match_ctx);
+  }
+
+  adt::Result<OpInferMetaCtx> GetOpInferMetaCtx(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    ADT_LET_CONST_REF(
+        inputs,
+        GetMatchedPirInputsOfRestPtnPackedIrOp(res_ptn_ir_op, match_ctx));
+    OpInferMetaCtx infer_meta_ctx{};
+    auto* map = &infer_meta_ctx.dim_expr2in_dim_index;
+    for (int in_idx = 0; in_idx < inputs.size(); ++in_idx) {
+      pir::Value input = inputs.at(in_idx);
+      ADT_LET_CONST_REF(dim_exprs_ptr, GetShapeDimExprsPtrByValue(input));
+      for (int tensor_axis = 0; tensor_axis < dim_exprs_ptr->size();
+           ++tensor_axis) {
+        const auto& dim_expr = dim_exprs_ptr->at(tensor_axis);
+        map->emplace(dim_expr, InputDimIndex{in_idx, tensor_axis});
+      }
+    }
+    return infer_meta_ctx;
+  }
+
+  adt::Result<const std::vector<symbol::DimExpr>*> GetShapeDimExprsPtrByValue(
+      pir::Value value) const {
+    auto* op = value.defining_op();
+    ADT_CHECK(op != nullptr);
+    auto* program = op->GetParentProgram();
+    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(program);
+    const auto& shape_or_data = shape_analysis.GetShapeOrDataForValue(value);
+    using RetT = adt::Result<const std::vector<symbol::DimExpr>*>;
+    return shape_or_data.Match(
+        [&](const symbol::TensorShapeOrDataDimExprs& impl) -> RetT {
+          return &impl.shape();
+        },
+        [&](const auto&) -> RetT {
+          return adt::errors::TypeError{
+              "GetShapeDimExprsPtrByValue only support "
+              "TensorShapeOrDataDimExprs."};
+        });
+  }
+
+  adt::Result<AnfExpr> ConstructDtype(ap::axpr::LetContext* ctx,
+                                      const OpInferMetaCtx& infer_meta_ctx,
+                                      pir::Type type) const {
+    try {
+      ::phi::DataType phi_dtype = ::paddle::dialect::TransToPhiDataType(type);
+      ADT_LET_CONST_REF(dtype, ap::axpr::GetDataTypeFromPhiDataType(phi_dtype));
+      return static_cast<AnfExpr>(ctx->Var("DataType").Attr(dtype.Name()));
+    } catch (const std::exception& e) {
+      return adt::errors::TypeError{
+          "failed to cast from pir data type to phi data type."};
+    }
+  }
+
+  adt::Result<AnfExpr> ConstructDDims(
+      ap::axpr::LetContext* ctx,
+      const OpInferMetaCtx& infer_meta_ctx,
+      const std::vector<symbol::DimExpr>& dim_exprs) const {
+    std::vector<AnfExpr> anf_dims;
+    for (const auto& dim_expr : dim_exprs) {
+      ADT_LET_CONST_REF(anf_dim_expr,
+                        ConstructDDimDimExpr(ctx, infer_meta_ctx, dim_expr));
+      anf_dims.emplace_back(anf_dim_expr);
+    }
+    return ctx->Call(ap::axpr::kBuiltinList(), anf_dims);
+  }
+
+  adt::Result<AnfExpr> ConstructDDimDimExpr(
+      ap::axpr::LetContext* ctx,
+      const OpInferMetaCtx& infer_meta_ctx,
+      const symbol::DimExpr& dim_expr) const {
+    const auto& idx_iter = infer_meta_ctx.dim_expr2in_dim_index.find(dim_expr);
+    ADT_CHECK(idx_iter != infer_meta_ctx.dim_expr2in_dim_index.end());
+    auto anf_expr_iter = infer_meta_ctx.dim_expr2anf_expr.find(dim_expr);
+    if (anf_expr_iter == infer_meta_ctx.dim_expr2anf_expr.end()) {
+      const auto& in_dim = ConstructInDimExpr(ctx, idx_iter->second);
+      anf_expr_iter =
+          infer_meta_ctx.dim_expr2anf_expr.emplace(dim_expr, in_dim).first;
+    }
+    return anf_expr_iter->second;
+  }
+
+  AnfExpr ConstructInDimExpr(ap::axpr::LetContext* ctx,
+                             const InputDimIndex& idx) const {
+    return static_cast<AnfExpr>(
+        ctx->Var("inputs").At(idx.input_idx).Attr("dims").At(idx.tensor_axis));
   }
 
   adt::Result<std::string> GetDispatchCtxLambdaStr(
@@ -473,13 +617,13 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
     ADT_LET_CONST_REF(
         data, op_declare->cast_data<ap::drr::ResPtnPackedIrOpDeclareData>());
     const auto& lambda = data->kernel_define();
-    ADT_LET_CONST_REF(ap_kernel_module, GetApKernelModule(lambda, match_ctx));
+    ADT_LET_CONST_REF(code_gen_result, GetApKernelModule(lambda, match_ctx));
     ap::axpr::AnfExpr anf_expr =
-        ConvertApKernelModuleToAnfExpr(ap_kernel_module);
+        ConvertApKernelModuleToAnfExpr(code_gen_result->code_module);
     return anf_expr.DumpToJsonString();
   }
 
-  adt::Result<Module> GetApKernelModule(
+  adt::Result<CodeGenResult> GetApKernelModule(
       const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda,
       const GraphMatchCtx& match_ctx) const {
     ADT_LET_CONST_REF(src_ptn_ctx, ctx_.drr_ctx->GetSourcePatternCtx());
@@ -488,8 +632,8 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
     ap::kernel_define::DefineCtx<PirNode> define_ctx{ir_match_ctx,
                                                      named_kernel_args};
     ApKernelDefineHelper helper{};
-    ADT_LET_CONST_REF(m, helper.Interpret(lambda, define_ctx));
-    return m;
+    ADT_LET_CONST_REF(result, helper.Interpret(lambda, define_ctx));
+    return result;
   }
 
   AnfExpr ConvertApKernelModuleToAnfExpr(const Module& m) const {
@@ -551,14 +695,14 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
       pir::Value input,
       std::size_t num_outputs,
       const std::string& kernel_define_lambda_str,
-      const std::string& define_ctx_lambda_str,
+      const std::string& infer_meta_lambda_str,
       const std::string& kernel_dispatch_lambda_str,
       const std::string& dispatch_ctx_lambda_str) const {
     auto ap_unary =
         rewriter->Build<paddle::dialect::ApUnaryOp>(input,
                                                     num_outputs,
                                                     kernel_define_lambda_str,
-                                                    define_ctx_lambda_str,
+                                                    infer_meta_lambda_str,
                                                     kernel_dispatch_lambda_str,
                                                     dispatch_ctx_lambda_str);
     ADT_CHECK(new_ops->emplace(ap_unary).second);
@@ -805,6 +949,72 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
           });
     };
     return VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, InitInput);
+  }
+
+  adt::Result<std::vector<pir::Value>> GetMatchedPirInputsOfRestPtnPackedIrOp(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    std::vector<pir::Value> ret;
+    auto CollectInput =
+        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
+      return drr_ir_value.Match(
+          [&](const DrrNativeIrValue& res_ptn_ir_value)
+              -> adt::Result<adt::Ok> {
+            const auto& opt_ir_value =
+                SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
+            ADT_CHECK(opt_ir_value.has_value());
+            const auto& ir_value = opt_ir_value.value();
+            ADT_LET_CONST_REF(pir_node,
+                              match_ctx->GetSoleBigGraphNode(ir_value.node()));
+            ADT_LET_CONST_REF(
+                pir_value,
+                pir_node.template TryGet<ap::paddle::NativeIrValue>())
+                << adt::errors::TypeError{
+                       "pir_node is not an ap::paddle::NativeIrValue"};
+            ret.emplace_back(pir_value.value);
+            return adt::Ok{};
+          },
+          [&](const DrrPackedIrValue ir_value) -> adt::Result<adt::Ok> {
+            return adt::errors::NotImplementedError{
+                "packed input ir values are not supported yet."};
+          });
+    };
+    ADT_RETURN_IF_ERR(
+        VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, CollectInput));
+    return ret;
+  }
+
+  adt::Result<std::vector<pir::Value>> GetMatchedPirOutputsOfRestPtnPackedIrOp(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    std::vector<pir::Value> ret;
+    auto CollectOutput =
+        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
+      return drr_ir_value.Match(
+          [&](const DrrNativeIrValue& res_ptn_ir_value)
+              -> adt::Result<adt::Ok> {
+            const auto& opt_ir_value =
+                SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
+            ADT_CHECK(opt_ir_value.has_value());
+            const auto& ir_value = opt_ir_value.value();
+            ADT_LET_CONST_REF(pir_node,
+                              match_ctx->GetSoleBigGraphNode(ir_value.node()));
+            ADT_LET_CONST_REF(
+                pir_value,
+                pir_node.template TryGet<ap::paddle::NativeIrValue>())
+                << adt::errors::TypeError{
+                       "pir_node is not an ap::paddle::NativeIrValue"};
+            ret.emplace_back(pir_value.value);
+            return adt::Ok{};
+          },
+          [&](const DrrPackedIrValue ir_value) -> adt::Result<adt::Ok> {
+            return adt::errors::NotImplementedError{
+                "packed input ir values are not supported yet."};
+          });
+    };
+    ADT_RETURN_IF_ERR(
+        VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, CollectOutput));
+    return ret;
   }
 
   adt::Result<std::vector<pir::Value>> GetPackedOpInputValues(

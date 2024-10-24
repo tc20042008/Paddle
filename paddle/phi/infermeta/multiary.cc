@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/device_memory_alignment.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/ap/ap_infer_meta_helper.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -462,20 +463,19 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
 void ApUnaryInferMeta(const std::vector<const MetaTensor*>& xs,
                       int num_outputs,
                       const std::string& kernel_definer_lambda,
-                      const std::string& define_ctx_maker_lambda,
+                      const std::string& infer_meta_lambda,
                       const std::string& kernel_dispatcher_lambda,
                       const std::string& dispatch_ctx_maker_lambda,
                       std::vector<MetaTensor*> outs,
                       MetaConfig config) {
-  PADDLE_ENFORCE_GT(
-      xs.size(),
-      0,
-      phi::errors::InvalidArgument(
-          "At least 1 input is required. current number out inputs: %d",
-          xs.size()));
-  for (auto* out : outs) {
-    out->share_meta(*xs[0]);
-  }
+  ApInferMetaHelper helper{};
+  const auto& ret = helper.InferMeta(infer_meta_lambda, &xs, &outs);
+  PADDLE_ENFORCE(!ret.HasError(),
+                 "ApUnaryInferMeta failed. \nTraceback (most recent call "
+                 "last):\n%s\n%s: %s. ",
+                 ret.GetError().CallStackToString(),
+                 ret.GetError().class_name(),
+                 ret.GetError().msg());
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid

@@ -49,6 +49,11 @@ struct ObjectImpl {
   }
 
   template <typename T>
+  Result<T> TryGet(const std::string& var) const {
+    return this->template Get<T>(var);
+  }
+
+  template <typename T>
   Result<std::optional<T>> GetOpt(const std::string& var) const {
     if (!this->Has(var)) {
       return std::nullopt;

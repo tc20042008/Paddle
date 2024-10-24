@@ -122,11 +122,11 @@ Json ConvertAnfExprToJson(const AnfExpr& anf_expr) {
       });
 }
 
-std::string AnfExpr::DumpToJsonString() {
+std::string AnfExpr::DumpToJsonString() const {
   return ConvertAnfExprToJson(*this).dump();
 }
 
-std::string AnfExpr::DumpToJsonString(int indent) {
+std::string AnfExpr::DumpToJsonString(int indent) const {
   return ConvertAnfExprToJson(*this).dump(indent);
 }
 

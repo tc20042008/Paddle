@@ -16,7 +16,6 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
-#include "ap/drr/demo_graph_helper.h"
 #include "ap/drr/drr_ctx.h"
 #include "ap/drr/ir_op.h"
 #include "ap/drr/ir_value.h"

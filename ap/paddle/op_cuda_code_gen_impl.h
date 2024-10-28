@@ -30,6 +30,7 @@
 #include "ap/op_compute/value.h"
 #include "ap/op_compute/value_method_class.h"
 #include "ap/paddle/indexed_ir_graph_util.h"
+#include "ap/paddle/pir_graph_descriptor.h"
 #include "ap/paddle/pir_node.h"
 #include "ap/registry/registry.h"
 #include "ap/registry/registry_mgr.h"
@@ -55,7 +56,7 @@ struct OpCudaCodeGenImpl {
   using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
   using IndexTupleExpr = index_expr::IndexTupleExpr;
 
-  using GraphMatchCtx = ir_match::GraphMatchCtx<PirNode, DrrGraphNode>;
+  using GraphMatchCtx = ir_match::GraphMatchCtx<PirNode>;
 
   using IndexTupleExprCodeGenerator =
       index_expr::IndexTupleExprCudaCodeGenerator;
@@ -498,7 +499,9 @@ struct OpCudaCodeGenImpl {
 
   adt::Result<DrrPackedIrOp> GetDrrPackedIrOp(
       const GraphMatchCtx& graph_match_ctx, const PackedIrOp& packed_ir_op) {
-    const auto& opt_drr_node = graph_match_ctx->GetMatchedPtnNode(packed_ir_op);
+    ADT_LET_CONST_REF(
+        opt_drr_node,
+        graph_match_ctx->GetMatchedSmallGraphOpNode(packed_ir_op));
     ADT_CHECK(opt_drr_node.has_value());
     ADT_LET_CONST_REF(drr_node, opt_drr_node.value().Get());
     return drr_node.template TryGet<DrrPackedIrOp>();

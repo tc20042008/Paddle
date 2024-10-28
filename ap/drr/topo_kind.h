@@ -14,11 +14,14 @@
 
 #pragma once
 
-#include "ap/graph/size_to_features.h"
+namespace ap::drr::topo_kind {
 
-namespace ap::graph {
+struct Default;
 
-template <typename T>
-using Distance2Features = SizeToFeatures<T>;
+// all OpOperand and OpResult relationship
+struct AllOperandAndResult;
 
-}
+// native OpOperand and OpResult relationship
+struct NativeOperandAndResult;
+
+}  // namespace ap::drr::topo_kind

@@ -40,7 +40,7 @@ struct OpMatchCtxMethodClass {
   using DrrNodeT = drr::Node<DrrValueT>;
   using DrrNativeIrOp = drr::NativeIrOp<DrrValueT, DrrNodeT>;
   using DrrPackedIrOp = drr::PackedIrOp<DrrValueT, DrrNodeT>;
-  using PtnGraphNodeT = graph::Node<DrrNodeT>;
+  using SmallGraphNodeT = graph::Node<DrrNodeT>;
 
   using IrNativeIrOp = typename IrNodeT::native_op_type;
   using IrPackedIrOp = typename IrNodeT::packed_op_type;
@@ -54,8 +54,8 @@ struct OpMatchCtxMethodClass {
     if (iter == op_pattern_ctx->uid2ir_op.end()) {
       return std::nullopt;
     }
-    auto GetIrOpByPtnNode =
-        [&](const PtnGraphNodeT& node) -> adt::Result<IrNodeT> {
+    auto GetIrOpBySmallGraphNode =
+        [&](const SmallGraphNodeT& node) -> adt::Result<IrNodeT> {
       const auto& graph_match_ctx = ir_match_ctx->graph_match_ctx;
       return graph_match_ctx->GetSoleBigGraphNode(node);
     };
@@ -63,10 +63,10 @@ struct OpMatchCtxMethodClass {
         ir_node,
         iter->second.Match(
             [&](const DrrNativeIrOp& native_ir_op) -> adt::Result<IrNodeT> {
-              return GetIrOpByPtnNode(native_ir_op->node);
+              return GetIrOpBySmallGraphNode(native_ir_op->node);
             },
             [&](const DrrPackedIrOp& packed_ir_op) -> adt::Result<IrNodeT> {
-              return GetIrOpByPtnNode(packed_ir_op->node);
+              return GetIrOpBySmallGraphNode(packed_ir_op->node);
             },
             [&](const auto&) -> adt::Result<IrNodeT> {
               return adt::errors::ValueError{

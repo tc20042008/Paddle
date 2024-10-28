@@ -22,7 +22,7 @@
 
 namespace ap::graph {
 
-template <typename NodeT>
+template <typename NodeT, typename TopoKind>
 struct GraphDescriptor {
   GraphDescriptor(const GraphDescriptor&) = default;
   GraphDescriptor(GraphDescriptor&&) = default;

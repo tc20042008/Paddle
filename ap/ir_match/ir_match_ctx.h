@@ -31,7 +31,7 @@ struct IrMatchCtxImpl {
   using DrrNodeT = drr::Node<drr::Value>;
   using SmallGraphNodeT = graph::Node<DrrNodeT>;
   drr::SourcePatternCtx<drr::Value, DrrNodeT> source_pattern_ctx;
-  GraphMatchCtx<IrNodeT, SmallGraphNodeT> graph_match_ctx;
+  GraphMatchCtx<IrNodeT> graph_match_ctx;
 };
 
 template <typename IrNodeT>

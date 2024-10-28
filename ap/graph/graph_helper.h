@@ -19,20 +19,28 @@
 #include "ap/graph/graph_descriptor.h"
 #include "ap/graph/node.h"
 #include "ap/graph/node_arena.h"
-#include "ap/graph/topo_path_ptn_hashs.h"
 #include "glog/logging.h"
 
 namespace ap::graph {
 
-template <typename NodeT>
+template <typename NodeT, typename TopoKind>
 struct GraphHelper {
-  explicit GraphHelper(const GraphDescriptor<NodeT>& graph_descriptor)
+  explicit GraphHelper(const GraphDescriptor<NodeT, TopoKind>& graph_descriptor)
       : graph_descriptor_(graph_descriptor) {}
 
   GraphHelper(const GraphHelper&) = delete;
   GraphHelper(GraphHelper&&) = delete;
 
   adt::Result<NodeT> FindAnchor(const NodeT& start) {
+    const auto& True = [](const auto&) -> adt::Result<bool> { return true; };
+    ADT_LET_CONST_REF(opt_anchor, FilterAnchor(start, True));
+    ADT_CHECK(opt_anchor.has_value()) << adt::errors::MismatchError{};
+    return opt_anchor.value();
+  }
+
+  template <typename FilterT>
+  adt::Result<std::optional<NodeT>> FilterAnchor(const NodeT& start,
+                                                 const FilterT& Filter) {
     const auto topo_walker = GetTopoWalker();
     const auto IsSource = [&](const NodeT& sg_node) -> adt::Result<bool> {
       bool has_source = false;
@@ -93,11 +101,14 @@ struct GraphHelper {
       for (const auto& node : iter->second) {
         ADT_LET_CONST_REF(is_op_node, this->graph_descriptor_.IsOpNode(node));
         if (is_op_node) {
-          return node;
+          ADT_LET_CONST_REF(filter_success, Filter(node));
+          if (filter_success) {
+            return node;
+          }
         }
       }
     }
-    return adt::errors::MismatchError{};
+    return std::nullopt;
   }
 
   adt::BfsWalker<NodeT> GetBfsWalker() {
@@ -161,7 +172,7 @@ struct GraphHelper {
   }
 
  private:
-  GraphDescriptor<NodeT> graph_descriptor_;
+  GraphDescriptor<NodeT, TopoKind> graph_descriptor_;
 };
 
 }  // namespace ap::graph

@@ -74,18 +74,46 @@ struct DrrIrOp : public DrrIrOpImpl {
   DEFINE_ADT_VARIANT_METHODS(DrrIrOpImpl);
 };
 using DrrGraphNode = ap::graph::Node<DrrNode>;
-using GraphMatchCtx = ap::ir_match::GraphMatchCtx<PirNode, DrrGraphNode>;
+using GraphMatchCtx = ap::ir_match::GraphMatchCtx<PirNode>;
 
-adt::Result<DrrNode> GetApDrrAnchor(const DrrCtx& drr_ctx) {
+adt::Result<DrrNode> GetApDrrDefaultAnchor(const DrrCtx& drr_ctx) {
   ADT_LET_CONST_REF(src_ptn_ctx, drr_ctx->GetSourcePatternCtx());
   auto ptn_node_area = src_ptn_ctx->node_arena;
-  ap::graph::GraphDescriptor<DrrGraphNode> source_pattern_graph{};
+  ap::graph::GraphDescriptor<DrrGraphNode, ap::drr::topo_kind::Default>
+      source_pattern_graph{};
   ADT_CHECK(ptn_node_area->nodes().size() > 0);
-  ap::graph::GraphHelper<DrrGraphNode> graph_helper(source_pattern_graph);
+  ap::graph::GraphHelper<DrrGraphNode, ap::drr::topo_kind::Default>
+      graph_helper(source_pattern_graph);
   const auto& start_ptn_node = ptn_node_area->nodes().at(0).node();
   ADT_LET_CONST_REF(anchor_node, graph_helper.FindAnchor(start_ptn_node));
-  ADT_LET_CONST_REF(anchor, anchor_node.Get());
-  return anchor;
+  ADT_LET_CONST_REF(default_anchor, anchor_node.Get());
+  return default_anchor;
+}
+
+adt::Result<std::optional<DrrNativeIrOp>> GetApDrrNativeIrOpAnchor(
+    const DrrCtx& drr_ctx) {
+  ADT_LET_CONST_REF(src_ptn_ctx, drr_ctx->GetSourcePatternCtx());
+  auto ptn_node_area = src_ptn_ctx->node_arena;
+  ap::graph::GraphDescriptor<DrrGraphNode, ap::drr::topo_kind::Default>
+      source_pattern_graph{};
+  ADT_CHECK(ptn_node_area->nodes().size() > 0);
+  ap::graph::GraphHelper<DrrGraphNode, ap::drr::topo_kind::Default>
+      graph_helper(source_pattern_graph);
+  const auto& start_ptn_node = ptn_node_area->nodes().at(0).node();
+  auto IsNativeOpWithOutputs = [&](const auto& node) -> adt::Result<bool> {
+    ADT_LET_CONST_REF(drr_node, node.Get());
+    ADT_LET_CONST_REF(downstreams, node.DownstreamNodes());
+    return drr_node.template Has<DrrNativeIrOp>() && downstreams.size() > 0;
+  };
+  const auto& Filter = IsNativeOpWithOutputs;
+  ADT_LET_CONST_REF(anchor_node,
+                    graph_helper.FilterAnchor(start_ptn_node, Filter));
+  if (!anchor_node.has_value()) {
+    return std::nullopt;
+  }
+  ADT_LET_CONST_REF(anchor, anchor_node.value().Get());
+  ADT_LET_CONST_REF(native_ir_op, anchor.template TryGet<DrrNativeIrOp>());
+  return native_ir_op;
 }
 
 std::optional<DrrIrValue> CastToDrrIrValue(const DrrNode& drr_node) {
@@ -117,16 +145,19 @@ adt::Result<std::vector<DrrIrValue>> GetResPtnOutputs(const DrrCtx& drr_ctx) {
 struct ApLowerFusionOpPatternCtx {
   DrrCtx drr_ctx;
   std::vector<DrrIrValue> res_ptn_outputs;
-  DrrNode anchor;
+  DrrNode default_anchor;
+  std::optional<DrrNativeIrOp> native_op_anchor;
   std::string anchor_op_name;
 
   static adt::Result<ApLowerFusionOpPatternCtx> MakeFromDrrCtx(
       const DrrCtx& drr_ctx) {
     ADT_LET_CONST_REF(res_ptn_outputs, GetResPtnOutputs(drr_ctx));
-    ADT_LET_CONST_REF(anchor, GetApDrrAnchor(drr_ctx));
+    ADT_LET_CONST_REF(default_anchor, GetApDrrDefaultAnchor(drr_ctx));
+    ADT_LET_CONST_REF(opt_native_ir_op_anchor,
+                      GetApDrrNativeIrOpAnchor(drr_ctx));
     ADT_LET_CONST_REF(
         anchor_op_name,
-        anchor.Match(
+        default_anchor.Match(
             [&](const DrrNativeIrOp& ir_op) -> adt::Result<std::string> {
               return ir_op->op_declare->op_name;
             },
@@ -136,85 +167,31 @@ struct ApLowerFusionOpPatternCtx {
             },
             [&](const auto&) -> adt::Result<std::string> {
               return adt::errors::TypeError{
-                  "anchor drr node should be a op node but value node found."};
+                  "default_anchor drr node should be a op node but value node "
+                  "found."};
             }));
-    return ApLowerFusionOpPatternCtx{
-        drr_ctx, res_ptn_outputs, anchor, anchor_op_name};
+    return ApLowerFusionOpPatternCtx{drr_ctx,
+                                     res_ptn_outputs,
+                                     default_anchor,
+                                     opt_native_ir_op_anchor,
+                                     anchor_op_name};
   }
 };
 
-class ApLowerFusionOpPattern : public pir::RewritePattern {
- private:
+struct ApRewriter {
   ApLowerFusionOpPatternCtx ctx_;
-  mutable std::unordered_set<pir::Operation*> rewrited_;
 
- public:
-  ApLowerFusionOpPattern(pir::IrContext* ir_context,
-                         const ApLowerFusionOpPatternCtx& ctx)
-      : pir::RewritePattern(ctx.anchor_op_name, 1, ir_context, {}), ctx_(ctx) {}
+  explicit ApRewriter(const ApLowerFusionOpPatternCtx& ctx) : ctx_(ctx) {}
 
-  bool MatchAndRewrite(
-      pir::Operation* op,
-      pir::PatternRewriter& rewriter) const override {  // // NOLINT
-    if (rewrited_.count(op) > 0) {
-      return false;
-    }
-    const auto& ret = TryMatchAndRewrite(op, &rewriter);
-    if (ret.HasError()) {
-      LOG(ERROR) << "\nTraceback (most recent call last):\n"
-                 << ret.GetError().CallStackToString() << "\n"
-                 << ret.GetError().class_name() << ": " << ret.GetError().msg();
-      return false;
-    }
-    LOG(ERROR) << "MatchAndRewrite: op: " << op
-               << ", ret: " << ret.GetOkValue();
-    rewrited_.insert(op);
-    return ret.GetOkValue();
-  }
-
-  adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
-                                       pir::PatternRewriter* rewriter) const {
-    ADT_LET_CONST_REF(match_ctx, GetMatchCtx(op));
+  adt::Result<bool> Rewrite(const GraphMatchCtx& match_ctx,
+                            pir::Operation* op,
+                            pir::PatternRewriter* rewriter) const {
     ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
     LOG(ERROR) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
     return RewriteByResultPattern(match_ctx, op->GetParent(), rewriter);
   }
 
-  adt::Result<GraphMatchCtx> GetMatchCtx(pir::Operation* op) const {
-    auto* parent_block = op->GetParent();
-    ADT_CHECK(parent_block != nullptr);
-    auto* parent_op = parent_block->GetParentOp();
-    ADT_CHECK(!parent_op->isa<cinn::dialect::FusionOp>());
-    const auto& anchor = ctx_.anchor;
-    ap::graph::GraphDescriptor<PirNode> pir_graph{};
-    ap::graph::GraphDescriptor<DrrGraphNode> src_ptn_graph{};
-    ap::ir_match::GraphMatcher<PirNode, DrrGraphNode> graph_matcher(
-        pir_graph, src_ptn_graph);
-    ADT_LET_CONST_REF(anchor_cstr,
-                      src_ptn_graph.GetNodeConstraint(anchor.node()));
-    const auto& obj_node = CastToPirNode(op);
-    ADT_LET_CONST_REF(satisfy_constraint,
-                      pir_graph.Satisfy(obj_node, anchor_cstr));
-    ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
-        "pir_graph.Satisfy(obj_node, anchor_cstr) test failed."};
-    ADT_LET_CONST_REF(graph_ctx,
-                      graph_matcher.MatchByAnchor(obj_node, anchor.node()));
-    ADT_LET_CONST_REF(graph_matched,
-                      graph_matcher.IsGraphMatched(graph_ctx, anchor.node()));
-    ADT_CHECK(graph_matched);
-    return graph_ctx;
-  }
-
-  PirNode CastToPirNode(pir::Operation* op) const {
-    if (op->isa<cinn::dialect::FusionOp>()) {
-      ap::paddle::PackedIrOp ir_op{op->dyn_cast<cinn::dialect::FusionOp>()};
-      return ir_op;
-    } else {
-      ap::paddle::NativeIrOp ir_op{op};
-      return ir_op;
-    }
-  }
-
+ private:
   adt::Result<bool> RewriteByResultPattern(
       const GraphMatchCtx& match_ctx,
       pir::Block* block,
@@ -579,6 +556,17 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
   }
 
   adt::Result<AnfExpr> ConstructDDimDimExpr(
+      ap::axpr::LetContext* ctx,
+      const OpInferMetaCtx& infer_meta_ctx,
+      const symbol::DimExpr& dim_expr) const {
+    return dim_expr.Match(
+        [&](int64_t c) -> adt::Result<AnfExpr> { return ctx->Int64(c); },
+        [&](const auto&) -> adt::Result<AnfExpr> {
+          return ConstructDDimDimExprByInputs(ctx, infer_meta_ctx, dim_expr);
+        });
+  }
+
+  adt::Result<AnfExpr> ConstructDDimDimExprByInputs(
       ap::axpr::LetContext* ctx,
       const OpInferMetaCtx& infer_meta_ctx,
       const symbol::DimExpr& dim_expr) const {
@@ -1057,6 +1045,85 @@ class ApLowerFusionOpPattern : public pir::RewritePattern {
   }
 };
 
+class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
+ private:
+  ApLowerFusionOpPatternCtx ctx_;
+  ApRewriter ap_rewriter_;
+  mutable std::unordered_set<pir::Operation*> rewrited_;
+
+ public:
+  DefaultAnchorApLowerFusionOpPattern(pir::IrContext* ir_context,
+                                      const ApLowerFusionOpPatternCtx& ctx)
+      : pir::RewritePattern(ctx.anchor_op_name, 1, ir_context, {}),
+        ctx_(ctx),
+        ap_rewriter_(ctx) {}
+
+  bool MatchAndRewrite(
+      pir::Operation* op,
+      pir::PatternRewriter& rewriter) const override {  // // NOLINT
+    if (rewrited_.count(op) > 0) {
+      return false;
+    }
+    const auto& ret = TryMatchAndRewrite(op, &rewriter);
+    if (ret.HasError()) {
+      LOG(ERROR) << "\nTraceback (most recent call last):\n"
+                 << ret.GetError().CallStackToString() << "\n"
+                 << ret.GetError().class_name() << ": " << ret.GetError().msg();
+      return false;
+    }
+    LOG(ERROR) << "MatchAndRewrite: op: " << op
+               << ", ret: " << ret.GetOkValue();
+    rewrited_.insert(op);
+    return ret.GetOkValue();
+  }
+
+  adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
+                                       pir::PatternRewriter* rewriter) const {
+    ADT_LET_CONST_REF(match_ctx, GetMatchCtx(op));
+    ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
+    LOG(ERROR) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
+    return ap_rewriter_.Rewrite(match_ctx, op, rewriter);
+  }
+
+  adt::Result<GraphMatchCtx> GetMatchCtx(pir::Operation* op) const {
+    auto* parent_block = op->GetParent();
+    ADT_CHECK(parent_block != nullptr);
+    auto* parent_op = parent_block->GetParentOp();
+    ADT_CHECK(!parent_op->isa<cinn::dialect::FusionOp>());
+    const auto& default_anchor = ctx_.default_anchor;
+    ap::graph::GraphDescriptor<PirNode, ap::drr::topo_kind::Default>
+        pir_graph{};
+    ap::graph::GraphDescriptor<DrrGraphNode, ap::drr::topo_kind::Default>
+        src_ptn_graph{};
+    ap::ir_match::GraphMatcher<PirNode> graph_matcher(pir_graph, src_ptn_graph);
+    ADT_LET_CONST_REF(anchor_cstr,
+                      src_ptn_graph.GetNodeConstraint(default_anchor.node()));
+    const auto& obj_node = CastToPirNode(op);
+    ADT_LET_CONST_REF(satisfy_constraint,
+                      pir_graph.Satisfy(obj_node, anchor_cstr));
+    ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
+        "pir_graph.Satisfy(obj_node, anchor_cstr) test failed."};
+    ADT_LET_CONST_REF(
+        graph_ctx,
+        graph_matcher.MatchByDefaultAnchor(obj_node, default_anchor.node()));
+    ADT_LET_CONST_REF(
+        graph_matched,
+        graph_matcher.IsGraphMatched(graph_ctx, default_anchor.node()));
+    ADT_CHECK(graph_matched);
+    return graph_ctx;
+  }
+
+  PirNode CastToPirNode(pir::Operation* op) const {
+    if (op->isa<cinn::dialect::FusionOp>()) {
+      ap::paddle::PackedIrOp ir_op{op->dyn_cast<cinn::dialect::FusionOp>()};
+      return ir_op;
+    } else {
+      ap::paddle::NativeIrOp ir_op{op};
+      return ir_op;
+    }
+  }
+};
+
 class ApLowerFusionOpPass : public pir::PatternRewritePass {
  public:
   ApLowerFusionOpPass()
@@ -1079,7 +1146,8 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
     auto AddFusionOpPattern = [&](const auto& drr_ctx) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(pattern_ctx,
                         ApLowerFusionOpPatternCtx::MakeFromDrrCtx(drr_ctx));
-      ps->Add(std::make_unique<ApLowerFusionOpPattern>(context, pattern_ctx));
+      ps->Add(std::make_unique<DefaultAnchorApLowerFusionOpPattern>(
+          context, pattern_ctx));
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitEachDrrCtx(AddFusionOpPattern));

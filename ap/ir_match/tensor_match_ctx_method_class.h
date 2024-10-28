@@ -40,7 +40,7 @@ struct TensorMatchCtxMethodClass {
   using DrrNodeT = drr::Node<DrrValueT>;
   using DrrNativeIrValue = drr::NativeIrValue<DrrNodeT>;
   using DrrPackedIrValue = drr::PackedIrValue<DrrNodeT>;
-  using PtnGraphNodeT = graph::Node<DrrNodeT>;
+  using SmallGraphNodeT = graph::Node<DrrNodeT>;
 
   using IrNativeIrValue = typename IrNodeT::native_value_type;
   using IrPackedIrValue = typename IrNodeT::packed_value_type;
@@ -54,8 +54,8 @@ struct TensorMatchCtxMethodClass {
     if (iter == tensor_pattern_ctx->uid2ir_value.end()) {
       return std::nullopt;
     }
-    auto GetIrValueByPtnNode =
-        [&](const PtnGraphNodeT& node) -> adt::Result<IrNodeT> {
+    auto GetIrValueBySmallGraphNode =
+        [&](const SmallGraphNodeT& node) -> adt::Result<IrNodeT> {
       const auto& graph_match_ctx = ir_match_ctx->graph_match_ctx;
       return graph_match_ctx->GetSoleBigGraphNode(node);
     };
@@ -64,7 +64,7 @@ struct TensorMatchCtxMethodClass {
         iter->second.Match(
             [&](const DrrNativeIrValue& native_ir_value)
                 -> adt::Result<IrNodeT> {
-              return GetIrValueByPtnNode(native_ir_value->node);
+              return GetIrValueBySmallGraphNode(native_ir_value->node);
             },
             [&](const DrrPackedIrValue& packed_ir_value)
                 -> adt::Result<IrNodeT> {

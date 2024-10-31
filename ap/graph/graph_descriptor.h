@@ -35,13 +35,15 @@ struct GraphDescriptor {
   adt::Result<adt::Ok> VisitDownstreamNodes(const NodeT&,
                                             const DoEachT& DoEach) const;
 
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT&) const;
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT&) const;
 
   adt::Result<bool> IgnoredNode(const NodeT&) const;
 
   adt::Result<bool> IsOpNode(const NodeT&) const;
 
-  adt::Result<bool> Satisfy(const NodeT&, const NodeCstr&) const;
+  adt::Result<bool> Satisfy(const NodeT&,
+                            const graph::SmallGraphNodeCstr&) const;
 };
 
 }  // namespace ap::graph

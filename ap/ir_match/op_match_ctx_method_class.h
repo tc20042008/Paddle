@@ -40,10 +40,12 @@ struct OpMatchCtxMethodClass {
   using DrrNodeT = drr::Node<DrrValueT>;
   using DrrNativeIrOp = drr::NativeIrOp<DrrValueT, DrrNodeT>;
   using DrrPackedIrOp = drr::PackedIrOp<DrrValueT, DrrNodeT>;
+  using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrValueT, DrrNodeT>;
   using SmallGraphNodeT = graph::Node<DrrNodeT>;
 
   using IrNativeIrOp = typename IrNodeT::native_op_type;
   using IrPackedIrOp = typename IrNodeT::packed_op_type;
+  using IrRefIrOp = typename IrNodeT::ref_op_type;
 
   adt::Result<std::optional<ValueT>> GetIrOpByName(
       const Self& self, const std::string& attr_name) {
@@ -68,6 +70,9 @@ struct OpMatchCtxMethodClass {
             [&](const DrrPackedIrOp& packed_ir_op) -> adt::Result<IrNodeT> {
               return GetIrOpBySmallGraphNode(packed_ir_op->node);
             },
+            [&](const DrrOptPackedIrOp& packed_ir_op) -> adt::Result<IrNodeT> {
+              return GetIrOpBySmallGraphNode(packed_ir_op->node);
+            },
             [&](const auto&) -> adt::Result<IrNodeT> {
               return adt::errors::ValueError{
                   std::string() + "Failed to get OpMatchCtx attribute, '" +
@@ -80,6 +85,9 @@ struct OpMatchCtxMethodClass {
               return ValueT{impl};
             },
             [&](const IrPackedIrOp& impl) -> adt::Result<ValueT> {
+              return ValueT{impl};
+            },
+            [&](const IrRefIrOp& impl) -> adt::Result<ValueT> {
               return ValueT{impl};
             },
             [&](const auto&) -> adt::Result<ValueT> {

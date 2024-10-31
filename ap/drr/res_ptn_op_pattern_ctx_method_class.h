@@ -71,6 +71,13 @@ struct ResPtnOpPatternCtxMethodClass {
             -> adt::Result<IrOpT> {
           return UnboundNativeIrOp<ValueT, NodeT>{op.value(), op_uid};
         },
+        [&](const OptPackedIrOpDeclare<ValueT, NodeT>&) -> adt::Result<IrOpT> {
+          return adt::errors::TypeError{
+              std::string() +
+              "only 'ResPtnPackedIrOpDeclare' and 'ResPtnNativeIrOpDeclare' "
+              "supported for op name binding. '" +
+              axpr::GetTypeName(args.at(1)) + "' were given."};
+        },
         [&](const auto&) -> adt::Result<IrOpT> {
           return adt::errors::TypeError{
               std::string() +
@@ -84,6 +91,7 @@ struct ResPtnOpPatternCtxMethodClass {
   }
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& arg) {
+    using RetT = adt::Result<ValueT>;
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(arg));
     if (IsBasicAttrName(attr_name)) {
       ADT_LET_CONST_REF(attr_getter, FindAttrGetter(attr_name));
@@ -91,13 +99,23 @@ struct ResPtnOpPatternCtxMethodClass {
     } else {
       ADT_LET_CONST_REF(ir_op, Helper{}.GetIrOpByUid(self.value(), attr_name));
       return ir_op.Match(
-          [](const NativeIrOp<ValueT, NodeT>& impl) -> ValueT { return impl; },
-          [](const PackedIrOp<ValueT, NodeT>& impl) -> ValueT { return impl; },
-          [](const UnboundNativeIrOp<ValueT, NodeT>& x) -> ValueT {
+          [](const NativeIrOp<ValueT, NodeT>& impl) -> RetT { return impl; },
+          [](const PackedIrOp<ValueT, NodeT>& impl) -> RetT { return impl; },
+          [](const OptPackedIrOp<ValueT, NodeT>& impl) -> RetT {
+            return adt::errors::KeyError{
+                std::string() +
+                "OptPackedIrOp is not supported in result pattern."};
+          },
+          [](const UnboundNativeIrOp<ValueT, NodeT>& x) -> RetT {
             return ResPtn(x);
           },
-          [](const UnboundPackedIrOp<ValueT, NodeT>& x) -> ValueT {
+          [](const UnboundPackedIrOp<ValueT, NodeT>& x) -> RetT {
             return ResPtn(x);
+          },
+          [](const UnboundOptPackedIrOp<ValueT, NodeT>& x) -> RetT {
+            return adt::errors::KeyError{
+                std::string() +
+                "UnboundOptPackedIrOp is not supported in result pattern."};
           });
     }
   }

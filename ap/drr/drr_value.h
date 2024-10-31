@@ -28,6 +28,7 @@
 #include "ap/drr/tensor_pattern_ctx.h"
 #include "ap/drr/unbound_ir_value.h"
 #include "ap/drr/unbound_native_ir_op.h"
+#include "ap/drr/unbound_opt_packed_ir_op.h"
 #include "ap/drr/unbound_packed_ir_op.h"
 #include "ap/drr/unbound_packed_ir_value.h"
 #include "ap/graph/tags.h"
@@ -40,10 +41,13 @@ using ValueImpl = ap::axpr::ValueBase<ValueT,
                                       UnboundPackedIrValue<ValueT, NodeT>,
                                       NativeIrOp<ValueT, NodeT>,
                                       PackedIrOp<ValueT, NodeT>,
+                                      OptPackedIrOp<ValueT, NodeT>,
                                       tSrcPtn<NativeIrOpDeclare<ValueT, NodeT>>,
                                       tSrcPtn<PackedIrOpDeclare<ValueT, NodeT>>,
+                                      OptPackedIrOpDeclare<ValueT, NodeT>,
                                       tSrcPtn<UnboundNativeIrOp<ValueT, NodeT>>,
                                       tSrcPtn<UnboundPackedIrOp<ValueT, NodeT>>,
+                                      UnboundOptPackedIrOp<ValueT, NodeT>,
                                       tSrcPtn<NativeIrValue<NodeT>>,
                                       tSrcPtn<PackedIrValue<NodeT>>,
                                       tSrcPtn<OpPatternCtx<ValueT, NodeT>>,

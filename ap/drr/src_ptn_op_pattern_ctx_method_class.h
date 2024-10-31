@@ -67,6 +67,10 @@ struct SrcPtnOpPatternCtxMethodClass {
             -> adt::Result<IrOpT> {
           return UnboundPackedIrOp<ValueT, NodeT>{op.value(), op_uid};
         },
+        [&](const OptPackedIrOpDeclare<ValueT, NodeT>& op)
+            -> adt::Result<IrOpT> {
+          return UnboundOptPackedIrOp<ValueT, NodeT>{op, op_uid};
+        },
         [&](const tSrcPtn<NativeIrOpDeclare<ValueT, NodeT>>& op)
             -> adt::Result<IrOpT> {
           return UnboundNativeIrOp<ValueT, NodeT>{op.value(), op_uid};
@@ -93,6 +97,12 @@ struct SrcPtnOpPatternCtxMethodClass {
       return ir_op.Match(
           [](const NativeIrOp<ValueT, NodeT>& impl) -> ValueT { return impl; },
           [](const PackedIrOp<ValueT, NodeT>& impl) -> ValueT { return impl; },
+          [](const OptPackedIrOp<ValueT, NodeT>& impl) -> ValueT {
+            return impl;
+          },
+          [](const UnboundOptPackedIrOp<ValueT, NodeT>& impl) -> ValueT {
+            return impl;
+          },
           [](const UnboundNativeIrOp<ValueT, NodeT>& x) -> ValueT {
             return SrcPtn(x);
           },
@@ -116,6 +126,22 @@ struct SrcPtnOpPatternCtxMethodClass {
     PackedIrOpDeclare<ValueT, NodeT> op_declare{
         "ap_trivial_fusion_op", self.value().shared_ptr(), std::nullopt};
     return SrcPtn(op_declare);
+  }
+  adt::Result<ValueT> OptionalApTrivialFusionOp(const Self& self) {
+    return axpr::Method<ValueT>{self, &This::DeclareOptionalApTrivialFusionOp};
+  }
+
+  static adt::Result<ValueT> DeclareOptionalApTrivialFusionOp(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+    ADT_CHECK(args.size() == 0)
+        << adt::errors::TypeError{std::string() +
+                                  "SrcPtnOpPatternCtx.optional_ap_trivial_"
+                                  "fusion_op takes 0 arguments. but " +
+                                  std::to_string(args.size()) + " were given."};
+    OptPackedIrOpDeclare<ValueT, NodeT> op_declare{
+        "ap_trivial_fusion_op", self.value().shared_ptr(), std::nullopt};
+    return op_declare;
   }
 
   adt::Result<ValueT> ApNativeOp(const Self& self) {
@@ -155,6 +181,7 @@ struct SrcPtnOpPatternCtxMethodClass {
   const std::map<std::string, AttrGetter>& AttrGetters() {
     static const std::map<std::string, AttrGetter> map{
         {"ap_trivial_fusion_op", &This::ApTrivialFusionOp},
+        {"optional_ap_trivial_fusion_op", &This::OptionalApTrivialFusionOp},
         {"ap_native_op", &This::ApNativeOp},
     };
     return map;

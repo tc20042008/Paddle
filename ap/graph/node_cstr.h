@@ -67,6 +67,46 @@ struct PackedIrOpResultCstr : public std::monostate {
   using std::monostate::monostate;
 };
 
+struct OptPackedIrOpCstr {
+  PackedIrOpCstr packed_ir_op_cstr;
+
+  bool operator==(const OptPackedIrOpCstr& other) const {
+    return this->packed_ir_op_cstr == other.packed_ir_op_cstr;
+  }
+};
+
+struct OptPackedIrOpOperandCstr {
+  PackedIrOpOperandCstr packed_ir_op_operand_cstr;
+
+  bool operator==(const OptPackedIrOpOperandCstr& other) const {
+    return this->packed_ir_op_operand_cstr == other.packed_ir_op_operand_cstr;
+  }
+};
+
+struct OptPackedIrOpResultCstr : public std::monostate {
+  PackedIrOpResultCstr packed_ir_op_result_cstr;
+
+  bool operator==(const OptPackedIrOpResultCstr& other) const {
+    return this->packed_ir_op_result_cstr == other.packed_ir_op_result_cstr;
+  }
+};
+
+struct RefIrValueCstr : public std::monostate {
+  using std::monostate::monostate;
+};
+
+struct RefIrOpCstr : public std::monostate {
+  using std::monostate::monostate;
+};
+
+struct RefIrOpOperandCstr : public std::monostate {
+  using std::monostate::monostate;
+};
+
+struct RefIrOpResultCstr : public std::monostate {
+  using std::monostate::monostate;
+};
+
 using NodeCstrImpl = std::variant<NativeIrValueCstr,
                                   NativeIrOpCstr,
                                   NativeIrOpOperandCstr,
@@ -74,11 +114,57 @@ using NodeCstrImpl = std::variant<NativeIrValueCstr,
                                   PackedIrValueCstr,
                                   PackedIrOpCstr,
                                   PackedIrOpOperandCstr,
-                                  PackedIrOpResultCstr>;
+                                  PackedIrOpResultCstr,
+                                  OptPackedIrOpCstr,
+                                  OptPackedIrOpOperandCstr,
+                                  OptPackedIrOpResultCstr,
+                                  RefIrValueCstr,
+                                  RefIrOpCstr,
+                                  RefIrOpOperandCstr,
+                                  RefIrOpResultCstr>;
 // node constraint
 struct NodeCstr : public NodeCstrImpl {
   using NodeCstrImpl::NodeCstrImpl;
   DEFINE_ADT_VARIANT_METHODS(NodeCstrImpl);
+
+  adt::Result<bool> Satisfy(const NodeCstr& sg_node_cstr) const {
+    using RetT = adt::Result<bool>;
+    const auto& pattern_match = ::common::Overloaded{
+        [&](const PackedIrOpCstr& bg_cstr, const OptPackedIrOpCstr& sg_cstr)
+            -> RetT { return bg_cstr == sg_cstr.packed_ir_op_cstr; },
+        [&](const PackedIrOpOperandCstr& bg_cstr,
+            const OptPackedIrOpOperandCstr& sg_cstr) -> RetT {
+          return bg_cstr == sg_cstr.packed_ir_op_operand_cstr;
+        },
+        [&](const PackedIrOpResultCstr& bg_cstr,
+            const OptPackedIrOpResultCstr& sg_cstr) -> RetT {
+          return bg_cstr == sg_cstr.packed_ir_op_result_cstr;
+        },
+        [&](const RefIrValueCstr& bg_cstr,
+            const NativeIrValueCstr& sg_cstr) -> RetT { return true; },
+        [&](const RefIrOpCstr& bg_cstr,
+            const OptPackedIrOpCstr& sg_cstr) -> RetT { return true; },
+        [&](const RefIrOpOperandCstr& bg_cstr,
+            const OptPackedIrOpOperandCstr& sg_cstr) -> RetT { return true; },
+        [&](const RefIrOpResultCstr& bg_cstr,
+            const OptPackedIrOpResultCstr& sg_cstr) -> RetT { return true; },
+        [&](const auto&, const auto&) -> RetT {
+          return *this == sg_node_cstr;
+        }};
+    return std::visit(pattern_match, this->variant(), sg_node_cstr.variant());
+  }
+};
+
+struct SmallGraphNodeCstr {
+  NodeCstr node_cstr;
+};
+
+struct BigGraphNodeCstr {
+  NodeCstr node_cstr;
+
+  adt::Result<bool> Satisfy(const SmallGraphNodeCstr& sg_node_cstr) const {
+    return this->node_cstr.Satisfy(sg_node_cstr.node_cstr);
+  }
 };
 
 }  // namespace ap::graph

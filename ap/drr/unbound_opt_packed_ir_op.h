@@ -15,27 +15,35 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/drr/native_ir_op.h"
-#include "ap/drr/opt_packed_ir_op.h"
-#include "ap/drr/packed_ir_op.h"
-#include "ap/drr/unbound_native_ir_op.h"
-#include "ap/drr/unbound_opt_packed_ir_op.h"
-#include "ap/drr/unbound_packed_ir_op.h"
+#include "ap/axpr/type.h"
+#include "ap/drr/opt_packed_ir_op_declare.h"
+#include "ap/drr/tags.h"
+#include "ap/graph/node.h"
 
 namespace ap::drr {
 
 template <typename ValueT, typename NodeT>
-using IrOpImpl = std::variant<NativeIrOp<ValueT, NodeT>,
-                              PackedIrOp<ValueT, NodeT>,
-                              OptPackedIrOp<ValueT, NodeT>,
-                              UnboundNativeIrOp<ValueT, NodeT>,
-                              UnboundPackedIrOp<ValueT, NodeT>,
-                              UnboundOptPackedIrOp<ValueT, NodeT>>;
-
-template <typename ValueT, typename NodeT>
-struct IrOp : public IrOpImpl<ValueT, NodeT> {
-  using IrOpImpl<ValueT, NodeT>::IrOpImpl;
-  DEFINE_ADT_VARIANT_METHODS(IrOpImpl<ValueT, NodeT>);
+struct UnboundOptPackedIrOpImpl {
+ public:
+  OptPackedIrOpDeclare<ValueT, NodeT> op_declare;
+  std::string name;
+  bool operator==(const UnboundOptPackedIrOpImpl& other) const {
+    return this->op_declare == other.op_declare && this->name == other.name;
+  }
 };
 
+template <typename ValueT, typename NodeT>
+DEFINE_ADT_RC(UnboundOptPackedIrOp, UnboundOptPackedIrOpImpl<ValueT, NodeT>);
+
 }  // namespace ap::drr
+
+namespace ap::axpr {
+
+template <typename ValueT, typename NodeT>
+struct TypeImpl<drr::UnboundOptPackedIrOp<ValueT, NodeT>>
+    : public std::monostate {
+  using std::monostate::monostate;
+  const char* Name() const { return "UnboundOptPackedIrOp"; }
+};
+
+}  // namespace ap::axpr

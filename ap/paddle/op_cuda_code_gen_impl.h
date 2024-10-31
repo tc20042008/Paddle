@@ -22,8 +22,10 @@
 #include "ap/axpr/pointer_type_util.h"
 #include "ap/drr/drr_value.h"
 #include "ap/drr/node.h"
+#include "ap/drr/topo_kind.h"
 #include "ap/graph/node.h"
 #include "ap/index_expr/index_tuple_expr_cuda_code_generator.h"
+#include "ap/ir_match/native_or_ref_ir_value.h"
 #include "ap/kernel_define/define_ctx.h"
 #include "ap/kernel_define/op_code_gen_ctx.h"
 #include "ap/kernel_define/op_cuda_gen_impl.h"
@@ -52,6 +54,21 @@ struct OpCudaCodeGenImpl {
   using DrrNode = drr::Node<DrrValue>;
   using DrrGraphNode = graph::Node<DrrNode>;
   using DrrPackedIrOp = drr::PackedIrOp<DrrValue, DrrNode>;
+  using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrValue, DrrNode>;
+  using DrrOptPackedIrOpOperand = drr::OptPackedIrOpOperand<DrrNode>;
+  using DrrOptPackedIrOpResult = drr::OptPackedIrOpResult<DrrNode>;
+
+  using DrrTrivialFusionIrOpImpl =
+      std::variant<DrrPackedIrOp, DrrOptPackedIrOp>;
+  struct DrrTrivialFusionIrOp : public DrrTrivialFusionIrOpImpl {
+    using DrrTrivialFusionIrOpImpl::DrrTrivialFusionIrOpImpl;
+    DEFINE_ADT_VARIANT_METHODS(DrrTrivialFusionIrOpImpl);
+
+    DrrGraphNode node() const {
+      return Match([](const auto& impl) { return impl->node; });
+    }
+  };
+
   using DrrNativeIrValue = drr::NativeIrValue<DrrNode>;
   using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
   using IndexTupleExpr = index_expr::IndexTupleExpr;
@@ -65,10 +82,79 @@ struct OpCudaCodeGenImpl {
 
   adt::Result<std::string> CodeGen(const OpCodeGenCtx& op_code_gen_ctx,
                                    const IrOp& ir_op) {
-    ADT_LET_CONST_REF(packed_ir_op, ir_op.template TryGet<PackedIrOp>())
-        << adt::errors::TypeError{
-               std::string() +
-               "paddle pir only support generating code for packed ir op."};
+    using RetString = adt::Result<std::string>;
+    return ir_op.Match(
+        [&](const PackedIrOp& packed_ir_op) -> RetString {
+          return PackedIrOpCodeGen(op_code_gen_ctx, packed_ir_op);
+        },
+        [&](const RefIrOp& ref_ir_op) -> RetString {
+          return RefIrOpCodeGen(op_code_gen_ctx, ref_ir_op);
+        },
+        [&](const auto&) -> RetString {
+          return adt::errors::TypeError{
+              std::string() +
+              "paddle pir only support generating code for packed ir op."};
+        });
+  }
+
+  using DefaultDrrGraph =
+      graph::GraphDescriptor<DrrGraphNode, drr::topo_kind::Default>;
+  adt::Result<std::string> RefIrOpCodeGen(const OpCodeGenCtx& op_code_gen_ctx,
+                                          const RefIrOp& ref_ir_op) {
+    ADT_LET_CONST_REF(in_out, GetInputOutput(op_code_gen_ctx, ref_ir_op));
+    const auto& [input, output] = in_out;
+    ADT_LET_CONST_REF(input_var_name,
+                      GetBoundLocalVarName(op_code_gen_ctx, input));
+    ADT_LET_CONST_REF(output_var_name,
+                      GetBoundLocalVarName(op_code_gen_ctx, output));
+    return std::string() + output_var_name + " = " + input_var_name + ";\n";
+  }
+
+  using NativeOrRefIrValue = ir_match::NativeOrRefIrValue<PirNode>;
+
+  adt::Result<std::string> GetBoundLocalVarName(
+      const OpCodeGenCtx& op_code_gen_ctx, const NativeOrRefIrValue& ir_value) {
+    for (const auto& [var_name, v] : op_code_gen_ctx->local_var_binding) {
+      if (v == ir_value) {
+        return var_name;
+      }
+    }
+    return adt::errors::KeyError{"no local var bounded."};
+  }
+
+  adt::Result<std::pair<NativeIrValue, RefIrValue>> GetInputOutput(
+      const OpCodeGenCtx& op_code_gen_ctx, const RefIrOp& ref_ir_op) const {
+    DefaultDrrGraph drr_graph;
+    ADT_LET_CONST_REF(graph_match_ctx, GetGraphMatchCtx(op_code_gen_ctx));
+    ADT_LET_CONST_REF(drr_opt_packed_ir_op_node,
+                      graph_match_ctx->GetMatchedSmallGraphNode(ref_ir_op));
+    ADT_LET_CONST_REF(drr_opt_packed_ir_op, drr_opt_packed_ir_op_node.Get());
+    ADT_LET_CONST_REF(drr_opt_op_operand,
+                      drr_graph.template CastSoleInput<DrrOptPackedIrOpOperand>(
+                          drr_opt_packed_ir_op));
+    ADT_LET_CONST_REF(
+        drr_op_input,
+        drr_graph.template CastSoleInput<DrrNativeIrValue>(drr_opt_op_operand));
+    ADT_LET_CONST_REF(drr_opt_op_result,
+                      drr_graph.template CastSoleOutput<DrrOptPackedIrOpResult>(
+                          drr_opt_packed_ir_op));
+    ADT_LET_CONST_REF(
+        drr_op_output,
+        drr_graph.template CastSoleOutput<DrrNativeIrValue>(drr_opt_op_result));
+    ADT_LET_CONST_REF(pir_op_input,
+                      graph_match_ctx->GetSoleBigGraphNode(drr_op_input->node));
+    ADT_LET_CONST_REF(
+        pir_op_output,
+        graph_match_ctx->GetSoleBigGraphNode(drr_op_output->node));
+    ADT_LET_CONST_REF(pir_op_input_ir_value,
+                      pir_op_input.template TryGet<NativeIrValue>());
+    ADT_LET_CONST_REF(pir_op_output_ir_ref_value,
+                      pir_op_output.template TryGet<RefIrValue>());
+    return std::make_pair(pir_op_input_ir_value, pir_op_output_ir_ref_value);
+  }
+
+  adt::Result<std::string> PackedIrOpCodeGen(
+      const OpCodeGenCtx& op_code_gen_ctx, const PackedIrOp& packed_ir_op) {
     const auto& loop_indexes_expr = op_code_gen_ctx->loop_index_tuple_expr;
     ADT_LET_CONST_REF(
         ir_graph,
@@ -340,8 +426,8 @@ struct OpCudaCodeGenImpl {
       const PackedIrOp& packed_ir_op,
       const DoEachT& DoEach) {
     ADT_LET_CONST_REF(graph_match_ctx, GetGraphMatchCtx(op_code_gen_ctx));
-    ADT_LET_CONST_REF(drr_packed_ir_op,
-                      GetDrrPackedIrOp(graph_match_ctx, packed_ir_op));
+    ADT_LET_CONST_REF(drr_trivial_fusion_ir_op,
+                      GetDrrTrivialFusionIrOp(graph_match_ctx, packed_ir_op));
     auto DoEachNativeValue =
         [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(value, GetPirValue(graph_match_ctx, drr_ir_value));
@@ -355,8 +441,8 @@ struct OpCudaCodeGenImpl {
           "TODO: "
           "VisitInputNativeIrValueAndGetterLambda(...)::DoEachPackedValue."};
     };
-    return VisitDrrPackedIrOpInput(
-        drr_packed_ir_op, DoEachNativeValue, DoEachPackedValue);
+    return VisitDrrTrivialFusionIrOpInput(
+        drr_trivial_fusion_ir_op, DoEachNativeValue, DoEachPackedValue);
   }
 
   template <typename DoEachT>
@@ -365,8 +451,8 @@ struct OpCudaCodeGenImpl {
       const PackedIrOp& packed_ir_op,
       const DoEachT& DoEach) {
     ADT_LET_CONST_REF(graph_match_ctx, GetGraphMatchCtx(op_code_gen_ctx));
-    ADT_LET_CONST_REF(drr_packed_ir_op,
-                      GetDrrPackedIrOp(graph_match_ctx, packed_ir_op));
+    ADT_LET_CONST_REF(drr_trivial_fusion_ir_op,
+                      GetDrrTrivialFusionIrOp(graph_match_ctx, packed_ir_op));
     auto DoEachNativeValue =
         [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(value, GetPirValue(graph_match_ctx, drr_ir_value));
@@ -380,21 +466,21 @@ struct OpCudaCodeGenImpl {
           "TODO: "
           "VisitOutputNativeIrValueAndGetterLambda(...)::DoEachPackedValue."};
     };
-    return VisitDrrPackedIrOpOutput(
-        drr_packed_ir_op, DoEachNativeValue, DoEachPackedValue);
+    return VisitDrrTrivialFusionIrOpOutput(
+        drr_trivial_fusion_ir_op, DoEachNativeValue, DoEachPackedValue);
   }
 
   template <typename DoEachNativeValueT, typename DoEachPackedValueT>
-  adt::Result<adt::Ok> VisitDrrPackedIrOpInput(
-      const DrrPackedIrOp& drr_packed_ir_op,
+  adt::Result<adt::Ok> VisitDrrTrivialFusionIrOpInput(
+      const DrrTrivialFusionIrOp& drr_trivial_fusion_ir_op,
       const DoEachNativeValueT& DoEachNativeValue,
       const DoEachPackedValueT DoEachPackedValue) {
-    LOG(ERROR) << "drr_packed_ir_op: "
+    LOG(ERROR) << "drr_trivial_fusion_ir_op: "
                << graph::NodeDescriptor<DrrGraphNode>{}.DebugId(
-                      drr_packed_ir_op->node);
+                      drr_trivial_fusion_ir_op.node());
     auto DoEach = [&](const DrrGraphNode& node) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(drr_node, node.Get());
-      LOG(ERROR) << "drr_packed_ir_op input: "
+      LOG(ERROR) << "drr_trivial_fusion_ir_op input: "
                  << graph::NodeDescriptor<DrrGraphNode>{}.DebugId(node);
       return drr_node.Match(
           [&](const DrrNativeIrValue& ir_value) -> adt::Result<adt::Ok> {
@@ -409,12 +495,13 @@ struct OpCudaCodeGenImpl {
                 "drr native ir values or drr packed ir values."};
           });
     };
-    return VisitSecondConnectedUpstream(drr_packed_ir_op->node, DoEach);
+    return VisitSecondConnectedUpstream(drr_trivial_fusion_ir_op.node(),
+                                        DoEach);
   }
 
   template <typename DoEachNativeValueT, typename DoEachPackedValueT>
-  adt::Result<adt::Ok> VisitDrrPackedIrOpOutput(
-      const DrrPackedIrOp& drr_packed_ir_op,
+  adt::Result<adt::Ok> VisitDrrTrivialFusionIrOpOutput(
+      const DrrTrivialFusionIrOp& drr_trivial_fusion_ir_op,
       const DoEachNativeValueT& DoEachNativeValue,
       const DoEachPackedValueT DoEachPackedValue) {
     auto DoEach = [&](const DrrGraphNode& node) -> adt::Result<adt::Ok> {
@@ -432,7 +519,8 @@ struct OpCudaCodeGenImpl {
                 "drr native ir values or drr packed ir values."};
           });
     };
-    return VisitSecondConnectedDownstream(drr_packed_ir_op->node, DoEach);
+    return VisitSecondConnectedDownstream(drr_trivial_fusion_ir_op.node(),
+                                          DoEach);
   }
 
   template <typename DoEachT>
@@ -497,18 +585,23 @@ struct OpCudaCodeGenImpl {
     return pir_value.value;
   }
 
-  adt::Result<DrrPackedIrOp> GetDrrPackedIrOp(
+  adt::Result<DrrTrivialFusionIrOp> GetDrrTrivialFusionIrOp(
       const GraphMatchCtx& graph_match_ctx, const PackedIrOp& packed_ir_op) {
-    ADT_LET_CONST_REF(
-        opt_drr_node,
-        graph_match_ctx->GetMatchedSmallGraphOpNode(packed_ir_op));
-    ADT_CHECK(opt_drr_node.has_value());
-    ADT_LET_CONST_REF(drr_node, opt_drr_node.value().Get());
-    return drr_node.template TryGet<DrrPackedIrOp>();
+    ADT_LET_CONST_REF(node,
+                      graph_match_ctx->GetMatchedSmallGraphNode(packed_ir_op));
+    ADT_LET_CONST_REF(drr_node, node.Get());
+    using RetT = adt::Result<DrrTrivialFusionIrOp>;
+    return drr_node.Match(
+        [&](const DrrPackedIrOp& impl) -> RetT { return impl; },
+        [&](const DrrOptPackedIrOp& impl) -> RetT { return impl; },
+        [&](const auto&) -> RetT {
+          return adt::errors::NotImplementedError{
+              "convertion from DrrNode to DrrTrivialFusionIrOp failed."};
+        });
   }
 
   adt::Result<GraphMatchCtx> GetGraphMatchCtx(
-      const OpCodeGenCtx& op_code_gen_ctx) {
+      const OpCodeGenCtx& op_code_gen_ctx) const {
     ADT_LET_CONST_REF(define_ctx,
                       adt::WeakPtrLock(op_code_gen_ctx->define_ctx));
     ADT_CHECK(define_ctx->ir_match_ctx.has_value());
@@ -572,7 +665,8 @@ struct OpCudaCodeGenImpl {
   adt::Result<std::optional<std::string>> GetReplacedLocalVar(
       const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
     ADT_LET_CONST_REF(local_var_bindings, GetLocalVarBindings(op_code_gen_ctx));
-    for (const auto& [local_var_name, native_ir_value] : *local_var_bindings) {
+    for (const auto& [local_var_name, native_or_ref] : *local_var_bindings) {
+      ADT_LET_CONST_REF(native_ir_value, native_or_ref.TryGet<NativeIrValue>());
       if (native_ir_value.value == value) {
         return std::optional<std::string>{local_var_name};
       }

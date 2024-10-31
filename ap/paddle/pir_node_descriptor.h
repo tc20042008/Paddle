@@ -14,13 +14,17 @@
 
 #pragma once
 
+#include <sstream>
 #include "ap/graph/node_descriptor.h"
+#include "ap/ir_match/ref_match_ctx.h"
 #include "ap/paddle/pir_node.h"
 
 namespace ap::paddle {
 
 struct PirNodeDescriptor {
-  std::string DebugId(const PirNode& node) {
+  using RefNodeInfo = ir_match::RefNodeInfo<NativeIrValue, NativeIrOpOperand>;
+
+  std::string DebugId(const PirNode& node) const {
     return node.Match(
         [&](const NativeIrValue& ir_value) -> std::string {
           if (ir_value.value.defining_op() == nullptr) {
@@ -75,7 +79,39 @@ struct PirNodeDescriptor {
           const auto& op_debug_id = GetOpDebugId(op);
           std::size_t index = ir_op_result.op_result.index();
           return op_debug_id + "_packed_result_" + std::to_string(index);
+        },
+        [&](const RefIrValue& impl) -> std::string {
+          return std::string() + "RefIrValue(" +
+                 GetRefNodeInfoDebugString(impl.ref_node_info) + ")";
+        },
+        [&](const RefIrOpOperand& impl) -> std::string {
+          return std::string() + "RefIrOpOperand(" +
+                 GetRefNodeInfoDebugString(impl.ref_node_info) + ")";
+        },
+        [&](const RefIrOp& impl) -> std::string {
+          return std::string() + "RefIrOp(" +
+                 GetRefNodeInfoDebugString(impl.ref_node_info) + ")";
+        },
+        [&](const RefIrOpResult& impl) -> std::string {
+          return std::string() + "RefIrOpResult(" +
+                 GetRefNodeInfoDebugString(impl.ref_node_info) + ")";
         });
+  }
+
+  std::string GetRefNodeInfoDebugString(
+      const RefNodeInfo& ref_node_info) const {
+    std::ostringstream ss;
+    ss << DebugId(ref_node_info->ir_value);
+    ss << "=>[";
+    int i = 0;
+    for (const auto& op_operand : *ref_node_info->op_operands_subset) {
+      if (i++ > 0) {
+        ss << ",";
+      }
+      ss << "(" << DebugId(op_operand) << ")";
+    }
+    ss << "]";
+    return ss.str();
   }
 
   std::string GetOpDebugId(const pir::Operation* op) const {

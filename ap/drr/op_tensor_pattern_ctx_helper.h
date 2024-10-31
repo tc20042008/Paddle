@@ -122,6 +122,52 @@ struct OpTensorPatternCtxHelper {
     return adt::Nothing{};
   }
 
+  adt::Result<ValueT> ConnectIrOpAndIrValue(
+      const OptPackedIrOp<ValueT, NodeT>& packed_ir_op,
+      const adt::List<IrValue<NodeT>>& inputs,
+      const adt::List<IrValue<NodeT>>& outputs) {
+    ADT_LET_CONST_REF(op_upstream_nodes, packed_ir_op->node.UpstreamNodes());
+    ADT_CHECK(op_upstream_nodes.size() == 0);
+    ADT_LET_CONST_REF(op_downstream_nodes,
+                      packed_ir_op->node.DownstreamNodes());
+    ADT_CHECK(op_downstream_nodes.size() == 0);
+    ADT_LET_CONST_REF(
+        op_pattern_ctx,
+        adt::WeakPtrLock(packed_ir_op->op_declare->op_pattern_ctx));
+    const auto& node_arena = op_pattern_ctx->node_arena;
+    for (int i = 0; i < inputs->size(); ++i) {
+      const auto& packed_ir_op_operand = node_arena->New([&](const auto& node) {
+        return OptPackedIrOpOperand<NodeT>{node, i};
+      });
+      ADT_RETURN_IF_ERR(
+          inputs->at(i).node().ConnectTo(packed_ir_op_operand.node(),
+                                         graph::UnindexedTag<std::monostate>{},
+                                         graph::IndexedTag<std::monostate>{}));
+      ADT_RETURN_IF_ERR(packed_ir_op_operand.node().ConnectTo(
+          packed_ir_op->node,
+          graph::IndexedTag<std::monostate>{},
+          graph::UnindexedTag<std::monostate>{}));
+    }
+    for (int i = 0; i < outputs->size(); ++i) {
+      ADT_LET_CONST_REF(output_upstream_nodes,
+                        outputs->at(i).node().UpstreamNodes());
+      ADT_CHECK(output_upstream_nodes.size() == 0);
+      const auto& packed_ir_op_result = node_arena->New([&](const auto& node) {
+        return OptPackedIrOpResult<NodeT>{node, i};
+      });
+      ADT_RETURN_IF_ERR(
+          packed_ir_op->node.ConnectTo(packed_ir_op_result.node(),
+                                       graph::UnindexedTag<std::monostate>{},
+                                       graph::IndexedTag<std::monostate>{}));
+      ADT_RETURN_IF_ERR(packed_ir_op_result.node().ConnectTo(
+          outputs->at(i).node(),
+          graph::IndexedTag<std::monostate>{},
+          graph::IndexedTag<std::monostate>{}));
+    }
+    SetIrOpByUid(op_pattern_ctx, packed_ir_op->name, packed_ir_op);
+    return adt::Nothing{};
+  }
+
   adt::Result<IrOp<ValueT, NodeT>> GetIrOpByUid(const OpPtnCtx& self,
                                                 const std::string& name) {
     const auto& iter = self->uid2ir_op.find(name);
@@ -209,6 +255,17 @@ struct OpTensorPatternCtxHelper {
     });
     ADT_CHECK(node.template Has<PackedIrOp<ValueT, NodeT>>());
     return node.template Get<PackedIrOp<ValueT, NodeT>>();
+  }
+
+  adt::Result<OptPackedIrOp<ValueT, NodeT>>
+  GetOptPackedIrOpByUnboundOptPackedIrOp(
+      const UnboundOptPackedIrOp<ValueT, NodeT>& ir_op) {
+    ADT_LET_CONST_REF(op_pattern_ctx,
+                      adt::WeakPtrLock(ir_op->op_declare->op_pattern_ctx));
+    const auto& node = op_pattern_ctx->node_arena->New([&](const auto& node) {
+      return OptPackedIrOp<ValueT, NodeT>{node, ir_op->op_declare, ir_op->name};
+    });
+    return node.template TryGet<OptPackedIrOp<ValueT, NodeT>>();
   }
 
   adt::Result<NativeIrValue<NodeT>> GetNativeIrValueByUnboundIrValue(

@@ -18,6 +18,9 @@
 #include "ap/drr/native_ir_op_operand.h"
 #include "ap/drr/native_ir_op_result.h"
 #include "ap/drr/native_ir_value.h"
+#include "ap/drr/opt_packed_ir_op.h"
+#include "ap/drr/opt_packed_ir_op_operand.h"
+#include "ap/drr/opt_packed_ir_op_result.h"
 #include "ap/drr/packed_ir_op.h"
 #include "ap/drr/packed_ir_op_operand.h"
 #include "ap/drr/packed_ir_op_result.h"
@@ -34,7 +37,10 @@ using NodeImpl = std::variant<NativeIrValue<NodeT>,
                               PackedIrValue<NodeT>,
                               PackedIrOp<ValueT, NodeT>,
                               PackedIrOpOperand<NodeT>,
-                              PackedIrOpResult<NodeT>>;
+                              PackedIrOpResult<NodeT>,
+                              OptPackedIrOp<ValueT, NodeT>,
+                              OptPackedIrOpOperand<NodeT>,
+                              OptPackedIrOpResult<NodeT>>;
 
 template <typename ValueT>
 struct Node : public NodeImpl<ValueT, Node<ValueT>> {

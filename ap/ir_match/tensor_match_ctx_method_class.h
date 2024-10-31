@@ -44,6 +44,7 @@ struct TensorMatchCtxMethodClass {
 
   using IrNativeIrValue = typename IrNodeT::native_value_type;
   using IrPackedIrValue = typename IrNodeT::packed_value_type;
+  using IrRefIrValue = typename IrNodeT::ref_value_type;
 
   adt::Result<std::optional<ValueT>> GetIrTensorByName(
       const Self& self, const std::string& attr_name) {
@@ -83,6 +84,9 @@ struct TensorMatchCtxMethodClass {
               return ValueT{impl};
             },
             [&](const IrPackedIrValue& impl) -> adt::Result<ValueT> {
+              return ValueT{impl};
+            },
+            [&](const IrRefIrValue& impl) -> adt::Result<ValueT> {
               return ValueT{impl};
             },
             [&](const auto&) -> adt::Result<ValueT> {

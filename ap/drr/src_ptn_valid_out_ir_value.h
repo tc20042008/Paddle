@@ -14,28 +14,30 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
-#include "ap/drr/native_ir_op.h"
-#include "ap/drr/opt_packed_ir_op.h"
-#include "ap/drr/packed_ir_op.h"
-#include "ap/drr/unbound_native_ir_op.h"
-#include "ap/drr/unbound_opt_packed_ir_op.h"
+#include "ap/axpr/type.h"
+#include "ap/drr/packed_ir_value.h"
+#include "ap/drr/tags.h"
+#include "ap/drr/unbound_ir_value.h"
 #include "ap/drr/unbound_packed_ir_op.h"
 
 namespace ap::drr {
 
 template <typename ValueT, typename NodeT>
-using IrOpImpl = std::variant<NativeIrOp<ValueT, NodeT>,
-                              PackedIrOp<ValueT, NodeT>,
-                              OptPackedIrOp<ValueT, NodeT>,
-                              UnboundNativeIrOp<ValueT, NodeT>,
-                              UnboundPackedIrOp<ValueT, NodeT>,
-                              UnboundOptPackedIrOp<ValueT, NodeT>>;
+using SrcPtnValidOutIrValueImpl =
+    std::variant<UnboundIrValue<ValueT, NodeT>,
+                 UnboundPackedIrValue<ValueT, NodeT>>;
 
 template <typename ValueT, typename NodeT>
-struct IrOp : public IrOpImpl<ValueT, NodeT> {
-  using IrOpImpl<ValueT, NodeT>::IrOpImpl;
-  DEFINE_ADT_VARIANT_METHODS(IrOpImpl<ValueT, NodeT>);
+struct SrcPtnValidOutIrValue : public SrcPtnValidOutIrValueImpl<ValueT, NodeT> {
+  using SrcPtnValidOutIrValueImpl<ValueT, NodeT>::SrcPtnValidOutIrValueImpl;
+
+  DEFINE_ADT_VARIANT_METHODS(SrcPtnValidOutIrValueImpl<ValueT, NodeT>);
+
+  const std::string& name() const {
+    return Match([](const auto& ir_value) -> const std::string& {
+      return ir_value->name;
+    });
+  }
 };
 
 }  // namespace ap::drr

@@ -30,10 +30,13 @@ namespace ap::ir_match {
 using graph::GraphDescriptor;
 using graph::GraphHelper;
 
-template <typename bg_node_t, typename sg_node_t, typename TopoKind>
+template <typename bg_node_t,
+          typename sg_node_t,
+          typename BGTopoKind,
+          typename SGTopoKind>
 struct TopoMatcher {
-  TopoMatcher(const GraphDescriptor<bg_node_t, TopoKind>& bg_descriptor,
-              const GraphDescriptor<sg_node_t, TopoKind>& sg_descriptor)
+  TopoMatcher(const GraphDescriptor<bg_node_t, BGTopoKind>& bg_descriptor,
+              const GraphDescriptor<sg_node_t, SGTopoKind>& sg_descriptor)
       : bg_descriptor_(bg_descriptor), sg_descriptor_(sg_descriptor) {}
 
   TopoMatcher(const TopoMatcher&) = delete;
@@ -48,12 +51,43 @@ struct TopoMatcher {
     return topo_match_ctx;
   }
 
+  adt::Result<adt::Ok> UpdateByConnectionsUntilDone(
+      TopoMatchCtxImpl<bg_node_t, sg_node_t>* ctx,
+      const sg_node_t& anchor_node) {
+    size_t kDeadloopDectionSize = 999999;
+    while (true) {
+      ADT_LET_CONST_REF(updated, UpdateAllByConnections(ctx, anchor_node));
+      if (!updated) {
+        break;
+      }
+      if (--kDeadloopDectionSize <= 0) {
+        return adt::errors::RuntimeError{"Dead loop detected."};
+      }
+    }
+    return adt::Ok{};
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitMisMatchedNodes(
+      const TopoMatchCtx<bg_node_t, sg_node_t>& ctx,
+      const sg_node_t& anchor_node,
+      const DoEachT& DoEach) const {
+    auto DoEachSGNode = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
+      if (!ctx->HasBigGraphNode(sg_node)) {
+        return DoEach(sg_node);
+      }
+      return adt::Ok{};
+    };
+    adt::BfsWalker<sg_node_t> bfs_walker =
+        GraphHelper<sg_node_t, SGTopoKind>(sg_descriptor_).GetBfsWalker();
+    return bfs_walker(anchor_node, DoEachSGNode);
+  }
+
   adt::Result<bool> IsGraphMatched(
       const TopoMatchCtx<bg_node_t, sg_node_t>& ctx,
       const sg_node_t& anchor_node) const {
     adt::BfsWalker<sg_node_t> bfs_walker =
-        GraphHelper<sg_node_t, drr::topo_kind::Default>(sg_descriptor_)
-            .GetBfsWalker();
+        GraphHelper<sg_node_t, SGTopoKind>(sg_descriptor_).GetBfsWalker();
     std::size_t num_sg_nodes = 0;
     auto AccNumSgNodes = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
       ADT_CHECK(ctx->HasBigGraphNode(sg_node))
@@ -74,28 +108,11 @@ struct TopoMatcher {
   }
 
  private:
-  adt::Result<adt::Ok> UpdateByConnectionsUntilDone(
-      TopoMatchCtxImpl<bg_node_t, sg_node_t>* ctx,
-      const sg_node_t& anchor_node) {
-    size_t kDeadloopDectionSize = 999999;
-    while (true) {
-      ADT_LET_CONST_REF(updated, UpdateAllByConnections(ctx, anchor_node));
-      if (!updated) {
-        break;
-      }
-      if (--kDeadloopDectionSize <= 0) {
-        return adt::errors::RuntimeError{"Dead loop detected."};
-      }
-    }
-    return adt::Ok{};
-  }
-
   adt::Result<TopoMatchCtx<bg_node_t, sg_node_t>> MakeTopoMatchCtxFromAnchor(
       const bg_node_t& bg_node, const sg_node_t& anchor_node) {
     TopoMatchCtx<bg_node_t, sg_node_t> match_ctx{};
     const auto& ptn_bfs_walker =
-        GraphHelper<sg_node_t, drr::topo_kind::Default>(sg_descriptor_)
-            .GetBfsWalker();
+        GraphHelper<sg_node_t, SGTopoKind>(sg_descriptor_).GetBfsWalker();
     auto InitMatchCtx = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
       if (sg_node == anchor_node) {
         std::unordered_set<bg_node_t> bg_nodes;
@@ -111,19 +128,24 @@ struct TopoMatcher {
   }
 
   adt::Result<bool> UpdateAllByConnections(
-      TopoMatchCtxImpl<bg_node_t, sg_node_t>* ctx,
+      TopoMatchCtxImpl<bg_node_t, sg_node_t>* match_ctx,
       const sg_node_t& anchor_node) {
     const auto& ptn_bfs_walker =
-        GraphHelper<sg_node_t, drr::topo_kind::Default>(sg_descriptor_)
-            .GetBfsWalker();
+        GraphHelper<sg_node_t, SGTopoKind>(sg_descriptor_).GetBfsWalker();
     bool updated = false;
     auto Update = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
       // no need to update anchor_node.
       if (anchor_node == sg_node) {
         return adt::Ok{};
       }
-      ADT_LET_CONST_REF(current_updated, UpdateByConnections(ctx, sg_node));
-      updated = updated || current_updated;
+      if (match_ctx->HasBigGraphNode(sg_node)) {
+        ADT_LET_CONST_REF(current_updated,
+                          UpdateByConnections(match_ctx, sg_node));
+        updated = updated || current_updated;
+      } else {
+        ADT_RETURN_IF_ERR(TopoMatchCtxInitNode(match_ctx, sg_node));
+        updated = true;
+      }
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(ptn_bfs_walker(anchor_node, Update));
@@ -220,7 +242,8 @@ struct TopoMatcher {
       const sg_node_t& from_node,
       tIsUpstream<bool> is_from_node_upstream,
       const DoEachT& DoEach) {
-    ADT_LET_CONST_REF(sg_node_cstr, sg_descriptor_.GetNodeConstraint(sg_node));
+    ADT_LET_CONST_REF(sg_node_cstr,
+                      sg_descriptor_.GetSmallGraphNodeCstr(sg_node));
     const auto& VisitBigGraphNode =
         [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(matched, bg_descriptor_.Satisfy(bg_node, sg_node_cstr));
@@ -275,8 +298,8 @@ struct TopoMatcher {
     return sg_descriptor_.VisitDownstreamNodes(sg_node, Visit);
   }
 
-  GraphDescriptor<bg_node_t, TopoKind> bg_descriptor_;
-  GraphDescriptor<sg_node_t, TopoKind> sg_descriptor_;
+  GraphDescriptor<bg_node_t, BGTopoKind> bg_descriptor_;
+  GraphDescriptor<sg_node_t, SGTopoKind> sg_descriptor_;
 };
 
 }  // namespace ap::ir_match

@@ -24,8 +24,21 @@ namespace ap::drr {
 
 template <typename ValueT>
 struct DefaultDrrGraphDescriptor {
-  using DrrNodeT = drr::Node<ValueT>;
-  using NodeT = graph::Node<DrrNodeT>;
+  using DrrNode = drr::Node<ValueT>;
+  using DrrGraphNode = graph::Node<DrrNode>;
+  using NodeT = DrrGraphNode;
+
+  using DrrNativeIrValue = ap::drr::NativeIrValue<DrrNode>;
+  using DrrPackedIrValue = ap::drr::PackedIrValue<DrrNode>;
+  using DrrNativeIrOp = ap::drr::NativeIrOp<ValueT, DrrNode>;
+  using DrrPackedIrOp = ap::drr::PackedIrOp<ValueT, DrrNode>;
+  using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<ValueT, DrrNode>;
+  using DrrNativeIrOpOperand = ap::drr::NativeIrOpOperand<DrrNode>;
+  using DrrPackedIrOpOperand = ap::drr::PackedIrOpOperand<DrrNode>;
+  using DrrOptPackedIrOpOperand = ap::drr::OptPackedIrOpOperand<DrrNode>;
+  using DrrNativeIrOpResult = ap::drr::NativeIrOpResult<DrrNode>;
+  using DrrPackedIrOpResult = ap::drr::PackedIrOpResult<DrrNode>;
+  using DrrOptPackedIrOpResult = ap::drr::OptPackedIrOpResult<DrrNode>;
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT& node,
@@ -41,60 +54,147 @@ struct DefaultDrrGraphDescriptor {
     return downstreams.VisitNodes(DoEach);
   }
 
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT& node) const {
+  template <typename DrrNodeT>
+  adt::Result<DrrNodeT> CastSoleInput(const DrrNode& node) const {
+    std::optional<DrrNodeT> opt_sole_input{};
+    auto DoEachUpstream =
+        [&](const DrrGraphNode& upstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(drr_upstream, upstream.Get());
+      ADT_LET_CONST_REF(casted, drr_upstream.template TryGet<DrrNodeT>());
+      ADT_CHECK(!opt_sole_input.has_value());
+      opt_sole_input = casted;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitUpstreamNodes(node.node(), DoEachUpstream));
+    ADT_CHECK(opt_sole_input.has_value());
+    return opt_sole_input.value();
+  }
+
+  template <typename DrrNodeT>
+  adt::Result<DrrNodeT> CastSoleOutput(const DrrNode& node) const {
+    std::optional<DrrNodeT> opt_sole_output{};
+    auto DoEachDownstream =
+        [&](const DrrGraphNode& downstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(drr_downstream, downstream.Get());
+      ADT_LET_CONST_REF(casted, drr_downstream.template TryGet<DrrNodeT>());
+      ADT_CHECK(!opt_sole_output.has_value());
+      opt_sole_output = casted;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitDownstreamNodes(node.node(), DoEachDownstream));
+    ADT_CHECK(opt_sole_output.has_value());
+    return opt_sole_output.value();
+  }
+
+  adt::Result<std::size_t> GetNumInputs(const DrrNode& node) const {
+    std::size_t num_inputs = 0;
+    auto DoEachUpstream =
+        [&](const DrrGraphNode& upstream) -> adt::Result<adt::Ok> {
+      ++num_inputs;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitUpstreamNodes(node.node(), DoEachUpstream));
+    return num_inputs;
+  }
+
+  adt::Result<std::size_t> GetNumOutputs(const DrrNode& node) const {
+    std::size_t num_outputs = 0;
+    auto DoEachDownstream =
+        [&](const DrrGraphNode& downstream) -> adt::Result<adt::Ok> {
+      ++num_outputs;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitDownstreamNodes(node.node(), DoEachDownstream));
+    return num_outputs;
+  }
+
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT& node) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
-    return drr_node.node_cstr();
+    return graph::SmallGraphNodeCstr{drr_node.node_cstr()};
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
     return drr_node.Match(
-        [](const PackedIrValue<DrrNodeT>&) -> adt::Result<bool> {
-          return true;
-        },
-        [&](const PackedIrOpOperand<DrrNodeT>& impl) -> adt::Result<bool> {
+        [](const DrrPackedIrValue&) -> adt::Result<bool> { return true; },
+        [&](const DrrPackedIrOpOperand& impl) -> adt::Result<bool> {
           ADT_LET_CONST_REF(upstreams, impl->node.UpstreamNodes());
           ADT_CHECK(upstreams.size(), 1);
           ADT_LET_CONST_REF(upstream_node, upstreams.Sole());
           return IgnoredNode(upstream_node);
         },
-        [&](const PackedIrOpResult<DrrNodeT>& impl) -> adt::Result<bool> {
+        [&](const DrrPackedIrOpResult& impl) -> adt::Result<bool> {
           ADT_LET_CONST_REF(downstreams, impl->node.DownstreamNodes());
           ADT_CHECK(downstreams.size(), 1);
           ADT_LET_CONST_REF(downstream_node, downstreams.Sole());
           return IgnoredNode(downstream_node);
         },
-        [](const auto&) -> adt::Result<bool> { return false; });
+        [](const DrrNativeIrValue&) -> adt::Result<bool> { return false; },
+        [](const DrrNativeIrOp&) -> adt::Result<bool> { return false; },
+        [](const DrrPackedIrOp&) -> adt::Result<bool> { return false; },
+        [](const DrrOptPackedIrOp&) -> adt::Result<bool> { return false; },
+        [](const DrrNativeIrOpOperand&) -> adt::Result<bool> { return false; },
+        [&](const DrrOptPackedIrOpOperand& impl) -> adt::Result<bool> {
+          ADT_LET_CONST_REF(upstreams, impl->node.UpstreamNodes());
+          ADT_CHECK(upstreams.size(), 1);
+          ADT_LET_CONST_REF(upstream_node, upstreams.Sole());
+          return IgnoredNode(upstream_node);
+        },
+        [](const DrrNativeIrOpResult&) -> adt::Result<bool> { return false; },
+        [&](const DrrOptPackedIrOpResult& impl) -> adt::Result<bool> {
+          ADT_LET_CONST_REF(downstreams, impl->node.DownstreamNodes());
+          ADT_CHECK(downstreams.size(), 1);
+          ADT_LET_CONST_REF(downstream_node, downstreams.Sole());
+          return IgnoredNode(downstream_node);
+        });
   }
 
   adt::Result<bool> IsOpNode(const NodeT& node) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
     return drr_node.Match(
-        [&](const NativeIrOp<ValueT, DrrNodeT>&) -> bool { return true; },
-        [&](const PackedIrOp<ValueT, DrrNodeT>&) -> bool { return true; },
-        [&](const auto&) -> bool { return false; });
+        [](const DrrNativeIrOp&) -> bool { return true; },
+        [](const DrrPackedIrOp&) -> bool { return true; },
+        [](const DrrOptPackedIrOp&) -> bool { return true; },
+        [](const DrrNativeIrValue&) -> bool { return false; },
+        [](const DrrPackedIrValue&) -> bool { return false; },
+        [](const DrrNativeIrOpOperand&) -> bool { return false; },
+        [](const DrrPackedIrOpOperand&) -> bool { return false; },
+        [](const DrrOptPackedIrOpOperand&) -> bool { return false; },
+        [](const DrrNativeIrOpResult&) -> bool { return false; },
+        [](const DrrPackedIrOpResult&) -> bool { return false; },
+        [](const DrrOptPackedIrOpResult&) -> bool { return false; });
   }
 
   adt::Result<bool> IsValueNode(const NodeT& node) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
     return drr_node.Match(
-        [&](const NativeIrValue<DrrNodeT>&) -> bool { return true; },
-        [&](const PackedIrValue<DrrNodeT>&) -> bool { return true; },
-        [&](const auto&) -> bool { return false; });
+        [](const DrrNativeIrOp&) -> bool { return false; },
+        [](const DrrPackedIrOp&) -> bool { return false; },
+        [](const DrrOptPackedIrOp&) -> bool { return false; },
+        [](const DrrNativeIrValue&) -> bool { return true; },
+        [](const DrrPackedIrValue&) -> bool { return true; },
+        [](const DrrNativeIrOpOperand&) -> bool { return false; },
+        [](const DrrPackedIrOpOperand&) -> bool { return false; },
+        [](const DrrOptPackedIrOpOperand&) -> bool { return false; },
+        [](const DrrNativeIrOpResult&) -> bool { return false; },
+        [](const DrrPackedIrOpResult&) -> bool { return false; },
+        [](const DrrOptPackedIrOpResult&) -> bool { return false; });
   }
 
   adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::NodeCstr& node_cstr) const {
+                            const graph::SmallGraphNodeCstr& node_cstr) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
-    const graph::NodeCstr& drr_node_cstr = drr_node.node_cstr();
-    return drr_node_cstr == node_cstr;
+    const graph::BigGraphNodeCstr& drr_node_cstr{drr_node.node_cstr()};
+    return drr_node_cstr.Satisfy(node_cstr);
   }
 };
 
 template <typename ValueT>
 struct AllOperandAndResultDrrGraphDescriptor {
-  using DrrNodeT = drr::Node<ValueT>;
-  using NodeT = graph::Node<DrrNodeT>;
+  using DrrNode = drr::Node<ValueT>;
+  using DrrGraphNode = graph::Node<DrrNode>;
+  using NodeT = DrrGraphNode;
 
   DefaultDrrGraphDescriptor<ValueT> backend_graph;
 
@@ -123,8 +223,47 @@ struct AllOperandAndResultDrrGraphDescriptor {
     return backend_graph.VisitDownstreamNodes(node, DoEachOpOrValue);
   }
 
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT& node) const {
-    return backend_graph.GetNodeConstraint(node);
+  template <typename DrrNodeT>
+  adt::Result<DrrNodeT> CastSoleInput(const DrrNode& node) const {
+    std::optional<DrrNodeT> opt_sole_input{};
+    auto DoEachUpstream =
+        [&](const DrrGraphNode& upstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(drr_upstream, upstream.Get());
+      ADT_LET_CONST_REF(casted, drr_upstream.template TryGet<DrrNodeT>());
+      ADT_CHECK(!opt_sole_input.has_value());
+      opt_sole_input = casted;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitUpstreamNodes(node.node(), DoEachUpstream));
+    ADT_CHECK(opt_sole_input.has_value());
+    return opt_sole_input.value();
+  }
+
+  adt::Result<std::size_t> GetNumInputs(const DrrNode& node) const {
+    std::size_t num_inputs = 0;
+    auto DoEachUpstream =
+        [&](const DrrGraphNode& upstream) -> adt::Result<adt::Ok> {
+      ++num_inputs;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitUpstreamNodes(node.node(), DoEachUpstream));
+    return num_inputs;
+  }
+
+  adt::Result<std::size_t> GetNumOutputs(const DrrNode& node) const {
+    std::size_t num_outputs = 0;
+    auto DoEachDownstream =
+        [&](const DrrGraphNode& downstream) -> adt::Result<adt::Ok> {
+      ++num_outputs;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitDownstreamNodes(node.node(), DoEachDownstream));
+    return num_outputs;
+  }
+
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT& node) const {
+    return backend_graph.GetSmallGraphNodeCstr(node);
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -141,15 +280,16 @@ struct AllOperandAndResultDrrGraphDescriptor {
   }
 
   adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::NodeCstr& node_cstr) const {
+                            const graph::SmallGraphNodeCstr& node_cstr) const {
     return backend_graph.Satisfy(node, node_cstr);
   }
 };
 
 template <typename ValueT>
 struct NativeOperandAndResultDrrGraphDescriptor {
-  using DrrNodeT = drr::Node<ValueT>;
-  using NodeT = graph::Node<DrrNodeT>;
+  using DrrNode = drr::Node<ValueT>;
+  using DrrGraphNode = graph::Node<DrrNode>;
+  using NodeT = DrrGraphNode;
 
   AllOperandAndResultDrrGraphDescriptor<ValueT> backend_graph;
 
@@ -209,8 +349,9 @@ struct NativeOperandAndResultDrrGraphDescriptor {
     return backend_graph.VisitDownstreamNodes(node, DoEachOperandOrResult);
   }
 
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT& node) const {
-    return backend_graph.GetNodeConstraint(node);
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT& node) const {
+    return backend_graph.GetSmallGraphNodeCstr(node);
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -226,15 +367,15 @@ struct NativeOperandAndResultDrrGraphDescriptor {
   }
 
   adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::NodeCstr& node_cstr) const {
+                            const graph::SmallGraphNodeCstr& node_cstr) const {
     return backend_graph.Satisfy(node, node_cstr);
   }
 
   adt::Result<bool> IsNative(const NodeT& node) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
     return drr_node.Match(
-        [&](const NativeIrOpOperand<DrrNodeT>&) -> bool { return true; },
-        [&](const NativeIrOpResult<DrrNodeT>&) -> bool { return true; },
+        [&](const NativeIrOpOperand<DrrNode>&) -> bool { return true; },
+        [&](const NativeIrOpResult<DrrNode>&) -> bool { return true; },
         [&](const auto&) -> bool { return false; });
   }
 };

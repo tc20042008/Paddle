@@ -56,6 +56,11 @@ struct TopoMatchCtxImpl {
     return iter->second;
   }
 
+  bool HasMatchedSmallGraphNode(const bg_node_t& bg_node) const {
+    const auto& iter = matched_bg_node2sg_node_.find(bg_node);
+    return iter != matched_bg_node2sg_node_.end();
+  }
+
   adt::Result<const std::unordered_set<bg_node_t>*> GetBigGraphNodes(
       const sg_node_t& node) const {
     const auto& iter = this->sg_node2bg_nodes_.find(node);
@@ -87,10 +92,9 @@ struct TopoMatchCtxImpl {
         "TopoMatchCtxImpl::InitBigGraphNodes: sg_node should not be matched to "
         "empty."};
     for (const auto& bg_node : val) {
-      ADT_CHECK(!GetMatchedSmallGraphNode(bg_node).has_value())
-          << adt::errors::KeyError{
-                 "TopoMatchCtxImpl::InitBigGraphNodes failed. there is matched "
-                 "bg_node in 'val'"};
+      ADT_CHECK(!HasMatchedSmallGraphNode(bg_node)) << adt::errors::KeyError{
+          "TopoMatchCtxImpl::InitBigGraphNodes failed. there is matched "
+          "bg_node in 'val'"};
     }
     *ptr = val;
     if (ptr->size() == 1) {

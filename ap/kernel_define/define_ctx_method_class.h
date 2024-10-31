@@ -17,6 +17,7 @@
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/packed_args.h"
 #include "ap/index_expr/index_tuple_expr.h"
+#include "ap/ir_match/native_or_ref_ir_value.h"
 #include "ap/kernel_define/cuda_code_gen_util.h"
 #include "ap/kernel_define/ir_op.h"
 #include "ap/kernel_define/module.h"
@@ -66,6 +67,8 @@ struct DefineCtxMethodClass {
     return This{}.RenderModuleTemplate(Apply, self, args);
   }
 
+  using NativeOrRefIrValue = ir_match::NativeOrRefIrValue<IrNodeT>;
+
   adt::Result<ValueT> CudaCodeGen(const Self& self,
                                   const std::vector<ValueT>& packed_args_vec) {
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_vec);
@@ -77,7 +80,7 @@ struct DefineCtxMethodClass {
         << adt::errors::TypeError{
                std::string() +
                "the positional argument 1 of 'DefineCtx.cuda_code_gen' should "
-               "be able to cast to a NativeIrOp or PackedIrOp."};
+               "be able to cast to a NativeIrOp, PackedIrOp or RefIrOp."};
     ADT_LET_CONST_REF(loop_index_tuple_expr,
                       kwargs->template Get<index_expr::IndexTupleExpr>(
                           "loop_index_tuple_expr"))
@@ -136,14 +139,12 @@ struct DefineCtxMethodClass {
                    "keyword argument 'local_var_name_bindings' of "
                    "'DefineCtx.cuda_code_gen' should be a list of pair(str, "
                    "NativeIrValue)."};
-        using NativeIrValue = typename IrNodeT::native_value_type;
-        ADT_LET_CONST_REF(ir_tensor,
-                          axpr::TryGetImpl<NativeIrValue>(pair->at(1)))
+        ADT_LET_CONST_REF(ir_tensor, NativeOrRefIrValue::CastFrom(pair->at(1)))
             << adt::errors::TypeError{
                    std::string() +
                    "keyword argument 'local_var_name_bindings' of "
                    "'DefineCtx.cuda_code_gen' should be a list of pair(str, "
-                   "NativeIrValue)."};
+                   "NativeIrValue/RefIrValue)."};
         LocalVarBinding<IrNodeT> binding{local_var_name, ir_tensor};
         local_var_name_bindings.emplace_back(binding);
       }

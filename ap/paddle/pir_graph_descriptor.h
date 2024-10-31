@@ -18,6 +18,7 @@
 #include "ap/drr/topo_kind.h"
 #include "ap/graph/graph_descriptor.h"
 #include "ap/graph/node.h"
+#include "ap/ir_match/ref_match_ctx.h"
 #include "ap/paddle/pir_node.h"
 #include "ap/paddle/pir_util.h"
 
@@ -53,6 +54,10 @@ struct DefaultPirGraphDescriptor {
               "DefaultPirGraphDescriptor::VisitUpstreamNodes does not support "
               "PackedIrValue"};
         },
+        [&](const RefIrValue& impl) -> adt::Result<adt::Ok> {
+          RefIrOpResult ir_op_result{impl.ref_node_info};
+          return DoEach(ir_op_result);
+        },
         [&](const NativeIrOpOperand& impl) -> adt::Result<adt::Ok> {
           NativeIrValue ir_value{impl.op_operand.source()};
           return DoEach(ir_value);
@@ -63,6 +68,9 @@ struct DefaultPirGraphDescriptor {
           ADT_CHECK(impl.free_tensor_index < inputs.size());
           NativeIrValue ir_value{inputs.at(impl.free_tensor_index)};
           return DoEach(ir_value);
+        },
+        [&](const RefIrOpOperand& impl) -> adt::Result<adt::Ok> {
+          return DoEach(impl.ref_node_info->ir_value);
         },
         [&](const NativeIrOp& impl) -> adt::Result<adt::Ok> {
           for (int i = 0; i < impl.op->num_operands(); ++i) {
@@ -79,6 +87,10 @@ struct DefaultPirGraphDescriptor {
           }
           return adt::Ok{};
         },
+        [&](const RefIrOp& impl) -> adt::Result<adt::Ok> {
+          RefIrOpOperand ir_op_operand{impl.ref_node_info};
+          return DoEach(ir_op_operand);
+        },
         [&](const NativeIrOpResult& impl) -> adt::Result<adt::Ok> {
           NativeIrOp ir_op{impl.op_result.defining_op()};
           return DoEach(ir_op);
@@ -87,6 +99,10 @@ struct DefaultPirGraphDescriptor {
           auto* op = impl.op_result.defining_op();
           ADT_CHECK(op->isa<cinn::dialect::FusionOp>());
           PackedIrOp ir_op{op->dyn_cast<cinn::dialect::FusionOp>()};
+          return DoEach(ir_op);
+        },
+        [&](const RefIrOpResult& impl) -> adt::Result<adt::Ok> {
+          RefIrOp ir_op{impl.ref_node_info};
           return DoEach(ir_op);
         });
   }
@@ -125,12 +141,23 @@ struct DefaultPirGraphDescriptor {
           // o.trivial_op1([*.t.op0_output1], [t.op1_output])
           return adt::Ok{};
         },
+        [&](const RefIrValue& impl) -> adt::Result<adt::Ok> {
+          for (const auto& ir_op_operand :
+               *impl.ref_node_info->op_operands_subset) {
+            ADT_RETURN_IF_ERR(DoEach(ir_op_operand));
+          }
+          return adt::Ok{};
+        },
         [&](const NativeIrOpOperand& impl) -> adt::Result<adt::Ok> {
           NativeIrOp ir_op{impl.op_operand.owner()};
           return DoEach(ir_op);
         },
         [&](const PackedIrOpOperand& impl) -> adt::Result<adt::Ok> {
           PackedIrOp ir_op{impl.fusion_op};
+          return DoEach(ir_op);
+        },
+        [&](const RefIrOpOperand& impl) -> adt::Result<adt::Ok> {
+          RefIrOp ir_op{impl.ref_node_info};
           return DoEach(ir_op);
         },
         [&](const NativeIrOp& impl) -> adt::Result<adt::Ok> {
@@ -151,6 +178,10 @@ struct DefaultPirGraphDescriptor {
           }
           return adt::Ok{};
         },
+        [&](const RefIrOp& impl) -> adt::Result<adt::Ok> {
+          RefIrOpResult ir_op_result{impl.ref_node_info};
+          return DoEach(ir_op_result);
+        },
         [&](const NativeIrOpResult& impl) -> adt::Result<adt::Ok> {
           pir::Value value = impl.op_result;
           NativeIrValue ir_value{value};
@@ -160,11 +191,16 @@ struct DefaultPirGraphDescriptor {
           pir::Value value = impl.op_result;
           NativeIrValue ir_value{value};
           return DoEach(ir_value);
+        },
+        [&](const RefIrOpResult& impl) -> adt::Result<adt::Ok> {
+          RefIrValue ir_value{impl.ref_node_info};
+          return DoEach(ir_value);
         });
   }
 
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT& node) const {
-    return node.node_cstr();
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT& node) const {
+    return graph::SmallGraphNodeCstr{node.node_cstr()};
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -176,18 +212,21 @@ struct DefaultPirGraphDescriptor {
   adt::Result<bool> IsOpNode(const NodeT& node) const {
     return node.Match([&](const NativeIrOp&) -> bool { return true; },
                       [&](const PackedIrOp&) -> bool { return true; },
+                      [&](const RefIrOp&) -> bool { return true; },
                       [&](const auto&) -> bool { return false; });
   }
 
   adt::Result<bool> IsValueNode(const NodeT& node) const {
     return node.Match([&](const NativeIrValue&) -> bool { return true; },
                       [&](const PackedIrValue&) -> bool { return true; },
+                      [&](const RefIrValue&) -> bool { return true; },
                       [&](const auto&) -> bool { return false; });
   }
 
   adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::NodeCstr& node_cstr) const {
-    return node.node_cstr() == node_cstr;
+                            const graph::SmallGraphNodeCstr& node_cstr) const {
+    graph::BigGraphNodeCstr bg_node_cstr{node.node_cstr()};
+    return bg_node_cstr.Satisfy(node_cstr);
   }
 
   const std::vector<pir::Value>& GetFusionOpInputValues(
@@ -205,6 +244,71 @@ struct DefaultPirGraphDescriptor {
  private:
   mutable std::unordered_map<pir::Operation*, std::vector<pir::Value>>
       fusion_op2input_values_;
+};
+
+struct RefAugmentedPirGraphDescriptor {
+  using NodeT = PirNode;
+  using RefNodeInfo = ir_match::RefNodeInfo<NativeIrValue, NativeIrOpOperand>;
+  using RefMatchCtx = ir_match::RefMatchCtx<NativeIrValue, NativeIrOpOperand>;
+  RefMatchCtx ref_match_ctx;
+  DefaultPirGraphDescriptor backend_graph;
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT& node,
+                                          const DoEachT& DoEach) const {
+    using Ok = adt::Result<adt::Ok>;
+    return node.Match(
+        [&](const NativeIrOpOperand& impl) -> Ok {
+          const auto iter = ref_match_ctx->operand2node_info.find(impl);
+          if (iter == ref_match_ctx->operand2node_info.end()) {
+            return backend_graph.VisitUpstreamNodes(node, DoEach);
+          }
+          RefIrValue ref_ir_value{iter->second};
+          return DoEach(ref_ir_value);
+        },
+        [&](const auto&) -> Ok {
+          return backend_graph.VisitUpstreamNodes(node, DoEach);
+        });
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitDownstreamNodes(const NodeT& node,
+                                            const DoEachT& DoEach) const {
+    using Ok = adt::Result<adt::Ok>;
+    return node.Match(
+        [&](const NativeIrValue& impl) -> Ok {
+          const auto iter = ref_match_ctx->value2ref_node_info.find(impl);
+          if (iter == ref_match_ctx->value2ref_node_info.end()) {
+            return backend_graph.VisitDownstreamNodes(node, DoEach);
+          }
+          for (const auto& ref_node_info : iter->second) {
+            RefIrOpOperand ir_op_operand{ref_node_info};
+            ADT_RETURN_IF_ERR(DoEach(ir_op_operand));
+          }
+          return adt::Ok{};
+        },
+        [&](const auto&) -> Ok {
+          return backend_graph.VisitDownstreamNodes(node, DoEach);
+        });
+  }
+
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT& node) const {
+    return backend_graph.GetSmallGraphNodeCstr(node);
+  }
+
+  adt::Result<bool> IgnoredNode(const NodeT& node) const {
+    return backend_graph.IgnoredNode(node);
+  }
+
+  adt::Result<bool> IsOpNode(const NodeT& node) const {
+    return backend_graph.IsOpNode(node);
+  }
+
+  adt::Result<bool> Satisfy(const NodeT& node,
+                            const graph::SmallGraphNodeCstr& node_cstr) const {
+    return backend_graph.Satisfy(node, node_cstr);
+  }
 };
 
 struct AllOperandAndResultPirGraphDescriptor {
@@ -237,8 +341,9 @@ struct AllOperandAndResultPirGraphDescriptor {
     return backend_graph.VisitDownstreamNodes(node, DoEachOpOrValue);
   }
 
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT& node) const {
-    return backend_graph.GetNodeConstraint(node);
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT& node) const {
+    return backend_graph.GetSmallGraphNodeCstr(node);
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -255,7 +360,7 @@ struct AllOperandAndResultPirGraphDescriptor {
   }
 
   adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::NodeCstr& node_cstr) const {
+                            const graph::SmallGraphNodeCstr& node_cstr) const {
     return backend_graph.Satisfy(node, node_cstr);
   }
 };
@@ -321,8 +426,9 @@ struct NativeOperandAndResultPirGraphDescriptor {
     return backend_graph.VisitDownstreamNodes(node, DoEachOperandOrResult);
   }
 
-  adt::Result<graph::NodeCstr> GetNodeConstraint(const NodeT& node) const {
-    return backend_graph.GetNodeConstraint(node);
+  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+      const NodeT& node) const {
+    return backend_graph.GetSmallGraphNodeCstr(node);
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -338,7 +444,7 @@ struct NativeOperandAndResultPirGraphDescriptor {
   }
 
   adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::NodeCstr& node_cstr) const {
+                            const graph::SmallGraphNodeCstr& node_cstr) const {
     return backend_graph.Satisfy(node, node_cstr);
   }
 
@@ -356,6 +462,10 @@ namespace ap::graph {
 template <>
 struct GraphDescriptor<ap::paddle::PirNode, drr::topo_kind::Default>
     : public ap::paddle::DefaultPirGraphDescriptor {};
+
+template <>
+struct GraphDescriptor<ap::paddle::PirNode, drr::topo_kind::RefAugmented>
+    : public ap::paddle::RefAugmentedPirGraphDescriptor {};
 
 template <>
 struct GraphDescriptor<ap::paddle::PirNode, drr::topo_kind::AllOperandAndResult>

@@ -29,10 +29,13 @@ struct DrrNodeDescriptor {
   using DrrPackedIrValue = ap::drr::PackedIrValue<DrrNode>;
   using DrrNativeIrOp = ap::drr::NativeIrOp<ValueT, DrrNode>;
   using DrrPackedIrOp = ap::drr::PackedIrOp<ValueT, DrrNode>;
+  using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<ValueT, DrrNode>;
   using DrrNativeIrOpOperand = ap::drr::NativeIrOpOperand<DrrNode>;
   using DrrPackedIrOpOperand = ap::drr::PackedIrOpOperand<DrrNode>;
+  using DrrOptPackedIrOpOperand = ap::drr::OptPackedIrOpOperand<DrrNode>;
   using DrrNativeIrOpResult = ap::drr::NativeIrOpResult<DrrNode>;
   using DrrPackedIrOpResult = ap::drr::PackedIrOpResult<DrrNode>;
+  using DrrOptPackedIrOpResult = ap::drr::OptPackedIrOpResult<DrrNode>;
 
   std::string DebugId(const graph::Node<DrrNode>& node) {
     const auto& opt_drr_node = node.Get();
@@ -53,16 +56,26 @@ struct DrrNodeDescriptor {
         [&](const DrrPackedIrOp& ir_op) -> std::string {
           return ir_op->op_declare->op_name + "[" + ir_op->name + "]";
         },
+        [&](const DrrOptPackedIrOp& ir_op) -> std::string {
+          return std::string("opt-") + ir_op->op_declare->op_name + "[" +
+                 ir_op->name + "]";
+        },
         [&](const DrrNativeIrOpOperand& ir_op_operand) -> std::string {
           return EdgeDebugId(node);
         },
         [&](const DrrPackedIrOpOperand& ir_op_operand) -> std::string {
           return EdgeDebugId(node);
         },
+        [&](const DrrOptPackedIrOpOperand& ir_op_operand) -> std::string {
+          return EdgeDebugId(node);
+        },
         [&](const DrrNativeIrOpResult& ir_op_result) -> std::string {
           return EdgeDebugId(node);
         },
         [&](const DrrPackedIrOpResult& ir_op_result) -> std::string {
+          return EdgeDebugId(node);
+        },
+        [&](const DrrOptPackedIrOpResult& ir_op_result) -> std::string {
           return EdgeDebugId(node);
         });
   }

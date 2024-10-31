@@ -25,27 +25,42 @@
 
 namespace ap::ir_match {
 
-template <typename bg_node_t>
+template <typename bg_node_t, typename BGTopoKind, typename SGTopoKind>
 struct GraphMatcher {
   using DrrNode = drr::Node<drr::Value>;
   using DrrNativeIrOp = drr::NativeIrOp<drr::Value, DrrNode>;
   using sg_node_t = graph::Node<DrrNode>;
-  using DefaultTopoKind = drr::topo_kind::Default;
 
-  TopoMatcher<bg_node_t, sg_node_t, DefaultTopoKind> topo_matcher_;
+  TopoMatcher<bg_node_t, sg_node_t, BGTopoKind, SGTopoKind> topo_matcher_;
 
-  GraphMatcher(const GraphDescriptor<bg_node_t, DefaultTopoKind>& bg_descriptor,
-               const GraphDescriptor<sg_node_t, DefaultTopoKind>& sg_descriptor)
+  GraphMatcher(const GraphDescriptor<bg_node_t, BGTopoKind>& bg_descriptor,
+               const GraphDescriptor<sg_node_t, SGTopoKind>& sg_descriptor)
       : topo_matcher_(bg_descriptor, sg_descriptor) {}
 
   GraphMatcher(const GraphMatcher&) = delete;
   GraphMatcher(GraphMatcher&&) = delete;
 
-  adt::Result<GraphMatchCtx<bg_node_t>> MatchByDefaultAnchor(
+  adt::Result<GraphMatchCtx<bg_node_t>> MatchByAnchor(
       const bg_node_t& bg_node, const sg_node_t& anchor_node) {
     ADT_LET_CONST_REF(topo_match_ctx,
                       topo_matcher_.MatchByAnchor(bg_node, anchor_node));
     return GraphMatchCtx<bg_node_t>{topo_match_ctx};
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitMisMatchedNodes(
+      const GraphMatchCtx<bg_node_t>& graph_match_ctx,
+      const sg_node_t& anchor_node,
+      const DoEachT& DoEach) const {
+    const auto& topo_match_ctx = graph_match_ctx->topo_match_ctx;
+    return topo_matcher_.VisitMisMatchedNodes(
+        topo_match_ctx, anchor_node, DoEach);
+  }
+
+  adt::Result<adt::Ok> UpdateByConnectionsUntilDone(
+      GraphMatchCtx<bg_node_t>* ctx, const sg_node_t& anchor_node) {
+    return topo_matcher_.UpdateByConnectionsUntilDone(&*(*ctx)->topo_match_ctx,
+                                                      anchor_node);
   }
 
   adt::Result<bool> IsGraphMatched(const GraphMatchCtx<bg_node_t>& ctx,

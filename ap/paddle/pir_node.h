@@ -18,6 +18,7 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
 #include "ap/graph/node_cstr.h"
+#include "ap/ir_match/ref_match_ctx.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/op_result.h"
@@ -159,14 +160,102 @@ struct PackedIrOpResult {
   }
 };
 
+}  // namespace ap::paddle
+
+namespace std {
+
+template <>
+struct hash<ap::paddle::NativeIrValue> {
+  std::size_t operator()(const ap::paddle::NativeIrValue& node) const {
+    return node.GetHashValue();
+  }
+};
+
+template <>
+struct hash<ap::paddle::NativeIrOpOperand> {
+  std::size_t operator()(const ap::paddle::NativeIrOpOperand& node) const {
+    return node.GetHashValue();
+  }
+};
+
+}  // namespace std
+
+namespace ap::paddle {
+
+using RefNodeInfo = ir_match::RefNodeInfo<NativeIrValue, NativeIrOpOperand>;
+
+struct RefIrValue {
+  RefNodeInfo ref_node_info;
+
+  std::size_t GetHashValue() const {
+    return std::hash<RefNodeInfo>()(ref_node_info);
+  }
+
+  bool operator==(const RefIrValue& other) const {
+    return this->ref_node_info == other.ref_node_info;
+  }
+
+  graph::RefIrValueCstr node_cstr() const { return graph::RefIrValueCstr{}; }
+};
+
+struct RefIrOpOperand {
+  RefNodeInfo ref_node_info;
+
+  std::size_t GetHashValue() const {
+    return std::hash<RefNodeInfo>()(ref_node_info);
+  }
+
+  bool operator==(const RefIrOpOperand& other) const {
+    return this->ref_node_info == other.ref_node_info;
+  }
+
+  graph::RefIrOpOperandCstr node_cstr() const {
+    return graph::RefIrOpOperandCstr{};
+  }
+};
+
+struct RefIrOp {
+  RefNodeInfo ref_node_info;
+
+  std::size_t GetHashValue() const {
+    return std::hash<RefNodeInfo>()(ref_node_info);
+  }
+
+  bool operator==(const RefIrOp& other) const {
+    return this->ref_node_info == other.ref_node_info;
+  }
+
+  graph::RefIrOpCstr node_cstr() const { return graph::RefIrOpCstr{}; }
+};
+
+struct RefIrOpResult {
+  RefNodeInfo ref_node_info;
+
+  std::size_t GetHashValue() const {
+    return std::hash<RefNodeInfo>()(ref_node_info);
+  }
+
+  bool operator==(const RefIrOpResult& other) const {
+    return this->ref_node_info == other.ref_node_info;
+  }
+
+  graph::RefIrOpResultCstr node_cstr() const {
+    return graph::RefIrOpResultCstr{};
+  }
+};
+
 using PirNodeImpl = std::variant<NativeIrValue,
                                  PackedIrValue,
                                  NativeIrOpOperand,
                                  PackedIrOpOperand,
+                                 RefIrOpOperand,
                                  NativeIrOp,
                                  PackedIrOp,
                                  NativeIrOpResult,
-                                 PackedIrOpResult>;
+                                 PackedIrOpResult,
+                                 RefIrValue,
+                                 RefIrOp,
+                                 RefIrOpResult>;
 
 struct PirNode : public PirNodeImpl {
   using PirNodeImpl::PirNodeImpl;
@@ -175,8 +264,11 @@ struct PirNode : public PirNodeImpl {
   using dim_expr_type = ::symbol::DimExpr;
   using native_op_type = NativeIrOp;
   using packed_op_type = PackedIrOp;
+  using ref_op_type = RefIrOp;
   using native_value_type = NativeIrValue;
   using packed_value_type = PackedIrValue;
+  using ref_value_type = RefIrValue;
+  using native_op_operand_type = NativeIrOpOperand;
 
   std::size_t GetHashValue() const {
     return Match([](const auto& impl) { return impl.GetHashValue(); });
@@ -228,6 +320,13 @@ struct TypeImpl<ap::paddle::PackedIrValue> : public std::monostate {
 };
 
 template <>
+struct TypeImpl<ap::paddle::RefIrValue> : public std::monostate {
+  using value_type = ap::paddle::RefIrValue;
+
+  const char* Name() const { return "RefIrValue"; }
+};
+
+template <>
 struct TypeImpl<ap::paddle::NativeIrOp> : public std::monostate {
   using value_type = ap::paddle::NativeIrOp;
 
@@ -239,6 +338,13 @@ struct TypeImpl<ap::paddle::PackedIrOp> : public std::monostate {
   using value_type = ap::paddle::PackedIrOp;
 
   const char* Name() const { return "PackedIrOp"; }
+};
+
+template <>
+struct TypeImpl<ap::paddle::RefIrOp> : public std::monostate {
+  using value_type = ap::paddle::RefIrOp;
+
+  const char* Name() const { return "RefIrOp"; }
 };
 
 }  // namespace ap::axpr

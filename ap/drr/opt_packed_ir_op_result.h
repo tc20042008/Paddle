@@ -14,17 +14,27 @@
 
 #pragma once
 
-namespace ap::drr::topo_kind {
+#include "ap/adt/adt.h"
+#include "ap/graph/node.h"
+#include "ap/graph/node_cstr.h"
 
-struct Default;
+namespace ap::drr {
 
-// graph of all OpOperand and OpResult relationship.
-struct AllOperandAndResult;
+template <typename NodeT>
+struct OptPackedIrOpResultImpl {
+  graph::Node<NodeT> node;
+  std::size_t local_uid;  // not a index
 
-// graph of native OpOperand and OpResult relationship.
-struct NativeOperandAndResult;
+  bool operator==(const OptPackedIrOpResultImpl& other) const {
+    return this->node == other.node && this->local_uid == other.local_uid;
+  }
 
-// graph with augmented reference value/op_operand/op/op_result.
-struct RefAugmented;
+  graph::OptPackedIrOpResultCstr node_cstr() const {
+    return graph::OptPackedIrOpResultCstr{};
+  }
+};
 
-}  // namespace ap::drr::topo_kind
+template <typename NodeT>
+DEFINE_ADT_RC(OptPackedIrOpResult, OptPackedIrOpResultImpl<NodeT>);
+
+}  // namespace ap::drr

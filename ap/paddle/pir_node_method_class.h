@@ -45,6 +45,19 @@ struct PackedIrValueMethodClass {
 };
 
 template <typename ValueT>
+struct RefIrValueMethodClass {
+  using This = RefIrValueMethodClass;
+  using Self = RefIrValue;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const auto* ptr = self.ref_node_info.__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+};
+
+template <typename ValueT>
 struct NativeIrOpMethodClass {
   using This = NativeIrOpMethodClass;
   using Self = NativeIrOp;
@@ -70,6 +83,19 @@ struct PackedIrOpMethodClass {
   }
 };
 
+template <typename ValueT>
+struct RefIrOpMethodClass {
+  using This = RefIrOpMethodClass;
+  using Self = RefIrOp;
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    std::ostringstream ss;
+    const auto* ptr = self.ref_node_info.__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+};
+
 }  // namespace ap::paddle
 
 namespace ap::axpr {
@@ -87,6 +113,12 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::PackedIrValue>> {};
 
 template <typename ValueT>
+struct MethodClassImpl<ValueT, ap::paddle::RefIrValue>
+    : public paddle::RefIrValueMethodClass<ValueT> {};
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::RefIrValue>> {};
+
+template <typename ValueT>
 struct MethodClassImpl<ValueT, ap::paddle::NativeIrOp>
     : public paddle::NativeIrOpMethodClass<ValueT> {};
 template <typename ValueT>
@@ -97,5 +129,11 @@ struct MethodClassImpl<ValueT, ap::paddle::PackedIrOp>
     : public paddle::PackedIrOpMethodClass<ValueT> {};
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::PackedIrOp>> {};
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, ap::paddle::RefIrOp>
+    : public paddle::RefIrOpMethodClass<ValueT> {};
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::RefIrOp>> {};
 
 }  // namespace ap::axpr

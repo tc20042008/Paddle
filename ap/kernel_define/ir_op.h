@@ -20,7 +20,8 @@ namespace ap::kernel_define {
 
 template <typename IrNodeT>
 using IrOpImpl = std::variant<typename IrNodeT::native_op_type,
-                              typename IrNodeT::packed_op_type>;
+                              typename IrNodeT::packed_op_type,
+                              typename IrNodeT::ref_op_type>;
 
 template <typename IrNodeT>
 struct IrOp : public IrOpImpl<IrNodeT> {
@@ -34,6 +35,9 @@ struct IrOp : public IrOpImpl<IrNodeT> {
           return impl;
         },
         [](const typename IrNodeT::packed_op_type& impl) -> adt::Result<IrOp> {
+          return impl;
+        },
+        [](const typename IrNodeT::ref_op_type& impl) -> adt::Result<IrOp> {
           return impl;
         },
         [](const auto&) -> adt::Result<IrOp> {

@@ -59,7 +59,14 @@ using DrrPackedIrValue = ap::drr::PackedIrValue<DrrNode>;
 using DrrIrValue = ap::drr::IrValue<DrrNode>;
 
 using DrrNativeIrOp = ap::drr::NativeIrOp<DrrValue, DrrNode>;
+using DrrNativeIrOpOperand = ap::drr::NativeIrOpOperand<DrrNode>;
+using DrrNativeIrOpResult = ap::drr::NativeIrOpResult<DrrNode>;
 using DrrPackedIrOp = ap::drr::PackedIrOp<DrrValue, DrrNode>;
+using DrrPackedIrOpOperand = ap::drr::PackedIrOpOperand<DrrNode>;
+using DrrPackedIrOpResult = ap::drr::PackedIrOpResult<DrrNode>;
+using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<DrrValue, DrrNode>;
+using DrrOptPackedIrOpOperand = ap::drr::OptPackedIrOpOperand<DrrNode>;
+using DrrOptPackedIrOpResult = ap::drr::OptPackedIrOpResult<DrrNode>;
 
 using DrrIrOpImpl = std::variant<DrrNativeIrOp, DrrPackedIrOp>;
 
@@ -75,6 +82,10 @@ struct DrrIrOp : public DrrIrOpImpl {
 };
 using DrrGraphNode = ap::graph::Node<DrrNode>;
 using GraphMatchCtx = ap::ir_match::GraphMatchCtx<PirNode>;
+
+using PirNativeIrValue = ap::paddle::NativeIrValue;
+using PirNativeIrOpOperand = ap::paddle::NativeIrOpOperand;
+using PirNativeIrOpResult = ap::paddle::NativeIrOpResult;
 
 adt::Result<DrrNode> GetApDrrDefaultAnchor(const DrrCtx& drr_ctx) {
   ADT_LET_CONST_REF(src_ptn_ctx, drr_ctx->GetSourcePatternCtx());
@@ -162,6 +173,10 @@ struct ApLowerFusionOpPatternCtx {
               return ir_op->op_declare->op_name;
             },
             [&](const DrrPackedIrOp& ir_op) -> adt::Result<std::string> {
+              return PirNode::GetOpNameFromDrrPackedOpName(
+                  ir_op->op_declare->op_name);
+            },
+            [&](const DrrOptPackedIrOp& ir_op) -> adt::Result<std::string> {
               return PirNode::GetOpNameFromDrrPackedOpName(
                   ir_op->op_declare->op_name);
             },
@@ -1045,6 +1060,492 @@ struct ApRewriter {
   }
 };
 
+class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
+ private:
+  ApLowerFusionOpPatternCtx ctx_;
+  ApRewriter ap_rewriter_;
+  mutable std::unordered_set<pir::Operation*> rewrited_;
+
+ public:
+  NativeOpAnchorApLowerFusionOpPattern(pir::IrContext* ir_context,
+                                       const ApLowerFusionOpPatternCtx& ctx)
+      : pir::RewritePattern(ctx.anchor_op_name, 1, ir_context, {}),
+        ctx_(ctx),
+        ap_rewriter_(ctx) {}
+
+  bool MatchAndRewrite(
+      pir::Operation* op,
+      pir::PatternRewriter& rewriter) const override {  // // NOLINT
+    if (rewrited_.count(op) > 0) {
+      return false;
+    }
+    const auto& ret = TryMatchAndRewrite(op, &rewriter);
+    if (ret.HasError()) {
+      LOG(ERROR) << "\nTraceback (most recent call last):\n"
+                 << ret.GetError().CallStackToString() << "\n"
+                 << ret.GetError().class_name() << ": " << ret.GetError().msg();
+      return false;
+    }
+    LOG(ERROR) << "MatchAndRewrite: op: " << op
+               << ", ret: " << ret.GetOkValue();
+    rewrited_.insert(op);
+    return ret.GetOkValue();
+  }
+
+  adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
+                                       pir::PatternRewriter* rewriter) const {
+    ADT_LET_CONST_REF(match_ctx, GetMatchCtx(op));
+    ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
+    LOG(ERROR) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
+    return ap_rewriter_.Rewrite(match_ctx, op, rewriter);
+  }
+
+  template <typename NodeT>
+  using NativeORGraph =
+      ap::graph::GraphDescriptor<NodeT,
+                                 ap::drr::topo_kind::NativeOperandAndResult>;
+
+  template <typename NodeT>
+  using DefaultGraph =
+      ap::graph::GraphDescriptor<NodeT, ap::drr::topo_kind::Default>;
+
+  template <typename NodeT>
+  using RefAugmentedGraph =
+      ap::graph::GraphDescriptor<NodeT, ap::drr::topo_kind::RefAugmented>;
+
+  adt::Result<GraphMatchCtx> GetMatchCtx(pir::Operation* op) const {
+    DefaultGraph<DrrGraphNode> drr_graph{};
+    DefaultGraph<PirNode> pir_graph{};
+    auto* parent_block = op->GetParent();
+    ADT_CHECK(parent_block != nullptr);
+    auto* parent_op = parent_block->GetParentOp();
+    ADT_CHECK(!parent_op->isa<cinn::dialect::FusionOp>());
+    ADT_CHECK(ctx_.native_op_anchor.has_value());
+    const auto& native_op_anchor = ctx_.native_op_anchor.value();
+    {
+      ADT_LET_CONST_REF(
+          anchor_cstr, drr_graph.GetSmallGraphNodeCstr(native_op_anchor->node));
+      ap::paddle::NativeIrOp native_ir_op{op};
+      ADT_LET_CONST_REF(satisfy_constraint,
+                        pir_graph.Satisfy(native_ir_op, anchor_cstr));
+      ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
+          "pir_graph.Satisfy(native_ir_op, anchor_cstr) test failed."};
+    }
+    ADT_LET_CONST_REF(drr_op_result_anchor,
+                      GetFirstNativeDrrIrOpResult(native_op_anchor));
+    ADT_LET_CONST_REF(pir_op_result_anchor, GetFirstNativePirIrOpResult(op));
+    {
+      ADT_LET_CONST_REF(drr_op_result_anchor_cstr,
+                        drr_graph.GetSmallGraphNodeCstr(drr_op_result_anchor));
+      ADT_LET_CONST_REF(
+          satisfy_constraint,
+          pir_graph.Satisfy(pir_op_result_anchor, drr_op_result_anchor_cstr));
+      ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
+          std::string() +
+          "pir_graph.Satisfy(pir_op_result_anchor, drr_op_result_anchor_cstr) "
+          "test failed. pir_op_result_anchor: " +
+          DebugId(pir_op_result_anchor) +
+          ", drr_op_result_anchor: " + DebugId(drr_op_result_anchor) +
+          ", pir_op: " + DebugId(ap::paddle::NativeIrOp{op}) +
+          ", drr_native_op: " + DebugId(native_op_anchor->node) + "."};
+    }
+    std::optional<GraphMatchCtx> opt_graph_match_ctx;
+    {
+      NativeORGraph<PirNode> pir_native_operand_result_graph{};
+      NativeORGraph<DrrGraphNode> drr_native_operand_result_graph{};
+      using NativeOR = ap::drr::topo_kind::NativeOperandAndResult;
+      ap::ir_match::GraphMatcher<PirNode, NativeOR, NativeOR> graph_matcher(
+          pir_native_operand_result_graph, drr_native_operand_result_graph);
+      ADT_LET_CONST_REF(graph_ctx,
+                        graph_matcher.MatchByAnchor(pir_op_result_anchor,
+                                                    drr_op_result_anchor));
+      opt_graph_match_ctx = graph_ctx;
+      ADT_LET_CONST_REF(graph_matched,
+                        graph_matcher.IsGraphMatched(
+                            opt_graph_match_ctx.value(), drr_op_result_anchor));
+      ADT_CHECK(graph_matched) << adt::errors::MismatchError{};
+    }
+    ADT_CHECK(opt_graph_match_ctx.has_value());
+    {
+      ADT_LET_CONST_REF(
+          ref_match_ctx,
+          GetRefMatchCtx(opt_graph_match_ctx.value(), drr_op_result_anchor));
+      RefAugmentedGraph<PirNode> pir_augmented_graph{ref_match_ctx};
+      using RefAugmented = ap::drr::topo_kind::RefAugmented;
+      using Default = ap::drr::topo_kind::Default;
+      ap::ir_match::GraphMatcher<PirNode, RefAugmented, Default> graph_matcher(
+          pir_augmented_graph, drr_graph);
+      ADT_RETURN_IF_ERR(graph_matcher.UpdateByConnectionsUntilDone(
+          &opt_graph_match_ctx.value(), drr_op_result_anchor));
+      ADT_LET_CONST_REF(graph_matched,
+                        graph_matcher.IsGraphMatched(
+                            opt_graph_match_ctx.value(), drr_op_result_anchor));
+      ADT_CHECK(graph_matched);
+    }
+    return opt_graph_match_ctx.value();
+  }
+
+  std::string DebugId(const PirNode& pir_node) const {
+    return ap::graph::NodeDescriptor<PirNode>{}.DebugId(pir_node);
+  }
+
+  std::string DebugId(const DrrGraphNode& drr_node) const {
+    return ap::graph::NodeDescriptor<DrrGraphNode>{}.DebugId(drr_node);
+  }
+
+  template <typename NodeT>
+  using AllOperandAndResultGraph =
+      ap::graph::GraphDescriptor<NodeT,
+                                 ap::drr::topo_kind::AllOperandAndResult>;
+
+  using RefNodeInfo =
+      ap::ir_match::RefNodeInfo<PirNativeIrValue, PirNativeIrOpOperand>;
+  using RefMatchCtx =
+      ap::ir_match::RefMatchCtx<PirNativeIrValue, PirNativeIrOpOperand>;
+
+  adt::Result<RefMatchCtx> GetRefMatchCtx(const GraphMatchCtx& graph_match_ctx,
+                                          const DrrGraphNode& anchor) const {
+    AllOperandAndResultGraph<PirNode> pir_graph{};
+    AllOperandAndResultGraph<DrrGraphNode> drr_graph{};
+    using AllOR = ap::drr::topo_kind::AllOperandAndResult;
+    ap::ir_match::GraphMatcher<PirNode, AllOR, AllOR> graph_matcher(pir_graph,
+                                                                    drr_graph);
+    RefMatchCtx ref_match_ctx{};
+    using Ok = adt::Result<adt::Ok>;
+    auto DoEachMismatched = [&](const DrrGraphNode& node) -> Ok {
+      ADT_LET_CONST_REF(drr_node, node.Get());
+      return drr_node.Match(
+          [&](const DrrOptPackedIrOpResult& op_result) -> Ok {
+            ADT_LET_CONST_REF(ref_node_info,
+                              GetRefNodeInfo(graph_match_ctx, op_result));
+            if (ref_node_info.has_value()) {
+              ADT_RETURN_IF_ERR(
+                  ref_match_ctx->AddRefNodeInfo(ref_node_info.value()));
+            }
+            return adt::Ok{};
+          },
+          [&](const DrrOptPackedIrOpOperand& impl) -> Ok {
+            // do nothing.
+            return adt::Ok{};
+          },
+          [&](const DrrPackedIrOpOperand& impl) -> Ok {
+            // do nothing.
+            return adt::Ok{};
+          },
+          [&](const DrrPackedIrOpResult& impl) -> Ok {
+            // do nothing.
+            return adt::Ok{};
+          },
+          [&](const auto& impl) -> Ok {
+            const char* type_name = typeid(std::decay_t<decltype(impl)>).name();
+            return adt::errors::ValueError{
+                std::string() +
+                "GetRefValue2Operands unexpected mismatched DrrGraphNode: " +
+                type_name};
+          });
+    };
+    ADT_RETURN_IF_ERR(graph_matcher.VisitMisMatchedNodes(
+        graph_match_ctx, anchor, DoEachMismatched));
+    return ref_match_ctx;
+  }
+
+  adt::Result<std::optional<RefNodeInfo>> GetRefNodeInfo(
+      const GraphMatchCtx& graph_match_ctx,
+      const DrrOptPackedIrOpResult& op_result) const {
+    ADT_LET_CONST_REF(opt_inner_ref_node_info,
+                      GetInnerRefNodeInfo(graph_match_ctx, op_result));
+    if (opt_inner_ref_node_info.has_value()) {
+      return opt_inner_ref_node_info.value();
+    }
+    ADT_LET_CONST_REF(opt_output_ref_node_info,
+                      GetOutputRefNodeInfo(graph_match_ctx, op_result));
+    if (opt_output_ref_node_info.has_value()) {
+      return opt_output_ref_node_info.value();
+    }
+    ADT_LET_CONST_REF(opt_input_ref_node_info,
+                      GetInputRefNodeInfo(graph_match_ctx, op_result));
+    if (opt_input_ref_node_info.has_value()) {
+      return opt_input_ref_node_info.value();
+    }
+    return std::nullopt;
+  }
+
+  adt::Result<std::optional<RefNodeInfo>> GetInnerRefNodeInfo(
+      const GraphMatchCtx& graph_match_ctx,
+      const DrrOptPackedIrOpResult& drr_op_result) const {
+    DefaultGraph<PirNode> default_pir_graph{};
+    AllOperandAndResultGraph<DrrGraphNode> all_o_r_drr_graph{};
+    const auto& topo_match_ctx = graph_match_ctx->topo_match_ctx;
+    ADT_LET_CONST_REF(drr_op_operand,
+                      all_o_r_drr_graph.CastSoleInput<DrrOptPackedIrOpOperand>(
+                          drr_op_result));
+    {
+      ADT_LET_CONST_REF(num_drr_op_result_downstreams,
+                        all_o_r_drr_graph.GetNumOutputs(drr_op_result));
+      if (num_drr_op_result_downstreams == 0) {
+        return std::nullopt;
+      }
+      ADT_LET_CONST_REF(num_drr_op_operand_upstreams,
+                        all_o_r_drr_graph.GetNumInputs(drr_op_operand));
+      if (num_drr_op_operand_upstreams == 0) {
+        return std::nullopt;
+      }
+      ADT_CHECK(num_drr_op_operand_upstreams == 1);
+    }
+    ADT_LET_CONST_REF(
+        drr_op_operand_upstream,
+        all_o_r_drr_graph.CastSoleInput<DrrNativeIrOpResult>(drr_op_operand));
+    ADT_LET_CONST_REF(
+        pir_op_operand_upstream,
+        topo_match_ctx->GetSoleBigGraphNode(drr_op_operand_upstream->node));
+    ADT_LET_CONST_REF(pir_native_ir_value,
+                      CastPirSoleOutput<PirNativeIrValue>(
+                          default_pir_graph, pir_op_operand_upstream));
+    adt::List<PirNativeIrOpOperand> pir_op_operands{};
+    {
+      auto DoEachDownstream =
+          [&](const DrrGraphNode& node) -> adt::Result<adt::Ok> {
+        ADT_LET_CONST_REF(drr_node, node.Get());
+        ADT_CHECK(drr_node.Has<DrrNativeIrOpOperand>());
+        ADT_LET_CONST_REF(pir_node, topo_match_ctx->GetSoleBigGraphNode(node));
+        ADT_LET_CONST_REF(pir_native_ir_op_operand,
+                          pir_node.TryGet<PirNativeIrOpOperand>());
+        ADT_LET_CONST_REF(cur_pir_native_ir_value,
+                          CastPirSoleInput<PirNativeIrValue>(
+                              default_pir_graph, pir_native_ir_op_operand));
+        if (cur_pir_native_ir_value == pir_native_ir_value) {
+          pir_op_operands->push_back(pir_native_ir_op_operand);
+        }
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(all_o_r_drr_graph.VisitDownstreamNodes(
+          drr_op_result->node, DoEachDownstream));
+      if (pir_op_operands->empty()) {
+        return std::nullopt;
+      }
+    }
+    return RefNodeInfo{pir_native_ir_value, pir_op_operands};
+  }
+
+  adt::Result<std::optional<RefNodeInfo>> GetOutputRefNodeInfo(
+      const GraphMatchCtx& graph_match_ctx,
+      const DrrOptPackedIrOpResult& drr_op_result) const {
+    DefaultGraph<DrrGraphNode> default_drr_graph{};
+    DefaultGraph<PirNode> default_pir_graph{};
+    AllOperandAndResultGraph<DrrGraphNode> all_o_r_drr_graph{};
+    const auto& topo_match_ctx = graph_match_ctx->topo_match_ctx;
+    ADT_LET_CONST_REF(drr_op_operand,
+                      all_o_r_drr_graph.CastSoleInput<DrrOptPackedIrOpOperand>(
+                          drr_op_result));
+    {
+      ADT_LET_CONST_REF(num_drr_op_result_downstreams,
+                        all_o_r_drr_graph.GetNumOutputs(drr_op_result));
+      if (num_drr_op_result_downstreams != 0) {
+        return std::nullopt;
+      }
+      ADT_LET_CONST_REF(num_drr_op_operand_upstreams,
+                        all_o_r_drr_graph.GetNumInputs(drr_op_operand));
+      if (num_drr_op_operand_upstreams == 0) {
+        return std::nullopt;
+      }
+      ADT_CHECK(num_drr_op_operand_upstreams == 1);
+    }
+    ADT_LET_CONST_REF(
+        drr_op_operand_upstream,
+        all_o_r_drr_graph.CastSoleInput<DrrNativeIrOpResult>(drr_op_operand));
+    ADT_LET_CONST_REF(
+        pir_op_operand_upstream,
+        topo_match_ctx->GetSoleBigGraphNode(drr_op_operand_upstream->node));
+    ADT_LET_CONST_REF(pir_native_ir_value,
+                      CastPirSoleOutput<PirNativeIrValue>(
+                          default_pir_graph, pir_op_operand_upstream));
+    ADT_LET_CONST_REF(
+        drr_ir_value,
+        default_drr_graph.CastSoleInput<DrrNativeIrValue>(drr_op_operand));
+    std::unordered_set<PirNativeIrOpOperand> excluded;
+    {
+      auto DoEachDownstream =
+          [&](const DrrGraphNode& node) -> adt::Result<adt::Ok> {
+        ADT_LET_CONST_REF(drr_node, node.Get());
+        if (!drr_node.Has<DrrNativeIrOpOperand>()) {
+          return adt::Ok{};
+        }
+        ADT_LET_CONST_REF(pir_node, topo_match_ctx->GetSoleBigGraphNode(node));
+        ADT_LET_CONST_REF(pir_op_operand,
+                          pir_node.TryGet<PirNativeIrOpOperand>());
+        ADT_CHECK(excluded.emplace(pir_op_operand).second);
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(default_drr_graph.VisitDownstreamNodes(
+          drr_ir_value->node, DoEachDownstream));
+    }
+    adt::List<PirNativeIrOpOperand> pir_op_operands{};
+    {
+      auto DoEachDownstream = [&](const PirNode& node) -> adt::Result<adt::Ok> {
+        if (!node.Has<PirNativeIrOpOperand>()) {
+          return adt::Ok{};
+        }
+        ADT_LET_CONST_REF(pir_op_operand, node.TryGet<PirNativeIrOpOperand>());
+        if (excluded.count(pir_op_operand) == 0) {
+          pir_op_operands->push_back(pir_op_operand);
+        }
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(default_pir_graph.VisitDownstreamNodes(
+          pir_native_ir_value, DoEachDownstream));
+    }
+    return RefNodeInfo{pir_native_ir_value, pir_op_operands};
+  }
+
+  adt::Result<std::optional<RefNodeInfo>> GetInputRefNodeInfo(
+      const GraphMatchCtx& graph_match_ctx,
+      const DrrOptPackedIrOpResult& drr_op_result) const {
+    DefaultGraph<PirNode> default_pir_graph{};
+    AllOperandAndResultGraph<DrrGraphNode> all_o_r_drr_graph{};
+    const auto& topo_match_ctx = graph_match_ctx->topo_match_ctx;
+    ADT_LET_CONST_REF(drr_op_operand,
+                      all_o_r_drr_graph.CastSoleInput<DrrOptPackedIrOpOperand>(
+                          drr_op_result));
+    {
+      ADT_LET_CONST_REF(num_drr_op_result_downstreams,
+                        all_o_r_drr_graph.GetNumOutputs(drr_op_result));
+      if (num_drr_op_result_downstreams == 0) {
+        return std::nullopt;
+      }
+      ADT_LET_CONST_REF(num_drr_op_operand_upstreams,
+                        all_o_r_drr_graph.GetNumInputs(drr_op_operand));
+      if (num_drr_op_operand_upstreams != 0) {
+        return std::nullopt;
+      }
+    }
+    std::optional<PirNativeIrValue> pir_native_ir_value;
+    adt::List<PirNativeIrOpOperand> pir_op_operands{};
+    {
+      auto DoEachDownstream =
+          [&](const DrrGraphNode& node) -> adt::Result<adt::Ok> {
+        ADT_LET_CONST_REF(drr_node, node.Get());
+        ADT_CHECK(drr_node.Has<DrrNativeIrOpOperand>());
+        ADT_LET_CONST_REF(pir_node, topo_match_ctx->GetSoleBigGraphNode(node));
+        ADT_LET_CONST_REF(pir_native_ir_op_operand,
+                          pir_node.TryGet<PirNativeIrOpOperand>());
+        ADT_LET_CONST_REF(cur_pir_native_ir_value,
+                          CastPirSoleInput<PirNativeIrValue>(
+                              default_pir_graph, pir_native_ir_op_operand));
+        if (!pir_native_ir_value.has_value()) {
+          ADT_LET_CONST_REF(
+              cur_pir_native_ir_value_upstream,
+              GetPirSoleInput(default_pir_graph, cur_pir_native_ir_value));
+          if (!cur_pir_native_ir_value_upstream.Has<PirNativeIrOpResult>()) {
+            return adt::Ok{};
+          }
+          pir_native_ir_value = cur_pir_native_ir_value;
+        }
+        ADT_CHECK(cur_pir_native_ir_value == pir_native_ir_value.value());
+        pir_op_operands->push_back(pir_native_ir_op_operand);
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(all_o_r_drr_graph.VisitDownstreamNodes(
+          drr_op_result->node, DoEachDownstream));
+    }
+    if (!pir_native_ir_value.has_value()) {
+      return std::nullopt;
+    }
+    if (pir_op_operands->empty()) {
+      return std::nullopt;
+    }
+    return RefNodeInfo{pir_native_ir_value.value(), pir_op_operands};
+  }
+
+  template <typename PirNodeImplT, typename GraphT>
+  adt::Result<PirNodeImplT> CastPirSoleOutput(const GraphT& pir_graph,
+                                              const PirNode& node) const {
+    std::optional<PirNodeImplT> opt_pir_node{};
+    auto DoEachDownstream =
+        [&](const PirNode& downstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(pir_node_impl, downstream.TryGet<PirNodeImplT>());
+      ADT_CHECK(!opt_pir_node.has_value());
+      opt_pir_node = pir_node_impl;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(pir_graph.VisitDownstreamNodes(node, DoEachDownstream));
+    ADT_CHECK(opt_pir_node.has_value());
+    return opt_pir_node.value();
+  }
+
+  template <typename PirNodeImplT, typename GraphT>
+  adt::Result<PirNodeImplT> CastPirSoleInput(const GraphT& pir_graph,
+                                             const PirNode& node) const {
+    std::optional<PirNodeImplT> opt_pir_node{};
+    auto DoEachUpstream = [&](const PirNode& upstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(pir_node_impl, upstream.TryGet<PirNodeImplT>());
+      ADT_CHECK(!opt_pir_node.has_value());
+      opt_pir_node = pir_node_impl;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(pir_graph.VisitUpstreamNodes(node, DoEachUpstream));
+    ADT_CHECK(opt_pir_node.has_value());
+    return opt_pir_node.value();
+  }
+
+  template <typename GraphT>
+  adt::Result<PirNode> GetPirSoleInput(const GraphT& pir_graph,
+                                       const PirNode& node) const {
+    std::optional<PirNode> opt_pir_node{};
+    auto DoEachUpstream = [&](const PirNode& upstream) -> adt::Result<adt::Ok> {
+      ADT_CHECK(!opt_pir_node.has_value());
+      opt_pir_node = upstream;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(pir_graph.VisitUpstreamNodes(node, DoEachUpstream));
+    ADT_CHECK(opt_pir_node.has_value());
+    return opt_pir_node.value();
+  }
+
+  template <typename GraphT>
+  adt::Result<std::size_t> GetNumPirOutputs(const GraphT& pir_graph,
+                                            const PirNode& node) const {
+    std::size_t num_outputs = 0;
+    auto DoEachDownstream =
+        [&](const PirNode& downstream) -> adt::Result<adt::Ok> {
+      ++num_outputs;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(pir_graph.VisitDownstreamNodes(node, DoEachDownstream));
+    return num_outputs;
+  }
+
+  template <typename GraphT>
+  adt::Result<std::size_t> GetNumPirInputs(const GraphT& pir_graph,
+                                           const PirNode& node) const {
+    std::size_t num_inputs = 0;
+    auto DoEachUpstream = [&](const PirNode& upstream) -> adt::Result<adt::Ok> {
+      ++num_inputs;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(pir_graph.VisitUpstreamNodes(node, DoEachUpstream));
+    return num_inputs;
+  }
+
+  adt::Result<DrrGraphNode> GetFirstNativeDrrIrOpResult(
+      const DrrNativeIrOp& op) const {
+    ADT_LET_CONST_REF(downstreams, op->node.DownstreamNodes());
+    ADT_CHECK(downstreams.size() > 0);
+    using List = adt::List<DrrGraphNode>;
+    using Vec = ap::graph::IndexedTag<List>;
+    ADT_LET_CONST_REF(indexed_list, downstreams.template TryGet<Vec>());
+    return indexed_list.data->at(0);
+  }
+
+  adt::Result<PirNode> GetFirstNativePirIrOpResult(pir::Operation* op) const {
+    ADT_CHECK(!op->isa<cinn::dialect::FusionOp>());
+    ADT_CHECK(op->num_results() > 0);
+    pir::Value value = op->result(0);
+    ap::paddle::NativeIrOpResult ir_op_result{
+        pir::OpResult::dyn_cast_from(value)};
+    return ir_op_result;
+  }
+};
+
 class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
  private:
   ApLowerFusionOpPatternCtx ctx_;
@@ -1091,13 +1592,14 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     auto* parent_op = parent_block->GetParentOp();
     ADT_CHECK(!parent_op->isa<cinn::dialect::FusionOp>());
     const auto& default_anchor = ctx_.default_anchor;
-    ap::graph::GraphDescriptor<PirNode, ap::drr::topo_kind::Default>
-        pir_graph{};
-    ap::graph::GraphDescriptor<DrrGraphNode, ap::drr::topo_kind::Default>
-        src_ptn_graph{};
-    ap::ir_match::GraphMatcher<PirNode> graph_matcher(pir_graph, src_ptn_graph);
-    ADT_LET_CONST_REF(anchor_cstr,
-                      src_ptn_graph.GetNodeConstraint(default_anchor.node()));
+    using Default = ap::drr::topo_kind::Default;
+    ap::graph::GraphDescriptor<PirNode, Default> pir_graph{};
+    ap::graph::GraphDescriptor<DrrGraphNode, Default> src_ptn_graph{};
+    ap::ir_match::GraphMatcher<PirNode, Default, Default> graph_matcher(
+        pir_graph, src_ptn_graph);
+    ADT_LET_CONST_REF(
+        anchor_cstr,
+        src_ptn_graph.GetSmallGraphNodeCstr(default_anchor.node()));
     const auto& obj_node = CastToPirNode(op);
     ADT_LET_CONST_REF(satisfy_constraint,
                       pir_graph.Satisfy(obj_node, anchor_cstr));
@@ -1105,7 +1607,7 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
         "pir_graph.Satisfy(obj_node, anchor_cstr) test failed."};
     ADT_LET_CONST_REF(
         graph_ctx,
-        graph_matcher.MatchByDefaultAnchor(obj_node, default_anchor.node()));
+        graph_matcher.MatchByAnchor(obj_node, default_anchor.node()));
     ADT_LET_CONST_REF(
         graph_matched,
         graph_matcher.IsGraphMatched(graph_ctx, default_anchor.node()));
@@ -1146,8 +1648,13 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
     auto AddFusionOpPattern = [&](const auto& drr_ctx) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(pattern_ctx,
                         ApLowerFusionOpPatternCtx::MakeFromDrrCtx(drr_ctx));
-      ps->Add(std::make_unique<DefaultAnchorApLowerFusionOpPattern>(
-          context, pattern_ctx));
+      if (pattern_ctx.native_op_anchor.has_value()) {
+        ps->Add(std::make_unique<NativeOpAnchorApLowerFusionOpPattern>(
+            context, pattern_ctx));
+      } else {
+        ps->Add(std::make_unique<DefaultAnchorApLowerFusionOpPattern>(
+            context, pattern_ctx));
+      }
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitEachDrrCtx(AddFusionOpPattern));

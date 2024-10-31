@@ -17,6 +17,7 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
 #include "ap/index_expr/index_tuple_expr.h"
+#include "ap/ir_match/native_or_ref_ir_value.h"
 
 namespace ap::kernel_define {
 
@@ -27,10 +28,8 @@ using LocalVarName = std::string;
 
 template <typename IrNodeT>
 struct LocalVarBinding {
-  using NativeIrValue = typename IrNodeT::native_value_type;
-
   LocalVarName local_var_name;
-  NativeIrValue ir_value;
+  ir_match::NativeOrRefIrValue<IrNodeT> ir_value;
 };
 
 template <typename IrNodeT>

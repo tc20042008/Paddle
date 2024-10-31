@@ -22,18 +22,19 @@
 #include "ap/drr/src_ptn_valid_out_ir_value.h"
 #include "ap/drr/tags.h"
 #include "ap/drr/unbound_ir_value.h"
+#include "ap/drr/unbound_opt_packed_ir_op.h"
 #include "ap/drr/unbound_packed_ir_op.h"
 
 namespace ap::drr {
 
 template <typename ValueT, typename NodeT>
-struct SrcPtnUnboundPackedIrOp {
-  using This = SrcPtnUnboundPackedIrOp;
-  using Self = tSrcPtn<UnboundPackedIrOp<ValueT, NodeT>>;
+struct UnboundOptPackedIrOpMethodClass {
+  using This = UnboundOptPackedIrOpMethodClass;
+  using Self = UnboundOptPackedIrOp<ValueT, NodeT>;
 
   adt::Result<ValueT> ToString(const Self& self) {
     std::ostringstream ss;
-    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
@@ -53,13 +54,13 @@ struct SrcPtnUnboundPackedIrOp {
   adt::Result<ValueT> Call(const Self& self, const std::vector<ValueT>& args) {
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string() +
-        "SrcPtnUnboundPackedIrOp.__call__ takes 2 arguments. but " +
+        "UnboundOptPackedIrOp.__call__ takes 2 arguments. but " +
         std::to_string(args.size()) + " were given."};
     ADT_LET_CONST_REF(input_vals,
                       axpr::TryGetImpl<adt::List<ValueT>>(args.at(0)))
         << adt::errors::TypeError{
                std::string() +
-               "the first argument of SrcPtnUnboundPackedIrOp.__call__ should "
+               "the first argument of UnboundOptPackedIrOp.__call__ should "
                "be a list."};
     adt::List<SrcPtnValidInIrValue<ValueT, NodeT>> inputs;
     inputs->reserve(input_vals->size());
@@ -71,7 +72,7 @@ struct SrcPtnUnboundPackedIrOp {
                       axpr::TryGetImpl<adt::List<ValueT>>(args.at(1)))
         << adt::errors::TypeError{
                std::string() +
-               "the second argument of SrcPtnUnboundPackedIrOp.__call__ should "
+               "the second argument of UnboundOptPackedIrOp.__call__ should "
                "be a list."};
     adt::List<SrcPtnValidOutIrValue<ValueT, NodeT>> outputs;
     outputs->reserve(output_vals->size());
@@ -82,10 +83,10 @@ struct SrcPtnUnboundPackedIrOp {
     ADT_RETURN_IF_ERR(CheckNoRedundentTensorNames(inputs, outputs));
     ADT_LET_CONST_REF(opt_packed_inputs, ConvertInputs(inputs));
     ADT_LET_CONST_REF(opt_packed_outputs, ConvertOutputs(outputs));
-    ADT_LET_CONST_REF(packed_op,
-                      Helper{}.GetPackedIrOpByUnboundPackedIrOp(self.value()));
+    ADT_LET_CONST_REF(opt_packed_op,
+                      Helper{}.GetOptPackedIrOpByUnboundOptPackedIrOp(self));
     Helper{}.ConnectIrOpAndIrValue(
-        packed_op, opt_packed_inputs, opt_packed_outputs);
+        opt_packed_op, opt_packed_inputs, opt_packed_outputs);
     return adt::Nothing{};
   }
 
@@ -183,7 +184,7 @@ struct SrcPtnUnboundPackedIrOp {
           return adt::errors::TypeError{
               std::string() +
               "unsupported operand types for the first arugments of "
-              "SrcPtnUnboundPackedIrOp.__call__: " +
+              "UnboundOptPackedIrOp.__call__: " +
               axpr::GetTypeName(arg) +
               ". only 'SrcPtnPackedIrValue' and 'UnboundIrValue' supported. "};
         });
@@ -204,7 +205,7 @@ struct SrcPtnUnboundPackedIrOp {
           return adt::errors::TypeError{
               std::string() +
               "unsupported operand types for the second arguments of "
-              "SrcPtnUnboundPackedIrOp.__call__: " +
+              "UnboundOptPackedIrOp.__call__: " +
               axpr::GetTypeName(arg) +
               ". only 'SrcPtnPackedIrValue' and 'UnboundIrValue' supported. "};
         });
@@ -216,13 +217,11 @@ struct SrcPtnUnboundPackedIrOp {
 namespace ap::axpr {
 
 template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       drr::tSrcPtn<drr::UnboundPackedIrOp<ValueT, NodeT>>>
-    : public drr::SrcPtnUnboundPackedIrOp<ValueT, NodeT> {};
+struct MethodClassImpl<ValueT, drr::UnboundOptPackedIrOp<ValueT, NodeT>>
+    : public drr::UnboundOptPackedIrOpMethodClass<ValueT, NodeT> {};
 
 template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tSrcPtn<drr::UnboundPackedIrOp<ValueT, NodeT>>>> {};
+struct MethodClassImpl<ValueT,
+                       TypeImpl<drr::UnboundOptPackedIrOp<ValueT, NodeT>>> {};
 
 }  // namespace ap::axpr

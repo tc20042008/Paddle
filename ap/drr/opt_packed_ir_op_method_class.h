@@ -14,17 +14,17 @@
 
 #pragma once
 
-namespace ap::drr::topo_kind {
+#include "ap/axpr/method_class.h"
+#include "ap/axpr/type.h"
+#include "ap/drr/opt_packed_ir_op.h"
+#include "ap/drr/tags.h"
 
-struct Default;
+namespace ap::axpr {
 
-// graph of all OpOperand and OpResult relationship.
-struct AllOperandAndResult;
+template <typename ValueT, typename NodeT>
+struct MethodClassImpl<ValueT, drr::OptPackedIrOp<ValueT, NodeT>> {};
 
-// graph of native OpOperand and OpResult relationship.
-struct NativeOperandAndResult;
+template <typename ValueT, typename NodeT>
+struct MethodClassImpl<ValueT, TypeImpl<drr::OptPackedIrOp<ValueT, NodeT>>> {};
 
-// graph with augmented reference value/op_operand/op/op_result.
-struct RefAugmented;
-
-}  // namespace ap::drr::topo_kind
+}  // namespace ap::axpr

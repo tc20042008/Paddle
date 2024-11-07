@@ -33,6 +33,12 @@ struct PointerValueMethodClass {
     });
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    return self.Match([](const auto* impl) -> int64_t {
+      return reinterpret_cast<int64_t>(impl);
+    });
+  }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return std::nullopt;

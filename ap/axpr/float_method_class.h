@@ -29,6 +29,11 @@ struct FloatMethodClass {
 
   adt::Result<ValueT> ToString(const Self val) { return std::to_string(val); }
 
+  adt::Result<ValueT> Hash(const Self val) {
+    static_assert(sizeof(Self) == sizeof(int64_t), "");
+    return *reinterpret_cast<const int64_t*>(&val);
+  }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<

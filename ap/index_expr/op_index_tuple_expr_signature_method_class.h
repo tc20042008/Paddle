@@ -24,6 +24,9 @@ struct InIndexTupleExprSignatureMethodClass {
   using Self = index_expr::InIndexTupleExprSignature;
 
   adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+  adt::Result<ValueT> Hash(const Self& self) {
+    return adt::errors::NotImplementedError{};
+  }
 };
 
 template <typename ValueT>
@@ -31,6 +34,9 @@ struct OutIndexTupleExprSignatureMethodClass {
   using Self = index_expr::OutIndexTupleExprSignature;
 
   adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+  adt::Result<ValueT> Hash(const Self& self) {
+    return adt::errors::NotImplementedError{};
+  }
 };
 
 template <typename ValueT>
@@ -38,6 +44,9 @@ struct OpIndexTupleExprSignatureMethodClass {
   using Self = index_expr::OpIndexTupleExprSignature;
 
   adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+  adt::Result<ValueT> Hash(const Self& self) {
+    return adt::errors::NotImplementedError{};
+  }
 };
 
 }  // namespace ap::index_expr

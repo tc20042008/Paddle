@@ -24,18 +24,22 @@ namespace {
 using CoreExpr = ap::axpr::CoreExpr;
 using Lambda = ap::axpr::Lambda<CoreExpr>;
 using Val = ap::kernel_dispatch::Val;
-using DispatchRawCtx = ap::kernel_dispatch::DispatchRawCtx<Val>;
+using DispatchCtx = ap::kernel_dispatch::DispatchCtx<Val>;
 
 }  // namespace
 
-adt::Result<adt::Ok> KernelDispatchHelper::Interpret(
-    const Lambda& kernel_dispatcher_lambda,
-    const Lambda& ctx_maker_lambda,
-    const DispatchRawCtx& raw_ctx) {
+adt::Result<Val> KernelDispatchHelper::InterpretCtxMaker(
+    const Lambda& ctx_maker_lambda) {
   ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
-  ADT_LET_CONST_REF(ctx,
-                    cps_interpreter.Interpret(ctx_maker_lambda, {raw_ctx}));
-  ADT_RETURN_IF_ERR(cps_interpreter.Interpret(kernel_dispatcher_lambda, {ctx}));
+  ADT_LET_CONST_REF(ctx, cps_interpreter.Interpret(ctx_maker_lambda, {}));
+  return ctx;
+}
+
+adt::Result<adt::Ok> KernelDispatchHelper::InterpretKernelDispatcher(
+    const Lambda& kernel_dispatcher_lambda, const DispatchCtx& dispatch_ctx) {
+  ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
+  ADT_RETURN_IF_ERR(
+      cps_interpreter.Interpret(kernel_dispatcher_lambda, {dispatch_ctx}));
   return adt::Ok{};
 }
 

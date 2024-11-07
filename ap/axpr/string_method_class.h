@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include "ap/axpr/constants.h"
 #include "ap/axpr/method_class.h"
@@ -25,19 +26,53 @@ template <typename ValueT>
 struct StringMethodClass {
   using This = StringMethodClass;
   using Self = std::string;
+  using Val = ValueT;
 
-  adt::Result<ValueT> ToString(const Self& self) { return self; }
+  adt::Result<Val> ToString(const Self& self) { return self; }
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  adt::Result<Val> Hash(const Self& self) {
+    return static_cast<int64_t>(std::hash<std::string>()(self));
+  }
+
+  adt::Result<Val> GetAttr(const Self& self, const Val& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "replace") {
-      return axpr::Method<ValueT>{self, &This::StaticReplace};
+      return axpr::Method<Val>{self, &This::StaticReplace};
+    }
+
+    if (attr_name == "join") {
+      return axpr::Method<Val>{self,
+                               &axpr::WrapAsBuiltinFuncType<This, &This::Join>};
     }
     return adt::errors::TypeError{};
   }
 
-  static adt::Result<ValueT> StaticReplace(const ValueT& self_val,
-                                           const std::vector<ValueT>& args) {
+  adt::Result<Val> Join(const Self& self, const std::vector<Val>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "join() takes 1 argument but " +
+        std::to_string(args.size()) + " were given."};
+    ADT_LET_CONST_REF(lst, args.at(0).template TryGet<adt::List<Val>>())
+        << adt::errors::TypeError{
+               std::string() +
+               "the argument 1 of join() should be 'list' not '" +
+               GetTypeName(args.at(0)) + "'."};
+    std::ostringstream ss;
+    int i = 0;
+    for (const auto& elt : *lst) {
+      ADT_LET_CONST_REF(item, elt.template TryGet<std::string>())
+          << adt::errors::TypeError{
+                 std::string() + "sequence item " + std::to_string(i) +
+                 ": expected str instance, " + GetTypeName(elt) + " found"};
+      if (i++ > 0) {
+        ss << self;
+      }
+      ss << item;
+    }
+    return ss.str();
+  }
+
+  static adt::Result<Val> StaticReplace(const Val& self_val,
+                                        const std::vector<Val>& args) {
     ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string() + "'str.replace' takes 2 arguments but " +
@@ -64,7 +99,7 @@ struct StringMethodClass {
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static std::optional<BuiltinBinaryFuncT<Val>> GetBuiltinBinaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<
                       BultinBinarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
@@ -76,22 +111,20 @@ struct StringMethodClass {
   }
 
   template <typename ArithmeticOp>
-  static adt::Result<ValueT> BinaryFunc(const ValueT& lhs_val,
-                                        const ValueT& rhs_val) {
+  static adt::Result<Val> BinaryFunc(const Val& lhs_val, const Val& rhs_val) {
     const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<std::string>(lhs_val);
+        MethodClass<Val>::template TryGet<std::string>(lhs_val);
     ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     return BuiltinStringBinary<ArithmeticOp>(lhs, rhs_val);
   }
 };
 
-template <typename ValueT>
-struct MethodClassImpl<ValueT, std::string> : public StringMethodClass<ValueT> {
-};
+template <typename Val>
+struct MethodClassImpl<Val, std::string> : public StringMethodClass<Val> {};
 
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<std::string>>
-    : public EmptyMethodClass<ValueT> {};
+template <typename Val>
+struct MethodClassImpl<Val, TypeImpl<std::string>>
+    : public EmptyMethodClass<Val> {};
 
 }  // namespace ap::axpr

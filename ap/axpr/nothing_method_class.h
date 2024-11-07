@@ -26,6 +26,8 @@ struct NothingMethodClass {
 
   adt::Result<ValueT> ToString(const Self&) { return std::string(""); }
 
+  adt::Result<ValueT> Hash(const Self& self) { return static_cast<int64_t>(0); }
+
   Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
     const auto& opt_lhs =
         MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);

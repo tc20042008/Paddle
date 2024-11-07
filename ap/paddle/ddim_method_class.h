@@ -38,6 +38,14 @@ struct DDimMethodClass {
     return ss.str();
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    int64_t hash_value = 0;
+    for (int i = 0; i < self.size(); ++i) {
+      hash_value = adt::hash_combine(hash_value, self.at(i));
+    }
+    return hash_value;
+  }
+
   adt::Result<ValueT> GetItem(const Self& self, const ValueT& index_val) {
     ADT_LET_CONST_REF(index, index_val.template TryGet<int64_t>())
         << adt::errors::TypeError{std::string() +

@@ -14,6 +14,7 @@
 
 #pragma once
 #include "ap/adt/adt.h"
+#include "ap/axpr/builtin_serializable_object.h"
 #include "ap/axpr/value.h"
 #include "ap/kernel_define/data_type.h"
 #include "ap/kernel_dispatch/arg_value.h"
@@ -26,26 +27,29 @@
 namespace ap::kernel_dispatch {
 
 template <typename ValueT>
-using ValueImpl = ap::axpr::ValueBase<ValueT,
-                                      ap::axpr::DataType,
-                                      ap::axpr::DataValue,
-                                      ap::axpr::PointerType,
-                                      ap::axpr::PointerValue,
-                                      ConstTensor<ValueT>,
-                                      MutableTensor<ValueT>,
-                                      DispatchRawCtx<ValueT>,
-                                      DispatchCtx<ValueT>>;
+using ValueImpl = axpr::ValueBase<ValueT,
+                                  axpr::DataType,
+                                  axpr::DataValue,
+                                  axpr::PointerType,
+                                  axpr::PointerValue,
+                                  axpr::BuiltinSerializableObject<ValueT>,
+                                  ConstTensor<ValueT>,
+                                  MutableTensor<ValueT>,
+                                  DispatchRawCtx<ValueT>,
+                                  DispatchCtx<ValueT>>;
 
 struct Value : public ValueImpl<Value> {
   using ValueImpl<Value>::ValueImpl;
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 
   static axpr::Object<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value,
-                                        ap::axpr::DataType,
-                                        ap::axpr::DataValue,
-                                        ap::axpr::PointerType,
-                                        ap::axpr::PointerValue>();
+    return axpr::GetObjectTypeName2Type<
+        Value,
+        axpr::DataType,
+        axpr::DataValue,
+        axpr::PointerType,
+        axpr::PointerValue,
+        axpr::BuiltinSerializableObject<Value>>();
   }
 };
 

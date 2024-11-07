@@ -16,25 +16,27 @@
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/object.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/drr_value.h"
 #include "ap/ir_match/ir_match_ctx.h"
 #include "ap/kernel_define/adt.h"
+#include "ap/kernel_define/arg_source_ctx.h"
 #include "ap/kernel_define/arg_type.h"
 #include "ap/kernel_define/data_type.h"
-#include "ap/kernel_define/kernel_arg.h"
 #include "paddle/cinn/adt/adt.h"
 
 namespace ap::kernel_define {
-
-struct NamedKernelArg {
-  std::string arg_name;
-  KernelArg kernel_arg;
-};
 
 template <typename IrNodeT>
 struct DefineCtxImpl {
   std::optional<ir_match::IrMatchCtx<IrNodeT>> ir_match_ctx;
 
-  std::vector<NamedKernelArg> registered_named_kernel_args;
+  using DrrValue = drr::Value;
+  using DrrNode = drr::Node<DrrValue>;
+  using DrrPackedIrOp = drr::PackedIrOp<DrrValue, DrrNode>;
+
+  DrrPackedIrOp res_ptn_ir_op;
+
+  ArgSourceCtx<IrNodeT> arg_source_ctx;
 
   bool operator==(const DefineCtxImpl& other) const { return this == &other; }
 };

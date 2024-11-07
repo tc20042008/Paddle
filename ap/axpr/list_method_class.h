@@ -26,6 +26,10 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
   using This = MethodClassImpl<ValueT, adt::List<ValueT>>;
   using Self = adt::List<ValueT>;
 
+  adt::Result<ValueT> Length(const Self& self) {
+    return static_cast<int64_t>(self->size());
+  }
+
   adt::Result<ValueT> ToString(const Self& self) {
     std::ostringstream ss;
     ss << "[";
@@ -45,6 +49,21 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
     }
     ss << "]";
     return ss.str();
+  }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    int64_t hash_value = 0;
+    for (const auto& elt : *self) {
+      const auto& func = MethodClass<ValueT>::Hash(elt);
+      ADT_LET_CONST_REF(elt_hash_val, func(elt));
+      ADT_LET_CONST_REF(elt_hash, elt_hash_val.template TryGet<int64_t>())
+          << adt::errors::TypeError{
+                 std::string() + "'" + GetTypeName(elt) +
+                 ".__builtin_hash__ should return a 'int' but '" +
+                 GetTypeName(elt_hash_val) + "' were returned."};
+      hash_value = adt::hash_combine(hash_value, elt_hash);
+    }
+    return hash_value;
   }
 
   adt::Result<ValueT> GetItem(const Self& self, const ValueT& idx) {

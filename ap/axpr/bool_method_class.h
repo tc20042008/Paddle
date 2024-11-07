@@ -31,6 +31,8 @@ struct BoolMethodClass {
     return std::string(val ? "True" : "False");
   }
 
+  adt::Result<ValueT> Hash(Self val) { return static_cast<int64_t>(val); }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<

@@ -57,6 +57,11 @@ struct ArgType : public ArgTypeImpl {
       return data_type.GetOkValue().template Has<ap::axpr::CppDataType<T>>();
     }
   }
+
+  template <typename ValueT>
+  adt::Result<ValueT> CastTo() const {
+    return Match([](const auto& impl) -> adt::Result<ValueT> { return impl; });
+  }
 };
 
 template <typename ValueT>

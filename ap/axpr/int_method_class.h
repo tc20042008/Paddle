@@ -29,6 +29,8 @@ struct IntMethodClass {
 
   adt::Result<ValueT> ToString(Self int_val) { return std::to_string(int_val); }
 
+  adt::Result<ValueT> Hash(Self int_val) { return int_val; }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<

@@ -60,6 +60,24 @@ struct DataValue : public DataValueImpl {
     });
   }
 
+  Result<int64_t> GetHashValue() const {
+    using RetT = Result<int64_t>;
+    return Match([](const auto& impl) -> RetT {
+      using T = std::decay_t<decltype(impl)>;
+      if constexpr (std::is_same_v<T, bool>) {
+        return static_cast<int64_t>(std::hash<T>()(impl));
+      } else if constexpr (std::is_integral_v<T>) {
+        return static_cast<int64_t>(std::hash<T>()(impl));
+      } else if constexpr (std::is_same_v<T, float>) {
+        return static_cast<int64_t>(std::hash<T>()(impl));
+      } else if constexpr (std::is_same_v<T, double>) {
+        return static_cast<int64_t>(std::hash<T>()(impl));
+      } else {
+        return adt::errors::NotImplementedError{"DataType NotImplemented."};
+      }
+    });
+  }
+
  private:
   template <typename DstT, typename SrcT>
   Result<DataValue> DataValueStaticCast(SrcT v) const {

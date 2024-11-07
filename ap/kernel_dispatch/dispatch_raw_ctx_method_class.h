@@ -54,20 +54,13 @@ Result<Val> MakeDispatchCtx(const Val& self_val, const std::vector<Val>& args) {
       std::to_string(args.size()) + "were given."};
   ADT_LET_CONST_REF(raw_ctx, self_val.template TryGet<DispatchRawCtx<Val>>());
   const auto& arg0 = args.at(0);
-  const auto& opt_object = arg0.Match(
-      [&](const ap::axpr::Object<Val>& obj) -> Result<ap::axpr::Object<Val>> {
-        return obj;
-      },
-      [&](const ap::axpr::Nothing&) -> Result<ap::axpr::Object<Val>> {
-        return ap::axpr::Object<Val>{};
-      },
-      [&](const auto&) -> Result<ap::axpr::Object<Val>> {
-        return TypeError{std::string() +
-                         "the first argument of 'DispatchRawCtx.DispatchCtx' "
-                         "must be an object. the '" +
-                         axpr::GetTypeName(arg0) + "' were given."};
-      });
-  ADT_LET_CONST_REF(object, opt_object);
+  using ObjectT = axpr::BuiltinSerializableObject<Val>;
+  ADT_LET_CONST_REF(object, arg0.template TryGet<ObjectT>())
+      << adt::errors::TypeError{
+             std::string() +
+             "the first argument of 'DispatchRawCtx.DispatchCtx' "
+             "must be an BuiltinSerializableObject. the '" +
+             axpr::GetTypeName(arg0) + "' were given."};
   return DispatchCtx<Val>{raw_ctx, object};
 }
 

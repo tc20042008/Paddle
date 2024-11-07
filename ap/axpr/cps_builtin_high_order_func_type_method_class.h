@@ -30,6 +30,10 @@ struct CpsBuiltinHighOrderFuncTypeMethodClass {
     ss << "<" << TypeImpl<Self>{}.Name() << " object at " << func << ">";
     return ss.str();
   }
+
+  adt::Result<ValueT> Hash(Self func) {
+    return reinterpret_cast<int64_t>(func);
+  }
 };
 
 template <typename ValueT>

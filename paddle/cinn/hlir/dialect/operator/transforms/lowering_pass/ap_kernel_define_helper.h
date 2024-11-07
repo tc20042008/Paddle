@@ -16,6 +16,7 @@
 
 #include "ap/adt/adt.h"
 #include "ap/kernel_define/code_gen_result.h"
+#include "ap/kernel_define/compiletime_value.h"
 #include "ap/kernel_define/define_ctx.h"
 #include "ap/kernel_define/module.h"
 #include "ap/paddle/pir_node.h"
@@ -27,8 +28,9 @@ struct ApKernelDefineHelper {
   using Lambda = ap::axpr::Lambda<CoreExpr>;
   using Module = ap::kernel_define::Module;
   using PirNode = ap::paddle::PirNode;
+  using CtValue = ap::kernel_define::CtValue<PirNode>;
   using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
-  using CodeGenResult = ap::kernel_define::CodeGenResult;
+  using CodeGenResult = ap::kernel_define::CodeGenResult<CtValue>;
 
   adt::Result<CodeGenResult> Interpret(const Lambda& lambda,
                                        const DefineCtx& define_ctx);

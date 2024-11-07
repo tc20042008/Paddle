@@ -23,11 +23,12 @@ struct KernelDispatchHelper {
   using CoreExpr = ap::axpr::CoreExpr;
   using Lambda = ap::axpr::Lambda<CoreExpr>;
   using Val = ap::kernel_dispatch::Val;
-  using DispatchRawCtx = ap::kernel_dispatch::DispatchRawCtx<Val>;
+  using DispatchCtx = ap::kernel_dispatch::DispatchCtx<Val>;
 
-  adt::Result<adt::Ok> Interpret(const Lambda& kernel_dispatcher_lambda,
-                                 const Lambda& ctx_maker_lambda,
-                                 const DispatchRawCtx& ctx);
+  adt::Result<Val> InterpretCtxMaker(const Lambda& ctx_maker_lambda);
+
+  adt::Result<adt::Ok> InterpretKernelDispatcher(
+      const Lambda& kernel_dispatcher_lambda, const DispatchCtx& dispatch_ctx);
 };
 
 }  // namespace phi

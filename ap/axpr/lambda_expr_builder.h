@@ -41,6 +41,8 @@ class LetVar {
   template <typename... Args>
   AnfExpr Call(Args&&... args);
 
+  LetContext* ctx() const { return let_ctx_; }
+
  private:
   friend class LetContext;
   LetVar(LetContext* let_ctx, const std::string& name)
@@ -120,6 +122,12 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
       args.emplace_back(var);
     }
     return CallImpl(f, args);
+  }
+
+  LetVar& Attr(const AnfExpr& self, const std::string& attr_name) {
+    const auto& var_name = NewTmpVarName();
+    Var(var_name) = self;
+    return Var(var_name).Attr(attr_name);
   }
 
   const std::vector<Bind<AnfExpr>>& bindings() { return bindings_; }

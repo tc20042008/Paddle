@@ -34,6 +34,19 @@ struct IrValue : public IrValueImpl<NodeT> {
     });
   }
 
+  template <typename ValueT>
+  static std::optional<IrValue> OptCastFrom(const ValueT& drr_node) {
+    using RetT = std::optional<IrValue>;
+    return drr_node.Match(
+        [](const NativeIrValue<NodeT>& ir_value) -> RetT {
+          return IrValue{ir_value};
+        },
+        [](const PackedIrValue<NodeT>& ir_value) -> RetT {
+          return IrValue{ir_value};
+        },
+        [](const auto&) -> RetT { return std::nullopt; });
+  }
+
   const std::string& name() const {
     return Match(
         [](const auto& impl) -> const std::string& { return impl->name; });

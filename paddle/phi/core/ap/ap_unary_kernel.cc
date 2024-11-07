@@ -168,26 +168,118 @@ adt::List<Val> MakeTensorDims(const phi::DenseTensor& tensor) {
   return ret;
 }
 
-adt::List<Val> MakeConstTensors(
-    const std::vector<const phi::DenseTensor*>& xs) {
+adt::Result<adt::List<Val>> GetIndexesSlices(
+    const axpr::BuiltinSerializableObject<Val>& kernel_dispatch_const_data,
+    const std::string& attr_name) {
+  ADT_LET_CONST_REF(
+      val,
+      kernel_dispatch_const_data->object->TryGet<adt::List<Val>>(attr_name));
+  return val;
+}
+
+template <typename DoEachIdxT, typename DoEachRangeT>
+adt::Result<adt::Ok> VisitTensorIdxOrRange(const adt::List<Val>& list,
+                                           const DoEachIdxT& DoEachIdx,
+                                           const DoEachRangeT& DoEachRange) {
+  using Ok = adt::Result<adt::Ok>;
+  for (int i = 0; i < list->size(); ++i) {
+    const auto& elt = list->at(i);
+    ADT_RETURN_IF_ERR(elt.Match(
+        [&](int64_t idx) -> Ok {
+          ADT_RETURN_IF_ERR(DoEachIdx(idx));
+          return adt::Ok{};
+        },
+        [&](const adt::List<Val>& range_val) -> Ok {
+          ADT_CHECK(range_val->size() == 2);
+          ADT_LET_CONST_REF(start, range_val->at(0).TryGet<int64_t>());
+          ADT_LET_CONST_REF(end, range_val->at(1).TryGet<int64_t>());
+          ADT_RETURN_IF_ERR(DoEachRange(start, end));
+          return adt::Ok{};
+        },
+        [&](const auto&) -> Ok {
+          return adt::errors::TypeError{"only index or index pair supported."};
+        }));
+  }
+  return adt::Ok{};
+}
+
+adt::Result<adt::List<Val>> MakeConstTensors(
+    const std::vector<const phi::DenseTensor*>& xs,
+    const axpr::BuiltinSerializableObject<Val>& kernel_dispatch_const_data) {
+  ADT_LET_CONST_REF(
+      indexes_slices,
+      GetIndexesSlices(kernel_dispatch_const_data,
+                       "__builtin_ap_kernel_input_indexes_slices"));
   adt::List<Val> ret;
   ret->reserve(xs.size());
-  for (const auto* x : xs) {
+  using Ok = adt::Result<adt::Ok>;
+  auto CollectTensor = [&](adt::List<Val>* list,
+                           const phi::DenseTensor* x) -> Ok {
     ConstTensorData tensor_data{x};
     adt::List<Val> dims{MakeTensorDims(*x)};
-    ret->emplace_back(ConstTensor<Val>{tensor_data, dims});
-  }
+    (*list)->emplace_back(ConstTensor<Val>{tensor_data, dims});
+    return adt::Ok{};
+  };
+  auto DoEachIdx = [&](std::size_t i) -> Ok {
+    ADT_CHECK(i < xs.size());
+    const auto* x = xs.at(i);
+    ADT_RETURN_IF_ERR(CollectTensor(&ret, x));
+    return adt::Ok{};
+  };
+  auto DoEachRange = [&](std::size_t start, std::size_t end) -> Ok {
+    ADT_CHECK(start <= end);
+    adt::List<Val> tensor_list;
+    tensor_list->reserve(end - start);
+    for (int i = start; i < end; ++i) {
+      ADT_CHECK(i < xs.size());
+      const auto* x = xs.at(i);
+      ADT_RETURN_IF_ERR(CollectTensor(&tensor_list, x));
+    }
+    ret->emplace_back(tensor_list);
+    return adt::Ok{};
+  };
+  ADT_RETURN_IF_ERR(
+      VisitTensorIdxOrRange(indexes_slices, DoEachIdx, DoEachRange));
   return ret;
 }
 
-adt::List<Val> MakeMutableTensors(std::vector<phi::DenseTensor*>* ys) {
+adt::Result<adt::List<Val>> MakeMutableTensors(
+    const std::vector<phi::DenseTensor*>& xs,
+    const axpr::BuiltinSerializableObject<Val>& kernel_dispatch_const_data) {
+  ADT_LET_CONST_REF(
+      indexes_slices,
+      GetIndexesSlices(kernel_dispatch_const_data,
+                       "__builtin_ap_kernel_output_indexes_slices"));
   adt::List<Val> ret;
-  ret->reserve(ys->size());
-  for (auto* y : *ys) {
-    MutableTensorData tensor_data{y};
-    adt::List<Val> dims{MakeTensorDims(*y)};
-    ret->emplace_back(MutableTensor<Val>{tensor_data, dims});
-  }
+  ret->reserve(xs.size());
+
+  using Ok = adt::Result<adt::Ok>;
+  auto CollectTensor = [&](adt::List<Val>* list, phi::DenseTensor* x) -> Ok {
+    MutableTensorData tensor_data{x};
+    adt::List<Val> dims{MakeTensorDims(*x)};
+    (*list)->emplace_back(MutableTensor<Val>{tensor_data, dims});
+    return adt::Ok{};
+  };
+  auto DoEachIdx = [&](std::size_t i) -> Ok {
+    ADT_CHECK(i < xs.size());
+    auto* x = xs.at(i);
+    ADT_RETURN_IF_ERR(CollectTensor(&ret, x));
+    return adt::Ok{};
+  };
+  auto DoEachRange = [&](std::size_t start, std::size_t end) -> Ok {
+    ADT_CHECK(start <= end);
+    adt::List<Val> tensor_list;
+    tensor_list->reserve(end - start);
+    for (int i = start; i < end; ++i) {
+      ADT_CHECK(i < xs.size());
+      auto* x = xs.at(i);
+      ADT_RETURN_IF_ERR(CollectTensor(&tensor_list, x));
+    }
+    ret->emplace_back(tensor_list);
+    return adt::Ok{};
+  };
+  ADT_RETURN_IF_ERR(
+      VisitTensorIdxOrRange(indexes_slices, DoEachIdx, DoEachRange));
   return ret;
 }
 
@@ -210,20 +302,26 @@ adt::Result<adt::Ok> ApUnaryKernel(
     const std::string& kernel_dispatcher_lambda,
     const std::string& dispatch_ctx_maker_lambda,
     std::vector<phi::DenseTensor*> outs) {
+  phi::KernelDispatchHelper helper{};
+  ADT_LET_CONST_REF(ctx_maker_lambda,
+                    MakeOrGetCoreExpr(dispatch_ctx_maker_lambda));
+  ADT_LET_CONST_REF(ctx_maker_ret, helper.InterpretCtxMaker(ctx_maker_lambda));
+  ADT_LET_CONST_REF(
+      kernel_dispatch_const_data,
+      ctx_maker_ret.TryGet<axpr::BuiltinSerializableObject<Val>>());
   ADT_LET_CONST_REF(
       cuda_module,
       kernel_define::MakeOrGetApUnaryCudaModule(kernel_definer_lambda));
-  adt::List<Val> inputs = MakeConstTensors(xs);
-  adt::List<Val> outputs = MakeMutableTensors(&outs);
+  ADT_LET_CONST_REF(inputs, MakeConstTensors(xs, kernel_dispatch_const_data));
+  ADT_LET_CONST_REF(outputs,
+                    MakeMutableTensors(outs, kernel_dispatch_const_data));
   DispatchRawCtx<Val> raw_ctx{inputs,
                               outputs,
                               cuda_module.shared_ptr(),
                               MakeFuncName2ArgTypes(cuda_module->GetModule())};
+  DispatchCtx<Val> dispatch_ctx{raw_ctx, kernel_dispatch_const_data};
   ADT_LET_CONST_REF(lambda, MakeOrGetCoreExpr(kernel_dispatcher_lambda));
-  ADT_LET_CONST_REF(ctx_maker_lambda,
-                    MakeOrGetCoreExpr(dispatch_ctx_maker_lambda));
-  phi::KernelDispatchHelper helper{};
-  ADT_RETURN_IF_ERR(helper.Interpret(lambda, ctx_maker_lambda, raw_ctx));
+  ADT_RETURN_IF_ERR(helper.InterpretKernelDispatcher(lambda, dispatch_ctx));
   return adt::Ok{};
 }
 

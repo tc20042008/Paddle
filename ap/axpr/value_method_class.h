@@ -29,6 +29,8 @@
 #include "ap/axpr/method_method_class.h"
 #include "ap/axpr/nothing_method_class.h"
 #include "ap/axpr/object_method_class.h"
+#include "ap/axpr/ordered_dict_method_class.h"
+#include "ap/axpr/ordered_set_method_class.h"
 #include "ap/axpr/packed_args_method_class.h"
 #include "ap/axpr/pointer_type_method_class.h"
 #include "ap/axpr/pointer_value_method_class.h"

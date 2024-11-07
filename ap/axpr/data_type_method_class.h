@@ -30,6 +30,12 @@ struct DataTypeMethodClass {
     return std::string("DataType.") + data_type.Name();
   }
 
+  adt::Result<ValueT> Hash(const Self& data_type) {
+    int64_t hash_value = std::hash<const char*>()("DataType");
+    hash_value = adt::hash_combine(hash_value, data_type.index());
+    return hash_value;
+  }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return std::nullopt;

@@ -232,6 +232,50 @@ struct MethodClass {
     });
   }
 
+  static BuiltinUnaryFuncT<ValueT> Hash(const ValueT& val) {
+    using S = builtin_symbol::Hash;
+    return val.Match([](const auto& impl) -> BuiltinUnaryFuncT<ValueT> {
+      using T = std::decay_t<decltype(impl)>;
+      if constexpr (IsType<T>()) {
+        return impl.Match([](const auto& type_impl)
+                              -> BuiltinUnaryFuncT<ValueT> {
+          using TT = std::decay_t<decltype(type_impl)>;
+          using Helper = detail::
+              BuiltinMethodHelper<ValueT, TT, S, detail::IndirectAlternative>;
+          if constexpr (Helper::HasUnaryMethod()) {
+            return Helper::GetBuiltinUnaryMethod();
+          } else {
+            return &This::TypeDefaultHash<TT>;
+          }
+        });
+      } else {
+        using Helper = detail::
+            BuiltinMethodHelper<ValueT, T, S, detail::DirectAlternative>;
+        if constexpr (Helper::HasUnaryMethod()) {
+          return Helper::GetBuiltinUnaryMethod();
+        } else {
+          return &This::InstanceDefaultHash<T>;
+        }
+      }
+    });
+  }
+
+  template <typename TT>
+  static adt::Result<ValueT> TypeDefaultHash(const ValueT& val) {
+    int64_t hash_value = std::hash<const char*>()(typeid(TT).name());
+    return hash_value;
+  }
+
+  template <typename T>
+  static adt::Result<ValueT> InstanceDefaultHash(const ValueT& val) {
+    std::ostringstream ss;
+    ADT_LET_CONST_REF(impl, This::TryGet<T>(val));
+    // please implement MethodClassImpl<ValueT, T>::Hash if T is not defined
+    // by DEFINE_ADT_RC.
+    const void* ptr = impl.__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
+
   static BuiltinUnaryFuncT<ValueT> ToString(const ValueT& val) {
     using S = builtin_symbol::ToString;
     return val.Match([](const auto& impl) -> BuiltinUnaryFuncT<ValueT> {
@@ -245,7 +289,7 @@ struct MethodClass {
           if constexpr (Helper::HasUnaryMethod()) {
             return Helper::GetBuiltinUnaryMethod();
           } else {
-            return &This::DefaultTypeToString<TT>;
+            return &This::TypeDefaultToString<TT>;
           }
         });
       } else {
@@ -254,21 +298,21 @@ struct MethodClass {
         if constexpr (Helper::HasUnaryMethod()) {
           return Helper::GetBuiltinUnaryMethod();
         } else {
-          return &This::DefaultInstanceToString<T>;
+          return &This::InstanceDefaultToString<T>;
         }
       }
     });
   }
 
   template <typename TT>
-  static adt::Result<ValueT> DefaultTypeToString(const ValueT& val) {
+  static adt::Result<ValueT> TypeDefaultToString(const ValueT& val) {
     std::ostringstream ss;
     ss << "<class '" << TT{}.Name() << "'>";
     return ss.str();
   }
 
   template <typename T>
-  static adt::Result<ValueT> DefaultInstanceToString(const ValueT& val) {
+  static adt::Result<ValueT> InstanceDefaultToString(const ValueT& val) {
     std::ostringstream ss;
     ADT_LET_CONST_REF(impl, This::TryGet<T>(val));
     // please implement MethodClassImpl<ValueT, T>::ToString if T is not defined

@@ -41,6 +41,11 @@ struct SrcPtnOpPatternCtxMethodClass {
     return ss.str();
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
+
   adt::Result<ValueT> SetAttr(const Self& self, const ValueT& arg) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(arg));
     if (IsBasicAttrName(attr_name)) {

@@ -33,6 +33,10 @@ struct StdVectorPtrMethodClass {
     return ss.str();
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    return reinterpret_cast<int64_t>(self);
+  }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return std::nullopt;

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "ap/axpr/builtin_serializable_object_method_class.h"
 #include "ap/axpr/dim_expr_method_class.h"
 #include "ap/index_expr/index_expr_method_class.h"
 #include "ap/index_expr/index_tuple_expr_method_class.h"
@@ -22,6 +23,9 @@
 #include "ap/ir_match/tensor_match_ctx_method_class.h"
 #include "ap/kernel_define/code_gen_result_method_class.h"
 #include "ap/kernel_define/define_ctx_method_class.h"
+#include "ap/kernel_define/dim_expr_kernel_arg_id_method_class.h"
 #include "ap/kernel_define/func_declare_method_class.h"
+#include "ap/kernel_define/in_tensor_data_ptr_kernel_arg_id_method_class.h"
 #include "ap/kernel_define/module_method_class.h"
+#include "ap/kernel_define/out_tensor_data_ptr_kernel_arg_id_method_class.h"
 #include "ap/kernel_define/source_code_method_class.h"

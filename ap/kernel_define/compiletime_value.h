@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "ap/axpr/builtin_serializable_object.h"
 #include "ap/axpr/dim_expr.h"
 #include "ap/axpr/value.h"
 #include "ap/index_expr/index_expr.h"
@@ -23,9 +24,11 @@
 #include "ap/kernel_define/code_gen_result.h"
 #include "ap/kernel_define/data_type.h"
 #include "ap/kernel_define/define_ctx.h"
+#include "ap/kernel_define/dim_expr_kernel_arg_id.h"
 #include "ap/kernel_define/func_declare.h"
-#include "ap/kernel_define/kernel_arg.h"
+#include "ap/kernel_define/in_tensor_data_ptr_kernel_arg_id.h"
 #include "ap/kernel_define/module.h"
+#include "ap/kernel_define/out_tensor_data_ptr_kernel_arg_id.h"
 #include "ap/kernel_define/source_code.h"
 #include "paddle/cinn/adt/adt.h"
 
@@ -37,6 +40,7 @@ template <typename ValueT, typename IrNodeT>
 using CtValueImpl = ap::axpr::ValueBase<ValueT,
                                         axpr::DataType,
                                         axpr::PointerType,
+                                        axpr::BuiltinSerializableObject<ValueT>,
                                         index_expr::Slice,
                                         index_expr::IndexExpr,
                                         index_expr::IndexTupleExpr,
@@ -45,15 +49,17 @@ using CtValueImpl = ap::axpr::ValueBase<ValueT,
                                         typename IrNodeT::packed_op_type,
                                         typename IrNodeT::ref_op_type,
                                         typename IrNodeT::native_value_type,
-                                        typename IrNodeT::packed_value_type,
                                         typename IrNodeT::ref_value_type,
+                                        DimExprKernelArgId<IrNodeT>,
+                                        InTensorDataPtrKernelArgId<IrNodeT>,
+                                        OutTensorDataPtrKernelArgId<IrNodeT>,
                                         ir_match::OpMatchCtx<IrNodeT>,
                                         ir_match::TensorMatchCtx<IrNodeT>,
                                         DefineCtx<IrNodeT>,
                                         FuncDeclare,
                                         SourceCode,
                                         Module,
-                                        CodeGenResult>;
+                                        CodeGenResult<ValueT>>;
 
 // compile time value
 template <typename IrNodeT>
@@ -63,17 +69,19 @@ struct CtValue : public CtValueImpl<CtValue<IrNodeT>, IrNodeT> {
   DEFINE_ADT_VARIANT_METHODS(CtValueImpl<CtValue<IrNodeT>, IrNodeT>);
 
   static axpr::Object<CtValue<IrNodeT>> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<CtValue<IrNodeT>,
-                                        axpr::DataType,
-                                        axpr::PointerType,
-                                        typename IrNodeT::dim_expr_type,
-                                        index_expr::Slice,
-                                        index_expr::IndexExpr,
-                                        index_expr::IndexTupleExpr,
-                                        FuncDeclare,
-                                        SourceCode,
-                                        Module,
-                                        CodeGenResult>();
+    return axpr::GetObjectTypeName2Type<
+        CtValue<IrNodeT>,
+        axpr::DataType,
+        axpr::PointerType,
+        axpr::BuiltinSerializableObject<CtValue<IrNodeT>>,
+        typename IrNodeT::dim_expr_type,
+        index_expr::Slice,
+        index_expr::IndexExpr,
+        index_expr::IndexTupleExpr,
+        FuncDeclare,
+        SourceCode,
+        Module,
+        CodeGenResult<CtValue<IrNodeT>>>();
   }
 };
 

@@ -31,11 +31,21 @@ struct SrcPtnUnboundPackedIrOp {
   using This = SrcPtnUnboundPackedIrOp;
   using Self = tSrcPtn<UnboundPackedIrOp<ValueT, NodeT>>;
 
+  using DrrValue = drr::Value;
+  using DrrNode = drr::Node<DrrValue>;
+  using DrrNativeIrValue = drr::NativeIrValue<DrrNode>;
+  using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
+
   adt::Result<ValueT> ToString(const Self& self) {
     std::ostringstream ss;
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
+  }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
   }
 
   using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
@@ -80,13 +90,40 @@ struct SrcPtnUnboundPackedIrOp {
       outputs->emplace_back(output);
     }
     ADT_RETURN_IF_ERR(CheckNoRedundentTensorNames(inputs, outputs));
-    ADT_LET_CONST_REF(opt_packed_inputs, ConvertInputs(inputs));
-    ADT_LET_CONST_REF(opt_packed_outputs, ConvertOutputs(outputs));
+    ADT_LET_CONST_REF(packed_inputs, ConvertInputs(inputs));
+    {
+      ADT_LET_CONST_REF(num_packed_ir_value_inputs,
+                        GetNumPackedIrValues(packed_inputs));
+      ADT_CHECK(num_packed_ir_value_inputs <= 1) << adt::errors::TypeError{
+          std::string() +
+          "SrcPtnUnboundPackedIrOp.__call__(): only 0 or 1 packed ir value "
+          "inputs are supported. " +
+          std::to_string(num_packed_ir_value_inputs) + " inputs were given."};
+    }
+    ADT_LET_CONST_REF(packed_outputs, ConvertOutputs(outputs));
+    {
+      ADT_LET_CONST_REF(num_packed_ir_value_outputs,
+                        GetNumPackedIrValues(packed_outputs));
+      ADT_CHECK(num_packed_ir_value_outputs <= 1) << adt::errors::TypeError{
+          std::string() +
+          "SrcPtnUnboundPackedIrOp.__call__(): only 0 or 1 packed ir value "
+          "outputs are supported. " +
+          std::to_string(num_packed_ir_value_outputs) + " outputs were given."};
+    }
     ADT_LET_CONST_REF(packed_op,
                       Helper{}.GetPackedIrOpByUnboundPackedIrOp(self.value()));
-    Helper{}.ConnectIrOpAndIrValue(
-        packed_op, opt_packed_inputs, opt_packed_outputs);
+    ADT_RETURN_IF_ERR(Helper{}.ConnectIrOpAndIrValue(
+        packed_op, packed_inputs, packed_outputs));
     return adt::Nothing{};
+  }
+
+  adt::Result<std::size_t> GetNumPackedIrValues(
+      const adt::List<IrValue<NodeT>>& ir_values) const {
+    std::size_t count = 0;
+    for (const auto& ir_value : *ir_values) {
+      count += ir_value.template Has<DrrPackedIrValue>();
+    }
+    return count;
   }
 
   adt::Result<adt::List<IrValue<NodeT>>> ConvertInputs(

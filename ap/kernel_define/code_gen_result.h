@@ -15,25 +15,33 @@
 #pragma once
 
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_serializable_object.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/type.h"
 #include "ap/kernel_define/module.h"
 
 namespace ap::kernel_define {
 
+template <typename ValueT>
 struct CodeGenResultImpl {
   Module code_module;
+  axpr::BuiltinSerializableObject<ValueT> kernel_dispatch_const_data;
+
+  bool operator==(const CodeGenResultImpl& other) const {
+    return this == &other;
+  }
 };
 
-DEFINE_ADT_RC(CodeGenResult, CodeGenResultImpl);
+template <typename ValueT>
+DEFINE_ADT_RC(CodeGenResult, CodeGenResultImpl<ValueT>);
 
 }  // namespace ap::kernel_define
 
 namespace ap::axpr {
 
-template <>
-struct TypeImpl<kernel_define::CodeGenResult> : public std::monostate {
-  using value_type = kernel_define::CodeGenResult;
+template <typename ValueT>
+struct TypeImpl<kernel_define::CodeGenResult<ValueT>> : public std::monostate {
+  using value_type = kernel_define::CodeGenResult<ValueT>;
 
   const char* Name() const { return "CodeGenResult"; }
 };

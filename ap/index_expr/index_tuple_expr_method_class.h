@@ -26,6 +26,9 @@ struct IndexTupleExprMethodClass {
   using Self = IndexTupleExpr;
 
   adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
+  adt::Result<ValueT> Hash(const Self& self) {
+    return adt::errors::NotImplementedError{};
+  }
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));

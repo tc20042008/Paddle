@@ -25,6 +25,9 @@ struct SliceMethodClass {
   using Self = Slice;
 
   adt::Result<ValueT> ToString(const Self& self) { return self->ToString(); }
+  adt::Result<ValueT> Hash(const Self& self) {
+    return adt::errors::NotImplementedError{};
+  }
 };
 
 template <typename ValueT>

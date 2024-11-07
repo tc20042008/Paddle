@@ -24,6 +24,17 @@ template <typename ValueT>
 using BuiltinFuncType = Result<ValueT> (*)(const ValueT&,
                                            const std::vector<ValueT>& args);
 
+template <typename This,
+          Result<typename This::Val> (This::*func)(
+              const typename This::Self&,
+              const std::vector<typename This::Val>& args)>
+Result<typename This::Val> WrapAsBuiltinFuncType(
+    const typename This::Val& self_val,
+    const std::vector<typename This::Val>& args) {
+  ADT_LET_CONST_REF(self, self_val.template TryGet<typename This::Self>());
+  return (This{}.*func)(self, args);
+}
+
 template <typename ValueT>
 struct TypeImpl<BuiltinFuncType<ValueT>> : public std::monostate {
   using value_type = BuiltinFuncType<ValueT>;

@@ -25,8 +25,12 @@ struct BuiltinSymbolMethodClass {
   using This = BuiltinSymbolMethodClass;
   using Self = builtin_symbol::Symbol;
 
-  adt::Result<ValueT> ToString(const Self& symbol) {
-    return std::string(symbol.Name());
+  adt::Result<ValueT> ToString(const Self& self) {
+    return std::string(self.Name());
+  }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    return static_cast<int64_t>(std::hash<const char*>()(self.Name()));
   }
 };
 

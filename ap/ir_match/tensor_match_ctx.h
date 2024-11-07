@@ -25,6 +25,10 @@ struct IrMatchCtxImpl;
 template <typename IrNodeT>
 struct TensorMatchCtxImpl {
   std::weak_ptr<IrMatchCtxImpl<IrNodeT>> ir_mtach_ctx;
+
+  bool operator==(const TensorMatchCtxImpl& other) const {
+    return this == &other;
+  }
 };
 
 template <typename IrNodeT>

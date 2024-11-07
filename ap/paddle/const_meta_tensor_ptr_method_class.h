@@ -32,6 +32,10 @@ struct ConstMetaTensorPtrMethodClass {
     return ss.str();
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    return reinterpret_cast<int64_t>(self);
+  }
+
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "dtype") {

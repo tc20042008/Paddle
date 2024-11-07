@@ -34,6 +34,8 @@
 #include "ap/axpr/method.h"
 #include "ap/axpr/nothing.h"
 #include "ap/axpr/object.h"
+#include "ap/axpr/ordered_dict.h"
+#include "ap/axpr/ordered_set.h"
 #include "ap/axpr/packed_args.h"
 #include "ap/axpr/pointer_type.h"
 #include "ap/axpr/pointer_value.h"
@@ -54,6 +56,8 @@ using ValueBase = std::variant<Type<Nothing,
                                     std::string,
                                     adt::List<ValueT>,
                                     axpr::Object<ValueT>,
+                                    axpr::OrderedSet<ValueT>,
+                                    axpr::OrderedDict<ValueT>,
                                     PackedArgs<ValueT>,
                                     Lambda<CoreExpr>,
                                     Closure<ValueT>,
@@ -71,6 +75,8 @@ using ValueBase = std::variant<Type<Nothing,
                                std::string,
                                adt::List<ValueT>,
                                axpr::Object<ValueT>,
+                               axpr::OrderedSet<ValueT>,
+                               axpr::OrderedDict<ValueT>,
                                PackedArgs<ValueT>,
                                Lambda<CoreExpr>,
                                Closure<ValueT>,

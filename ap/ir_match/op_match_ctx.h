@@ -25,6 +25,8 @@ struct IrMatchCtxImpl;
 template <typename IrNodeT>
 struct OpMatchCtxImpl {
   std::weak_ptr<IrMatchCtxImpl<IrNodeT>> ir_mtach_ctx;
+
+  bool operator==(const OpMatchCtxImpl& other) const { return this == &other; }
 };
 
 template <typename IrNodeT>

@@ -17,16 +17,16 @@
 #include "ap/axpr/object.h"
 #include "ap/axpr/type.h"
 #include "ap/kernel_define/adt.h"
-#include "ap/kernel_define/arg_type.h"
+#include "ap/kernel_define/kernel_arg_id.h"
 
 namespace ap::kernel_define {
 
 struct KernelArgImpl {
-  ArgType arg_type;
+  KernelArgId kernel_arg_id;
   axpr::Lambda<axpr::CoreExpr> getter_lambda;
 
   bool operator==(const KernelArgImpl& other) const {
-    return this->arg_type == other.arg_type &&
+    return this->kernel_arg_id == other.kernel_arg_id &&
            this->getter_lambda == other.getter_lambda;
   }
 };

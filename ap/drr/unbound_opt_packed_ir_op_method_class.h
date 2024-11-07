@@ -32,6 +32,11 @@ struct UnboundOptPackedIrOpMethodClass {
   using This = UnboundOptPackedIrOpMethodClass;
   using Self = UnboundOptPackedIrOp<ValueT, NodeT>;
 
+  using DrrValue = drr::Value;
+  using DrrNode = drr::Node<DrrValue>;
+  using DrrNativeIrValue = drr::NativeIrValue<DrrNode>;
+  using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
+
   adt::Result<ValueT> ToString(const Self& self) {
     std::ostringstream ss;
     const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
@@ -81,13 +86,63 @@ struct UnboundOptPackedIrOpMethodClass {
       outputs->emplace_back(output);
     }
     ADT_RETURN_IF_ERR(CheckNoRedundentTensorNames(inputs, outputs));
-    ADT_LET_CONST_REF(opt_packed_inputs, ConvertInputs(inputs));
-    ADT_LET_CONST_REF(opt_packed_outputs, ConvertOutputs(outputs));
+    ADT_LET_CONST_REF(packed_inputs, ConvertInputs(inputs));
+    {
+      ADT_LET_CONST_REF(num_packed_ir_value_inputs,
+                        GetNumIrValues<DrrPackedIrValue>(packed_inputs));
+      ADT_CHECK(num_packed_ir_value_inputs <= 1) << adt::errors::TypeError{
+          std::string() +
+          "UnboundOptPackedIrOp.__call__(): only 0 or 1 packed ir value inputs "
+          "are supported. " +
+          std::to_string(num_packed_ir_value_inputs) + " inputs were given."};
+    }
+    {
+      ADT_LET_CONST_REF(num_native_ir_value_inputs,
+                        GetNumIrValues<DrrNativeIrValue>(packed_inputs));
+      ADT_CHECK(num_native_ir_value_inputs == 1) << adt::errors::TypeError{
+          std::string() +
+          "UnboundOptPackedIrOp.__call__(): only sole native ir value input "
+          "are supported,  but" +
+          std::to_string(num_native_ir_value_inputs) +
+          " native ir value inputs were given."};
+    }
+    ADT_LET_CONST_REF(packed_outputs, ConvertOutputs(outputs));
+    {
+      ADT_LET_CONST_REF(
+          num_packed_ir_value_outputs,
+          this->template GetNumIrValues<DrrPackedIrValue>(packed_outputs));
+      ADT_CHECK(num_packed_ir_value_outputs <= 1) << adt::errors::TypeError{
+          std::string() +
+          "UnboundOptPackedIrOp.__call__(): only 0 or 1 packed ir value "
+          "outputs are supported. " +
+          std::to_string(num_packed_ir_value_outputs) + " outputs were given."};
+    }
+    {
+      ADT_LET_CONST_REF(
+          num_native_ir_value_outputs,
+          this->template GetNumIrValues<DrrNativeIrValue>(packed_outputs));
+      ADT_CHECK(num_native_ir_value_outputs == 1) << adt::errors::TypeError{
+          std::string() +
+          "UnboundOptPackedIrOp.__call__(): only sole native ir value output "
+          "are supported,  but" +
+          std::to_string(num_native_ir_value_outputs) +
+          " native ir value outputs were given."};
+    }
     ADT_LET_CONST_REF(opt_packed_op,
                       Helper{}.GetOptPackedIrOpByUnboundOptPackedIrOp(self));
-    Helper{}.ConnectIrOpAndIrValue(
-        opt_packed_op, opt_packed_inputs, opt_packed_outputs);
+    ADT_RETURN_IF_ERR(Helper{}.ConnectIrOpAndIrValue(
+        opt_packed_op, packed_inputs, packed_outputs));
     return adt::Nothing{};
+  }
+
+  template <typename DrrNodeT>
+  adt::Result<std::size_t> GetNumIrValues(
+      const adt::List<IrValue<NodeT>>& ir_values) const {
+    std::size_t count = 0;
+    for (const auto& ir_value : *ir_values) {
+      count += ir_value.template Has<DrrNodeT>();
+    }
+    return count;
   }
 
   adt::Result<adt::List<IrValue<NodeT>>> ConvertInputs(

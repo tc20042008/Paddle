@@ -24,11 +24,14 @@
 #include "ap/drr/drr_node_descriptor.h"
 #include "ap/drr/drr_value.h"
 #include "ap/drr/res_ptn_packed_ir_op_declare_data.h"
+#include "ap/drr/result_pattern_helper.h"
 #include "ap/graph/graph_helper.h"
 #include "ap/index_expr/valid_index_expr_builder.h"
 #include "ap/ir_match/graph_matcher.h"
 #include "ap/ir_match/ir_match_ctx.h"
+#include "ap/kernel_define/arg_source_maker.h"
 #include "ap/kernel_define/compiletime_value.h"
+#include "ap/kernel_define/matched_result_pattern_helper.h"
 #include "ap/paddle/indexed_ir_graph_util.h"
 #include "ap/paddle/pir_graph_descriptor.h"
 #include "ap/paddle/pir_node.h"
@@ -73,7 +76,9 @@ using DrrIrOpImpl = std::variant<DrrNativeIrOp, DrrPackedIrOp>;
 using IrMatchCtx = ap::ir_match::IrMatchCtx<PirNode>;
 
 using ap::axpr::AnfExpr;
-using ap::kernel_define::CodeGenResult;
+using CtValue = ap::kernel_define::CtValue<PirNode>;
+using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
+using CodeGenResult = ap::kernel_define::CodeGenResult<CtValue>;
 using ap::kernel_define::Module;
 
 struct DrrIrOp : public DrrIrOpImpl {
@@ -127,17 +132,6 @@ adt::Result<std::optional<DrrNativeIrOp>> GetApDrrNativeIrOpAnchor(
   return native_ir_op;
 }
 
-std::optional<DrrIrValue> CastToDrrIrValue(const DrrNode& drr_node) {
-  return drr_node.Match(
-      [](const DrrNativeIrValue& ir_value) -> std::optional<DrrIrValue> {
-        return DrrIrValue{ir_value};
-      },
-      [](const DrrPackedIrValue& ir_value) -> std::optional<DrrIrValue> {
-        return DrrIrValue{ir_value};
-      },
-      [](const auto&) -> std::optional<DrrIrValue> { return std::nullopt; });
-}
-
 adt::Result<std::vector<DrrIrValue>> GetResPtnOutputs(const DrrCtx& drr_ctx) {
   std::vector<DrrIrValue> ret;
   ADT_LET_CONST_REF(res_ptn_ctx, drr_ctx->GetResultPatternCtx());
@@ -145,7 +139,7 @@ adt::Result<std::vector<DrrIrValue>> GetResPtnOutputs(const DrrCtx& drr_ctx) {
   for (const auto& drr_node : nodes) {
     ADT_LET_CONST_REF(downstreams, drr_node.node().DownstreamNodes());
     if (downstreams.size() == 0) {
-      const auto& opt_drr_ir_value = CastToDrrIrValue(drr_node);
+      const auto& opt_drr_ir_value = DrrIrValue::OptCastFrom(drr_node);
       ADT_CHECK(opt_drr_ir_value.has_value());
       ret.push_back(opt_drr_ir_value.value());
     }
@@ -221,7 +215,7 @@ struct ApRewriter {
     const std::unordered_map<pir::Operation*, std::size_t>
         matched_op2order_value;
     std::unordered_map<std::string, pir::Value> name2native_value;
-    std::unordered_map<std::string, std::vector<pir::Value>> name2packed_value;
+    std::unordered_map<std::string, std::vector<pir::Value>> name2packed_values;
 
     adt::Result<std::size_t> GetMatchedOpOrderValue(pir::Operation* op) const {
       const auto iter = this->matched_op2order_value.find(op);
@@ -232,22 +226,43 @@ struct ApRewriter {
       return iter->second;
     }
 
-    adt::Result<pir::Value> GetNativeValue(
-        const std::string& value_name) const {
-      const auto iter = this->name2native_value.find(value_name);
+    adt::Result<pir::Value> GetNativeIrValue(
+        const std::string& ir_value_name) const {
+      const auto iter = this->name2native_value.find(ir_value_name);
       if (iter == this->name2native_value.end()) {
-        return adt::errors::IndexError{"RewriteCtx::GetNativeValue failed."};
+        return adt::errors::IndexError{
+            "RewriteCtx::GetNativeIrValue() failed. key '" + ir_value_name +
+            "' not found."};
       }
       return iter->second;
+    }
+
+    adt::Result<const std::vector<pir::Value>*> GetPackedIrValues(
+        const std::string& ir_value_name) const {
+      const auto iter = this->name2packed_values.find(ir_value_name);
+      if (iter == this->name2packed_values.end()) {
+        return adt::errors::IndexError{
+            "RewriteCtx::GetPackedIrValues() failed. key '" + ir_value_name +
+            "' not found"};
+      }
+      return &iter->second;
     }
   };
 
   adt::Result<std::unordered_set<pir::Operation*>> GetMatchedOps(
       const GraphMatchCtx& match_ctx) const {
+    using DefaultDrrGraph =
+        ap::graph::GraphDescriptor<DrrGraphNode, ap::drr::topo_kind::Default>;
+    DefaultDrrGraph default_drr_graph{};
     ADT_LET_CONST_REF(src_ptn_ctx, ctx_.drr_ctx->GetSourcePatternCtx());
     const auto& nodes = src_ptn_ctx->node_arena->nodes();
     std::unordered_set<pir::Operation*> ops;
     for (const auto& drr_node : nodes) {
+      ADT_LET_CONST_REF(is_op_node,
+                        default_drr_graph.IsOpNode(drr_node.node()));
+      if (!is_op_node) {
+        continue;
+      }
       ADT_LET_CONST_REF(pir_node,
                         match_ctx->GetSoleBigGraphNode(drr_node.node()));
       const auto& opt_op = CastToPirOp(pir_node);
@@ -344,12 +359,32 @@ struct ApRewriter {
                 pir_node.template TryGet<ap::paddle::NativeIrValue>());
             pir::Value from = pir_value.value;
             ADT_LET_CONST_REF(
-                to, rewrite_ctx.GetNativeValue(native_ir_value->name));
+                to, rewrite_ctx.GetNativeIrValue(native_ir_value->name));
             return DoEachPair(from, to);
           },
-          [&](const DrrPackedIrValue& ir_value) -> adt::Result<adt::Ok> {
-            return adt::errors::NotImplementedError{
-                "PackedIrValue replacement is not supoorted yet."};
+          [&](const DrrPackedIrValue& packed_ir_value) -> adt::Result<adt::Ok> {
+            ADT_LET_CONST_REF(from_nodes,
+                              match_ctx->GetPackedBigGraphIrValueNodes(
+                                  packed_ir_value->node));
+            ADT_LET_CONST_REF(
+                to_values_ptr,
+                rewrite_ctx.GetPackedIrValues(packed_ir_value->name));
+            ADT_CHECK(from_nodes->size() == to_values_ptr->size())
+                << adt::errors::ValueError{
+                       "from_nodes->size(): " +
+                       std::to_string(from_nodes->size()) +
+                       ", to_values_ptr->size(): " +
+                       std::to_string(to_values_ptr->size()) + "."};
+            for (int i = 0; i < from_nodes->size(); ++i) {
+              const auto& from_node = from_nodes->at(i);
+              ADT_LET_CONST_REF(
+                  pir_value,
+                  from_node.template TryGet<ap::paddle::NativeIrValue>());
+              pir::Value from = pir_value.value;
+              pir::Value to = to_values_ptr->at(i);
+              ADT_RETURN_IF_ERR(DoEachPair(from, to));
+            }
+            return adt::Ok{};
           });
       ADT_RETURN_IF_ERR(ret);
     }
@@ -419,14 +454,18 @@ struct ApRewriter {
         TrySetInsertPointer(rewriter, *rewrite_ctx, res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(combined_value,
                       InsertCombinedOp(new_ops, rewriter, input_values));
-    ADT_LET_CONST_REF(kernel_define_lambda_str,
-                      GetKernelDefineLambdaStr(res_ptn_ir_op, match_ctx));
+    ADT_LET_CONST_REF(code_gen_result,
+                      GetSerializedCodeGenResult(res_ptn_ir_op, match_ctx));
+    const auto& [kernel_define_lambda_str, kernel_dispatch_const_data] =
+        code_gen_result;
     ADT_LET_CONST_REF(infer_meta_lambda_str,
                       GetInferMetaLambdaStr(res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(kernel_dispatch_lambda_str,
                       GetKernelDispatchLambdaStr(res_ptn_ir_op));
-    ADT_LET_CONST_REF(dispatch_ctx_lambda_str,
-                      GetDispatchCtxLambdaStr(res_ptn_ir_op, match_ctx));
+    ADT_LET_CONST_REF(
+        dispatch_ctx_lambda_str,
+        GetDispatchCtxLambdaStr(
+            res_ptn_ir_op, match_ctx, kernel_dispatch_const_data));
     ADT_LET_CONST_REF(num_outputs,
                       GetApKernelNumOutputs(res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(ap_pattern_fusion_combined_out,
@@ -442,7 +481,7 @@ struct ApRewriter {
                       GetPackedOpOutputValues(
                           rewriter, new_ops, ap_pattern_fusion_combined_out));
     ADT_RETURN_IF_ERR(UpdateApKernelOutputsInReplaceCtx(
-        output_values, res_ptn_ir_op, rewrite_ctx));
+        match_ctx, output_values, res_ptn_ir_op, rewrite_ctx));
     return adt::Ok{};
   }
 
@@ -602,41 +641,185 @@ struct ApRewriter {
         ctx->Var("inputs").At(idx.input_idx).Attr("dims").At(idx.tensor_axis));
   }
 
+  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObject(
+      ap::axpr::LetContext* ctx,
+      const ap::axpr::BuiltinSerializableObject<CtValue>&
+          kernel_dispatch_const_data) const {
+    std::vector<AnfExpr> kwargs;
+    for (const auto& [keyword, val] :
+         kernel_dispatch_const_data->object->storage) {
+      const AnfExpr& keyword_anf = ctx->String(keyword);
+      ADT_LET_CONST_REF(val_anf,
+                        GetCodeFromBuiltinSerializableObjectItem(ctx, val));
+      const AnfExpr& item =
+          ctx->Call(ap::axpr::kBuiltinList(), keyword_anf, val_anf);
+      kwargs.emplace_back(item);
+    }
+    const AnfExpr& packed_args =
+        ctx->Call("__builtin_PackedArgs__",
+                  ctx->Call(ap::axpr::kBuiltinList()),
+                  ctx->Call(ap::axpr::kBuiltinList(), kwargs));
+    return ctx->Call("BuiltinSerializableObject", packed_args);
+  }
+
+  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObjectItem(
+      ap::axpr::LetContext* ctx, const CtValue& item) const {
+    return item.Match(
+        [&](const adt::Nothing&) -> adt::Result<AnfExpr> {
+          return ctx->None();
+        },
+        [&](bool c) -> adt::Result<AnfExpr> { return ctx->Bool(c); },
+        [&](int64_t c) -> adt::Result<AnfExpr> { return ctx->Int64(c); },
+        [&](double c) -> adt::Result<AnfExpr> { return ctx->Double(c); },
+        [&](const std::string& str) -> adt::Result<AnfExpr> {
+          return ctx->String(str);
+        },
+        [&](const adt::List<CtValue>& l) -> adt::Result<AnfExpr> {
+          return GetCodeFromBuiltinSerializableObjectList(ctx, l);
+        },
+        [&](const ap::axpr::BuiltinSerializableObject<CtValue>& object)
+            -> adt::Result<AnfExpr> {
+          return GetCodeFromBuiltinSerializableObject(ctx, object);
+        },
+        [&](const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda)
+            -> adt::Result<AnfExpr> {
+          const AnfExpr& anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
+          AnfExpr ret{ctx->Attr(anf_expr, "__code__")};
+          return ret;
+        },
+        [&](const auto&) -> adt::Result<AnfExpr> {
+          std::ostringstream ss;
+          ss << "Builtin serializable types are: NoneType, bool, int, float, "
+                "str, function_code, list, BuiltinSerializableObject (not "
+                "include '"
+             << ap::axpr::GetTypeName(item) << "').";
+          return adt::errors::ValueError{ss.str()};
+        });
+  }
+
+  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObjectList(
+      ap::axpr::LetContext* ctx, const adt::List<CtValue>& list) const {
+    std::vector<AnfExpr> elt_anf_exprs;
+    for (const auto& elt : *list) {
+      ADT_LET_CONST_REF(elt_anf_expr,
+                        GetCodeFromBuiltinSerializableObjectItem(ctx, elt));
+      elt_anf_exprs.emplace_back(elt_anf_expr);
+    }
+    return ctx->Call(ap::axpr::kBuiltinList(), elt_anf_exprs);
+  }
+
   adt::Result<std::string> GetDispatchCtxLambdaStr(
       const DrrPackedIrOp& res_ptn_ir_op,
-      const GraphMatchCtx& match_ctx) const {
+      const GraphMatchCtx& match_ctx,
+      const ap::axpr::BuiltinSerializableObject<CtValue>&
+          kernel_dispatch_const_data) const {
     ap::axpr::LambdaExprBuilder lmbd;
-    auto ConstructLambdaBody = [&](auto& ctx) -> ap::axpr::AnfExpr {
-      return ctx.Var("ctx").Attr("DispatcherCtx").Call(ctx.None());
+    auto ConstructLambdaBody = [&](auto& ctx) -> adt::Result<AnfExpr> {
+      ADT_LET_CONST_REF(data,
+                        GetCodeFromBuiltinSerializableObject(
+                            &ctx, kernel_dispatch_const_data));
+      return data;
     };
-    ap::axpr::AnfExpr anf_expr = lmbd.Lambda({"ctx"}, ConstructLambdaBody);
+    ADT_LET_CONST_REF(anf_expr, lmbd.TryLambda({}, ConstructLambdaBody));
     return anf_expr.DumpToJsonString();
   }
 
-  adt::Result<std::string> GetKernelDefineLambdaStr(
+  struct SerializedCodeGenResult {
+    std::string kernel_define_lambda_str;
+    ap::axpr::BuiltinSerializableObject<CtValue> kernel_dispatch_const_data;
+  };
+
+  adt::Result<SerializedCodeGenResult> GetSerializedCodeGenResult(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
     const auto& op_declare = res_ptn_ir_op->op_declare;
     ADT_LET_CONST_REF(
-        data, op_declare->cast_data<ap::drr::ResPtnPackedIrOpDeclareData>());
-    const auto& lambda = data->kernel_define();
-    ADT_LET_CONST_REF(code_gen_result, GetApKernelModule(lambda, match_ctx));
+        op_declare_data,
+        op_declare->cast_data<ap::drr::ResPtnPackedIrOpDeclareData>());
+    const auto& lambda = op_declare_data->kernel_define();
+    ADT_LET_CONST_REF(code_gen_result,
+                      GetApKernelModule(lambda, match_ctx, res_ptn_ir_op));
     ap::axpr::AnfExpr anf_expr =
         ConvertApKernelModuleToAnfExpr(code_gen_result->code_module);
-    return anf_expr.DumpToJsonString();
+    const std::string& kernel_define_lambda_str = anf_expr.DumpToJsonString();
+    auto* data = &code_gen_result.shared_ptr()->kernel_dispatch_const_data;
+    ADT_RETURN_IF_ERR(
+        InsertApKernelInputIndexOrSlices(data, res_ptn_ir_op, match_ctx));
+    ADT_RETURN_IF_ERR(
+        InsertApKernelOutputIndexOrSlices(data, res_ptn_ir_op, match_ctx));
+    ADT_RETURN_IF_ERR(
+        InsertApKernelInputName2Index(data, res_ptn_ir_op, match_ctx));
+    ADT_RETURN_IF_ERR(
+        InsertApKernelOutputName2Index(data, res_ptn_ir_op, match_ctx));
+    return SerializedCodeGenResult{kernel_define_lambda_str, *data};
+  }
+
+  adt::Result<adt::Ok> InsertApKernelInputIndexOrSlices(
+      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    adt::List<CtValue> list;
+    using Ok = adt::Result<adt::Ok>;
+    auto DoEachIndex = [&](int64_t idx) -> Ok {
+      list->emplace_back(idx);
+      return adt::Ok{};
+    };
+    auto DoEachSlice = [&](int64_t start, int64_t end) -> Ok {
+      adt::List<CtValue> range{start, end};
+      list->emplace_back(range);
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitApKernelInputIndexOrSlice(
+        res_ptn_ir_op, match_ctx, DoEachIndex, DoEachSlice));
+    ADT_CHECK((*object)->object->Set("__builtin_ap_kernel_input_indexes_slices",
+                                     list));
+    return adt::Ok{};
+  }
+
+  adt::Result<adt::Ok> InsertApKernelOutputIndexOrSlices(
+      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    adt::List<CtValue> list;
+    using Ok = adt::Result<adt::Ok>;
+    auto DoEachIndex = [&](int64_t idx) -> Ok {
+      list->emplace_back(idx);
+      return adt::Ok{};
+    };
+    auto DoEachSlice = [&](int64_t start, int64_t end) -> Ok {
+      adt::List<CtValue> range{start, end};
+      list->emplace_back(range);
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitApKernelOutputIndexOrSlice(
+        res_ptn_ir_op, match_ctx, DoEachIndex, DoEachSlice));
+    ADT_CHECK((*object)->object->Set(
+        "__builtin_ap_kernel_output_indexes_slices", list));
+    return adt::Ok{};
   }
 
   adt::Result<CodeGenResult> GetApKernelModule(
       const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda,
-      const GraphMatchCtx& match_ctx) const {
+      const GraphMatchCtx& match_ctx,
+      const DrrPackedIrOp& res_ptn_ir_op) const {
     ADT_LET_CONST_REF(src_ptn_ctx, ctx_.drr_ctx->GetSourcePatternCtx());
     IrMatchCtx ir_match_ctx{src_ptn_ctx, match_ctx};
-    std::vector<ap::kernel_define::NamedKernelArg> named_kernel_args;
-    ap::kernel_define::DefineCtx<PirNode> define_ctx{ir_match_ctx,
-                                                     named_kernel_args};
+    ADT_LET_CONST_REF(arg_source_ctx,
+                      MakeArgSourceCtx(match_ctx, res_ptn_ir_op));
+    DefineCtx define_ctx{ir_match_ctx, res_ptn_ir_op, arg_source_ctx};
     ApKernelDefineHelper helper{};
     ADT_LET_CONST_REF(result, helper.Interpret(lambda, define_ctx));
     return result;
+  }
+
+  adt::Result<ap::kernel_define::ArgSourceCtx<PirNode>> MakeArgSourceCtx(
+      const GraphMatchCtx& match_ctx,
+      const DrrPackedIrOp& res_ptn_ir_op) const {
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    ap::kernel_define::ArgSourceMaker<PirNode> maker{helper};
+    ADT_LET_CONST_REF(arg_source_ctx, maker.MakeArgSourceCtx(res_ptn_ir_op));
+    return arg_source_ctx;
   }
 
   AnfExpr ConvertApKernelModuleToAnfExpr(const Module& m) const {
@@ -722,6 +905,7 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> UpdateApKernelOutputsInReplaceCtx(
+      const GraphMatchCtx& match_ctx,
       const std::vector<pir::Value>& output_values,
       const DrrPackedIrOp& res_ptn_ir_op,
       RewriteCtx* rewrite_ctx) const {
@@ -739,56 +923,102 @@ struct ApRewriter {
           [&](const DrrPackedIrValue& ir_value) -> adt::Result<adt::Ok> {
             const auto& k = ir_value->name;
             const auto& v = output_slice;
-            ADT_CHECK(rewrite_ctx->name2packed_value.emplace(k, v).second);
+            ADT_CHECK(rewrite_ctx->name2packed_values.emplace(k, v).second);
             return adt::Ok{};
           });
     };
     ADT_RETURN_IF_ERR(VisitEachMatchedDrrIrValueAndOutputSlice(
-        output_values, res_ptn_ir_op, UpdateRewriteCtx));
+        match_ctx, output_values, res_ptn_ir_op, UpdateRewriteCtx));
     return adt::Ok{};
   }
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachMatchedDrrIrValueAndOutputSlice(
+      const GraphMatchCtx& match_ctx,
       const std::vector<pir::Value>& output_values,
       const DrrPackedIrOp& res_ptn_ir_op,
       const DoEachT& DoEach) const {
-    std::size_t offset = 0;
-    auto DoEachSlice =
-        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(num_ir_values, GetResPtnNumPirValues(drr_ir_value));
-      ADT_CHECK(offset + num_ir_values <= output_values.size());
-      std::vector<pir::Value> slice{
-          output_values.begin() + offset,
-          output_values.begin() + offset + num_ir_values};
-      return DoEach(drr_ir_value, slice);
-    };
-    return VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachSlice);
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    return helper.VisitEachMatchedDrrIrValueAndOutputSlice<pir::Value>(
+        output_values, res_ptn_ir_op, DoEach);
   }
 
   adt::Result<std::size_t> GetResPtnNumPirValues(
-      const DrrIrValue& drr_ir_value) const {
-    return drr_ir_value.Match(
-        [&](const DrrNativeIrValue&) -> adt::Result<std::size_t> { return 1; },
-        [&](const DrrPackedIrValue&) -> adt::Result<std::size_t> {
-          return adt::errors::NotImplementedError{
-              "GetApKernelNumOutputs not support DrrPackedIrValue."};
-        });
+      const DrrIrValue& drr_ir_value, const GraphMatchCtx& match_ctx) const {
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    return helper.GetResPtnNumBirValues(drr_ir_value);
   }
 
   adt::Result<std::size_t> GetApKernelNumOutputs(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    std::size_t num_outputs = 0;
-    auto AccNumOutputs =
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    return helper.GetApKernelNumOutputs(res_ptn_ir_op);
+  }
+
+  template <typename DoEachIndexT, typename DoEachSliceT>
+  adt::Result<adt::Ok> VisitApKernelInputIndexOrSlice(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx,
+      const DoEachIndexT& DoEachIndex,
+      const DoEachSliceT& DoEachSlice) const {
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    return helper.VisitApKernelInputIndexOrSlice(
+        res_ptn_ir_op, DoEachIndex, DoEachSlice);
+  }
+
+  template <typename DoEachIndexT, typename DoEachSliceT>
+  adt::Result<adt::Ok> VisitApKernelOutputIndexOrSlice(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx,
+      const DoEachIndexT& DoEachIndex,
+      const DoEachSliceT& DoEachSlice) const {
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    return helper.VisitApKernelOutputIndexOrSlice(
+        res_ptn_ir_op, DoEachIndex, DoEachSlice);
+  }
+
+  adt::Result<adt::Ok> InsertApKernelInputName2Index(
+      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    ap::axpr::BuiltinSerializableObject<CtValue> name2idx;
+    int64_t idx = 0;
+    auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(num_ir_values, GetResPtnNumPirValues(drr_ir_value));
-      num_outputs += num_ir_values;
+      ADT_CHECK(name2idx->object->Set(drr_ir_value.name(), idx));
+      ++idx;
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(
-        VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, AccNumOutputs));
-    return num_outputs;
+        VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachIrValue));
+    ADT_CHECK((*object)->object->Set("__builtin_ap_kernel_input_name_to_index",
+                                     name2idx));
+    return adt::Ok{};
+  }
+
+  adt::Result<adt::Ok> InsertApKernelOutputName2Index(
+      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    ap::axpr::BuiltinSerializableObject<CtValue> name2idx;
+    int64_t idx = 0;
+    auto DoEachIrValue =
+        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
+      ADT_CHECK(name2idx->object->Set(drr_ir_value.name(), idx));
+      ++idx;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(
+        VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachIrValue));
+    ADT_CHECK((*object)->object->Set("__builtin_ap_kernel_output_name_to_index",
+                                     name2idx));
+    return adt::Ok{};
   }
 
   adt::Result<pir::Value> InsertCombinedOp(
@@ -860,164 +1090,162 @@ struct ApRewriter {
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitResPtnInputIrValueByResPtnIrOp(
       const DrrPackedIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
-    auto VisitOpOperand =
-        [&](const DrrGraphNode& op_operand) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(op_operand_downstreams, op_operand.UpstreamNodes());
-      ADT_LET_CONST_REF(ir_value_node, op_operand_downstreams.Sole());
-      ADT_LET_CONST_REF(ir_value, ir_value_node.Get());
-      const auto& opt_drr_ir_value = CastToDrrIrValue(ir_value);
-      ADT_CHECK(opt_drr_ir_value.has_value());
-      const auto& drr_ir_value = opt_drr_ir_value.value();
-      return DoEach(drr_ir_value);
-    };
-    ADT_LET_CONST_REF(upstreams, res_ptn_ir_op->node.UpstreamNodes());
-    ADT_RETURN_IF_ERR(upstreams.VisitNodes(VisitOpOperand));
-    return adt::Ok{};
+    ap::drr::ResultPatternHelper helper{ctx_.drr_ctx};
+    return helper.VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, DoEach);
   }
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitResPtnOutputIrValueByResPtnIrOp(
       const DrrPackedIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
-    auto VisitOpResult =
-        [&](const DrrGraphNode& op_result) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(op_result_downstreams, op_result.DownstreamNodes());
-      ADT_LET_CONST_REF(ir_node, op_result_downstreams.Sole());
-      ADT_LET_CONST_REF(drr_ir_node, ir_node.Get());
-      const auto& opt_drr_ir_value = CastToDrrIrValue(drr_ir_node);
-      ADT_CHECK(opt_drr_ir_value.has_value());
-      const auto& drr_ir_value = opt_drr_ir_value.value();
-      return DoEach(drr_ir_value);
-    };
-    ADT_LET_CONST_REF(downstreams, res_ptn_ir_op->node.DownstreamNodes());
-    ADT_RETURN_IF_ERR(downstreams.VisitNodes(VisitOpResult));
-    return adt::Ok{};
+    ap::drr::ResultPatternHelper helper{ctx_.drr_ctx};
+    return helper.VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEach);
   }
 
   std::optional<DrrIrValue> SrcPtnIrValue4ResPtnIrValue(
       const DrrIrValue& res_ptn_ir_value) const {
-    const auto& opt_src_ptn_ctx = ctx_.drr_ctx->GetSourcePatternCtx();
-    if (opt_src_ptn_ctx.HasError()) {
-      return std::nullopt;
-    }
-    const auto& src_ptn_ctx = opt_src_ptn_ctx.GetOkValue();
-    const auto& map = src_ptn_ctx->tensor_pattern_ctx->uid2ir_value;
-    auto GetSrcPtnIrValue =
-        [&](const auto& ir_value) -> std::optional<DrrIrValue> {
-      const auto iter = map.find(ir_value->name);
-      if (iter == map.end()) {
-        return std::nullopt;
-      }
-      return iter->second;
-    };
-    return res_ptn_ir_value.Match(
-        [&](const DrrNativeIrValue& ir_value) -> std::optional<DrrIrValue> {
-          return GetSrcPtnIrValue(ir_value);
-        },
-        [&](const DrrPackedIrValue& ir_value) -> std::optional<DrrIrValue> {
-          return GetSrcPtnIrValue(ir_value);
-        });
+    ap::drr::ResultPatternHelper helper{ctx_.drr_ctx};
+    return helper.SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
   }
 
   adt::Result<adt::Ok> InsertInputPirValueToReplaceCtx(
       const DrrPackedIrOp& res_ptn_ir_op,
       RewriteCtx* rewrite_ctx,
       const GraphMatchCtx& match_ctx) const {
-    auto InitInput =
-        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
+    using Ok = adt::Result<adt::Ok>;
+    auto InitInput = [&](const DrrIrValue& drr_ir_value) -> Ok {
       return drr_ir_value.Match(
-          [&](const DrrNativeIrValue& res_ptn_ir_value)
-              -> adt::Result<adt::Ok> {
-            const auto iter =
-                rewrite_ctx->name2native_value.find(res_ptn_ir_value->name);
-            if (iter != rewrite_ctx->name2native_value.end()) {
-              return adt::Ok{};
-            }
-            const auto& opt_ir_value =
-                SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
-            ADT_CHECK(opt_ir_value.has_value());
-            const auto& ir_value = opt_ir_value.value();
-            ADT_LET_CONST_REF(pir_node,
-                              match_ctx->GetSoleBigGraphNode(ir_value.node()));
-            ADT_LET_CONST_REF(
-                pir_value,
-                pir_node.template TryGet<ap::paddle::NativeIrValue>())
-                << adt::errors::TypeError{
-                       "pir_node is not an ap::paddle::NativeIrValue"};
-            rewrite_ctx->name2native_value[ir_value.name()] = pir_value.value;
+          [&](const DrrNativeIrValue& res_ptn_ir_value) -> Ok {
+            ADT_RETURN_IF_ERR(InsertNativeIrValueToReplaceCtx(
+                res_ptn_ir_value, rewrite_ctx, match_ctx));
             return adt::Ok{};
           },
-          [&](const DrrPackedIrValue ir_value) -> adt::Result<adt::Ok> {
-            return adt::errors::NotImplementedError{
-                "packed input ir values are not supported yet."};
+          [&](const DrrPackedIrValue& res_ptn_ir_value) -> Ok {
+            ADT_RETURN_IF_ERR(InsertPackedIrValueToReplaceCtx(
+                res_ptn_ir_value, rewrite_ctx, match_ctx));
+            return adt::Ok{};
           });
     };
-    return VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, InitInput);
+    ADT_RETURN_IF_ERR(
+        VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, InitInput));
+    return adt::Ok{};
+  }
+
+  adt::Result<adt::Ok> InsertNativeIrValueToReplaceCtx(
+      const DrrNativeIrValue& res_ptn_ir_value,
+      RewriteCtx* rewrite_ctx,
+      const GraphMatchCtx& match_ctx) const {
+    const auto iter =
+        rewrite_ctx->name2native_value.find(res_ptn_ir_value->name);
+    if (iter != rewrite_ctx->name2native_value.end()) {
+      return adt::Ok{};
+    }
+    const auto& opt_ir_value = SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
+    ADT_CHECK(opt_ir_value.has_value());
+    const auto& ir_value = opt_ir_value.value();
+    ADT_LET_CONST_REF(pir_node,
+                      match_ctx->GetSoleBigGraphNode(ir_value.node()));
+    ADT_LET_CONST_REF(pir_value,
+                      pir_node.template TryGet<ap::paddle::NativeIrValue>())
+        << adt::errors::TypeError{
+               "pir_node is not an ap::paddle::NativeIrValue"};
+    rewrite_ctx->name2native_value[ir_value.name()] = pir_value.value;
+    return adt::Ok{};
+  }
+
+  adt::Result<adt::Ok> InsertPackedIrValueToReplaceCtx(
+      const DrrPackedIrValue& res_ptn_ir_value,
+      RewriteCtx* rewrite_ctx,
+      const GraphMatchCtx& match_ctx) const {
+    using Ok = adt::Result<adt::Ok>;
+    const auto iter =
+        rewrite_ctx->name2packed_values.find(res_ptn_ir_value->name);
+    if (iter != rewrite_ctx->name2packed_values.end()) {
+      return adt::Ok{};
+    }
+    const auto& opt_ir_value = SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
+    ADT_CHECK(opt_ir_value.has_value());
+    const auto& ir_value = opt_ir_value.value();
+    auto* vec = &rewrite_ctx->name2packed_values[ir_value.name()];
+    ADT_CHECK(vec->empty());
+    auto AppendNode = [&](const PirNode& pir_node) -> Ok {
+      ADT_LET_CONST_REF(pir_value,
+                        pir_node.template TryGet<ap::paddle::NativeIrValue>())
+          << adt::errors::TypeError{
+                 "pir_node is not an ap::paddle::NativeIrValue"};
+      vec->emplace_back(pir_value.value);
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(
+        match_ctx->VisitPackedBigGraphIrValueNode(ir_value.node(), AppendNode));
+    return adt::Ok{};
+  }
+
+  adt::Result<PirNativeIrValue> CastToPirNativeIrValue(
+      const PirNode& pir_node) const {
+    using RetT = adt::Result<PirNativeIrValue>;
+    return pir_node.Match(
+        [&](const typename PirNode::native_value_type& bir_value) -> RetT {
+          return bir_value;
+        },
+        [&](const typename PirNode::ref_value_type& ref_value) -> RetT {
+          return ref_value.GetOwnerNativeIrValue();
+        },
+        [&](const auto&) -> RetT {
+          return adt::errors::TypeError{
+              "pir_node is not an PirNode::native_value_type or "
+              "PirNode::ref_value_type"};
+        });
   }
 
   adt::Result<std::vector<pir::Value>> GetMatchedPirInputsOfRestPtnPackedIrOp(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
     std::vector<pir::Value> ret;
-    auto CollectInput =
-        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      return drr_ir_value.Match(
-          [&](const DrrNativeIrValue& res_ptn_ir_value)
-              -> adt::Result<adt::Ok> {
-            const auto& opt_ir_value =
-                SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
-            ADT_CHECK(opt_ir_value.has_value());
-            const auto& ir_value = opt_ir_value.value();
-            ADT_LET_CONST_REF(pir_node,
-                              match_ctx->GetSoleBigGraphNode(ir_value.node()));
-            ADT_LET_CONST_REF(
-                pir_value,
-                pir_node.template TryGet<ap::paddle::NativeIrValue>())
-                << adt::errors::TypeError{
-                       "pir_node is not an ap::paddle::NativeIrValue"};
-            ret.emplace_back(pir_value.value);
-            return adt::Ok{};
-          },
-          [&](const DrrPackedIrValue ir_value) -> adt::Result<adt::Ok> {
-            return adt::errors::NotImplementedError{
-                "packed input ir values are not supported yet."};
-          });
+    auto CollectInput = [&](const PirNode& pir_node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(pir_value, CastToPirNativeIrValue(pir_node));
+      ret.emplace_back(pir_value.value);
+      return adt::Ok{};
     };
-    ADT_RETURN_IF_ERR(
-        VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, CollectInput));
+    ADT_RETURN_IF_ERR(VisitMatchedPirInputOfRestPtnPackedIrOp(
+        res_ptn_ir_op, match_ctx, CollectInput));
     return ret;
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitMatchedPirInputOfRestPtnPackedIrOp(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx,
+      const DoEachT& DoEach) const {
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    return helper.VisitMatchedBirInputOfRestPtnPackedIrOp(res_ptn_ir_op,
+                                                          DoEach);
   }
 
   adt::Result<std::vector<pir::Value>> GetMatchedPirOutputsOfRestPtnPackedIrOp(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
     std::vector<pir::Value> ret;
-    auto CollectOutput =
-        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      return drr_ir_value.Match(
-          [&](const DrrNativeIrValue& res_ptn_ir_value)
-              -> adt::Result<adt::Ok> {
-            const auto& opt_ir_value =
-                SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
-            ADT_CHECK(opt_ir_value.has_value());
-            const auto& ir_value = opt_ir_value.value();
-            ADT_LET_CONST_REF(pir_node,
-                              match_ctx->GetSoleBigGraphNode(ir_value.node()));
-            ADT_LET_CONST_REF(
-                pir_value,
-                pir_node.template TryGet<ap::paddle::NativeIrValue>())
-                << adt::errors::TypeError{
-                       "pir_node is not an ap::paddle::NativeIrValue"};
-            ret.emplace_back(pir_value.value);
-            return adt::Ok{};
-          },
-          [&](const DrrPackedIrValue ir_value) -> adt::Result<adt::Ok> {
-            return adt::errors::NotImplementedError{
-                "packed input ir values are not supported yet."};
-          });
+    using Ok = adt::Result<adt::Ok>;
+    auto CollectOutput = [&](const PirNode& pir_node) -> Ok {
+      ADT_LET_CONST_REF(pir_value, CastToPirNativeIrValue(pir_node));
+      ret.emplace_back(pir_value.value);
+      return adt::Ok{};
     };
-    ADT_RETURN_IF_ERR(
-        VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, CollectOutput));
+    ADT_RETURN_IF_ERR(VisitMatchedPirOutputOfRestPtnPackedIrOp(
+        res_ptn_ir_op, match_ctx, CollectOutput));
     return ret;
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitMatchedPirOutputOfRestPtnPackedIrOp(
+      const DrrPackedIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx,
+      const DoEachT& DoEach) const {
+    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                                  ctx_.drr_ctx};
+    return helper.VisitMatchedBirOutputOfRestPtnPackedIrOp(res_ptn_ir_op,
+                                                           DoEach);
   }
 
   adt::Result<std::vector<pir::Value>> GetPackedOpInputValues(
@@ -1049,8 +1277,8 @@ struct ApRewriter {
         },
         [&](const DrrPackedIrValue& ir_value) -> adt::Result<adt::Ok> {
           const auto& name = ir_value->name;
-          const auto& iter = rewrite_ctx.name2packed_value.find(name);
-          ADT_CHECK(iter != rewrite_ctx.name2packed_value.end());
+          const auto& iter = rewrite_ctx.name2packed_values.find(name);
+          ADT_CHECK(iter != rewrite_ctx.name2packed_values.end());
           for (const auto& value : iter->second) {
             ADT_RETURN_IF_ERR(DoEach(value));
           }
@@ -1276,9 +1504,10 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     DefaultGraph<PirNode> default_pir_graph{};
     AllOperandAndResultGraph<DrrGraphNode> all_o_r_drr_graph{};
     const auto& topo_match_ctx = graph_match_ctx->topo_match_ctx;
-    ADT_LET_CONST_REF(drr_op_operand,
-                      all_o_r_drr_graph.CastSoleInput<DrrOptPackedIrOpOperand>(
-                          drr_op_result));
+    ADT_LET_CONST_REF(
+        drr_op_operand,
+        all_o_r_drr_graph.CastSoleUnignoredInput<DrrOptPackedIrOpOperand>(
+            drr_op_result));
     {
       ADT_LET_CONST_REF(num_drr_op_result_downstreams,
                         all_o_r_drr_graph.GetNumOutputs(drr_op_result));
@@ -1294,7 +1523,8 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     }
     ADT_LET_CONST_REF(
         drr_op_operand_upstream,
-        all_o_r_drr_graph.CastSoleInput<DrrNativeIrOpResult>(drr_op_operand));
+        all_o_r_drr_graph.CastSoleUnignoredInput<DrrNativeIrOpResult>(
+            drr_op_operand));
     ADT_LET_CONST_REF(
         pir_op_operand_upstream,
         topo_match_ctx->GetSoleBigGraphNode(drr_op_operand_upstream->node));
@@ -1334,9 +1564,10 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     DefaultGraph<PirNode> default_pir_graph{};
     AllOperandAndResultGraph<DrrGraphNode> all_o_r_drr_graph{};
     const auto& topo_match_ctx = graph_match_ctx->topo_match_ctx;
-    ADT_LET_CONST_REF(drr_op_operand,
-                      all_o_r_drr_graph.CastSoleInput<DrrOptPackedIrOpOperand>(
-                          drr_op_result));
+    ADT_LET_CONST_REF(
+        drr_op_operand,
+        all_o_r_drr_graph.CastSoleUnignoredInput<DrrOptPackedIrOpOperand>(
+            drr_op_result));
     {
       ADT_LET_CONST_REF(num_drr_op_result_downstreams,
                         all_o_r_drr_graph.GetNumOutputs(drr_op_result));
@@ -1352,7 +1583,8 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     }
     ADT_LET_CONST_REF(
         drr_op_operand_upstream,
-        all_o_r_drr_graph.CastSoleInput<DrrNativeIrOpResult>(drr_op_operand));
+        all_o_r_drr_graph.CastSoleUnignoredInput<DrrNativeIrOpResult>(
+            drr_op_operand));
     ADT_LET_CONST_REF(
         pir_op_operand_upstream,
         topo_match_ctx->GetSoleBigGraphNode(drr_op_operand_upstream->node));
@@ -1361,7 +1593,8 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
                           default_pir_graph, pir_op_operand_upstream));
     ADT_LET_CONST_REF(
         drr_ir_value,
-        default_drr_graph.CastSoleInput<DrrNativeIrValue>(drr_op_operand));
+        default_drr_graph.CastSoleUnignoredInput<DrrNativeIrValue>(
+            drr_op_operand));
     std::unordered_set<PirNativeIrOpOperand> excluded;
     {
       auto DoEachDownstream =
@@ -1403,9 +1636,10 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     DefaultGraph<PirNode> default_pir_graph{};
     AllOperandAndResultGraph<DrrGraphNode> all_o_r_drr_graph{};
     const auto& topo_match_ctx = graph_match_ctx->topo_match_ctx;
-    ADT_LET_CONST_REF(drr_op_operand,
-                      all_o_r_drr_graph.CastSoleInput<DrrOptPackedIrOpOperand>(
-                          drr_op_result));
+    ADT_LET_CONST_REF(
+        drr_op_operand,
+        all_o_r_drr_graph.CastSoleUnignoredInput<DrrOptPackedIrOpOperand>(
+            drr_op_result));
     {
       ADT_LET_CONST_REF(num_drr_op_result_downstreams,
                         all_o_r_drr_graph.GetNumOutputs(drr_op_result));

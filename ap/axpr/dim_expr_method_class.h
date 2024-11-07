@@ -27,6 +27,11 @@ struct DimExprMethodClass {
   adt::Result<ValueT> ToString(const Self& self) {
     return symbol::ToString(self);
   }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    int64_t hash_value = std::hash<Self>()(self);
+    return hash_value;
+  }
 };
 
 template <typename ValueT>

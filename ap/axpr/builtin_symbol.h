@@ -32,9 +32,11 @@ inline constexpr const char* kBuiltinCall() { return "__builtin_call__"; }
 inline constexpr const char* kBuiltinToString() {
   return "__builtin_ToString__";
 }
+inline constexpr const char* kBuiltinHash() { return "__builtin_hash__"; }
 inline constexpr const char* kBuiltinGetAttr() { return "__builtin_getattr__"; }
 inline constexpr const char* kBuiltinSetAttr() { return "__builtin_setattr__"; }
 inline constexpr const char* kBuiltinGetItem() { return "__builtin_getitem__"; }
+inline constexpr const char* kBuiltinLength() { return "__builtin_len__"; }
 inline constexpr const char* kBuiltinReturn() { return "__builtin_return__"; }
 
 #define DEFINE_PEXPR_BUILTIN_CONSTANT_NAME(name, op) \
@@ -92,6 +94,13 @@ struct ToString : public std::monostate {
   std::size_t GetHashValue() const { return 0; }
 };
 
+struct Hash : public std::monostate {
+  using std::monostate::monostate;
+  static constexpr const char* Name() { return kBuiltinHash(); }
+  static constexpr int num_operands = 1;
+  std::size_t GetHashValue() const { return 0; }
+};
+
 struct GetAttr : public std::monostate {
   using std::monostate::monostate;
   static constexpr const char* Name() { return kBuiltinGetAttr(); }
@@ -110,6 +119,13 @@ struct GetItem : public std::monostate {
   using std::monostate::monostate;
   static constexpr const char* Name() { return kBuiltinGetItem(); }
   static constexpr int num_operands = 2;
+  std::size_t GetHashValue() const { return 0; }
+};
+
+struct Length : public std::monostate {
+  using std::monostate::monostate;
+  static constexpr const char* Name() { return kBuiltinLength(); }
+  static constexpr int num_operands = 1;
   std::size_t GetHashValue() const { return 0; }
 };
 
@@ -142,10 +158,12 @@ PEXPR_FOR_EACH_BINARY_OP(DEFINE_BINARY_SYMBOL);
   PEXPR_FOR_EACH_UNARY_OP(_)       \
   _(Call, ())                      \
   _(ToString, str)                 \
+  _(Hash, hash)                    \
   _(Starred, *)                    \
   _(GetAttr, .)                    \
   _(SetAttr, .)                    \
-  _(GetItem, [])
+  _(GetItem, [])                   \
+  _(Length, len)
 
 using OpImpl = std::variant<
 #define MAKE_OP_IMPL_ALTENATIVE(name, op) name,
@@ -154,10 +172,12 @@ using OpImpl = std::variant<
 #undef MAKE_OP_IMPL_ALTENATIVE
             Call,
     ToString,
+    Hash,
     Starred,
     GetAttr,
     SetAttr,
-    GetItem>;
+    GetItem,
+    Length>;
 
 struct Op : public OpImpl {
   using OpImpl::OpImpl;
@@ -199,10 +219,12 @@ inline adt::Maybe<Symbol> GetSymbolFromString(const std::string& name) {
       {List::Name(), List{}},
       {Call::Name(), Op{Call{}}},
       {ToString::Name(), Op{ToString{}}},
+      {Hash::Name(), Op{Hash{}}},
       {Starred::Name(), Op{Starred{}}},
       {GetAttr::Name(), Op{GetAttr{}}},
       {SetAttr::Name(), Op{SetAttr{}}},
       {GetItem::Name(), Op{GetItem{}}},
+      {Length::Name(), Op{Length{}}},
 #define MAKE_SYMBOL_ENTRY(cls, op) {cls::Name(), Op{cls{}}},
       PEXPR_FOR_EACH_BINARY_OP(MAKE_SYMBOL_ENTRY)
           PEXPR_FOR_EACH_UNARY_OP(MAKE_SYMBOL_ENTRY)

@@ -44,10 +44,11 @@
 namespace ap::paddle {
 
 struct OpCudaCodeGenImpl {
-  using OpCodeGenCtx = kernel_define::OpCodeGenCtx<PirNode>;
-  using IrOp = kernel_define::IrOp<PirNode>;
+  using BirNode = PirNode;
+  using OpCodeGenCtx = kernel_define::OpCodeGenCtx<BirNode>;
+  using IrOp = kernel_define::IrOp<BirNode>;
 
-  using LocalVarBinding = kernel_define::LocalVarBinding<PirNode>;
+  using LocalVarBinding = kernel_define::LocalVarBinding<BirNode>;
   using LocalVarBindingList = std::vector<LocalVarBinding>;
 
   using DrrValue = drr::Value;
@@ -73,7 +74,7 @@ struct OpCudaCodeGenImpl {
   using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
   using IndexTupleExpr = index_expr::IndexTupleExpr;
 
-  using GraphMatchCtx = ir_match::GraphMatchCtx<PirNode>;
+  using GraphMatchCtx = ir_match::GraphMatchCtx<BirNode>;
 
   using IndexTupleExprCodeGenerator =
       index_expr::IndexTupleExprCudaCodeGenerator;
@@ -110,7 +111,7 @@ struct OpCudaCodeGenImpl {
     return std::string() + output_var_name + " = " + input_var_name + ";\n";
   }
 
-  using NativeOrRefIrValue = ir_match::NativeOrRefIrValue<PirNode>;
+  using NativeOrRefIrValue = ir_match::NativeOrRefIrValue<BirNode>;
 
   adt::Result<std::string> GetBoundLocalVarName(
       const OpCodeGenCtx& op_code_gen_ctx, const NativeOrRefIrValue& ir_value) {
@@ -129,18 +130,22 @@ struct OpCudaCodeGenImpl {
     ADT_LET_CONST_REF(drr_opt_packed_ir_op_node,
                       graph_match_ctx->GetMatchedSmallGraphNode(ref_ir_op));
     ADT_LET_CONST_REF(drr_opt_packed_ir_op, drr_opt_packed_ir_op_node.Get());
-    ADT_LET_CONST_REF(drr_opt_op_operand,
-                      drr_graph.template CastSoleInput<DrrOptPackedIrOpOperand>(
-                          drr_opt_packed_ir_op));
+    ADT_LET_CONST_REF(
+        drr_opt_op_operand,
+        drr_graph.template CastSoleUnignoredInput<DrrOptPackedIrOpOperand>(
+            drr_opt_packed_ir_op));
     ADT_LET_CONST_REF(
         drr_op_input,
-        drr_graph.template CastSoleInput<DrrNativeIrValue>(drr_opt_op_operand));
-    ADT_LET_CONST_REF(drr_opt_op_result,
-                      drr_graph.template CastSoleOutput<DrrOptPackedIrOpResult>(
-                          drr_opt_packed_ir_op));
+        drr_graph.template CastSoleUnignoredInput<DrrNativeIrValue>(
+            drr_opt_op_operand));
+    ADT_LET_CONST_REF(
+        drr_opt_op_result,
+        drr_graph.template CastSoleUnignoredOutput<DrrOptPackedIrOpResult>(
+            drr_opt_packed_ir_op));
     ADT_LET_CONST_REF(
         drr_op_output,
-        drr_graph.template CastSoleOutput<DrrNativeIrValue>(drr_opt_op_result));
+        drr_graph.template CastSoleUnignoredOutput<DrrNativeIrValue>(
+            drr_opt_op_result));
     ADT_LET_CONST_REF(pir_op_input,
                       graph_match_ctx->GetSoleBigGraphNode(drr_op_input->node));
     ADT_LET_CONST_REF(
@@ -227,15 +232,12 @@ struct OpCudaCodeGenImpl {
       const PackedIrOp& packed_ir_op) {
     LOG(ERROR) << "CodeGenInputs enter:\n" << ss->str();
     std::unordered_set<pir::Value> registered_values;
-    auto DoEachDeclare = [&](const auto& named_kernel_arg,
-                             pir::Value value) -> adt::Result<adt::Ok> {
+    auto DoEachDeclare = [&](pir::Value value) -> adt::Result<adt::Ok> {
       if (!registered_values.emplace(value).second) {
         return adt::Ok{};
       }
-      ADT_RETURN_IF_ERR(
-          TryRegisterNamedKernelArg(op_code_gen_ctx, named_kernel_arg, value));
-      ADT_LET_CONST_REF(
-          node_info, GetInitNodeInfo(op_code_gen_ctx, named_kernel_arg, value));
+      ADT_LET_CONST_REF(node_info,
+                        MakeInputIrGraphNodeInfo(op_code_gen_ctx, value));
       ADT_LET_CONST_REF(ir_value, ir_graph->GetIndexedIrValue(value));
       LOG(ERROR) << "CodeGenInputs value: " << value.impl() << ", node_id: "
                  << std::to_string(ir_value->node.node_id().value());
@@ -244,8 +246,8 @@ struct OpCudaCodeGenImpl {
       ADT_RETURN_IF_ERR(GenLoadCode(ss, indexes_expr_gen, ir_value, node_info));
       return adt::Ok{};
     };
-    ADT_RETURN_IF_ERR(
-        GenKernelInputDeclare(op_code_gen_ctx, packed_ir_op, DoEachDeclare));
+    ADT_RETURN_IF_ERR(VisitInputBirNativeIrValue(
+        op_code_gen_ctx, packed_ir_op, DoEachDeclare));
     LOG(ERROR) << "CodeGenInputs leave:\n" << ss->str();
     return adt::Ok{};
   }
@@ -266,44 +268,69 @@ struct OpCudaCodeGenImpl {
     return adt::Ok{};
   }
 
-  adt::Result<IrGraphNodeInfo> GetInitNodeInfo(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const kernel_define::NamedKernelArg& named_kernel_arg,
-      pir::Value value) {
-    return GetInitNodeInfoByNames(op_code_gen_ctx,
-                                  named_kernel_arg.arg_name,
-                                  named_kernel_arg.arg_name + "_local_var",
-                                  value);
+  adt::Result<IrGraphNodeInfo> MakeInputIrGraphNodeInfo(
+      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
+    using InArg = kernel_define::InTensorDataPtrKernelArgId<BirNode>;
+    return MakeIrGraphNodeInfo<InArg>(op_code_gen_ctx, value);
   }
 
-  adt::Result<IrGraphNodeInfo> GetInitNodeInfoByNames(
+  adt::Result<IrGraphNodeInfo> MakeOutputIrGraphNodeInfo(
+      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
+    using OutArg = kernel_define::OutTensorDataPtrKernelArgId<BirNode>;
+    return MakeIrGraphNodeInfo<OutArg>(op_code_gen_ctx, value);
+  }
+
+  template <typename KernelArgIdImpl>
+  adt::Result<IrGraphNodeInfo> MakeIrGraphNodeInfo(
+      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
+    ADT_LET_CONST_REF(
+        opt_kernel_arg_name,
+        GetKernelArgName<KernelArgIdImpl>(op_code_gen_ctx, value));
+    std::optional<std::string> default_global_ptr_name;
+    std::optional<std::string> default_local_var_name;
+    if (opt_kernel_arg_name.has_value()) {
+      default_global_ptr_name = opt_kernel_arg_name.value();
+      default_local_var_name = opt_kernel_arg_name.value() + "_local_var";
+    }
+    return MakeIrGraphNodeInfoByNames(op_code_gen_ctx,
+                                      default_global_ptr_name,
+                                      default_local_var_name,
+                                      value);
+  }
+
+  template <typename KernelArgIdImpl>
+  adt::Result<std::optional<std::string>> GetKernelArgName(
+      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
+    BirNode pir_node{NativeIrValue{value}};
+    KernelArgIdImpl kernel_arg_id_impl{pir_node};
+    kernel_define::KernelArgId<BirNode> kernel_arg_id{kernel_arg_id_impl};
+    const auto& iter =
+        op_code_gen_ctx->kernel_arg_id2arg_name.find(kernel_arg_id);
+    if (iter == op_code_gen_ctx->kernel_arg_id2arg_name.end()) {
+      return std::nullopt;
+    }
+    return iter->second;
+  }
+
+  adt::Result<IrGraphNodeInfo> MakeIrGraphNodeInfoByNames(
       const OpCodeGenCtx& op_code_gen_ctx,
-      const std::string& default_global_ptr_name,
-      std::string local_var_name,
+      const std::optional<std::string>& default_global_ptr_name,
+      const std::optional<std::string>& default_local_var_name,
       pir::Value value) {
     ADT_LET_CONST_REF(opt_local_var_name,
                       GetReplacedLocalVar(op_code_gen_ctx, value));
     std::optional<std::string> global_ptr_name{};
+    std::string local_var_name{};
     if (opt_local_var_name.has_value()) {
       global_ptr_name = std::nullopt;
       local_var_name = opt_local_var_name.value();
     } else {
-      global_ptr_name = default_global_ptr_name;
+      ADT_CHECK(default_global_ptr_name.has_value());
+      global_ptr_name = default_global_ptr_name.value();
+      ADT_CHECK(default_local_var_name.has_value());
+      local_var_name = default_local_var_name.value();
     }
     return IrGraphNodeInfo{global_ptr_name, local_var_name};
-  }
-
-  adt::Result<adt::Ok> TryRegisterNamedKernelArg(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const kernel_define::NamedKernelArg& named_kernel_arg,
-      pir::Value value) {
-    ADT_LET_CONST_REF(opt_replaced,
-                      GetReplacedLocalVar(op_code_gen_ctx, value));
-    if (!opt_replaced.has_value()) {
-      ADT_RETURN_IF_ERR(
-          RegisterNamedKernelArg(op_code_gen_ctx, named_kernel_arg));
-    }
-    return adt::Ok{};
   }
 
   adt::Result<adt::Ok> CodeGenOutputs(
@@ -314,20 +341,16 @@ struct OpCudaCodeGenImpl {
       const PureElementwiseIndexedIrGraph& ir_graph,
       const PackedIrOp& packed_ir_op) {
     std::unordered_set<pir::Value> registered_values;
-    auto DoEachDeclare = [&](const auto& named_kernel_arg,
-                             pir::Value value) -> adt::Result<adt::Ok> {
+    auto DoEachDeclare = [&](pir::Value value) -> adt::Result<adt::Ok> {
       if (!registered_values.emplace(value).second) {
         return adt::Ok{};
       }
-      ADT_RETURN_IF_ERR(
-          TryRegisterNamedKernelArg(op_code_gen_ctx, named_kernel_arg, value));
       ADT_LET_CONST_REF(yield_op_input,
                         GetYieldOpInputIndexedIrValue(ir_graph, value));
       ADT_LET_CONST_REF(yield_op_input_node_info,
                         ctx->Get(yield_op_input->node));
-      ADT_LET_CONST_REF(
-          output_node_info,
-          GetInitNodeInfo(op_code_gen_ctx, named_kernel_arg, value));
+      ADT_LET_CONST_REF(output_node_info,
+                        MakeOutputIrGraphNodeInfo(op_code_gen_ctx, value));
       ADT_RETURN_IF_ERR(GenStoreCode(ss,
                                      indexes_expr_gen,
                                      yield_op_input->indexes_expr,
@@ -336,7 +359,7 @@ struct OpCudaCodeGenImpl {
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(
-        GenKernelOutputDeclare(op_code_gen_ctx, packed_ir_op, DoEachDeclare));
+        VisitOutputNativeIrValue(op_code_gen_ctx, packed_ir_op, DoEachDeclare));
     return adt::Ok{};
   }
 
@@ -378,50 +401,7 @@ struct OpCudaCodeGenImpl {
       const IndexTupleExpr& indexes_expr, std::ostringstream* ss) {}
 
   template <typename DoEachT>
-  adt::Result<adt::Ok> GenKernelInputDeclare(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const PackedIrOp& packed_ir_op,
-      const DoEachT& DoEach) {
-    std::size_t seq = 0;
-    auto GetArgName = [&]() {
-      return std::string("__ap_kernel_in_") + std::to_string(seq++);
-    };
-    auto DoEachDeclare = [&](const auto& value,
-                             const auto& lambda) -> adt::Result<adt::Ok> {
-      const std::string& arg_name = GetArgName();
-      LOG(ERROR) << "arg_name: " << arg_name;
-      ADT_LET_CONST_REF(arg_type, GetConstDataPointerType(value));
-      kernel_define::KernelArg kernel_arg{arg_type, lambda};
-      kernel_define::NamedKernelArg named_kernel_arg{arg_name, kernel_arg};
-      return DoEach(named_kernel_arg, value);
-    };
-    return VisitInputNativeIrValueAndGetterLambda(
-        op_code_gen_ctx, packed_ir_op, DoEachDeclare);
-  }
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> GenKernelOutputDeclare(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const PackedIrOp& packed_ir_op,
-      const DoEachT& DoEach) {
-    std::size_t seq = 0;
-    auto GetArgName = [&]() {
-      return std::string("__ap_kernel_out_") + std::to_string(seq++);
-    };
-    auto DoEachDeclare = [&](const auto& value,
-                             const auto& lambda) -> adt::Result<adt::Ok> {
-      const std::string& arg_name = GetArgName();
-      ADT_LET_CONST_REF(arg_type, GetMutableDataPointerType(value));
-      kernel_define::KernelArg kernel_arg{arg_type, lambda};
-      kernel_define::NamedKernelArg named_kernel_arg{arg_name, kernel_arg};
-      return DoEach(named_kernel_arg, value);
-    };
-    return VisitOutputNativeIrValueAndGetterLambda(
-        op_code_gen_ctx, packed_ir_op, DoEachDeclare);
-  }
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitInputNativeIrValueAndGetterLambda(
+  adt::Result<adt::Ok> VisitInputBirNativeIrValue(
       const OpCodeGenCtx& op_code_gen_ctx,
       const PackedIrOp& packed_ir_op,
       const DoEachT& DoEach) {
@@ -431,22 +411,35 @@ struct OpCudaCodeGenImpl {
     auto DoEachNativeValue =
         [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(value, GetPirValue(graph_match_ctx, drr_ir_value));
-      ADT_LET_CONST_REF(getter_lambda,
-                        GetNativeIrValueGetterLambda(drr_ir_value));
-      return DoEach(value, getter_lambda);
+      return DoEach(value);
     };
     auto DoEachPackedValue =
         [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
-      return adt::errors::NotImplementedError{
-          "TODO: "
-          "VisitInputNativeIrValueAndGetterLambda(...)::DoEachPackedValue."};
+      ADT_RETURN_IF_ERR(
+          VisitPackedPirValue(graph_match_ctx, drr_ir_value, DoEach));
+      return adt::Ok{};
     };
     return VisitDrrTrivialFusionIrOpInput(
         drr_trivial_fusion_ir_op, DoEachNativeValue, DoEachPackedValue);
   }
 
   template <typename DoEachT>
-  adt::Result<adt::Ok> VisitOutputNativeIrValueAndGetterLambda(
+  adt::Result<adt::Ok> VisitPackedPirValue(const GraphMatchCtx& matc_ctx,
+                                           const DrrPackedIrValue& drr_ir_value,
+                                           const DoEachT& DoEach) {
+    auto DoEachPirNode = [&](const PirNode& pir_node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(pir_value, pir_node.template TryGet<NativeIrValue>());
+      ADT_RETURN_IF_ERR(DoEach(pir_value.value));
+      return adt::Ok{};
+    };
+    const auto& node = drr_ir_value->node;
+    ADT_RETURN_IF_ERR(
+        matc_ctx->VisitPackedBigGraphIrValueNode(node, DoEachPirNode));
+    return adt::Ok{};
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitOutputNativeIrValue(
       const OpCodeGenCtx& op_code_gen_ctx,
       const PackedIrOp& packed_ir_op,
       const DoEachT& DoEach) {
@@ -456,15 +449,13 @@ struct OpCudaCodeGenImpl {
     auto DoEachNativeValue =
         [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(value, GetPirValue(graph_match_ctx, drr_ir_value));
-      ADT_LET_CONST_REF(getter_lambda,
-                        GetNativeIrValueGetterLambda(drr_ir_value));
-      return DoEach(value, getter_lambda);
+      return DoEach(value);
     };
     auto DoEachPackedValue =
         [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
-      return adt::errors::NotImplementedError{
-          "TODO: "
-          "VisitOutputNativeIrValueAndGetterLambda(...)::DoEachPackedValue."};
+      ADT_RETURN_IF_ERR(
+          VisitPackedPirValue(graph_match_ctx, drr_ir_value, DoEach));
+      return adt::Ok{};
     };
     return VisitDrrTrivialFusionIrOpOutput(
         drr_trivial_fusion_ir_op, DoEachNativeValue, DoEachPackedValue);
@@ -649,16 +640,6 @@ struct OpCudaCodeGenImpl {
       const IndexedIrValue<IndexedIrNode>& ir_value,
       const IrGraphNodeInfo& node_info) {
     ADT_RETURN_IF_ERR(ctx->Emplace(ir_value->node, node_info));
-    return adt::Ok{};
-  }
-
-  adt::Result<adt::Ok> RegisterNamedKernelArg(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const kernel_define::NamedKernelArg& named_kernel_arg) {
-    ADT_LET_CONST_REF(define_ctx,
-                      adt::WeakPtrLock(op_code_gen_ctx->define_ctx));
-    auto* vec = &define_ctx->registered_named_kernel_args;
-    vec->emplace_back(named_kernel_arg);
     return adt::Ok{};
   }
 

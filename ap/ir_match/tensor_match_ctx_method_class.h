@@ -55,46 +55,57 @@ struct TensorMatchCtxMethodClass {
     if (iter == tensor_pattern_ctx->uid2ir_value.end()) {
       return std::nullopt;
     }
-    auto GetIrValueBySmallGraphNode =
-        [&](const SmallGraphNodeT& node) -> adt::Result<IrNodeT> {
+    using RetT = adt::Result<ValueT>;
+    auto GetNativeIrValueBySmallGraphNode =
+        [&](const SmallGraphNodeT& node) -> RetT {
       const auto& graph_match_ctx = ir_match_ctx->graph_match_ctx;
-      return graph_match_ctx->GetSoleBigGraphNode(node);
+      ADT_LET_CONST_REF(bir_value_node,
+                        graph_match_ctx->GetSoleBigGraphNode(node));
+      return CastFromBirValue(bir_value_node);
+    };
+    auto GetPackedIrValuesBySmallGraphNode =
+        [&](const SmallGraphNodeT& node) -> RetT {
+      const auto& graph_match_ctx = ir_match_ctx->graph_match_ctx;
+      ADT_LET_CONST_REF(bir_nodes,
+                        graph_match_ctx->GetPackedBigGraphIrValueNodes(node));
+      adt::List<ValueT> ret;
+      ret->reserve(bir_nodes->size());
+      for (const auto& bir_node : *bir_nodes) {
+        ADT_LET_CONST_REF(elt, CastFromBirValue(bir_node));
+        ret->emplace_back(elt);
+      }
+      return ret;
     };
     ADT_LET_CONST_REF(
-        ir_node,
+        ir_value,
         iter->second.Match(
-            [&](const DrrNativeIrValue& native_ir_value)
-                -> adt::Result<IrNodeT> {
-              return GetIrValueBySmallGraphNode(native_ir_value->node);
+            [&](const DrrNativeIrValue& native_ir_value) -> RetT {
+              return GetNativeIrValueBySmallGraphNode(native_ir_value->node);
             },
-            [&](const DrrPackedIrValue& packed_ir_value)
-                -> adt::Result<IrNodeT> {
-              return adt::errors::NotImplementedError{
-                  "'TensorMatchCtx' has not supported packed tensors now."};
+            [&](const DrrPackedIrValue& packed_ir_value) -> RetT {
+              return GetPackedIrValuesBySmallGraphNode(packed_ir_value->node);
             },
-            [&](const auto&) -> adt::Result<IrNodeT> {
+            [&](const auto&) -> RetT {
               return adt::errors::ValueError{
                   std::string() + "Failed to get OpMatchCtx attribute, '" +
                   attr_name + "' is a unbounded op which should not be."};
             }));
-    ADT_LET_CONST_REF(
-        ir_value,
-        ir_node.Match(
-            [&](const IrNativeIrValue& impl) -> adt::Result<ValueT> {
-              return ValueT{impl};
-            },
-            [&](const IrPackedIrValue& impl) -> adt::Result<ValueT> {
-              return ValueT{impl};
-            },
-            [&](const IrRefIrValue& impl) -> adt::Result<ValueT> {
-              return ValueT{impl};
-            },
-            [&](const auto&) -> adt::Result<ValueT> {
-              return adt::errors::RuntimeError{
-                  std::string() +
-                  "a ptn op node has wrongly matched to a non-op ir node."};
-            }));
     return ir_value;
+  }
+
+  adt::Result<ValueT> CastFromBirValue(const IrNodeT& bir_value_node) {
+    return bir_value_node.Match(
+        [&](const IrNativeIrValue& impl) -> adt::Result<ValueT> {
+          return ValueT{impl};
+        },
+        [&](const IrRefIrValue& impl) -> adt::Result<ValueT> {
+          return ValueT{impl};
+        },
+        [&](const auto&) -> adt::Result<ValueT> {
+          return adt::errors::RuntimeError{
+              std::string() +
+              "a drr op node has wrongly matched to a non-op ir node."};
+        });
   }
 };
 

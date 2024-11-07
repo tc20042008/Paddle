@@ -37,6 +37,11 @@ struct ResPtnUnboundNativeIrOp {
     return ss.str();
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
+
   using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
 
   adt::Result<ValueT> Call(const Self& self) {

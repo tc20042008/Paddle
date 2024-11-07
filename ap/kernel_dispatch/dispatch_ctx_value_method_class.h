@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "ap/axpr/builtin_serializable_object_method_class.h"
 #include "ap/kernel_dispatch/const_tensor_method_class.h"
 #include "ap/kernel_dispatch/dispatch_ctx_method_class.h"
 #include "ap/kernel_dispatch/dispatch_raw_ctx_method_class.h"

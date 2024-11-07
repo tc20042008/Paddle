@@ -32,6 +32,11 @@ struct MethodClassImpl<ValueT, drr::OptPackedIrOpDeclare<ValueT, NodeT>> {
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
 };
 
 template <typename ValueT, typename NodeT>

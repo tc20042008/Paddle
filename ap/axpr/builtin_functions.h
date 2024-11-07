@@ -15,6 +15,8 @@
 #pragma once
 #include <functional>
 #include <sstream>
+#include "ap/axpr/bool_int_double_helper.h"
+#include "ap/axpr/builtin_high_order_func_type.h"
 #include "ap/axpr/data_value_util.h"
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/string_util.h"
@@ -22,17 +24,12 @@
 
 namespace ap::axpr {
 
+namespace detail {
+
 template <typename Val>
-Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
-                             ComposedCallImpl<Val>* composed_call) {
-  const auto args = composed_call->args;
-  if (args.size() != 3) {
-    return TypeError{std::string("`if` takes 3 arguments, but ") +
-                     std::to_string(args.size()) + "were given."};
-  }
-  const auto& cond = args.at(0);
+adt::Result<bool> ConvertToBool(const Val& cond) {
   using TypeT = typename TypeTrait<Val>::TypeT;
-  Result<bool> select_true_branch_res = cond.Match(
+  return cond.Match(
       [](const TypeT&) -> Result<bool> { return true; },
       [](const bool c) -> Result<bool> { return c; },
       [](const int64_t c) -> Result<bool> { return c != 0; },
@@ -52,11 +49,24 @@ Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
       [](const CpsBuiltinHighOrderFuncType<Val>&) -> Result<bool> {
         return true;
       },
-      [](const auto&) -> Result<bool> {
-        return TypeError{"index expr could not be a condition"};
+      [&](const auto&) -> Result<bool> {
+        return TypeError{std::string() + "'" + GetTypeName(cond) +
+                         "' could not be convert to bool"};
       });
-  ADT_RETURN_IF_ERR(select_true_branch_res);
-  bool select_true_branch = select_true_branch_res.GetOkValue();
+}
+
+}  // namespace detail
+
+template <typename Val>
+Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
+                             ComposedCallImpl<Val>* composed_call) {
+  const auto args = composed_call->args;
+  if (args.size() != 3) {
+    return TypeError{std::string("`if` takes 3 arguments, but ") +
+                     std::to_string(args.size()) + "were given."};
+  }
+  const auto& cond = args.at(0);
+  ADT_LET_CONST_REF(select_true_branch, detail::ConvertToBool<Val>(cond));
   const auto& opt_true_closure =
       MethodClass<Val>::template TryGet<Closure<Val>>(args.at(1));
   ADT_RETURN_IF_ERR(opt_true_closure);
@@ -129,6 +139,294 @@ Result<ValueT> BuiltinList(const ValueT&, const std::vector<ValueT>& args) {
 template <typename Val>
 Result<Val> BuiltinHalt(const Val&, const std::vector<Val>& args) {
   return RuntimeError{"Dead code. Halt function should never be touched."};
+}
+
+template <typename ValueT>
+adt::Result<ValueT> Print(const ValueT&, const std::vector<ValueT>& args) {
+  std::ostringstream ss;
+  int i = 0;
+  for (const auto& obj : args) {
+    if (i++ > 0) {
+      ss << " ";
+    }
+    const auto& func = MethodClass<ValueT>::ToString(obj);
+    ADT_LET_CONST_REF(str_val, func(obj));
+    ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() + "'" + GetTypeName(obj) +
+               ".__builtin_ToString__ should return a 'str' but '" +
+               GetTypeName(str_val) + "' were returned."};
+    ss << str;
+  }
+  LOG(ERROR) << "Print\n" << ss.str();
+  return adt::Nothing{};
+}
+
+template <typename ValueT>
+adt::Result<ValueT> ReplaceOrTrimLeftComma(const ValueT&,
+                                           const std::vector<ValueT>& args) {
+  ADT_CHECK(args.size() == 3) << adt::errors::TypeError{
+      std::string() + "'replace_or_trim_left_comma' takes 3 arguments but " +
+      std::to_string(args.size()) + " were given."};
+  ADT_LET_CONST_REF(self, args.at(0).template TryGet<std::string>())
+      << adt::errors::TypeError{
+             std::string() +
+             "the argument 1 of 'replace_or_trim_left_comma' should be a str "
+             "(not '" +
+             GetTypeName(args.at(0)) + "')."};
+  ADT_LET_CONST_REF(pattern, args.at(1).template TryGet<std::string>())
+      << adt::errors::TypeError{
+             std::string() +
+             "the argument 2 of 'replace_or_trim_left_comma' should be a str "
+             "(not '" +
+             GetTypeName(args.at(1)) + "')."};
+  ADT_LET_CONST_REF(replacement, args.at(2).template TryGet<std::string>())
+      << adt::errors::TypeError{
+             std::string() +
+             "the argument 3 of 'replace_or_trim_left_comma' should be a str "
+             "(not '" +
+             GetTypeName(args.at(2)) + "')."};
+  std::size_t pattern_pos = self.find(pattern);
+  if (pattern_pos == std::string::npos) {
+    return self;
+  }
+  auto EquivalentComma =
+      [](const std::string& self, std::size_t start, std::size_t end) {
+        if (start == std::string::npos) {
+          return false;
+        }
+        if (start < 0) {
+          return false;
+        }
+        if (start >= self.size()) {
+          return false;
+        }
+        if (end == std::string::npos) {
+          return false;
+        }
+        if (end < 0) {
+          return false;
+        }
+        if (end >= self.size()) {
+          return false;
+        }
+        if (start >= end) {
+          return false;
+        }
+        if (self[start] != ',') {
+          return false;
+        }
+        for (int i = start + 1; i < end; ++i) {
+          char ch = self[i];
+          if (ch == ' ') {
+            continue;
+          }
+          if (ch == '\r') {
+            continue;
+          }
+          if (ch == '\n') {
+            continue;
+          }
+          if (ch == '\t') {
+            continue;
+          }
+          return false;
+        }
+        return true;
+      };
+  if (replacement.empty()) {
+    std::size_t comma_pos = self.rfind(',', pattern_pos);
+    if (EquivalentComma(self, comma_pos, pattern_pos)) {
+      std::string str = self;
+      return str.replace(comma_pos, pattern_pos + pattern.size(), "");
+    } else {
+      return self;
+    }
+  } else {
+    std::string str = self;
+    return str.replace(pattern_pos, pattern.size(), replacement);
+  }
+}
+
+template <typename ValueT>
+adt::Result<ValueT> MakeRange(const ValueT&, const std::vector<ValueT>& args) {
+  std::optional<int64_t> start;
+  std::optional<int64_t> end;
+  if (args.size() == 1) {
+    start = 0;
+    ADT_LET_CONST_REF(arg0, args.at(0).template TryGet<int64_t>())
+        << adt::errors::TypeError{std::string() +
+                                  "'range' takes int argument but " +
+                                  GetTypeName(args.at(0)) + " were given."};
+    end = arg0;
+  } else if (args.size() == 2) {
+    ADT_LET_CONST_REF(arg0, args.at(0).template TryGet<int64_t>())
+        << adt::errors::TypeError{std::string() +
+                                  "'range' takes int argument but " +
+                                  GetTypeName(args.at(0)) + " were given."};
+    ADT_LET_CONST_REF(arg1, args.at(1).template TryGet<int64_t>())
+        << adt::errors::TypeError{std::string() +
+                                  "'range' takes int argument but " +
+                                  GetTypeName(args.at(1)) + " were given."};
+    start = arg0;
+    end = arg1;
+  } else {
+    ADT_CHECK(false) << adt::errors::TypeError{
+        std::string() + "'range' takes 1 or 2 arguments but " +
+        std::to_string(args.size()) + " were given."};
+  }
+  ADT_CHECK(start.has_value());
+  ADT_CHECK(end.has_value());
+  adt::List<ValueT> ret;
+  ret->reserve((start.value() > end.value() ? 0 : end.value() - start.value()));
+  for (int64_t i = start.value(); i < end.value(); ++i) {
+    ret->emplace_back(i);
+  }
+  return ret;
+}
+
+template <typename Val>
+Result<Val> Map(const axpr::ApplyT<Val>& Apply,
+                const Val&,
+                const std::vector<Val>& args) {
+  ADT_CHECK(args.size() == 2)
+      << adt::errors::TypeError{std::string() + "map() takes 2 arguments but " +
+                                std::to_string(args.size()) + " were given."};
+
+  ADT_LET_CONST_REF(lst, args.at(1).template TryGet<adt::List<Val>>());
+  adt::List<Val> ret;
+  ret->reserve(lst->size());
+  const auto& f = args.at(0);
+  for (const auto& elt : *lst) {
+    ADT_LET_CONST_REF(converted_elt, Apply(f, std::vector<Val>{elt}));
+    ret->emplace_back(converted_elt);
+  }
+  return ret;
+}
+
+template <typename Val>
+Result<Val> Filter(const axpr::ApplyT<Val>& Apply,
+                   const Val&,
+                   const std::vector<Val>& args) {
+  ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+      std::string() + "filter() takes 2 arguments but " +
+      std::to_string(args.size()) + " were given."};
+
+  ADT_LET_CONST_REF(lst, args.at(1).template TryGet<adt::List<Val>>());
+  adt::List<Val> ret;
+  ret->reserve(lst->size());
+  const auto& f = args.at(0);
+  for (const auto& elt : *lst) {
+    ADT_LET_CONST_REF(filter_result, Apply(f, std::vector<Val>{elt}));
+    ADT_LET_CONST_REF(is_true, detail::ConvertToBool<Val>(filter_result));
+    if (is_true) {
+      ret->emplace_back(elt);
+    }
+  }
+  return ret;
+}
+
+template <typename Val>
+Result<Val> Zip(const Val&, const std::vector<Val>& args) {
+  std::optional<std::size_t> size;
+  for (const auto& arg : args) {
+    ADT_LET_CONST_REF(lst, arg.template TryGet<adt::List<Val>>())
+        << adt::errors::TypeError{std::string() +
+                                  "the argument of 'zip' should list."};
+    if (size.has_value()) {
+      ADT_CHECK(size.value() == lst->size()) << adt::errors::TypeError{
+          std::string() + "the arguments of 'zip' should be the same size."};
+    } else {
+      size = lst->size();
+    }
+  }
+  adt::List<Val> ret;
+  ret->reserve(size.value());
+  for (int i = 0; i < size.value(); ++i) {
+    adt::List<Val> tuple;
+    tuple->reserve(args.size());
+    for (const auto& arg : args) {
+      ADT_LET_CONST_REF(lst, arg.template TryGet<adt::List<Val>>());
+      tuple->emplace_back(lst->at(i));
+    }
+    ret->emplace_back(tuple);
+  }
+  return ret;
+}
+
+template <typename Val>
+Result<Val> Reduce(const axpr::ApplyT<Val>& Apply,
+                   const Val&,
+                   const std::vector<Val>& args) {
+  ADT_CHECK(args.size() == 2 || args.size() == 3) << adt::errors::TypeError{
+      std::string() + "'reduce' takes 2 or 3 arguments but " +
+      std::to_string(args.size()) + " were given."};
+  ADT_LET_CONST_REF(lst, args.at(1).template TryGet<adt::List<Val>>());
+  std::optional<Val> init;
+  std::optional<int64_t> start;
+  if (lst->size() > 0) {
+    init = lst->at(0);
+    start = 1;
+  } else {
+    ADT_CHECK(lst->size() == 3) << adt::errors::TypeError{
+        std::string() + "reduce() of empty sequence with no initial value"};
+    init = args.at(2);
+    start = 0;
+  }
+  ADT_CHECK(init.has_value());
+  ADT_CHECK(start.has_value());
+  Val ret{init.value()};
+  const auto& f = args.at(0);
+  for (int i = start.value(); i < lst->size(); ++i) {
+    const auto& elt = lst->at(i);
+    ADT_LET_CONST_REF(cur_reduced, Apply(f, std::vector<Val>{elt, ret}));
+    ret = cur_reduced;
+  }
+  return ret;
+}
+
+template <typename Val>
+Result<Val> Max(const Val&, const std::vector<Val>& args) {
+  ADT_CHECK(args.size() == 2)
+      << adt::errors::TypeError{std::string() + "max() takes 2 arguments but " +
+                                std::to_string(args.size()) + " were given."};
+  ADT_LET_CONST_REF(lhs, BoolIntDouble::CastFrom(args.at(0)))
+      << adt::errors::TypeError{std::string() +
+                                "the argument 1 of max() should be 'bool', "
+                                "'int' or 'float' (not '" +
+                                GetTypeName(args.at(0)) + "')."};
+  ADT_LET_CONST_REF(rhs, BoolIntDouble::CastFrom(args.at(1)))
+      << adt::errors::TypeError{std::string() +
+                                "the argument 1 of max() should be 'bool', "
+                                "'int' or 'float' (not '" +
+                                GetTypeName(args.at(0)) + "')."};
+  BoolIntDoubleHelper<Val> helper{};
+  ADT_LET_CONST_REF(cmp_ret,
+                    helper.template BinaryFunc<ArithmeticGE>(lhs, rhs));
+  ADT_LET_CONST_REF(cmp, cmp_ret.template TryGet<bool>());
+  return cmp ? args.at(0) : args.at(1);
+}
+
+template <typename Val>
+Result<Val> Min(const Val&, const std::vector<Val>& args) {
+  ADT_CHECK(args.size() == 2)
+      << adt::errors::TypeError{std::string() + "min() takes 2 arguments but " +
+                                std::to_string(args.size()) + " were given."};
+  ADT_LET_CONST_REF(lhs, BoolIntDouble::CastFrom(args.at(0)))
+      << adt::errors::TypeError{std::string() +
+                                "the argument 1 of min() should be 'bool', "
+                                "'int' or 'float' (not '" +
+                                GetTypeName(args.at(0)) + "')."};
+  ADT_LET_CONST_REF(rhs, BoolIntDouble::CastFrom(args.at(1)))
+      << adt::errors::TypeError{std::string() +
+                                "the argument 1 of min() should be 'bool', "
+                                "'int' or 'float' (not '" +
+                                GetTypeName(args.at(0)) + "')."};
+  BoolIntDoubleHelper<Val> helper{};
+  ADT_LET_CONST_REF(cmp_ret,
+                    helper.template BinaryFunc<ArithmeticLE>(lhs, rhs));
+  ADT_LET_CONST_REF(cmp, cmp_ret.template TryGet<bool>());
+  return cmp ? args.at(0) : args.at(1);
 }
 
 }  // namespace ap::axpr

@@ -16,14 +16,18 @@
 
 #include <functional>
 #include "ap/adt/adt.h"
+#include "ap/axpr/data_type.h"
+#include "ap/axpr/data_type_util.h"
 #include "ap/axpr/type.h"
 #include "ap/graph/node_cstr.h"
 #include "ap/ir_match/ref_match_ctx.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/op_result.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace ap::paddle {
 
@@ -38,6 +42,49 @@ struct NativeIrValue {
 
   graph::NativeIrValueCstr node_cstr() const {
     return graph::NativeIrValueCstr{};
+  }
+
+  adt::Result<axpr::DataType> GetDataType() const {
+    ADT_LET_CONST_REF(type, GetPhiDataType());
+    return ap::axpr::GetDataTypeFromPhiDataType(type);
+  }
+
+  adt::Result<const std::vector<symbol::DimExpr>*> GetShapeDimExprsPtr() const {
+    auto* op = value.defining_op();
+    ADT_CHECK(op != nullptr);
+    auto* program = op->GetParentProgram();
+    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(program);
+    const auto& shape_or_data = shape_analysis.GetShapeOrDataForValue(value);
+    using RetT = adt::Result<const std::vector<symbol::DimExpr>*>;
+    return shape_or_data.Match(
+        [&](const symbol::TensorShapeOrDataDimExprs& impl) -> RetT {
+          return &impl.shape();
+        },
+        [&](const auto&) -> RetT {
+          return adt::errors::TypeError{
+              "GetShapeDimExprsPtr only support TensorShapeOrDataDimExprs."};
+        });
+  }
+
+ private:
+  adt::Result<phi::DataType> GetPhiDataType() const {
+    ADT_LET_CONST_REF(type, GetPirDataType());
+    try {
+      return ::paddle::dialect::TransToPhiDataType(type);
+    } catch (const std::exception& e) {
+      return adt::errors::TypeError{
+          "failed to cast from pir data type to phi data type."};
+    }
+  }
+
+  adt::Result<pir::Type> GetPirDataType() const {
+    if (!this->value.type().isa<pir::DenseTensorType>()) {
+      return adt::errors::NotImplementedError{
+          "pir value must be of DenseTensorType"};
+    }
+    const auto dense_tensor_type =
+        this->value.type().dyn_cast<pir::DenseTensorType>();
+    return dense_tensor_type.dtype();
   }
 };
 
@@ -193,6 +240,10 @@ struct RefIrValue {
 
   bool operator==(const RefIrValue& other) const {
     return this->ref_node_info == other.ref_node_info;
+  }
+
+  adt::Result<NativeIrValue> GetOwnerNativeIrValue() const {
+    return this->ref_node_info->ir_value;
   }
 
   graph::RefIrValueCstr node_cstr() const { return graph::RefIrValueCstr{}; }

@@ -29,6 +29,10 @@ struct NativeIrValueMethodClass {
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    return static_cast<int64_t>(std::hash<Self>()(self));
+  }
 };
 
 template <typename ValueT>
@@ -41,6 +45,11 @@ struct PackedIrValueMethodClass {
     const pir::Operation* ptr = self.fusion_op;
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
+  }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    const pir::Operation* ptr = self.fusion_op;
+    return reinterpret_cast<int64_t>(ptr);
   }
 };
 
@@ -55,6 +64,11 @@ struct RefIrValueMethodClass {
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
+
+  adt::Result<ValueT> Hash(Self self) {
+    return reinterpret_cast<int64_t>(
+        self.ref_node_info.__adt_rc_shared_ptr_raw_ptr());
+  }
 };
 
 template <typename ValueT>
@@ -67,6 +81,11 @@ struct NativeIrOpMethodClass {
     const auto* ptr = self.op;
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
+  }
+
+  adt::Result<ValueT> Hash(Self self) {
+    const pir::Operation* ptr = self.op;
+    return reinterpret_cast<int64_t>(ptr);
   }
 };
 
@@ -81,6 +100,11 @@ struct PackedIrOpMethodClass {
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
+
+  adt::Result<ValueT> Hash(Self self) {
+    const pir::Operation* ptr = self.fusion_op;
+    return reinterpret_cast<int64_t>(ptr);
+  }
 };
 
 template <typename ValueT>
@@ -93,6 +117,11 @@ struct RefIrOpMethodClass {
     const auto* ptr = self.ref_node_info.__adt_rc_shared_ptr_raw_ptr();
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
+  }
+
+  adt::Result<ValueT> Hash(Self self) {
+    return reinterpret_cast<int64_t>(
+        self.ref_node_info.__adt_rc_shared_ptr_raw_ptr());
   }
 };
 

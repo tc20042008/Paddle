@@ -55,10 +55,14 @@ struct DefaultDrrGraphDescriptor {
   }
 
   template <typename DrrNodeT>
-  adt::Result<DrrNodeT> CastSoleInput(const DrrNode& node) const {
+  adt::Result<DrrNodeT> CastSoleUnignoredInput(const DrrNode& node) const {
     std::optional<DrrNodeT> opt_sole_input{};
     auto DoEachUpstream =
         [&](const DrrGraphNode& upstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(ignored, IgnoredNode(upstream));
+      if (ignored) {
+        return adt::Ok{};
+      }
       ADT_LET_CONST_REF(drr_upstream, upstream.Get());
       ADT_LET_CONST_REF(casted, drr_upstream.template TryGet<DrrNodeT>());
       ADT_CHECK(!opt_sole_input.has_value());
@@ -70,15 +74,47 @@ struct DefaultDrrGraphDescriptor {
     return opt_sole_input.value();
   }
 
+  adt::Result<DrrNode> GetSoleInput(const DrrNode& node) const {
+    std::optional<DrrNode> opt_sole_input{};
+    auto DoEachUpstream =
+        [&](const DrrGraphNode& upstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(drr_upstream, upstream.Get());
+      ADT_CHECK(!opt_sole_input.has_value());
+      opt_sole_input = drr_upstream;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitUpstreamNodes(node.node(), DoEachUpstream));
+    ADT_CHECK(opt_sole_input.has_value());
+    return opt_sole_input.value();
+  }
+
   template <typename DrrNodeT>
-  adt::Result<DrrNodeT> CastSoleOutput(const DrrNode& node) const {
+  adt::Result<DrrNodeT> CastSoleUnignoredOutput(const DrrNode& node) const {
     std::optional<DrrNodeT> opt_sole_output{};
     auto DoEachDownstream =
         [&](const DrrGraphNode& downstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(ignored, IgnoredNode(downstream));
+      if (ignored) {
+        return adt::Ok{};
+      }
       ADT_LET_CONST_REF(drr_downstream, downstream.Get());
       ADT_LET_CONST_REF(casted, drr_downstream.template TryGet<DrrNodeT>());
       ADT_CHECK(!opt_sole_output.has_value());
       opt_sole_output = casted;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitDownstreamNodes(node.node(), DoEachDownstream));
+    ADT_CHECK(opt_sole_output.has_value());
+    return opt_sole_output.value();
+  }
+
+  adt::Result<DrrNode> GetSoleOutput(const DrrNode& node) const {
+    std::optional<DrrNode> opt_sole_output{};
+    auto DoEachDownstream =
+        [&](const DrrGraphNode& downstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(drr_downstream, downstream.Get());
+      ADT_CHECK(!opt_sole_output.has_value());
+      opt_sole_output = drr_downstream;
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitDownstreamNodes(node.node(), DoEachDownstream));
@@ -224,10 +260,14 @@ struct AllOperandAndResultDrrGraphDescriptor {
   }
 
   template <typename DrrNodeT>
-  adt::Result<DrrNodeT> CastSoleInput(const DrrNode& node) const {
+  adt::Result<DrrNodeT> CastSoleUnignoredInput(const DrrNode& node) const {
     std::optional<DrrNodeT> opt_sole_input{};
     auto DoEachUpstream =
         [&](const DrrGraphNode& upstream) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(ignored, IgnoredNode(upstream));
+      if (ignored) {
+        return adt::Ok{};
+      }
       ADT_LET_CONST_REF(drr_upstream, upstream.Get());
       ADT_LET_CONST_REF(casted, drr_upstream.template TryGet<DrrNodeT>());
       ADT_CHECK(!opt_sole_input.has_value());

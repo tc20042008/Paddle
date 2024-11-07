@@ -30,6 +30,12 @@ struct PointerTypeMethodClass {
     return std::string("PointerType.") + self.Name();
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    int64_t hash_value = std::hash<const char*>()("PointerType");
+    hash_value = adt::hash_combine(hash_value, self.index());
+    return hash_value;
+  }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     return std::nullopt;

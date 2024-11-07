@@ -64,6 +64,11 @@ struct DataValueMethodClass {
     return str;
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    ADT_LET_CONST_REF(hash_value, self.GetHashValue());
+    return hash_value;
+  }
+
   template <typename BuiltinUnarySymbol>
   static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<

@@ -33,6 +33,11 @@ struct MethodClassImpl<ValueT, drr::tSrcPtn<drr::PackedIrValue<NodeT>>> {
     return ss.str();
   }
 
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
+
   adt::Result<ValueT> Starred(const Self& self) {
     return axpr::Starred<ValueT>{adt::List<ValueT>{self}};
   }
@@ -54,6 +59,11 @@ struct MethodClassImpl<ValueT,
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
 };
 
 template <typename ValueT, typename NodeT>
@@ -71,6 +81,11 @@ struct MethodClassImpl<ValueT, drr::tResPtn<drr::PackedIrValue<NodeT>>> {
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
+  }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
   }
 
   adt::Result<ValueT> Starred(const Self& self) {
@@ -93,6 +108,11 @@ struct MethodClassImpl<ValueT,
     const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
+  }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
   }
 };
 

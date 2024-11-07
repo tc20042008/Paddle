@@ -22,13 +22,13 @@ namespace ap::kernel_define {
 template <typename ValueT>
 struct CodeGenResultMethodClass {
   using This = CodeGenResultMethodClass;
-  using Self = CodeGenResult;
+  using Self = CodeGenResult<ValueT>;
 };
 
 template <typename ValueT>
 struct TypeImplCodeGenResultMethodClass {
   using This = TypeImplCodeGenResultMethodClass;
-  using Self = axpr::TypeImpl<CodeGenResult>;
+  using Self = axpr::TypeImpl<CodeGenResult<ValueT>>;
 
   adt::Result<ValueT> Call(const Self&) { return &This::Construct; }
 
@@ -43,9 +43,26 @@ struct TypeImplCodeGenResultMethodClass {
     ADT_LET_CONST_REF(m, kwargs->template TryGet<Module>("module"))
         << adt::errors::TypeError{
                std::string() +
-               "the constructor of 'CodeGenResult' takes keyword argument "
-               "'module' but none were given."};
-    return CodeGenResult{m};
+               "the constructor of 'CodeGenResult' needs keyword argument "
+               "'module' of type 'Module'."};
+    std::optional<axpr::BuiltinSerializableObject<ValueT>>
+        kernel_dispatch_const_data;
+    if (kwargs->Has("kernel_dispatch_const_data")) {
+      ADT_LET_CONST_REF(
+          data,
+          kwargs->template TryGet<axpr::BuiltinSerializableObject<ValueT>>(
+              "kernel_dispatch_const_data"))
+          << adt::errors::TypeError{
+                 std::string() +
+                 "the constructor of 'CodeGenResult' needs keyword argument "
+                 "'kernel_dispatch_const_data' of type "
+                 "'BuiltinSerializableObject'."};
+      kernel_dispatch_const_data = data;
+    } else {
+      kernel_dispatch_const_data = axpr::BuiltinSerializableObject<ValueT>{};
+    }
+    ADT_CHECK(kernel_dispatch_const_data.has_value());
+    return CodeGenResult<ValueT>{m, kernel_dispatch_const_data.value()};
   }
 };
 
@@ -54,11 +71,12 @@ struct TypeImplCodeGenResultMethodClass {
 namespace ap::axpr {
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::kernel_define::CodeGenResult>
+struct MethodClassImpl<ValueT, ap::kernel_define::CodeGenResult<ValueT>>
     : public kernel_define::CodeGenResultMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::kernel_define::CodeGenResult>>
+struct MethodClassImpl<ValueT,
+                       TypeImpl<ap::kernel_define::CodeGenResult<ValueT>>>
     : public kernel_define::TypeImplCodeGenResultMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

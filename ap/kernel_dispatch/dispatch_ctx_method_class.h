@@ -145,18 +145,6 @@ Result<Val> MakeDispatchCtxMethod(const DispatchCtx<Val>& ctx,
 }
 
 template <typename Val, typename T>
-Result<Val> MakeDefineCtxDataType(const DispatchCtx<Val>& ctx,
-                                  const std::string&) {
-  return DataType{CppDataType<T>{}};
-}
-
-template <typename Val, typename T>
-Result<Val> MakeDefineCtxPointerType(const DispatchCtx<Val>& ctx,
-                                     const std::string&) {
-  return PointerType{CppPointerType<T>{}};
-}
-
-template <typename Val, typename T>
 Result<Val> DispatchCtxType(const DispatchCtx<Val>& ctx, const std::string&) {
   return ap::axpr::TypeImpl<T>{};
 }
@@ -174,24 +162,6 @@ Result<Val> DispatchCtxGetAttr(const DispatchCtx<Val>& ctx,
       {"inputs", &DispatchCtxGetInputs<Val>},
       {"outputs", &DispatchCtxGetOutputs<Val>},
       {"launch_cuda", &MakeDispatchCtxMethod<Val, &LaunchCuda<Val>>},
-#define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)                      \
-  {#cpp_type, &MakeDefineCtxDataType<Val, cpp_type>},                \
-      {"const_" #cpp_type, &MakeDefineCtxDataType<Val, cpp_type>},   \
-      {#cpp_type "_ptr", &MakeDefineCtxPointerType<Val, cpp_type*>}, \
-      {"const_" #cpp_type "_ptr",                                    \
-       &MakeDefineCtxPointerType<Val, const cpp_type*>},
-      PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
-#undef MAKE_CPP_TYPE_CASE
-#define MAKE_INT_CPP_TYPE_CASE(cpp_type)                                 \
-  {#cpp_type, &MakeDefineCtxDataType<Val, cpp_type##_t>},                \
-      {"const_" #cpp_type, &MakeDefineCtxDataType<Val, cpp_type##_t>},   \
-      {#cpp_type "_ptr", &MakeDefineCtxPointerType<Val, cpp_type##_t*>}, \
-      {"const_" #cpp_type "_ptr",                                        \
-       &MakeDefineCtxPointerType<Val, const cpp_type##_t*>},
-          AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
-#undef MAKE_INT_CPP_TYPE_CASE
-              {"void_ptr", &MakeDefineCtxPointerType<Val, void*>},
-      {"const_void_ptr", &MakeDefineCtxPointerType<Val, const void*>},
   };
   const auto& iter = map.find(name);
   if (iter == map.end()) {
@@ -205,33 +175,77 @@ Result<Val> DispatchCtxGetAttr(const DispatchCtx<Val>& ctx,
 
 template <typename ValueT>
 struct DispatchCtxMethodClass {
-  using Self = DispatchCtxMethodClass;
+  using This = DispatchCtxMethodClass;
+  using Self = DispatchCtx<ValueT>;
 
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    if constexpr (std::is_same_v<BultinBinarySymbol,
-                                 ap::axpr::builtin_symbol::GetAttr>) {
-      return &Self::GetAttr;
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    if (attr_name == "kernel_dispatch_const_data") {
+      return self->kernel_dispatch_const_data;
     }
-    return std::nullopt;
+    if (attr_name == "get_input_index_by_name") {
+      return axpr::Method<ValueT>{self, &This::StaticGetInputIndexByName};
+    }
+    if (attr_name == "get_output_index_by_name") {
+      return axpr::Method<ValueT>{self, &This::StaticGetOutputIndexByName};
+    }
+    return detail::DispatchCtxGetAttr<Val>(self, attr_name);
   }
 
-  static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
-                                     const ValueT& attr_name_val) {
-    const auto& opt_obj =
-        MethodClass<ValueT>::template TryGet<DispatchCtx<ValueT>>(obj_val);
-    ADT_RETURN_IF_ERR(opt_obj);
-    const auto& obj = opt_obj.GetOkValue();
-    const auto& opt_attr_name =
-        MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERR(opt_attr_name);
-    const auto& attr_name = opt_attr_name.GetOkValue();
-    return detail::DispatchCtxGetAttr<Val>(obj, attr_name);
+  static adt::Result<ValueT> StaticGetInputIndexByName(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() +
+        "'DispatchCtx.get_input_index_by_name' takes 1 argument but " +
+        std::to_string(args.size()) + " were given."};
+    ADT_LET_CONST_REF(tensor_name, args.at(0).template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "the argument 1 of 'DispatchCtx.get_input_index_by_name' should "
+               "be str (not '" +
+               axpr::GetTypeName(args.at(0)) + "')."};
+    return This{}.GetInputIndexByName(self, tensor_name);
+  }
+
+  adt::Result<ValueT> GetInputIndexByName(const Self& self,
+                                          const std::string& tensor_name) {
+    const auto& data = self->kernel_dispatch_const_data;
+    ADT_LET_CONST_REF(
+        name2idx,
+        data->object->template TryGet<axpr::BuiltinSerializableObject<ValueT>>(
+            "__builtin_ap_kernel_input_name_to_index"));
+    ADT_LET_CONST_REF(index,
+                      name2idx->object->template TryGet<int64_t>(tensor_name));
+    return index;
+  }
+
+  static adt::Result<ValueT> StaticGetOutputIndexByName(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() +
+        "'DispatchCtx.get_output_index_by_name' takes 1 argument but " +
+        std::to_string(args.size()) + " were given."};
+    ADT_LET_CONST_REF(tensor_name, args.at(0).template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "the argument 1 of 'DispatchCtx.get_output_index_by_name' "
+               "should be str (not '" +
+               axpr::GetTypeName(args.at(0)) + "')."};
+    return This{}.GetOutputIndexByName(self, tensor_name);
+  }
+
+  adt::Result<ValueT> GetOutputIndexByName(const Self& self,
+                                           const std::string& tensor_name) {
+    const auto& data = self->kernel_dispatch_const_data;
+    ADT_LET_CONST_REF(
+        name2idx,
+        data->object->template TryGet<axpr::BuiltinSerializableObject<ValueT>>(
+            "__builtin_ap_kernel_output_name_to_index"));
+    ADT_LET_CONST_REF(index,
+                      name2idx->object->template TryGet<int64_t>(tensor_name));
+    return index;
   }
 };
 
@@ -240,19 +254,8 @@ struct DispatchCtxMethodClass {
 namespace ap::axpr {
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::kernel_dispatch::DispatchCtx<ValueT>> {
-  using method_class = ap::kernel_dispatch::DispatchCtxMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, ap::kernel_dispatch::DispatchCtx<ValueT>>
+    : public ap::kernel_dispatch::DispatchCtxMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT,

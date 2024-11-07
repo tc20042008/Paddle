@@ -16,7 +16,6 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/kernel_define/func_declare.h"
-#include "ap/kernel_define/kernel_arg.h"
 
 namespace ap::kernel_define {
 

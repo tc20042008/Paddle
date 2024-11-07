@@ -18,6 +18,7 @@
 #include "ap/axpr/type.h"
 #include "ap/index_expr/index_tuple_expr.h"
 #include "ap/ir_match/native_or_ref_ir_value.h"
+#include "ap/kernel_define/kernel_arg_id.h"
 
 namespace ap::kernel_define {
 
@@ -43,6 +44,8 @@ struct OpCodeGenCtxImpl {
   std::vector<LocalVarBinding<IrNodeT>> local_var_binding;
 
   std::optional<LocalVarName> anchor_local_var_name;
+
+  std::unordered_map<KernelArgId<IrNodeT>, std::string> kernel_arg_id2arg_name;
 
   adt::Result<LocalVarName> GetAnchorLocalVarName() const {
     const auto& opt_anchor = GetAnchorLocalVarNameWithoutCheck();

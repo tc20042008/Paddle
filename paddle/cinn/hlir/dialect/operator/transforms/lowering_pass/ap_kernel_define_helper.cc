@@ -28,10 +28,10 @@ namespace {
 using CoreExpr = ap::axpr::CoreExpr;
 using Lambda = ap::axpr::Lambda<CoreExpr>;
 using Module = ap::kernel_define::Module;
-using CodeGenResult = ap::kernel_define::CodeGenResult;
 using PirNode = ap::paddle::PirNode;
-using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
 using Val = ap::kernel_define::CtValue<PirNode>;
+using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
+using CodeGenResult = ap::kernel_define::CodeGenResult<Val>;
 
 }  // namespace
 

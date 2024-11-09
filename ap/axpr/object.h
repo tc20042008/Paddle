@@ -63,8 +63,12 @@ struct ObjectImpl {
     return val.template Get<T>();
   }
 
-  bool Set(const std::string& var, const ValueT& val) {
-    return storage.insert({var, val}).second;
+  void Set(const std::string& var, const ValueT& val) {
+    this->storage[var] = val;
+  }
+
+  bool Emplace(const std::string& var, const ValueT& val) {
+    return this->storage.emplace(var, val).second;
   }
 
   bool operator==(const ObjectImpl& other) const { return &other == this; }

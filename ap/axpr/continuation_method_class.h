@@ -14,29 +14,23 @@
 
 #pragma once
 
-#include <string>
-#include "ap/axpr/adt.h"
-#include "ap/axpr/object.h"
+#include "ap/axpr/constants.h"
+#include "ap/axpr/continuation.h"
+#include "ap/axpr/method_class.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-struct Frame {
-  Result<ValueT> Get(const std::string& var) const {
-    return frame_obj->Get(var);
-  }
-
-  void Set(const std::string& var, const ValueT& val) {
-    return frame_obj->Set(var, val);
-  }
-
-  bool HasVar(const std::string& var) const {
-    return frame_obj->find(var) != frame_obj->end();
-  }
-
-  void ClearFrame() { frame_obj->clear(); }
-
-  Object<ValueT> frame_obj;
+struct ContinuationMethodClass {
+  using This = ContinuationMethodClass;
+  using Self = Continuation<ValueT>;
 };
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, Continuation<ValueT>>
+    : public ContinuationMethodClass<ValueT> {};
+
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<Continuation<ValueT>>> {};
 
 }  // namespace ap::axpr

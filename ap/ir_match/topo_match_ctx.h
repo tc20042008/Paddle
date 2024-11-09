@@ -61,7 +61,7 @@ struct TopoMatchCtxImpl {
     return iter != matched_bg_node2sg_node_.end();
   }
 
-  adt::Result<const std::unordered_set<bg_node_t>*> GetBigGraphNodes(
+  adt::Result<const std::list<bg_node_t>*> GetBigGraphNodes(
       const sg_node_t& node) const {
     const auto& iter = this->sg_node2bg_nodes_.find(node);
     if (iter == this->sg_node2bg_nodes_.end()) {
@@ -72,8 +72,8 @@ struct TopoMatchCtxImpl {
     return &iter->second;
   }
 
-  adt::Result<adt::Ok> InitBigGraphNodes(
-      const sg_node_t& sg_node, const std::unordered_set<bg_node_t>& val) {
+  adt::Result<adt::Ok> InitBigGraphNodes(const sg_node_t& sg_node,
+                                         const std::list<bg_node_t>& val) {
     VLOG(0) << "InitBigGraphNodes. sg_node: "
             << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
             << ", val:" <<
@@ -113,14 +113,8 @@ struct TopoMatchCtxImpl {
                  "UpdateBigGraphNodes failed. there is matched bg_node in "
                  "'val'"};
     }
-    std::unordered_set<bg_node_t> intersection;
     auto* ptr = &this->sg_node2bg_nodes_[sg_node];
-    for (const auto& lhs : *ptr) {
-      if (val.count(lhs) > 0) {
-        intersection.insert(lhs);
-      }
-    }
-    VLOG(0) << "UpdateBigGraphNodes. sg_node: "
+    VLOG(0) << "UpdateBigGraphNodes: sg_node: "
             << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
             << ", old_val:" <<
         [&] {
@@ -129,26 +123,34 @@ struct TopoMatchCtxImpl {
             ss << graph::NodeDescriptor<bg_node_t>{}.DebugId(val_node) << " ";
           }
           return ss.str();
-        }()
-            << ", new_val:" <<
+        }();
+    VLOG(0) << "UpdateBigGraphNodes: sg_node: "
+            << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
+            << ", arg_val:" <<
         [&] {
           std::ostringstream ss;
           for (const auto& val_node : val) {
             ss << graph::NodeDescriptor<bg_node_t>{}.DebugId(val_node) << " ";
           }
           return ss.str();
-        }()
-            << ", intersection: " <<
+        }();
+    for (auto lhs_iter = ptr->begin(); lhs_iter != ptr->end();) {
+      if (val.count(*lhs_iter) > 0) {
+        ++lhs_iter;
+      } else {
+        lhs_iter = ptr->erase(lhs_iter);
+      }
+    }
+    VLOG(0) << "UpdateBigGraphNodes: sg_node: "
+            << graph::NodeDescriptor<sg_node_t>{}.DebugId(sg_node)
+            << ", new_val: " <<
         [&] {
           std::ostringstream ss;
-          for (const auto& val_node : intersection) {
+          for (const auto& val_node : *ptr) {
             ss << graph::NodeDescriptor<bg_node_t>{}.DebugId(val_node) << " ";
           }
           return ss.str();
         }();
-    *ptr = intersection;
-    ADT_CHECK(!ptr->empty()) << adt::errors::MismatchError{
-        "TopoMatchCtxImpl::UpdateBigGraphNodes: intersection is empty."};
     if (ptr->size() == 1) {
       const auto& iter =
           matched_bg_node2sg_node_.emplace(*ptr->begin(), sg_node).first;
@@ -157,9 +159,43 @@ struct TopoMatchCtxImpl {
     return adt::Ok{};
   }
 
+  adt::Result<std::shared_ptr<TopoMatchCtxImpl>> CloneAndSetUnsolved(
+      const sg_node_t& sg_node, const bg_node_t& bg_node) const {
+    auto ret = std::make_shared<TopoMatchCtxImpl>(*this);
+    ret->matched_bg_node2sg_node_[bg_node] = sg_node;
+    const auto& iter = ret->sg_node2bg_nodes_.find(sg_node);
+    ADT_CHECK(iter != ret->sg_node2bg_nodes_.end());
+    ADT_CHECK(iter->second.size() > 1);
+    ret->sg_node2bg_nodes_[sg_node] = std::list<bg_node_t>{bg_node};
+    return ret;
+  }
+
+  using SgNode2BgNodes = std::unordered_map<sg_node_t, std::list<bg_node_t>>;
+
+  std::optional<typename SgNode2BgNodes::const_iterator> GetFirstUnsolved()
+      const {
+    for (auto iter = sg_node2bg_nodes_.begin(); iter != sg_node2bg_nodes_.end();
+         ++iter) {
+      if (iter->second.size() > 1) {
+        return iter;
+      }
+    }
+    return std::nullopt;
+  }
+
+  std::optional<typename SgNode2BgNodes::const_iterator> GetFirstMismatched()
+      const {
+    for (auto iter = sg_node2bg_nodes_.begin(); iter != sg_node2bg_nodes_.end();
+         ++iter) {
+      if (iter->second.empty()) {
+        return iter;
+      }
+    }
+    return std::nullopt;
+  }
+
  private:
-  std::unordered_map<sg_node_t, std::unordered_set<bg_node_t>>
-      sg_node2bg_nodes_;
+  SgNode2BgNodes sg_node2bg_nodes_;
   std::unordered_map<bg_node_t, sg_node_t> matched_bg_node2sg_node_;
 };
 

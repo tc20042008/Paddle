@@ -19,6 +19,7 @@
 #include "ap/axpr/builtin_high_order_func_type_method_class.h"
 #include "ap/axpr/builtin_symbol_method_class.h"
 #include "ap/axpr/closure_method_class.h"
+#include "ap/axpr/continuation_method_class.h"
 #include "ap/axpr/cps_builtin_high_order_func_type_method_class.h"
 #include "ap/axpr/data_type_method_class.h"
 #include "ap/axpr/data_value_method_class.h"

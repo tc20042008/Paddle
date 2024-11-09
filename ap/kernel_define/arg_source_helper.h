@@ -143,7 +143,15 @@ struct ArgSourceHelper {
           ADT_LET_CONST_REF(tensor_var_ptr,
                             MakeGetterAnfExprByInOutTensorSource(
                                 dispatch_ctx, shape_dim_source.tensor_source));
-          return &tensor_var_ptr->At(shape_dim_source.dim_axis);
+          auto* ctx = dispatch_ctx->ctx();
+          auto* dim_expr =
+              &tensor_var_ptr->Attr("shape").At(shape_dim_source.dim_axis);
+          auto* data_value = &ctx->Var(ctx->NewTmpVarName());
+          *data_value = ctx->Var("DataValue").Call(*dim_expr);
+          auto* ret = &ctx->Var(ctx->NewTmpVarName());
+          *ret = data_value->Attr("cast").Call(
+              ctx->Var("DataType").Attr("const_int64"));
+          return ret;
         },
         [&](const DataDimSource& data_dim_source) -> RetT {
           return adt::errors::TypeError{"DataDimSource is not supported yet."};

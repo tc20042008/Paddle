@@ -20,6 +20,7 @@
 #include "ap/axpr/builtin_high_order_func_type.h"
 #include "ap/axpr/builtin_symbol.h"
 #include "ap/axpr/closure.h"
+#include "ap/axpr/continuation.h"
 #include "ap/axpr/cps_builtin_high_order_func_type.h"
 #include "ap/axpr/data_type.h"
 #include "ap/axpr/data_value.h"
@@ -61,6 +62,7 @@ using ValueBase = std::variant<Type<Nothing,
                                     PackedArgs<ValueT>,
                                     Lambda<CoreExpr>,
                                     Closure<ValueT>,
+                                    Continuation<ValueT>,
                                     Method<ValueT>,
                                     builtin_symbol::Symbol,
                                     Starred<ValueT>,
@@ -80,6 +82,7 @@ using ValueBase = std::variant<Type<Nothing,
                                PackedArgs<ValueT>,
                                Lambda<CoreExpr>,
                                Closure<ValueT>,
+                               Continuation<ValueT>,
                                Method<ValueT>,
                                builtin_symbol::Symbol,
                                Starred<ValueT>,

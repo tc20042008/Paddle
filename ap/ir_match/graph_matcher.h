@@ -59,13 +59,41 @@ struct GraphMatcher {
 
   adt::Result<adt::Ok> UpdateByConnectionsUntilDone(
       GraphMatchCtx<bg_node_t>* ctx, const sg_node_t& anchor_node) {
-    return topo_matcher_.UpdateByConnectionsUntilDone(&*(*ctx)->topo_match_ctx,
-                                                      anchor_node);
+    ADT_LET_CONST_REF(new_topo_match_ctx,
+                      Solve((*ctx)->topo_match_ctx, anchor_node));
+    (*ctx)->topo_match_ctx = new_topo_match_ctx;
+    return adt::Ok{};
   }
 
   adt::Result<bool> IsGraphMatched(const GraphMatchCtx<bg_node_t>& ctx,
                                    const sg_node_t& anchor_node) const {
     return topo_matcher_.IsGraphMatched(ctx->topo_match_ctx, anchor_node);
+  }
+
+ private:
+  using TopoMatchCtxT = TopoMatchCtx<bg_node_t, sg_node_t>;
+
+  adt::Result<TopoMatchCtxT> Solve(TopoMatchCtxT topo_match_ctx,
+                                   const sg_node_t& anchor_node) {
+    ADT_RETURN_IF_ERR(topo_matcher_.UpdateByConnectionsUntilDone(
+        &*topo_match_ctx, anchor_node));
+    const auto& opt_iter = topo_match_ctx->GetFirstUnsolved();
+    if (!opt_iter.has_value()) {
+      return topo_match_ctx;
+    }
+    const auto& unsolved_sg_node = opt_iter.value()->first;
+    for (const auto& proprosal_bg_node : opt_iter.value()->second) {
+      ADT_LET_CONST_REF(impl,
+                        topo_match_ctx->CloneAndSetUnsolved(unsolved_sg_node,
+                                                            proprosal_bg_node));
+      TopoMatchCtxT proprosal_topo_match_ctx{impl};
+      ADT_LET_CONST_REF(solved, Solve(proprosal_topo_match_ctx, anchor_node));
+      if (!solved->GetFirstMismatched().has_value()) {
+        return solved;
+      }
+    }
+    // all proposals failed.
+    return topo_match_ctx;
   }
 };
 

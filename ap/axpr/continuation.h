@@ -14,29 +14,33 @@
 
 #pragma once
 
-#include <string>
 #include "ap/axpr/adt.h"
-#include "ap/axpr/object.h"
+#include "ap/axpr/atomic.h"
+#include "ap/axpr/core_expr.h"
+#include "ap/axpr/error.h"
+#include "ap/axpr/type.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-struct Frame {
-  Result<ValueT> Get(const std::string& var) const {
-    return frame_obj->Get(var);
+struct ContinuationImpl {
+  Lambda<CoreExpr> lambda;
+  std::shared_ptr<Environment<ValueT>> environment;
+
+  bool operator==(const ContinuationImpl& other) const {
+    return other.lambda == this->lambda &&
+           other.environment == this->environment;
   }
+};
 
-  void Set(const std::string& var, const ValueT& val) {
-    return frame_obj->Set(var, val);
-  }
+template <typename ValueT>
+DEFINE_ADT_RC(Continuation, ContinuationImpl<ValueT>);
 
-  bool HasVar(const std::string& var) const {
-    return frame_obj->find(var) != frame_obj->end();
-  }
+template <typename ValueT>
+struct TypeImpl<Continuation<ValueT>> : public std::monostate {
+  using value_type = Continuation<ValueT>;
 
-  void ClearFrame() { frame_obj->clear(); }
-
-  Object<ValueT> frame_obj;
+  const char* Name() const { return "__builtin_continuation_class__"; }
 };
 
 }  // namespace ap::axpr

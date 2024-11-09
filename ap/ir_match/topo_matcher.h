@@ -115,8 +115,7 @@ struct TopoMatcher {
         GraphHelper<sg_node_t, SGTopoKind>(sg_descriptor_).GetBfsWalker();
     auto InitMatchCtx = [&](const sg_node_t& sg_node) -> adt::Result<adt::Ok> {
       if (sg_node == anchor_node) {
-        std::unordered_set<bg_node_t> bg_nodes;
-        bg_nodes.insert(bg_node);
+        std::list<bg_node_t> bg_nodes{bg_node};
         ADT_RETURN_IF_ERR(match_ctx->InitBigGraphNodes(anchor_node, bg_nodes));
       } else {
         ADT_RETURN_IF_ERR(TopoMatchCtxInitNode(&*match_ctx, sg_node));
@@ -177,8 +176,7 @@ struct TopoMatcher {
     return old_num_bg_nodes != bg_nodes_ptr->size();
   }
 
-  std::string GetNodesDebugIds(
-      const std::unordered_set<bg_node_t>* nodes) const {
+  std::string GetNodesDebugIds(const std::list<bg_node_t>* nodes) const {
     std::ostringstream ss;
     int i = 0;
     for (const auto& node : *nodes) {
@@ -199,7 +197,7 @@ struct TopoMatcher {
             tIsUpstream<bool> is_upstream) -> adt::Result<adt::Ok> {
       if (!inited) {
         ADT_LET_CONST_REF(bg_nodes,
-                          GetMatchedBigGraphNodesFromConnected(
+                          GetInitialMatchedBigGraphNodesFromConnected(
                               *ctx, sg_node, node, is_upstream));
         ADT_RETURN_IF_ERR(ctx->InitBigGraphNodes(sg_node, bg_nodes));
         inited = (bg_nodes.size() > 0);
@@ -216,6 +214,22 @@ struct TopoMatcher {
     ADT_CHECK(inited) << adt::errors::MismatchError{
         "sg_node not successfully inited."};
     return adt::Ok{};
+  }
+
+  adt::Result<std::list<bg_node_t>> GetInitialMatchedBigGraphNodesFromConnected(
+      const TopoMatchCtxImpl<bg_node_t, sg_node_t>& ctx,
+      const sg_node_t& sg_node,
+      const sg_node_t& from_node,
+      tIsUpstream<bool> is_from_node_upstream) {
+    std::list<bg_node_t> bg_nodes;
+    const auto& DoEachMatched =
+        [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
+      bg_nodes.emplace_back(bg_node);
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitMatchedBigGraphNodesFromConnected(
+        ctx, sg_node, from_node, is_from_node_upstream, DoEachMatched));
+    return bg_nodes;
   }
 
   adt::Result<std::unordered_set<bg_node_t>>

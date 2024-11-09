@@ -38,7 +38,7 @@ class Environment {
     return parent_->Get(var);
   }
 
-  bool Set(const std::string& var, const ValueT& val) {
+  void Set(const std::string& var, const ValueT& val) {
     return frame_.Set(var, val);
   }
 

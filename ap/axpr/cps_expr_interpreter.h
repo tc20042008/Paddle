@@ -20,6 +20,7 @@
 #include "ap/axpr/builtin_functions.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/error.h"
+#include "ap/axpr/to_string.h"
 #include "ap/axpr/value.h"
 #include "ap/axpr/value_method_class.h"
 
@@ -107,6 +108,10 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                                       composed_call->args,
                                       composed_call);
         },
+        [&](const Continuation<ValueT>& continuation) -> Result<adt::Ok> {
+          return InterpretContinuation(
+              &BuiltinHalt<ValueT>, continuation, composed_call);
+        },
         [&](const Lambda<CoreExpr>& raw_lambda) -> Result<adt::Ok> {
           Closure<ValueT> closure{raw_lambda, builtin_env()};
           return InterpretClosureCall(composed_call->outter_func,
@@ -161,6 +166,31 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
         [&](int64_t c) -> Result<ValueT> { return c; },
         [&](double c) -> Result<ValueT> { return c; },
         [&](const std::string& val) -> Result<ValueT> { return val; });
+  }
+
+  Result<ValueT> InterpretAtomicAsContinuation(const std::shared_ptr<Env>& env,
+                                               const Atomic<CoreExpr>& atomic) {
+    return atomic.Match(
+        [&](const Lambda<CoreExpr>& lambda) -> Result<ValueT> {
+          return Continuation<ValueT>{lambda, env};
+        },
+        [&](const Symbol& symbol) -> Result<ValueT> {
+          return symbol.Match(
+              [&](const tVar<std::string>& var) -> Result<ValueT> {
+                ADT_CHECK(var.value() == kBuiltinReturn());
+                ADT_LET_CONST_REF(val, env->Get(var.value()))
+                    << adt::errors::NotImplementedError{
+                           "no return continuation found."};
+                return val;
+              },
+              [&](const auto&) -> Result<ValueT> {
+                return adt::errors::NotImplementedError{
+                    "Invalid continuation."};
+              });
+        },
+        [&](const auto&) -> Result<ValueT> {
+          return adt::errors::NotImplementedError{"Invalid continuation."};
+        });
   }
 
   Result<adt::Ok> InterpretBuiltinSymbolCall(
@@ -282,28 +312,50 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
         " was given"};
     for (int i = 0; i < args.size(); ++i) {
       const auto& arg_name = lambda->args.at(i).value();
-      ADT_CHECK(env->Set(arg_name, args.at(i))) << SyntaxError{
-          "duplicate argument '" + arg_name + "' in function definition"};
+      env->Set(arg_name, args.at(i));
     }
-    return lambda->body.Match(
+    return InterpretLambdaBody(
+        env, outter_func, lambda->body, ret_composed_call);
+  }
+
+  Result<adt::Ok> InterpretContinuation(
+      const ValueT& outter_func,
+      const Continuation<ValueT>& continuation,
+      ComposedCallImpl<ValueT>* composed_call) {
+    const auto& env = continuation->environment;
+    const auto& lambda = continuation->lambda;
+    ADT_CHECK(lambda->args.size() == 1);
+    ADT_CHECK(composed_call->args.size() == 1);
+    env->Set(lambda->args.at(0).value(), composed_call->args.at(0));
+    return InterpretLambdaBody(env, outter_func, lambda->body, composed_call);
+  }
+
+  Result<adt::Ok> InterpretLambdaBody(
+      const std::shared_ptr<Env>& env,
+      const ValueT& outter_func,
+      const CoreExpr& lambda_body,
+      ComposedCallImpl<ValueT>* ret_composed_call) {
+    return lambda_body.Match(
         [&](const Atomic<CoreExpr>& atomic) -> Result<adt::Ok> {
           ADT_LET_CONST_REF(val, InterpretAtomic(env, atomic));
-          ret_composed_call->outter_func = outter_func;
-          ret_composed_call->inner_func = &BuiltinIdentity<ValueT>;
+          ret_composed_call->inner_func = outter_func;
+          ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
           ret_composed_call->args = {val};
           return adt::Ok{};
         },
         [&](const ComposedCallAtomic<CoreExpr>& core_expr) -> Result<adt::Ok> {
-          return InterpretComposedCallAtomic(env, core_expr, ret_composed_call);
+          return InterpretLambdaBodyComposedCallAtomic(
+              env, core_expr, ret_composed_call);
         });
   }
 
-  Result<adt::Ok> InterpretComposedCallAtomic(
+  Result<adt::Ok> InterpretLambdaBodyComposedCallAtomic(
       const std::shared_ptr<Env>& env,
       const ComposedCallAtomic<CoreExpr>& core_expr,
       ComposedCallImpl<ValueT>* ret_composed_call) {
-    ADT_LET_CONST_REF(new_outter_func,
-                      InterpretAtomic(env, core_expr->outter_func));
+    ADT_LET_CONST_REF(
+        continuation,
+        InterpretAtomicAsContinuation(env, core_expr->outter_func));
     ADT_LET_CONST_REF(new_inner_func,
                       InterpretAtomic(env, core_expr->inner_func));
     std::vector<ValueT> args;
@@ -312,7 +364,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
       ADT_LET_CONST_REF(arg, InterpretAtomic(env, arg_expr));
       args.emplace_back(arg);
     }
-    ret_composed_call->outter_func = new_outter_func;
+    ret_composed_call->outter_func = continuation;
     ret_composed_call->inner_func = new_inner_func;
     ret_composed_call->args = std::move(args);
     return adt::Ok{};
@@ -336,19 +388,9 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
       const BuiltinFuncType<ValueT>& func,
       const ValueT& obj,
       ComposedCallImpl<ValueT>* composed_call) {
-    const auto original_outter_func = composed_call->outter_func;
     ADT_LET_CONST_REF(inner_ret, func(obj, composed_call->args));
-    if (original_outter_func.template Has<Closure<ValueT>>()) {
-      const auto& closure =
-          original_outter_func.template Get<Closure<ValueT>>();
-      return InterpretLambdaCall(closure->environment,
-                                 ValueT{&BuiltinHalt<ValueT>},
-                                 closure->lambda,
-                                 {inner_ret},
-                                 composed_call);
-    }
+    composed_call->inner_func = composed_call->outter_func;
     composed_call->outter_func = &BuiltinHalt<ValueT>;
-    composed_call->inner_func = original_outter_func;
     composed_call->args = {inner_ret};
     return adt::Ok{};
   }
@@ -361,19 +403,9 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
                                const std::vector<ValueT>& args) {
       return this->Interpret(func, args);
     };
-    const auto original_outter_func = composed_call->outter_func;
     ADT_LET_CONST_REF(inner_ret, func(Apply, obj, composed_call->args));
-    if (original_outter_func.template Has<Closure<ValueT>>()) {
-      const auto& closure =
-          original_outter_func.template Get<Closure<ValueT>>();
-      return InterpretLambdaCall(closure->environment,
-                                 ValueT{&BuiltinHalt<ValueT>},
-                                 closure->lambda,
-                                 {inner_ret},
-                                 composed_call);
-    }
+    composed_call->inner_func = composed_call->outter_func;
     composed_call->outter_func = &BuiltinHalt<ValueT>;
-    composed_call->inner_func = original_outter_func;
     composed_call->args = {inner_ret};
     return adt::Ok{};
   }

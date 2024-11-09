@@ -14,13 +14,26 @@
 
 #pragma once
 
+#include "ap/axpr/anf_expr_helper.h"
+#include "ap/axpr/anf_expr_util.h"
 #include "ap/axpr/lambda.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, Lambda<CoreExpr>>
-    : public EmptyMethodClass<ValueT> {};
+    : public EmptyMethodClass<ValueT> {
+  adt::Result<ValueT> ToString(const Lambda<CoreExpr>& lambda) {
+    const auto& anf_expr = ConvertCoreExprToAnfExpr(lambda);
+    ADT_LET_CONST_REF(anf_atomic, anf_expr.template TryGet<Atomic<AnfExpr>>());
+    ADT_LET_CONST_REF(anf_lambda,
+                      anf_atomic.template TryGet<Lambda<AnfExpr>>());
+    AnfExprHelper anf_expr_helper;
+    ADT_LET_CONST_REF(anf_expr_str,
+                      anf_expr_helper.FunctionToString(anf_lambda));
+    return anf_expr_str;
+  }
+};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<Lambda<CoreExpr>>>

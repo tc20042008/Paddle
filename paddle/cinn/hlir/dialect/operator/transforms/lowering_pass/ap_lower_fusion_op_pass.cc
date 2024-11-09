@@ -771,8 +771,8 @@ struct ApRewriter {
     };
     ADT_RETURN_IF_ERR(VisitApKernelInputIndexOrSlice(
         res_ptn_ir_op, match_ctx, DoEachIndex, DoEachSlice));
-    ADT_CHECK((*object)->object->Set("__builtin_ap_kernel_input_indexes_slices",
-                                     list));
+    ADT_CHECK((*object)->object->Emplace(
+        "__builtin_ap_kernel_input_indexes_slices", list));
     return adt::Ok{};
   }
 
@@ -793,7 +793,7 @@ struct ApRewriter {
     };
     ADT_RETURN_IF_ERR(VisitApKernelOutputIndexOrSlice(
         res_ptn_ir_op, match_ctx, DoEachIndex, DoEachSlice));
-    ADT_CHECK((*object)->object->Set(
+    ADT_CHECK((*object)->object->Emplace(
         "__builtin_ap_kernel_output_indexes_slices", list));
     return adt::Ok{};
   }
@@ -991,14 +991,14 @@ struct ApRewriter {
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      ADT_CHECK(name2idx->object->Set(drr_ir_value.name(), idx));
+      ADT_CHECK(name2idx->object->Emplace(drr_ir_value.name(), idx));
       ++idx;
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(
         VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachIrValue));
-    ADT_CHECK((*object)->object->Set("__builtin_ap_kernel_input_name_to_index",
-                                     name2idx));
+    ADT_CHECK((*object)->object->Emplace(
+        "__builtin_ap_kernel_input_name_to_index", name2idx));
     return adt::Ok{};
   }
 
@@ -1010,14 +1010,14 @@ struct ApRewriter {
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      ADT_CHECK(name2idx->object->Set(drr_ir_value.name(), idx));
+      ADT_CHECK(name2idx->object->Emplace(drr_ir_value.name(), idx));
       ++idx;
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(
         VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachIrValue));
-    ADT_CHECK((*object)->object->Set("__builtin_ap_kernel_output_name_to_index",
-                                     name2idx));
+    ADT_CHECK((*object)->object->Emplace(
+        "__builtin_ap_kernel_output_name_to_index", name2idx));
     return adt::Ok{};
   }
 

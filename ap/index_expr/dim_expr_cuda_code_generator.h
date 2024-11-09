@@ -22,20 +22,31 @@ namespace ap::index_expr {
 
 class DimExprCudaCodeGenerator {
  public:
+  using ArgName4DimExprT =
+      std::function<std::optional<std::string>(const symbol::DimExpr&)>;
   explicit DimExprCudaCodeGenerator(std::ostringstream* ss,
+                                    const ArgName4DimExprT& ArgName4DimExprVal,
                                     const std::string& index_type_name)
-      : ss_(ss), index_type_name_(index_type_name) {}
+      : ss_(ss),
+        ArgName4DimExpr(ArgName4DimExprVal),
+        index_type_name_(index_type_name) {}
 
   std::ostringstream& ss() { return *ss_; }
 
   adt::Result<std::string> CodeGen(const symbol::DimExpr& dim_expr) {
+    if (const auto& arg_name = ArgName4DimExpr(dim_expr)) {
+      return arg_name.value();
+    }
     return dim_expr.Match([&](const auto& impl) { return CodeGenImpl(impl); });
   }
 
  private:
   adt::Result<std::string> CodeGenImpl(int64_t c) { return std::to_string(c); }
 
-  adt::Result<std::string> CodeGenImpl(const std::string& var) { return var; }
+  adt::Result<std::string> CodeGenImpl(const std::string& var) {
+    return adt::errors::TypeError{
+        std::string() + "no kernel argument bound to DimExpr '" + var + "'"};
+  }
 
   adt::Result<std::string> CodeGenImpl(
       const symbol::Negative<symbol::DimExpr>& dim_expr) {
@@ -145,6 +156,7 @@ class DimExprCudaCodeGenerator {
   }
 
   std::ostringstream* ss_;
+  ArgName4DimExprT ArgName4DimExpr;
   std::string index_type_name_;
 };
 

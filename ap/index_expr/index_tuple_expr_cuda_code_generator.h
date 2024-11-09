@@ -25,12 +25,16 @@ namespace ap::index_expr {
 
 class IndexTupleExprCudaCodeGenerator {
  public:
+  using ArgName4DimExprT =
+      std::function<std::optional<std::string>(const symbol::DimExpr&)>;
   IndexTupleExprCudaCodeGenerator(
-      std::ostringstream* ss, const std::vector<std::string>& loop_var_names)
+      std::ostringstream* ss,
+      const std::vector<std::string>& loop_var_names,
+      const ArgName4DimExprT& ArgName4DimExpr)
       : ss_(ss),
         loop_var_names_(loop_var_names),
         index_type_name_("int64_t"),
-        dim_expr_code_gen_(ss, "int64_t") {}
+        dim_expr_code_gen_(ss, ArgName4DimExpr, "int64_t") {}
 
   std::ostringstream& ss() { return *ss_; }
 

@@ -33,6 +33,33 @@ struct NativeIrValueMethodClass {
   adt::Result<ValueT> Hash(const Self& self) {
     return static_cast<int64_t>(std::hash<Self>()(self));
   }
+
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    if (attr_name == "dtype") {
+      return GetDataType(self);
+    } else if (attr_name == "shape") {
+      return GetShape(self);
+    }
+    return adt::errors::TypeError{std::string() +
+                                  "NativeIrValue instance has no attribute '" +
+                                  attr_name + "'."};
+  }
+
+  adt::Result<ValueT> GetShape(const Self& self) {
+    ADT_LET_CONST_REF(shape_ptr, self.GetShapeDimExprsPtr());
+    adt::List<ValueT> lst;
+    lst->reserve(shape_ptr->size());
+    for (const auto& dim_expr : *shape_ptr) {
+      lst->emplace_back(dim_expr);
+    }
+    return lst;
+  }
+
+  adt::Result<ValueT> GetDataType(const Self& self) {
+    ADT_LET_CONST_REF(dtype, self.GetDataType());
+    return dtype;
+  }
 };
 
 template <typename ValueT>
@@ -68,6 +95,35 @@ struct RefIrValueMethodClass {
   adt::Result<ValueT> Hash(Self self) {
     return reinterpret_cast<int64_t>(
         self.ref_node_info.__adt_rc_shared_ptr_raw_ptr());
+  }
+
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    if (attr_name == "dtype") {
+      return GetDataType(self);
+    } else if (attr_name == "shape") {
+      return GetShape(self);
+    }
+    return adt::errors::TypeError{std::string() +
+                                  "NativeIrValue instance has no attribute '" +
+                                  attr_name + "'."};
+  }
+
+  adt::Result<ValueT> GetShape(const Self& self) {
+    ADT_LET_CONST_REF(ir_value, self.GetOwnerNativeIrValue());
+    ADT_LET_CONST_REF(shape_ptr, ir_value.GetShapeDimExprsPtr());
+    adt::List<ValueT> lst;
+    lst->reserve(shape_ptr->size());
+    for (const auto& dim_expr : *shape_ptr) {
+      lst->emplace_back(dim_expr);
+    }
+    return lst;
+  }
+
+  adt::Result<ValueT> GetDataType(const Self& self) {
+    ADT_LET_CONST_REF(ir_value, self.GetOwnerNativeIrValue());
+    ADT_LET_CONST_REF(dtype, ir_value.GetDataType());
+    return dtype;
   }
 };
 

@@ -27,6 +27,7 @@
 #include "ap/index_expr/index_tuple_expr_cuda_code_generator.h"
 #include "ap/ir_match/native_or_ref_ir_value.h"
 #include "ap/kernel_define/define_ctx.h"
+#include "ap/kernel_define/dim_expr_kernel_arg_id.h"
 #include "ap/kernel_define/op_code_gen_ctx.h"
 #include "ap/kernel_define/op_cuda_gen_impl.h"
 #include "ap/op_compute/value.h"
@@ -214,7 +215,18 @@ struct OpCudaCodeGenImpl {
     std::ostringstream ss;
     IrGraphTranslateCtx ctx{};
     const auto& loop_var_names = op_code_gen_ctx->loop_var_names;
-    IndexTupleExprCodeGenerator indexes_expr_gen(&ss, loop_var_names);
+    using OptStr = std::optional<std::string>;
+    auto ArgName4DimExpr = [&](const symbol::DimExpr& dim_expr) -> OptStr {
+      kernel_define::DimExprKernelArgId<PirNode> kernel_arg_id{dim_expr};
+      const auto iter =
+          op_code_gen_ctx->kernel_arg_id2arg_name.find(kernel_arg_id);
+      if (iter == op_code_gen_ctx->kernel_arg_id2arg_name.end()) {
+        return std::nullopt;
+      }
+      return iter->second;
+    };
+    IndexTupleExprCodeGenerator indexes_expr_gen(
+        &ss, loop_var_names, ArgName4DimExpr);
     ADT_RETURN_IF_ERR(CodeGenInputs(
         &ss, &ctx, &indexes_expr_gen, op_code_gen_ctx, ir_graph, packed_ir_op));
     ADT_RETURN_IF_ERR(CodeGenBody(&ss, &ctx, op_code_gen_ctx, ir_graph));

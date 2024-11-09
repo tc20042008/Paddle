@@ -54,15 +54,15 @@ struct DefineCtxMethodClass {
     if (attr_name == "make_kernel_args_getter") {
       return axpr::Method<ValueT>{self, &This::StaticMakeKernelArgsGetter};
     }
-    if (attr_name == "make_and_check_dim_expr_kernel_arg_id") {
+    if (attr_name == "dim_expr_kernel_arg_id") {
       return axpr::Method<ValueT>{self,
                                   &This::StaticMakeAndCheckDimExprKernelArgId};
     }
-    if (attr_name == "make_and_check_in_tensor_data_ptr_kernel_arg_id") {
+    if (attr_name == "in_tensor_data_ptr_kernel_arg_id") {
       return axpr::Method<ValueT>{
           self, &This::StaticMakeAndCheckInTensorDataPtrKernelArgId};
     }
-    if (attr_name == "make_and_check_out_tensor_data_ptr_kernel_arg_id") {
+    if (attr_name == "out_tensor_data_ptr_kernel_arg_id") {
       return axpr::Method<ValueT>{
           self, &This::StaticMakeAndCheckOutTensorDataPtrKernelArgId};
     }
@@ -81,14 +81,14 @@ struct DefineCtxMethodClass {
       const Self& self, const std::vector<ValueT>& args) {
     ADT_CHECK(args.size() == 1)
         << adt::errors::TypeError{std::string() +
-                                  "make_and_check_out_tensor_data_ptr_kernel_"
+                                  "out_tensor_data_ptr_kernel_"
                                   "arg_id() takes 1 argument but " +
                                   std::to_string(args.size()) + " were given."};
     ADT_LET_CONST_REF(ir_value, CastToBirValue(args.at(0)))
         << adt::errors::TypeError{
                std::string() +
                "the argument 1 of "
-               "make_and_check_out_tensor_data_ptr_kernel_arg_id() should be "
+               "out_tensor_data_ptr_kernel_arg_id() should be "
                "'NativeIrValue' or 'RefIrValue' (not '" +
                axpr::GetTypeName(args.at(0)) + "')."};
     ADT_RETURN_IF_ERR(CheckOutTensorDataPtrRuntimeAvailable(self, ir_value));
@@ -100,7 +100,7 @@ struct DefineCtxMethodClass {
     ADT_CHECK(self->arg_source_ctx->GetOutputTensorSource(ir_value).has_value())
         << adt::errors::TypeError{
                std::string() +
-               "make_and_check_out_tensor_data_ptr_kernel_arg_id() failed. "
+               "out_tensor_data_ptr_kernel_arg_id() failed. "
                "please check whether the ir_value is an output value of the "
                "current ap_pattern_fusion_op defined in drr result pattern "
                "lambda."};
@@ -117,14 +117,14 @@ struct DefineCtxMethodClass {
       const Self& self, const std::vector<ValueT>& args) {
     ADT_CHECK(args.size() == 1)
         << adt::errors::TypeError{std::string() +
-                                  "make_and_check_in_tensor_data_ptr_kernel_"
+                                  "in_tensor_data_ptr_kernel_"
                                   "arg_id() takes 1 argument but " +
                                   std::to_string(args.size()) + " were given."};
     ADT_LET_CONST_REF(ir_value, CastToBirValue(args.at(0)))
         << adt::errors::TypeError{
                std::string() +
                "the argument 1 of "
-               "make_and_check_in_tensor_data_ptr_kernel_arg_id() should be "
+               "in_tensor_data_ptr_kernel_arg_id() should be "
                "'NativeIrValue' or 'RefIrValue' (not '" +
                axpr::GetTypeName(args.at(0)) + "')."};
     ADT_RETURN_IF_ERR(CheckInTensorDataPtrRuntimeAvailable(self, ir_value));
@@ -136,7 +136,7 @@ struct DefineCtxMethodClass {
     ADT_CHECK(self->arg_source_ctx->GetInputTensorSource(ir_value).has_value())
         << adt::errors::TypeError{
                std::string() +
-               "make_and_check_in_tensor_data_ptr_kernel_arg_id() failed. "
+               "in_tensor_data_ptr_kernel_arg_id() failed. "
                "please check whether the ir_value is an input value of the "
                "current ap_pattern_fusion_op defined in drr result pattern "
                "lambda."};
@@ -171,15 +171,13 @@ struct DefineCtxMethodClass {
   adt::Result<ValueT> MakeAndCheckDimExprKernelArgId(
       const Self& self, const std::vector<ValueT>& args) {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
-        std::string() +
-        "make_and_check_dim_expr_kernel_arg_id() takes 1 arguments but " +
+        std::string() + "dim_expr_kernel_arg_id() takes 1 arguments but " +
         std::to_string(args.size()) + " were given."};
     ADT_LET_CONST_REF(dim_expr, args.at(0).template TryGet<symbol::DimExpr>())
-        << adt::errors::TypeError{
-               std::string() +
-               "the argument 1 of make_and_check_dim_expr_kernel_arg_id() "
-               "should be 'DimExpr' (not '" +
-               axpr::GetTypeName(args.at(0)) + "')."};
+        << adt::errors::TypeError{std::string() +
+                                  "the argument 1 of dim_expr_kernel_arg_id() "
+                                  "should be 'DimExpr' (not '" +
+                                  axpr::GetTypeName(args.at(0)) + "')."};
     ADT_RETURN_IF_ERR(CheckDimExprRuntimeAvailable(self, dim_expr));
     return DimExprKernelArgId<BirNode>{dim_expr};
   }

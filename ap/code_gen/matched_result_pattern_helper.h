@@ -22,6 +22,7 @@
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
 #include "ap/drr/res_ptn_packed_ir_op_declare_data.h"
+#include "ap/drr/result_pattern_helper.h"
 #include "ap/drr/value.h"
 #include "ap/graph/graph_helper.h"
 #include "ap/index_expr/valid_index_expr_builder.h"

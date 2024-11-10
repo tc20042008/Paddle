@@ -18,7 +18,6 @@
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/value_method_class.h"
 #include "ap/kernel_dispatch/dispatch_ctx.h"
-#include "ap/kernel_dispatch/dispatch_raw_ctx_method_class.h"
 
 namespace ap::kernel_dispatch {
 
@@ -77,13 +76,13 @@ namespace detail {
 template <typename Val>
 Result<Val> DispatchCtxGetInputs(const DispatchCtx<Val>& ctx,
                                  const std::string& attr_name) {
-  return DispatchRawCtxGetInputs(ctx->raw_ctx, attr_name);
+  return ctx->raw_ctx->inputs;
 }
 
 template <typename Val>
 Result<Val> DispatchCtxGetOutputs(const DispatchCtx<Val>& ctx,
                                   const std::string& attr_name) {
-  return DispatchRawCtxGetOutputs(ctx->raw_ctx, attr_name);
+  return ctx->raw_ctx->outputs;
 }
 
 template <typename Val>

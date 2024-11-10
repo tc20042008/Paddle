@@ -15,14 +15,14 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/kernel_define/module.h"
+#include "ap/code_module/module.h"
 
 namespace phi {
 
 struct KernelDefineHelper {
   using CoreExpr = ap::axpr::CoreExpr;
   using Lambda = ap::axpr::Lambda<CoreExpr>;
-  using Module = ap::kernel_define::Module;
+  using Module = ap::code_module::Module;
 
   adt::Result<Module> InterpretKernelDefineLambda(
       const Lambda& kernel_definer_lambda);

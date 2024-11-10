@@ -14,8 +14,8 @@
 
 #include "paddle/phi/core/ap/kernel_dispatch_helper.h"
 #include "ap/axpr/cps_expr_interpreter.h"
-#include "ap/kernel_dispatch/dispatch_ctx_value.h"
-#include "ap/kernel_dispatch/dispatch_ctx_value_method_class.h"
+#include "ap/kernel_dispatch/value.h"
+#include "ap/kernel_dispatch/value_method_class.h"
 
 namespace phi {
 
@@ -36,10 +36,10 @@ adt::Result<Val> KernelDispatchHelper::InterpretCtxMaker(
 }
 
 adt::Result<adt::Ok> KernelDispatchHelper::InterpretKernelDispatcher(
-    const Lambda& kernel_dispatcher_lambda, const DispatchCtx& dispatch_ctx) {
+    const Lambda& kernel_dispatch_lambda, const DispatchCtx& dispatch_ctx) {
   ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
   ADT_RETURN_IF_ERR(
-      cps_interpreter.Interpret(kernel_dispatcher_lambda, {dispatch_ctx}));
+      cps_interpreter.Interpret(kernel_dispatch_lambda, {dispatch_ctx}));
   return adt::Ok{};
 }
 

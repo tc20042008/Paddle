@@ -16,9 +16,9 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
-#include "ap/drr/drr_value.h"
 #include "ap/drr/node.h"
 #include "ap/drr/source_pattern_ctx.h"
+#include "ap/drr/value.h"
 #include "ap/graph/node.h"
 #include "ap/ir_match/graph_match_ctx.h"
 #include "ap/ir_match/op_match_ctx.h"
@@ -26,23 +26,23 @@
 
 namespace ap::ir_match {
 
-template <typename IrNodeT>
+template <typename BirNode>
 struct IrMatchCtxImpl {
   using DrrNodeT = drr::Node<drr::Value>;
   using SmallGraphNodeT = graph::Node<DrrNodeT>;
   drr::SourcePatternCtx<drr::Value, DrrNodeT> source_pattern_ctx;
-  GraphMatchCtx<IrNodeT> graph_match_ctx;
+  GraphMatchCtx<BirNode> graph_match_ctx;
 };
 
-template <typename IrNodeT>
-DEFINE_ADT_RC(IrMatchCtx, IrMatchCtxImpl<IrNodeT>);
+template <typename BirNode>
+DEFINE_ADT_RC(IrMatchCtx, IrMatchCtxImpl<BirNode>);
 
 }  // namespace ap::ir_match
 
 namespace ap::axpr {
 
-template <typename IrNodeT>
-struct TypeImpl<ir_match::IrMatchCtx<IrNodeT>> : public std::monostate {
+template <typename BirNode>
+struct TypeImpl<ir_match::IrMatchCtx<BirNode>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "IrMatchCtx"; }
 };

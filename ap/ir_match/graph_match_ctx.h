@@ -15,9 +15,9 @@
 #pragma once
 
 #include "ap/drr/drr_graph_descriptor.h"
-#include "ap/drr/drr_value.h"
 #include "ap/drr/node.h"
 #include "ap/drr/topo_kind.h"
+#include "ap/drr/value.h"
 #include "ap/graph/graph_descriptor.h"
 #include "ap/graph/node.h"
 #include "ap/ir_match/topo_match_ctx.h"

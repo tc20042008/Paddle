@@ -18,23 +18,23 @@
 
 namespace ap::ir_match {
 
-template <typename IrNodeT>
-using NativeOrRefIrValueImpl = std::variant<typename IrNodeT::native_value_type,
-                                            typename IrNodeT::ref_value_type>;
+template <typename BirNode>
+using NativeOrRefIrValueImpl = std::variant<typename BirNode::native_value_type,
+                                            typename BirNode::ref_value_type>;
 
-template <typename IrNodeT>
-struct NativeOrRefIrValue : public NativeOrRefIrValueImpl<IrNodeT> {
-  using NativeOrRefIrValueImpl<IrNodeT>::NativeOrRefIrValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(NativeOrRefIrValueImpl<IrNodeT>);
+template <typename BirNode>
+struct NativeOrRefIrValue : public NativeOrRefIrValueImpl<BirNode> {
+  using NativeOrRefIrValueImpl<BirNode>::NativeOrRefIrValueImpl;
+  DEFINE_ADT_VARIANT_METHODS(NativeOrRefIrValueImpl<BirNode>);
 
   template <typename ValueT>
   static adt::Result<NativeOrRefIrValue> CastFrom(const ValueT& val) {
     using RetT = adt::Result<NativeOrRefIrValue>;
     return val.Match(
-        [](const typename IrNodeT::native_value_type& impl) -> RetT {
+        [](const typename BirNode::native_value_type& impl) -> RetT {
           return impl;
         },
-        [](const typename IrNodeT::ref_value_type& impl) -> RetT {
+        [](const typename BirNode::ref_value_type& impl) -> RetT {
           return impl;
         },
         [](const auto& impl) -> RetT {

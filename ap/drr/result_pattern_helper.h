@@ -20,8 +20,8 @@
 #include "ap/axpr/lambda_expr_builder.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
-#include "ap/drr/drr_value.h"
 #include "ap/drr/res_ptn_packed_ir_op_declare_data.h"
+#include "ap/drr/value.h"
 
 namespace ap::drr {
 

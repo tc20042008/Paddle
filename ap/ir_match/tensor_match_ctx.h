@@ -19,27 +19,27 @@
 
 namespace ap::ir_match {
 
-template <typename IrNodeT>
+template <typename BirNode>
 struct IrMatchCtxImpl;
 
-template <typename IrNodeT>
+template <typename BirNode>
 struct TensorMatchCtxImpl {
-  std::weak_ptr<IrMatchCtxImpl<IrNodeT>> ir_mtach_ctx;
+  std::weak_ptr<IrMatchCtxImpl<BirNode>> ir_mtach_ctx;
 
   bool operator==(const TensorMatchCtxImpl& other) const {
     return this == &other;
   }
 };
 
-template <typename IrNodeT>
-DEFINE_ADT_RC(TensorMatchCtx, TensorMatchCtxImpl<IrNodeT>);
+template <typename BirNode>
+DEFINE_ADT_RC(TensorMatchCtx, TensorMatchCtxImpl<BirNode>);
 
 }  // namespace ap::ir_match
 
 namespace ap::axpr {
 
-template <typename IrNodeT>
-struct TypeImpl<ir_match::TensorMatchCtx<IrNodeT>> : public std::monostate {
+template <typename BirNode>
+struct TypeImpl<ir_match::TensorMatchCtx<BirNode>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "TensorMatchCtx"; }
 };

@@ -20,10 +20,10 @@
 
 namespace ap::ir_match {
 
-template <typename ValueT, typename IrNodeT>
+template <typename ValueT, typename BirNode>
 struct TensorMatchCtxMethodClass {
   using This = TensorMatchCtxMethodClass;
-  using Self = ir_match::TensorMatchCtx<IrNodeT>;
+  using Self = ir_match::TensorMatchCtx<BirNode>;
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
@@ -42,9 +42,9 @@ struct TensorMatchCtxMethodClass {
   using DrrPackedIrValue = drr::PackedIrValue<DrrNodeT>;
   using SmallGraphNodeT = graph::Node<DrrNodeT>;
 
-  using IrNativeIrValue = typename IrNodeT::native_value_type;
-  using IrPackedIrValue = typename IrNodeT::packed_value_type;
-  using IrRefIrValue = typename IrNodeT::ref_value_type;
+  using IrNativeIrValue = typename BirNode::native_value_type;
+  using IrPackedIrValue = typename BirNode::packed_value_type;
+  using IrRefIrValue = typename BirNode::ref_value_type;
 
   adt::Result<std::optional<ValueT>> GetIrTensorByName(
       const Self& self, const std::string& attr_name) {
@@ -93,7 +93,7 @@ struct TensorMatchCtxMethodClass {
     return ir_value;
   }
 
-  adt::Result<ValueT> CastFromBirValue(const IrNodeT& bir_value_node) {
+  adt::Result<ValueT> CastFromBirValue(const BirNode& bir_value_node) {
     return bir_value_node.Match(
         [&](const IrNativeIrValue& impl) -> adt::Result<ValueT> {
           return ValueT{impl};
@@ -113,11 +113,11 @@ struct TensorMatchCtxMethodClass {
 
 namespace ap::axpr {
 
-template <typename ValueT, typename IrNodeT>
-struct MethodClassImpl<ValueT, ir_match::TensorMatchCtx<IrNodeT>>
-    : public ir_match::TensorMatchCtxMethodClass<ValueT, IrNodeT> {};
+template <typename ValueT, typename BirNode>
+struct MethodClassImpl<ValueT, ir_match::TensorMatchCtx<BirNode>>
+    : public ir_match::TensorMatchCtxMethodClass<ValueT, BirNode> {};
 
-template <typename ValueT, typename IrNodeT>
-struct MethodClassImpl<ValueT, TypeImpl<ir_match::TensorMatchCtx<IrNodeT>>> {};
+template <typename ValueT, typename BirNode>
+struct MethodClassImpl<ValueT, TypeImpl<ir_match::TensorMatchCtx<BirNode>>> {};
 
 }  // namespace ap::axpr

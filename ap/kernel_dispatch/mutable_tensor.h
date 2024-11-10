@@ -15,7 +15,7 @@
 #pragma once
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
-#include "ap/kernel_define/data_type.h"
+#include "ap/code_module/data_type.h"
 #include "ap/kernel_dispatch/typed_buffer.h"
 #include "paddle/phi/core/dense_tensor.h"
 

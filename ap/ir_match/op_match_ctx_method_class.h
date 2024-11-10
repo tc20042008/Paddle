@@ -21,10 +21,10 @@
 
 namespace ap::ir_match {
 
-template <typename ValueT, typename IrNodeT>
+template <typename ValueT, typename BirNode>
 struct OpMatchCtxMethodClass {
   using This = OpMatchCtxMethodClass;
-  using Self = ir_match::OpMatchCtx<IrNodeT>;
+  using Self = ir_match::OpMatchCtx<BirNode>;
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
@@ -43,9 +43,9 @@ struct OpMatchCtxMethodClass {
   using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrValueT, DrrNodeT>;
   using SmallGraphNodeT = graph::Node<DrrNodeT>;
 
-  using IrNativeIrOp = typename IrNodeT::native_op_type;
-  using IrPackedIrOp = typename IrNodeT::packed_op_type;
-  using IrRefIrOp = typename IrNodeT::ref_op_type;
+  using IrNativeIrOp = typename BirNode::native_op_type;
+  using IrPackedIrOp = typename BirNode::packed_op_type;
+  using IrRefIrOp = typename BirNode::ref_op_type;
 
   adt::Result<std::optional<ValueT>> GetIrOpByName(
       const Self& self, const std::string& attr_name) {
@@ -57,23 +57,23 @@ struct OpMatchCtxMethodClass {
       return std::nullopt;
     }
     auto GetIrOpBySmallGraphNode =
-        [&](const SmallGraphNodeT& node) -> adt::Result<IrNodeT> {
+        [&](const SmallGraphNodeT& node) -> adt::Result<BirNode> {
       const auto& graph_match_ctx = ir_match_ctx->graph_match_ctx;
       return graph_match_ctx->GetSoleBigGraphNode(node);
     };
     ADT_LET_CONST_REF(
         ir_node,
         iter->second.Match(
-            [&](const DrrNativeIrOp& native_ir_op) -> adt::Result<IrNodeT> {
+            [&](const DrrNativeIrOp& native_ir_op) -> adt::Result<BirNode> {
               return GetIrOpBySmallGraphNode(native_ir_op->node);
             },
-            [&](const DrrPackedIrOp& packed_ir_op) -> adt::Result<IrNodeT> {
+            [&](const DrrPackedIrOp& packed_ir_op) -> adt::Result<BirNode> {
               return GetIrOpBySmallGraphNode(packed_ir_op->node);
             },
-            [&](const DrrOptPackedIrOp& packed_ir_op) -> adt::Result<IrNodeT> {
+            [&](const DrrOptPackedIrOp& packed_ir_op) -> adt::Result<BirNode> {
               return GetIrOpBySmallGraphNode(packed_ir_op->node);
             },
-            [&](const auto&) -> adt::Result<IrNodeT> {
+            [&](const auto&) -> adt::Result<BirNode> {
               return adt::errors::ValueError{
                   std::string() + "Failed to get OpMatchCtx attribute, '" +
                   attr_name + "' is a unbounded op which should not be."};
@@ -103,11 +103,11 @@ struct OpMatchCtxMethodClass {
 
 namespace ap::axpr {
 
-template <typename ValueT, typename IrNodeT>
-struct MethodClassImpl<ValueT, ir_match::OpMatchCtx<IrNodeT>>
-    : public ir_match::OpMatchCtxMethodClass<ValueT, IrNodeT> {};
+template <typename ValueT, typename BirNode>
+struct MethodClassImpl<ValueT, ir_match::OpMatchCtx<BirNode>>
+    : public ir_match::OpMatchCtxMethodClass<ValueT, BirNode> {};
 
-template <typename ValueT, typename IrNodeT>
-struct MethodClassImpl<ValueT, TypeImpl<ir_match::OpMatchCtx<IrNodeT>>> {};
+template <typename ValueT, typename BirNode>
+struct MethodClassImpl<ValueT, TypeImpl<ir_match::OpMatchCtx<BirNode>>> {};
 
 }  // namespace ap::axpr

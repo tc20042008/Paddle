@@ -16,8 +16,8 @@
 #include "ap/axpr/cps_expr_interpreter.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
-#include "ap/drr/drr_value.h"
-#include "ap/drr/drr_value_method_class.h"
+#include "ap/drr/value.h"
+#include "ap/drr/value_method_class.h"
 
 namespace cinn::dialect::ir {
 

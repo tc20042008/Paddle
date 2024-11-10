@@ -15,10 +15,10 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/kernel_define/code_gen_result.h"
-#include "ap/kernel_define/compiletime_value.h"
-#include "ap/kernel_define/define_ctx.h"
-#include "ap/kernel_define/module.h"
+#include "ap/code_gen/code_gen_ctx.h"
+#include "ap/code_gen/code_gen_result.h"
+#include "ap/code_gen/value.h"
+#include "ap/code_module/module.h"
 #include "ap/paddle/pir_node.h"
 
 namespace cinn::dialect::ir {
@@ -26,14 +26,14 @@ namespace cinn::dialect::ir {
 struct ApKernelDefineHelper {
   using CoreExpr = ap::axpr::CoreExpr;
   using Lambda = ap::axpr::Lambda<CoreExpr>;
-  using Module = ap::kernel_define::Module;
+  using Module = ap::code_module::Module;
   using PirNode = ap::paddle::PirNode;
-  using CtValue = ap::kernel_define::CtValue<PirNode>;
-  using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
-  using CodeGenResult = ap::kernel_define::CodeGenResult<CtValue>;
+  using CGValue = ap::code_gen::Value<PirNode>;
+  using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
+  using CodeGenResult = ap::code_gen::CodeGenResult<CGValue>;
 
   adt::Result<CodeGenResult> Interpret(const Lambda& lambda,
-                                       const DefineCtx& define_ctx);
+                                       const CodeGenCtx& code_gen_ctx);
 };
 
 }  // namespace cinn::dialect::ir

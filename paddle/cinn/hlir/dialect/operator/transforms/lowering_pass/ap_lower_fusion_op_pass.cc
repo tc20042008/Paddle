@@ -20,18 +20,18 @@
 #include "ap/axpr/atomic.h"
 #include "ap/axpr/data_type_util.h"
 #include "ap/axpr/lambda_expr_builder.h"
+#include "ap/code_gen/arg_source_maker.h"
+#include "ap/code_gen/matched_result_pattern_helper.h"
+#include "ap/code_gen/value.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
-#include "ap/drr/drr_value.h"
 #include "ap/drr/res_ptn_packed_ir_op_declare_data.h"
 #include "ap/drr/result_pattern_helper.h"
+#include "ap/drr/value.h"
 #include "ap/graph/graph_helper.h"
 #include "ap/index_expr/valid_index_expr_builder.h"
 #include "ap/ir_match/graph_matcher.h"
 #include "ap/ir_match/ir_match_ctx.h"
-#include "ap/kernel_define/arg_source_maker.h"
-#include "ap/kernel_define/compiletime_value.h"
-#include "ap/kernel_define/matched_result_pattern_helper.h"
 #include "ap/paddle/indexed_ir_graph_util.h"
 #include "ap/paddle/pir_graph_descriptor.h"
 #include "ap/paddle/pir_node.h"
@@ -76,10 +76,10 @@ using DrrIrOpImpl = std::variant<DrrNativeIrOp, DrrPackedIrOp>;
 using IrMatchCtx = ap::ir_match::IrMatchCtx<PirNode>;
 
 using ap::axpr::AnfExpr;
-using CtValue = ap::kernel_define::CtValue<PirNode>;
-using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
-using CodeGenResult = ap::kernel_define::CodeGenResult<CtValue>;
-using ap::kernel_define::Module;
+using CGValue = ap::code_gen::Value<PirNode>;
+using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
+using CodeGenResult = ap::code_gen::CodeGenResult<CGValue>;
+using ap::code_module::Module;
 
 struct DrrIrOp : public DrrIrOpImpl {
   using DrrIrOpImpl::DrrIrOpImpl;
@@ -643,7 +643,7 @@ struct ApRewriter {
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObject(
       ap::axpr::LetContext* ctx,
-      const ap::axpr::BuiltinSerializableObject<CtValue>&
+      const ap::axpr::BuiltinSerializableObject<CGValue>&
           kernel_dispatch_const_data) const {
     std::vector<AnfExpr> kwargs;
     for (const auto& [keyword, val] :
@@ -663,7 +663,7 @@ struct ApRewriter {
   }
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObjectItem(
-      ap::axpr::LetContext* ctx, const CtValue& item) const {
+      ap::axpr::LetContext* ctx, const CGValue& item) const {
     return item.Match(
         [&](const adt::Nothing&) -> adt::Result<AnfExpr> {
           return ctx->None();
@@ -674,10 +674,10 @@ struct ApRewriter {
         [&](const std::string& str) -> adt::Result<AnfExpr> {
           return ctx->String(str);
         },
-        [&](const adt::List<CtValue>& l) -> adt::Result<AnfExpr> {
+        [&](const adt::List<CGValue>& l) -> adt::Result<AnfExpr> {
           return GetCodeFromBuiltinSerializableObjectList(ctx, l);
         },
-        [&](const ap::axpr::BuiltinSerializableObject<CtValue>& object)
+        [&](const ap::axpr::BuiltinSerializableObject<CGValue>& object)
             -> adt::Result<AnfExpr> {
           return GetCodeFromBuiltinSerializableObject(ctx, object);
         },
@@ -698,7 +698,7 @@ struct ApRewriter {
   }
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObjectList(
-      ap::axpr::LetContext* ctx, const adt::List<CtValue>& list) const {
+      ap::axpr::LetContext* ctx, const adt::List<CGValue>& list) const {
     std::vector<AnfExpr> elt_anf_exprs;
     for (const auto& elt : *list) {
       ADT_LET_CONST_REF(elt_anf_expr,
@@ -711,7 +711,7 @@ struct ApRewriter {
   adt::Result<std::string> GetDispatchCtxLambdaStr(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx,
-      const ap::axpr::BuiltinSerializableObject<CtValue>&
+      const ap::axpr::BuiltinSerializableObject<CGValue>&
           kernel_dispatch_const_data) const {
     ap::axpr::LambdaExprBuilder lmbd;
     auto ConstructLambdaBody = [&](auto& ctx) -> adt::Result<AnfExpr> {
@@ -726,7 +726,7 @@ struct ApRewriter {
 
   struct SerializedCodeGenResult {
     std::string kernel_define_lambda_str;
-    ap::axpr::BuiltinSerializableObject<CtValue> kernel_dispatch_const_data;
+    ap::axpr::BuiltinSerializableObject<CGValue> kernel_dispatch_const_data;
   };
 
   adt::Result<SerializedCodeGenResult> GetSerializedCodeGenResult(
@@ -755,17 +755,17 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelInputIndexOrSlices(
-      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      ap::axpr::BuiltinSerializableObject<CGValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    adt::List<CtValue> list;
+    adt::List<CGValue> list;
     using Ok = adt::Result<adt::Ok>;
     auto DoEachIndex = [&](int64_t idx) -> Ok {
       list->emplace_back(idx);
       return adt::Ok{};
     };
     auto DoEachSlice = [&](int64_t start, int64_t end) -> Ok {
-      adt::List<CtValue> range{start, end};
+      adt::List<CGValue> range{start, end};
       list->emplace_back(range);
       return adt::Ok{};
     };
@@ -777,17 +777,17 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelOutputIndexOrSlices(
-      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      ap::axpr::BuiltinSerializableObject<CGValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    adt::List<CtValue> list;
+    adt::List<CGValue> list;
     using Ok = adt::Result<adt::Ok>;
     auto DoEachIndex = [&](int64_t idx) -> Ok {
       list->emplace_back(idx);
       return adt::Ok{};
     };
     auto DoEachSlice = [&](int64_t start, int64_t end) -> Ok {
-      adt::List<CtValue> range{start, end};
+      adt::List<CGValue> range{start, end};
       list->emplace_back(range);
       return adt::Ok{};
     };
@@ -806,18 +806,18 @@ struct ApRewriter {
     IrMatchCtx ir_match_ctx{src_ptn_ctx, match_ctx};
     ADT_LET_CONST_REF(arg_source_ctx,
                       MakeArgSourceCtx(match_ctx, res_ptn_ir_op));
-    DefineCtx define_ctx{ir_match_ctx, res_ptn_ir_op, arg_source_ctx};
+    CodeGenCtx code_gen_ctx{ir_match_ctx, res_ptn_ir_op, arg_source_ctx};
     ApKernelDefineHelper helper{};
-    ADT_LET_CONST_REF(result, helper.Interpret(lambda, define_ctx));
+    ADT_LET_CONST_REF(result, helper.Interpret(lambda, code_gen_ctx));
     return result;
   }
 
-  adt::Result<ap::kernel_define::ArgSourceCtx<PirNode>> MakeArgSourceCtx(
+  adt::Result<ap::code_gen::ArgSourceCtx<PirNode>> MakeArgSourceCtx(
       const GraphMatchCtx& match_ctx,
       const DrrPackedIrOp& res_ptn_ir_op) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
-    ap::kernel_define::ArgSourceMaker<PirNode> maker{helper};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
+    ap::code_gen::ArgSourceMaker<PirNode> maker{helper};
     ADT_LET_CONST_REF(arg_source_ctx, maker.MakeArgSourceCtx(res_ptn_ir_op));
     return arg_source_ctx;
   }
@@ -938,24 +938,24 @@ struct ApRewriter {
       const std::vector<pir::Value>& output_values,
       const DrrPackedIrOp& res_ptn_ir_op,
       const DoEachT& DoEach) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
     return helper.VisitEachMatchedDrrIrValueAndOutputSlice<pir::Value>(
         output_values, res_ptn_ir_op, DoEach);
   }
 
   adt::Result<std::size_t> GetResPtnNumPirValues(
       const DrrIrValue& drr_ir_value, const GraphMatchCtx& match_ctx) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
     return helper.GetResPtnNumBirValues(drr_ir_value);
   }
 
   adt::Result<std::size_t> GetApKernelNumOutputs(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
     return helper.GetApKernelNumOutputs(res_ptn_ir_op);
   }
 
@@ -965,8 +965,8 @@ struct ApRewriter {
       const GraphMatchCtx& match_ctx,
       const DoEachIndexT& DoEachIndex,
       const DoEachSliceT& DoEachSlice) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
     return helper.VisitApKernelInputIndexOrSlice(
         res_ptn_ir_op, DoEachIndex, DoEachSlice);
   }
@@ -977,17 +977,17 @@ struct ApRewriter {
       const GraphMatchCtx& match_ctx,
       const DoEachIndexT& DoEachIndex,
       const DoEachSliceT& DoEachSlice) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
     return helper.VisitApKernelOutputIndexOrSlice(
         res_ptn_ir_op, DoEachIndex, DoEachSlice);
   }
 
   adt::Result<adt::Ok> InsertApKernelInputName2Index(
-      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      ap::axpr::BuiltinSerializableObject<CGValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    ap::axpr::BuiltinSerializableObject<CtValue> name2idx;
+    ap::axpr::BuiltinSerializableObject<CGValue> name2idx;
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
@@ -1003,10 +1003,10 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelOutputName2Index(
-      ap::axpr::BuiltinSerializableObject<CtValue>* object,
+      ap::axpr::BuiltinSerializableObject<CGValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    ap::axpr::BuiltinSerializableObject<CtValue> name2idx;
+    ap::axpr::BuiltinSerializableObject<CGValue> name2idx;
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
@@ -1216,8 +1216,8 @@ struct ApRewriter {
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx,
       const DoEachT& DoEach) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
     return helper.VisitMatchedBirInputOfRestPtnPackedIrOp(res_ptn_ir_op,
                                                           DoEach);
   }
@@ -1242,8 +1242,8 @@ struct ApRewriter {
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx,
       const DoEachT& DoEach) const {
-    ap::kernel_define::MatchedResultPatternHelper<PirNode> helper{match_ctx,
-                                                                  ctx_.drr_ctx};
+    ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
+                                                             ctx_.drr_ctx};
     return helper.VisitMatchedBirOutputOfRestPtnPackedIrOp(res_ptn_ir_op,
                                                            DoEach);
   }

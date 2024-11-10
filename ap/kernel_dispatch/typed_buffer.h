@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "ap/kernel_define/adt.h"
-#include "ap/kernel_define/data_type.h"
+#include "ap/code_module/adt.h"
+#include "ap/code_module/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {

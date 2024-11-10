@@ -20,16 +20,16 @@
 #include "ap/axpr/data_type_util.h"
 #include "ap/axpr/lambda_expr_builder.h"
 #include "ap/axpr/pointer_type_util.h"
-#include "ap/drr/drr_value.h"
+#include "ap/code_gen/code_gen_ctx.h"
+#include "ap/code_gen/dim_expr_kernel_arg_id.h"
+#include "ap/code_gen/op_code_gen_ctx.h"
+#include "ap/code_gen/op_cuda_gen_impl.h"
 #include "ap/drr/node.h"
 #include "ap/drr/topo_kind.h"
+#include "ap/drr/value.h"
 #include "ap/graph/node.h"
 #include "ap/index_expr/index_tuple_expr_cuda_code_generator.h"
 #include "ap/ir_match/native_or_ref_ir_value.h"
-#include "ap/kernel_define/define_ctx.h"
-#include "ap/kernel_define/dim_expr_kernel_arg_id.h"
-#include "ap/kernel_define/op_code_gen_ctx.h"
-#include "ap/kernel_define/op_cuda_gen_impl.h"
 #include "ap/op_compute/value.h"
 #include "ap/op_compute/value_method_class.h"
 #include "ap/paddle/indexed_ir_graph_util.h"
@@ -46,10 +46,10 @@ namespace ap::paddle {
 
 struct OpCudaCodeGenImpl {
   using BirNode = PirNode;
-  using OpCodeGenCtx = kernel_define::OpCodeGenCtx<BirNode>;
-  using IrOp = kernel_define::IrOp<BirNode>;
+  using OpCodeGenCtx = code_gen::OpCodeGenCtx<BirNode>;
+  using IrOp = code_gen::IrOp<BirNode>;
 
-  using LocalVarBinding = kernel_define::LocalVarBinding<BirNode>;
+  using LocalVarBinding = code_gen::LocalVarBinding<BirNode>;
   using LocalVarBindingList = std::vector<LocalVarBinding>;
 
   using DrrValue = drr::Value;
@@ -217,7 +217,7 @@ struct OpCudaCodeGenImpl {
     const auto& loop_var_names = op_code_gen_ctx->loop_var_names;
     using OptStr = std::optional<std::string>;
     auto ArgName4DimExpr = [&](const symbol::DimExpr& dim_expr) -> OptStr {
-      kernel_define::DimExprKernelArgId<PirNode> kernel_arg_id{dim_expr};
+      code_gen::DimExprKernelArgId<PirNode> kernel_arg_id{dim_expr};
       const auto iter =
           op_code_gen_ctx->kernel_arg_id2arg_name.find(kernel_arg_id);
       if (iter == op_code_gen_ctx->kernel_arg_id2arg_name.end()) {
@@ -282,13 +282,13 @@ struct OpCudaCodeGenImpl {
 
   adt::Result<IrGraphNodeInfo> MakeInputIrGraphNodeInfo(
       const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
-    using InArg = kernel_define::InTensorDataPtrKernelArgId<BirNode>;
+    using InArg = code_gen::InTensorDataPtrKernelArgId<BirNode>;
     return MakeIrGraphNodeInfo<InArg>(op_code_gen_ctx, value);
   }
 
   adt::Result<IrGraphNodeInfo> MakeOutputIrGraphNodeInfo(
       const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
-    using OutArg = kernel_define::OutTensorDataPtrKernelArgId<BirNode>;
+    using OutArg = code_gen::OutTensorDataPtrKernelArgId<BirNode>;
     return MakeIrGraphNodeInfo<OutArg>(op_code_gen_ctx, value);
   }
 
@@ -315,7 +315,7 @@ struct OpCudaCodeGenImpl {
       const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
     BirNode pir_node{NativeIrValue{value}};
     KernelArgIdImpl kernel_arg_id_impl{pir_node};
-    kernel_define::KernelArgId<BirNode> kernel_arg_id{kernel_arg_id_impl};
+    code_gen::KernelArgId<BirNode> kernel_arg_id{kernel_arg_id_impl};
     const auto& iter =
         op_code_gen_ctx->kernel_arg_id2arg_name.find(kernel_arg_id);
     if (iter == op_code_gen_ctx->kernel_arg_id2arg_name.end()) {
@@ -605,10 +605,10 @@ struct OpCudaCodeGenImpl {
 
   adt::Result<GraphMatchCtx> GetGraphMatchCtx(
       const OpCodeGenCtx& op_code_gen_ctx) const {
-    ADT_LET_CONST_REF(define_ctx,
-                      adt::WeakPtrLock(op_code_gen_ctx->define_ctx));
-    ADT_CHECK(define_ctx->ir_match_ctx.has_value());
-    const auto& ir_match_ctx = define_ctx->ir_match_ctx.value();
+    ADT_LET_CONST_REF(code_gen_ctx,
+                      adt::WeakPtrLock(op_code_gen_ctx->code_gen_ctx));
+    ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
+    const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();
     return ir_match_ctx->graph_match_ctx;
   }
 
@@ -870,10 +870,10 @@ struct OpCudaCodeGenImpl {
 
 }  // namespace ap::paddle
 
-namespace ap::kernel_define {
+namespace ap::code_gen {
 
 template <>
 struct OpCudaCodeGenImpl<ap::paddle::PirNode>
     : public paddle::OpCudaCodeGenImpl {};
 
-}  // namespace ap::kernel_define
+}  // namespace ap::code_gen

@@ -464,8 +464,8 @@ void ApUnaryInferMeta(const std::vector<const MetaTensor*>& xs,
                       int num_outputs,
                       const std::string& kernel_definer_lambda,
                       const std::string& infer_meta_lambda,
-                      const std::string& kernel_dispatcher_lambda,
-                      const std::string& dispatch_ctx_maker_lambda,
+                      const std::string& kernel_dispatch_lambda,
+                      const std::string& kernel_dispatch_const_data_lambda,
                       std::vector<MetaTensor*> outs,
                       MetaConfig config) {
   ApInferMetaHelper helper{};

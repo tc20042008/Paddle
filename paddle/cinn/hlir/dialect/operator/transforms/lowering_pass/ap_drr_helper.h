@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/drr/drr_value.h"
+#include "ap/drr/value.h"
 
 namespace cinn::dialect::ir {
 

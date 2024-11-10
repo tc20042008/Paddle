@@ -17,8 +17,8 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/builtin_functions.h"
 #include "ap/index_expr/index_expr_util.h"
-#include "ap/index_expr/index_expr_value.h"
 #include "ap/index_expr/valid_index_expr_builder.h"
+#include "ap/index_expr/value.h"
 
 namespace ap::index_expr {
 

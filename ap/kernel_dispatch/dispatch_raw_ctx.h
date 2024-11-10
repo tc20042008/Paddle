@@ -15,7 +15,7 @@
 #pragma once
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
-#include "ap/kernel_define/data_type.h"
+#include "ap/code_module/data_type.h"
 #include "ap/kernel_dispatch/arg_value.h"
 #include "ap/kernel_dispatch/typed_buffer.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -47,7 +47,7 @@ struct DispatchRawCtxImpl {
   adt::List<ValueT> inputs;
   adt::List<ValueT> outputs;
   std::shared_ptr<CudaModule> cuda_module;
-  std::unordered_map<std::string, adt::List<kernel_define::ArgType>>
+  std::unordered_map<std::string, adt::List<code_module::ArgType>>
       func_name2arg_types;
 
   bool operator==(const DispatchRawCtxImpl& other) const {

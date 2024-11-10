@@ -34,8 +34,8 @@ void ApUnaryKernel(const Context& dev_ctx,
                    int num_outputs,
                    const std::string& kernel_definer_lambda,
                    const std::string& infer_meta_lambda,
-                   const std::string& kernel_dispatcher_lambda,
-                   const std::string& dispatch_ctx_maker_lambda,
+                   const std::string& kernel_dispatch_lambda,
+                   const std::string& kernel_dispatch_const_data_lambda,
                    std::vector<DenseTensor*> outs) {
   PADDLE_ENFORCE_GT(
       xs.size(),
@@ -57,8 +57,8 @@ void ApUnaryKernel(const Context& dev_ctx,
                                          num_outputs,
                                          kernel_definer_lambda,
                                          infer_meta_lambda,
-                                         kernel_dispatcher_lambda,
-                                         dispatch_ctx_maker_lambda,
+                                         kernel_dispatch_lambda,
+                                         kernel_dispatch_const_data_lambda,
                                          outs);
   PADDLE_ENFORCE(
       !ret.HasError(),

@@ -14,8 +14,8 @@
 
 #include "paddle/phi/core/ap/kernel_define_helper.h"
 #include "ap/axpr/cps_expr_interpreter.h"
-#include "ap/kernel_define/runtime_value.h"
-#include "ap/kernel_define/runtime_value_method_class.h"
+#include "ap/code_module/value.h"
+#include "ap/code_module/value_method_class.h"
 
 namespace phi {
 
@@ -25,11 +25,9 @@ using CoreExpr = ap::axpr::CoreExpr;
 
 using Lambda = ap::axpr::Lambda<CoreExpr>;
 
-using Module = ap::kernel_define::Module;
+using Module = ap::code_module::Module;
 
-using IrNodeT = ap::kernel_define::UndefinedIrNode;
-
-using Val = ap::kernel_define::RtValue<IrNodeT>;
+using Val = ap::code_module::Value;
 
 }  // namespace
 

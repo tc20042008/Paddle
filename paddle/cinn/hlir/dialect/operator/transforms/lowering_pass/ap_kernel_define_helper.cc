@@ -14,10 +14,10 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
 #include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/code_gen/value.h"
+#include "ap/code_gen/value_method_class.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
-#include "ap/kernel_define/compiletime_value.h"
-#include "ap/kernel_define/compiletime_value_method_class.h"
 #include "ap/paddle/op_cuda_code_gen_impl.h"
 #include "ap/paddle/pir_node_method_class.h"
 
@@ -27,25 +27,26 @@ namespace {
 
 using CoreExpr = ap::axpr::CoreExpr;
 using Lambda = ap::axpr::Lambda<CoreExpr>;
-using Module = ap::kernel_define::Module;
+using Module = ap::code_module::Module;
 using PirNode = ap::paddle::PirNode;
-using Val = ap::kernel_define::CtValue<PirNode>;
-using DefineCtx = ap::kernel_define::DefineCtx<PirNode>;
-using CodeGenResult = ap::kernel_define::CodeGenResult<Val>;
+using Val = ap::code_gen::Value<PirNode>;
+using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
+using CodeGenResult = ap::code_gen::CodeGenResult<Val>;
 
 }  // namespace
 
 adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
-    const Lambda& lambda, const DefineCtx& define_ctx) {
+    const Lambda& lambda, const CodeGenCtx& code_gen_ctx) {
   ap::axpr::CpsExprInterpreter<Val> interpreter;
-  ADT_CHECK(define_ctx->ir_match_ctx.has_value());
-  const auto& ir_match_ctx = define_ctx->ir_match_ctx.value();
+  ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
+  const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();
   ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};
   ap::ir_match::TensorMatchCtx<PirNode> tensor_match_ctx{
       ir_match_ctx.shared_ptr()};
-  ADT_LET_CONST_REF(result,
-                    interpreter.Interpret(
-                        lambda, {define_ctx, op_match_ctx, tensor_match_ctx}));
+  ADT_LET_CONST_REF(
+      result,
+      interpreter.Interpret(lambda,
+                            {code_gen_ctx, op_match_ctx, tensor_match_ctx}));
   ADT_LET_CONST_REF(m, result.template TryGet<CodeGenResult>());
   return m;
 }

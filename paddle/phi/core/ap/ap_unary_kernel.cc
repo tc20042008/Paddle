@@ -68,7 +68,7 @@ adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> CacheCoreExpr(
 
 constexpr MakeCoreExprT MakeOrGetCoreExpr = &CacheCoreExpr<&ConvertToCoreExpr>;
 
-namespace kernel_define {
+namespace code_module {
 
 class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
  public:
@@ -155,7 +155,7 @@ adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
 constexpr MakeCudaModuleT MakeOrGetApUnaryCudaModule =
     &CacheCudaModule<&MakeApUnaryCudaModule>;
 
-}  // namespace kernel_define
+}  // namespace code_module
 
 namespace kernel_dispatch {
 
@@ -284,8 +284,8 @@ adt::Result<adt::List<Val>> MakeMutableTensors(
 }
 
 using FuncName2ArgTypes =
-    std::unordered_map<std::string, adt::List<kernel_define::ArgType>>;
-FuncName2ArgTypes MakeFuncName2ArgTypes(const kernel_define::Module& m) {
+    std::unordered_map<std::string, adt::List<code_module::ArgType>>;
+FuncName2ArgTypes MakeFuncName2ArgTypes(const code_module::Module& m) {
   auto GetArgTypes = [&](const auto& declare) { return declare->arg_types; };
   FuncName2ArgTypes ret;
   for (const auto& declare : *m->func_declares) {
@@ -299,19 +299,19 @@ adt::Result<adt::Ok> ApUnaryKernel(
     int num_outputs,
     const std::string& kernel_definer_lambda,
     const std::string& infer_meta_lambda,
-    const std::string& kernel_dispatcher_lambda,
-    const std::string& dispatch_ctx_maker_lambda,
+    const std::string& kernel_dispatch_lambda,
+    const std::string& kernel_dispatch_const_data_lambda,
     std::vector<phi::DenseTensor*> outs) {
   phi::KernelDispatchHelper helper{};
   ADT_LET_CONST_REF(ctx_maker_lambda,
-                    MakeOrGetCoreExpr(dispatch_ctx_maker_lambda));
+                    MakeOrGetCoreExpr(kernel_dispatch_const_data_lambda));
   ADT_LET_CONST_REF(ctx_maker_ret, helper.InterpretCtxMaker(ctx_maker_lambda));
   ADT_LET_CONST_REF(
       kernel_dispatch_const_data,
       ctx_maker_ret.TryGet<axpr::BuiltinSerializableObject<Val>>());
   ADT_LET_CONST_REF(
       cuda_module,
-      kernel_define::MakeOrGetApUnaryCudaModule(kernel_definer_lambda));
+      code_module::MakeOrGetApUnaryCudaModule(kernel_definer_lambda));
   ADT_LET_CONST_REF(inputs, MakeConstTensors(xs, kernel_dispatch_const_data));
   ADT_LET_CONST_REF(outputs,
                     MakeMutableTensors(outs, kernel_dispatch_const_data));
@@ -320,7 +320,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
                               cuda_module.shared_ptr(),
                               MakeFuncName2ArgTypes(cuda_module->GetModule())};
   DispatchCtx<Val> dispatch_ctx{raw_ctx, kernel_dispatch_const_data};
-  ADT_LET_CONST_REF(lambda, MakeOrGetCoreExpr(kernel_dispatcher_lambda));
+  ADT_LET_CONST_REF(lambda, MakeOrGetCoreExpr(kernel_dispatch_lambda));
   ADT_RETURN_IF_ERR(helper.InterpretKernelDispatcher(lambda, dispatch_ctx));
   return adt::Ok{};
 }

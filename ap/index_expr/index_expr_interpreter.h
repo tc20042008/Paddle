@@ -17,8 +17,8 @@
 #include "ap/axpr/core_expr.h"
 #include "ap/index_expr/index_expr.h"
 #include "ap/index_expr/index_expr_builtin_functions.h"
-#include "ap/index_expr/index_expr_value.h"
-#include "ap/index_expr/index_expr_value_method_class.h"
+#include "ap/index_expr/value.h"
+#include "ap/index_expr/value_method_class.h"
 
 namespace ap::index_expr {
 

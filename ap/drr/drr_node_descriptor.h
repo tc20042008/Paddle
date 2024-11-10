@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "ap/drr/drr_value.h"
 #include "ap/drr/node.h"
+#include "ap/drr/value.h"
 #include "ap/graph/node.h"
 #include "ap/graph/node_descriptor.h"
 

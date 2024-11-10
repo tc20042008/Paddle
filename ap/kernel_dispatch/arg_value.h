@@ -15,8 +15,8 @@
 #pragma once
 #include "ap/adt/adt.h"
 #include "ap/axpr/value.h"
-#include "ap/kernel_define/arg_type.h"
-#include "ap/kernel_define/data_type.h"
+#include "ap/code_module/arg_type.h"
+#include "ap/code_module/data_type.h"
 #include "ap/kernel_dispatch/typed_buffer.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -30,7 +30,7 @@ namespace ap::kernel_dispatch {
 
 namespace adt = ::cinn::adt;
 
-using kernel_define::ArgType;
+using code_module::ArgType;
 
 using ArgValueImpl = std::variant<ap::axpr::DataValue, ap::axpr::PointerValue>;
 

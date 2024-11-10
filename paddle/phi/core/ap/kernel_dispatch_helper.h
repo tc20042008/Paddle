@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/kernel_dispatch/dispatch_ctx_value.h"
+#include "ap/kernel_dispatch/value.h"
 
 namespace phi {
 
@@ -28,7 +28,7 @@ struct KernelDispatchHelper {
   adt::Result<Val> InterpretCtxMaker(const Lambda& ctx_maker_lambda);
 
   adt::Result<adt::Ok> InterpretKernelDispatcher(
-      const Lambda& kernel_dispatcher_lambda, const DispatchCtx& dispatch_ctx);
+      const Lambda& kernel_dispatch_lambda, const DispatchCtx& dispatch_ctx);
 };
 
 }  // namespace phi

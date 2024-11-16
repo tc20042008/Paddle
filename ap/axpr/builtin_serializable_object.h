@@ -15,14 +15,14 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/object.h"
+#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
 struct BuiltinSerializableObjectImpl {
-  Object<ValueT> object;
+  BuiltinObject<ValueT> object;
 
   bool operator==(const BuiltinSerializableObjectImpl& other) const {
     return this->object == other.object;

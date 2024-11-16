@@ -27,20 +27,20 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
+class CpsInterpreter : public CpsInterpreterBase<ValueT> {
  public:
-  using This = CpsExprInterpreter;
+  using This = CpsInterpreter;
   using EnvMgr = EnvironmentManager<ValueT>;
   using Env = Environment<ValueT>;
-  CpsExprInterpreter(const std::shared_ptr<EnvMgr>& env_mgr,
-                     const Frame<ValueT>& frame)
+  CpsInterpreter(const std::shared_ptr<EnvMgr>& env_mgr,
+                 const Frame<ValueT>& frame)
       : env_mgr_(env_mgr), builtin_env_(env_mgr->NewInitEnv(frame)) {}
-  explicit CpsExprInterpreter(const Frame<ValueT>& frame)
-      : CpsExprInterpreter(std::make_shared<EnvMgr>(), frame) {}
-  CpsExprInterpreter()
-      : CpsExprInterpreter(std::make_shared<EnvMgr>(), GetBuiltinFrame()) {}
-  CpsExprInterpreter(const CpsExprInterpreter&) = delete;
-  CpsExprInterpreter(CpsExprInterpreter&&) = delete;
+  explicit CpsInterpreter(const Frame<ValueT>& frame)
+      : CpsInterpreter(std::make_shared<EnvMgr>(), frame) {}
+  CpsInterpreter()
+      : CpsInterpreter(std::make_shared<EnvMgr>(), GetBuiltinFrame()) {}
+  CpsInterpreter(const CpsInterpreter&) = delete;
+  CpsInterpreter(CpsInterpreter&&) = delete;
 
   const std::shared_ptr<EnvMgr>& env_mgr() const { return env_mgr_; }
   const std::shared_ptr<Env>& builtin_env() const { return builtin_env_; }
@@ -57,7 +57,7 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
     ComposedCallImpl<ValueT> composed_call{&BuiltinHalt<ValueT>, func, args};
     ADT_RETURN_IF_ERR(InterpretComposedCallUntilHalt(&composed_call));
     ADT_CHECK(IsHalt(composed_call.inner_func))
-        << RuntimeError{"CpsExprInterpreter does not halt."};
+        << RuntimeError{"CpsInterpreter does not halt."};
     ADT_CHECK(composed_call.args.size() == 1) << RuntimeError{
         std::string() + "halt function takes 1 argument. but " +
         std::to_string(composed_call.args.size()) + " were given."};
@@ -428,7 +428,12 @@ class CpsExprInterpreter : public CpsInterpreterBase<ValueT> {
 
  private:
   static Frame<ValueT> GetBuiltinFrame() {
-    Object<ValueT> object{ValueT::GetExportedTypes()};
+    // static Frame<ValueT> frame(MakeBuiltinFrame());
+    return MakeBuiltinFrame();
+  }
+
+  static Frame<ValueT> MakeBuiltinFrame() {
+    BuiltinObject<ValueT> object{ValueT::GetExportedTypes()};
     object->Set("print", &Print<ValueT>);
     object->Set("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma<ValueT>);
     object->Set("range", &MakeRange<ValueT>);

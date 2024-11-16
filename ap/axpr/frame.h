@@ -16,7 +16,7 @@
 
 #include <string>
 #include "ap/axpr/adt.h"
-#include "ap/axpr/object.h"
+#include "ap/axpr/builtin_object.h"
 
 namespace ap::axpr {
 
@@ -36,7 +36,7 @@ struct Frame {
 
   void ClearFrame() { frame_obj->clear(); }
 
-  Object<ValueT> frame_obj;
+  BuiltinObject<ValueT> frame_obj;
 };
 
 }  // namespace ap::axpr

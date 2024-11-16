@@ -121,33 +121,32 @@ adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
       ptx, ap::paddle::CUDAModule::Kind::PTX);
 }
 
-using MakeCudaModuleT = adt::Result<ApUnaryCudaModule> (*)(
-    const std::string& kernel_definer_lambda);
+using MakeCudaModuleT =
+    adt::Result<ApUnaryCudaModule> (*)(const std::string& code_module_lambda);
 
 template <MakeCudaModuleT MakeCudaModule>
 adt::Result<ApUnaryCudaModule> CacheCudaModule(
-    const std::string& kernel_definer_lambda) {
+    const std::string& code_module_lambda) {
   using Definer2CudaModule =
       std::unordered_map<std::string, adt::Result<ApUnaryCudaModule>>;
   static Definer2CudaModule definer2cuda_module;
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
-  auto iter = definer2cuda_module.find(kernel_definer_lambda);
+  auto iter = definer2cuda_module.find(code_module_lambda);
   if (iter == definer2cuda_module.end()) {
-    const auto& cuda_module = MakeCudaModule(kernel_definer_lambda);
-    iter =
-        definer2cuda_module.emplace(kernel_definer_lambda, cuda_module).first;
+    const auto& cuda_module = MakeCudaModule(code_module_lambda);
+    iter = definer2cuda_module.emplace(code_module_lambda, cuda_module).first;
   }
   return iter->second;
 }
 
 adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
-    const std::string& kernel_definer_lambda) {
-  ADT_LET_CONST_REF(kernel_definer_core_expr,
-                    MakeOrGetCoreExpr(kernel_definer_lambda));
+    const std::string& code_module_lambda) {
+  ADT_LET_CONST_REF(code_module_core_expr,
+                    MakeOrGetCoreExpr(code_module_lambda));
   phi::KernelDefineHelper helper{};
-  ADT_LET_CONST_REF(
-      m, helper.InterpretKernelDefineLambda(kernel_definer_core_expr));
+  ADT_LET_CONST_REF(m,
+                    helper.InterpretKernelDefineLambda(code_module_core_expr));
   ADT_LET_CONST_REF(cuda_module, MakeBackendCudaModule(m));
   return ApUnaryCudaModule(m, cuda_module);
 }
@@ -297,7 +296,7 @@ FuncName2ArgTypes MakeFuncName2ArgTypes(const code_module::Module& m) {
 adt::Result<adt::Ok> ApUnaryKernel(
     const std::vector<const phi::DenseTensor*>& xs,
     int num_outputs,
-    const std::string& kernel_definer_lambda,
+    const std::string& code_module_lambda,
     const std::string& infer_meta_lambda,
     const std::string& kernel_dispatch_lambda,
     const std::string& kernel_dispatch_const_data_lambda,
@@ -310,8 +309,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
       kernel_dispatch_const_data,
       ctx_maker_ret.TryGet<axpr::BuiltinSerializableObject<Val>>());
   ADT_LET_CONST_REF(
-      cuda_module,
-      code_module::MakeOrGetApUnaryCudaModule(kernel_definer_lambda));
+      cuda_module, code_module::MakeOrGetApUnaryCudaModule(code_module_lambda));
   ADT_LET_CONST_REF(inputs, MakeConstTensors(xs, kernel_dispatch_const_data));
   ADT_LET_CONST_REF(outputs,
                     MakeMutableTensors(outs, kernel_dispatch_const_data));

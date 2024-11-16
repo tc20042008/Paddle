@@ -39,7 +39,9 @@ adt::Result<bool> ConvertToBool(const Val& cond) {
       [](const adt::List<Val>& list) -> Result<bool> {
         return list->size() > 0;
       },
-      [](const Object<Val>& obj) -> Result<bool> { return obj->size() > 0; },
+      [](const BuiltinObject<Val>& obj) -> Result<bool> {
+        return obj->size() > 0;
+      },
       [](const Lambda<CoreExpr>&) -> Result<bool> { return true; },
       [](const Closure<Val>&) -> Result<bool> { return true; },
       [](const Continuation<Val>&) -> Result<bool> { return true; },

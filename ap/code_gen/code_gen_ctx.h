@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/core_expr.h"
-#include "ap/axpr/object.h"
 #include "ap/axpr/type.h"
 #include "ap/code_gen/arg_source_ctx.h"
 #include "ap/code_module/adt.h"

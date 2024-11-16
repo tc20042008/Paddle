@@ -14,7 +14,7 @@
 
 #pragma once
 #include "ap/index_expr/index_expr_interpreter.h"
-#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/cps_interpreter.h"
 #include "ap/index_expr/index_expr_builtin_functions.h"
 
 namespace ap::index_expr {
@@ -22,17 +22,16 @@ namespace ap::index_expr {
 using axpr::CoreExpr;
 using axpr::Lambda;
 
-class IndexExprInterpreterImpl : public axpr::CpsExprInterpreter<Val> {
+class IndexExprInterpreterImpl : public axpr::CpsInterpreter<Val> {
  public:
   explicit IndexExprInterpreterImpl(const std::shared_ptr<EnvMgr>& env_mgr)
-      : axpr::CpsExprInterpreter<Val>(env_mgr,
-                                      axpr::Frame<Val>{InitBuiltins()}) {}
+      : axpr::CpsInterpreter<Val>(env_mgr, axpr::Frame<Val>{InitBuiltins()}) {}
   IndexExprInterpreterImpl(const IndexExprInterpreterImpl&) = delete;
   IndexExprInterpreterImpl(IndexExprInterpreterImpl&&) = delete;
 
  private:
-  static axpr::Object<Val> InitBuiltins() {
-    return axpr::Object<Val>{std::unordered_map<std::string, Val>{
+  static axpr::BuiltinObject<Val> InitBuiltins() {
+    return axpr::BuiltinObject<Val>{std::unordered_map<std::string, Val>{
         {"kUndefinedIndexTupleExpr",
          Val{IndexTupleExpr{UndefinedIndexTupleExpr{}}}},
         {"kNothingIndexTupleExpr",

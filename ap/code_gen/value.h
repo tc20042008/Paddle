@@ -68,7 +68,7 @@ struct Value : public ValueImpl<Value<BirNode>, BirNode> {
   using ir_node_type = BirNode;
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value<BirNode>, BirNode>);
 
-  static axpr::Object<Value<BirNode>> GetExportedTypes() {
+  static axpr::BuiltinObject<Value<BirNode>> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<
         Value<BirNode>,
         axpr::DataType,

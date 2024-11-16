@@ -136,7 +136,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
 
 void ApUnaryInferMeta(const std::vector<const MetaTensor*>& xs,
                       int num_outputs,
-                      const std::string& kernel_definer_lambda,
+                      const std::string& code_module_lambda,
                       const std::string& infer_meta_lambda,
                       const std::string& kernel_dispatch_lambda,
                       const std::string& kernel_dispatch_const_data_lambda,

@@ -25,7 +25,7 @@ struct KernelDefineHelper {
   using Module = ap::code_module::Module;
 
   adt::Result<Module> InterpretKernelDefineLambda(
-      const Lambda& kernel_definer_lambda);
+      const Lambda& code_module_lambda);
 };
 
 }  // namespace phi

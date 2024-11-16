@@ -16,7 +16,7 @@
 
 #include <sstream>
 #include "ap/axpr/anf_expr_util.h"
-#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/cps_interpreter.h"
 #include "ap/axpr/data_type_util.h"
 #include "ap/axpr/lambda_expr_builder.h"
 #include "ap/axpr/pointer_type_util.h"
@@ -845,9 +845,9 @@ struct OpCudaCodeGenImpl {
     const auto& outputs = ConvertToOpComputeList(output_var_names);
     op_compute::Val outputs_val{outputs};
     // TODO(tianchao): support op attributes.
-    const auto& attrs = axpr::Object<op_compute::Val>{};
+    const auto& attrs = axpr::BuiltinObject<op_compute::Val>{};
     op_compute::Val attrs_val{attrs};
-    axpr::CpsExprInterpreter<op_compute::Val> cps_expr_interpreter;
+    axpr::CpsInterpreter<op_compute::Val> cps_expr_interpreter;
     ADT_LET_CONST_REF(op_compute_code_gen_ret,
                       cps_expr_interpreter.Interpret(
                           lambda, {inputs_val, outputs_val, attrs_val}));

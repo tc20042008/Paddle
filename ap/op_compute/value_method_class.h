@@ -15,5 +15,4 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/object_method_class.h"
 #include "ap/axpr/value_method_class.h"

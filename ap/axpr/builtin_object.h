@@ -22,7 +22,7 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-struct ObjectImpl {
+struct BuiltinObjectImpl {
   std::unordered_map<std::string, ValueT> storage;
 
   size_t size() const { return storage.size(); }
@@ -71,15 +71,17 @@ struct ObjectImpl {
     return this->storage.emplace(var, val).second;
   }
 
-  bool operator==(const ObjectImpl& other) const { return &other == this; }
+  bool operator==(const BuiltinObjectImpl& other) const {
+    return &other == this;
+  }
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(Object, ObjectImpl<ValueT>);
+DEFINE_ADT_RC(BuiltinObject, BuiltinObjectImpl<ValueT>);
 
 template <typename ValueT>
-struct TypeImpl<Object<ValueT>> : public std::monostate {
-  using value_type = Object<ValueT>;
+struct TypeImpl<BuiltinObject<ValueT>> : public std::monostate {
+  using value_type = BuiltinObject<ValueT>;
 
   const char* Name() const { return "object"; }
 };

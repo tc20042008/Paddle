@@ -62,7 +62,7 @@ struct TypeImplBuiltinSerializableObjectMethodClass {
   }
 
   adt::Result<adt::Ok> CheckObjectIsBuiltinSerializable(
-      const Object<ValueT>& kwargs) {
+      const BuiltinObject<ValueT>& kwargs) {
     for (const auto& [_, val] : kwargs->storage) {
       ADT_RETURN_IF_ERR(CheckValueIsBuiltinSerializable(val));
     }

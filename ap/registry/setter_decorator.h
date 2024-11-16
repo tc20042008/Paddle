@@ -17,7 +17,7 @@
 #include <unordered_map>
 #include <vector>
 #include "ap/adt/adt.h"
-#include "ap/axpr/object.h"
+#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/type.h"
 #include "ap/registry/cell.h"
 

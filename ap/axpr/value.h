@@ -18,6 +18,7 @@
 #include "ap/axpr/bool.h"
 #include "ap/axpr/builtin_func_type.h"
 #include "ap/axpr/builtin_high_order_func_type.h"
+#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/builtin_symbol.h"
 #include "ap/axpr/closure.h"
 #include "ap/axpr/continuation.h"
@@ -34,7 +35,6 @@
 #include "ap/axpr/list.h"
 #include "ap/axpr/method.h"
 #include "ap/axpr/nothing.h"
-#include "ap/axpr/object.h"
 #include "ap/axpr/ordered_dict.h"
 #include "ap/axpr/ordered_set.h"
 #include "ap/axpr/packed_args.h"
@@ -56,7 +56,7 @@ using ValueBase = std::variant<Type<Nothing,
                                     double,
                                     std::string,
                                     adt::List<ValueT>,
-                                    axpr::Object<ValueT>,
+                                    axpr::BuiltinObject<ValueT>,
                                     axpr::OrderedSet<ValueT>,
                                     axpr::OrderedDict<ValueT>,
                                     PackedArgs<ValueT>,
@@ -76,7 +76,7 @@ using ValueBase = std::variant<Type<Nothing,
                                double,
                                std::string,
                                adt::List<ValueT>,
-                               axpr::Object<ValueT>,
+                               axpr::BuiltinObject<ValueT>,
                                axpr::OrderedSet<ValueT>,
                                axpr::OrderedDict<ValueT>,
                                PackedArgs<ValueT>,

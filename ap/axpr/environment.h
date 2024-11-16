@@ -16,8 +16,8 @@
 
 #include <string>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/frame.h"
-#include "ap/axpr/object.h"
 
 namespace ap::axpr {
 

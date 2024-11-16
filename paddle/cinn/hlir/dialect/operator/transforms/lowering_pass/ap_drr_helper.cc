@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_drr_helper.h"
-#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/cps_interpreter.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
 #include "ap/drr/value.h"
@@ -34,7 +34,7 @@ using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Lambda& lambda,
                                            const std::string& drr_pass_name) {
-  ap::axpr::CpsExprInterpreter<DrrValue> interpreter{};
+  ap::axpr::CpsInterpreter<DrrValue> interpreter{};
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
       << adt::errors::TypeError{

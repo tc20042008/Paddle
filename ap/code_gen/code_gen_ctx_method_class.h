@@ -368,7 +368,7 @@ struct CodeGenCtxMethodClass {
   }
 
   using Lambda = axpr::Lambda<axpr::CoreExpr>;
-  using Object = axpr::Object<ValueT>;
+  using Object = axpr::BuiltinObject<ValueT>;
 
   adt::Result<ValueT> RenderModuleTemplate(
       const axpr::ApplyT<ValueT>& Apply,

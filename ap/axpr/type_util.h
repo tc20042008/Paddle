@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "ap/axpr/object.h"
+#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/ordered_dict.h"
 #include "ap/axpr/ordered_set.h"
 #include "ap/axpr/packed_args.h"
@@ -29,12 +29,12 @@ struct GetTypeName2TypeHelper;
 
 template <typename ValueT>
 struct GetTypeName2TypeHelper<ValueT> {
-  static void Call(Object<ValueT>*) {}
+  static void Call(BuiltinObject<ValueT>*) {}
 };
 
 template <typename ValueT, typename ValueImplType0, typename... ValueImplTypes>
 struct GetTypeName2TypeHelper<ValueT, ValueImplType0, ValueImplTypes...> {
-  static void Call(Object<ValueT>* ret) {
+  static void Call(BuiltinObject<ValueT>* ret) {
     TypeImpl<ValueImplType0> type_impl{};
     ValueT type{type_impl};
     (*ret)->Set(type_impl.Name(), type);
@@ -45,8 +45,8 @@ struct GetTypeName2TypeHelper<ValueT, ValueImplType0, ValueImplTypes...> {
 }  // namespace detail
 
 template <typename ValueT, typename... ValueImplTypes>
-Object<ValueT> GetObjectTypeName2Type() {
-  Object<ValueT> object;
+BuiltinObject<ValueT> GetObjectTypeName2Type() {
+  BuiltinObject<ValueT> object;
   detail::GetTypeName2TypeHelper<ValueT,
                                  Nothing,
                                  bool,

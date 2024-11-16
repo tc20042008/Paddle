@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/ap/kernel_dispatch_helper.h"
-#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/cps_interpreter.h"
 #include "ap/kernel_dispatch/value.h"
 #include "ap/kernel_dispatch/value_method_class.h"
 
@@ -30,14 +30,14 @@ using DispatchCtx = ap::kernel_dispatch::DispatchCtx<Val>;
 
 adt::Result<Val> KernelDispatchHelper::InterpretCtxMaker(
     const Lambda& ctx_maker_lambda) {
-  ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
+  ap::axpr::CpsInterpreter<Val> cps_interpreter{};
   ADT_LET_CONST_REF(ctx, cps_interpreter.Interpret(ctx_maker_lambda, {}));
   return ctx;
 }
 
 adt::Result<adt::Ok> KernelDispatchHelper::InterpretKernelDispatcher(
     const Lambda& kernel_dispatch_lambda, const DispatchCtx& dispatch_ctx) {
-  ap::axpr::CpsExprInterpreter<Val> cps_interpreter{};
+  ap::axpr::CpsInterpreter<Val> cps_interpreter{};
   ADT_RETURN_IF_ERR(
       cps_interpreter.Interpret(kernel_dispatch_lambda, {dispatch_ctx}));
   return adt::Ok{};

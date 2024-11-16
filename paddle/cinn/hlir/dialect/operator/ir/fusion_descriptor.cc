@@ -438,9 +438,9 @@ ap::index_expr::Val MakeTensorData(
       });
 }
 
-ap::axpr::Object<ap::index_expr::Val> MakeTensorMetaObject(
+ap::axpr::BuiltinObject<ap::index_expr::Val> MakeTensorMetaObject(
     const symbol::ShapeOrDataDimExprs& shape_or_data) {
-  return ap::axpr::Object<ap::index_expr::Val>{
+  return ap::axpr::BuiltinObject<ap::index_expr::Val>{
       std::unordered_map<std::string, ap::index_expr::Val>{
           {"shape", MakeTensorShape(shape_or_data)},
           {"data", MakeTensorData(shape_or_data)},

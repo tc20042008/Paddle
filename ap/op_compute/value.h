@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/object.h"
+#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/value.h"
 
 namespace ap::op_compute {
@@ -28,7 +28,7 @@ struct Value : public ValueImpl<Value> {
 
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 
-  static axpr::Object<Value> GetExportedTypes() {
+  static axpr::BuiltinObject<Value> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<Value>();
   }
 };

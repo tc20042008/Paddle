@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
-#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/cps_interpreter.h"
 #include "ap/code_gen/value.h"
 #include "ap/code_gen/value_method_class.h"
 #include "ap/drr/drr_graph_descriptor.h"
@@ -37,7 +37,7 @@ using CodeGenResult = ap::code_gen::CodeGenResult<Val>;
 
 adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
     const Lambda& lambda, const CodeGenCtx& code_gen_ctx) {
-  ap::axpr::CpsExprInterpreter<Val> interpreter;
+  ap::axpr::CpsInterpreter<Val> interpreter;
   ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
   const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();
   ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};

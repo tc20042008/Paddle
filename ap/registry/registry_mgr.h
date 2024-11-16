@@ -20,7 +20,7 @@
 #include <sstream>
 #include "ap/adt/adt.h"
 #include "ap/axpr/anf_expr_util.h"
-#include "ap/axpr/cps_expr_interpreter.h"
+#include "ap/axpr/cps_interpreter.h"
 #include "ap/registry/value.h"
 #include "ap/registry/value_method_class.h"
 
@@ -54,7 +54,7 @@ struct RegistryMgr {
     const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
     std::vector<axpr::tVar<std::string>> args{};
     axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
-    axpr::CpsExprInterpreter<registry::Val> cps_expr_interpreter{};
+    axpr::CpsInterpreter<registry::Val> cps_expr_interpreter{};
     ADT_RETURN_IF_ERR(cps_expr_interpreter.Interpret(lambda, {}));
     return adt::Ok{};
   }

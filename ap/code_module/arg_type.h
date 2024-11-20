@@ -75,7 +75,7 @@ Result<ArgType> CastToArgType(const ValueT& val) {
         return adt::errors::TypeError{std::string() +
                                       "CastToArgType failed. expected types: "
                                       "(DataType, PointerType), actual type: " +
-                                      MethodClass<ValueT>::Name(val)};
+                                      axpr::GetTypeName(val)};
       });
 }
 

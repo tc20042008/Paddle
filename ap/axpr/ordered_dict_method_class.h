@@ -104,14 +104,15 @@ struct MethodClassImpl<ValueT, TypeImpl<OrderedDict<ValueT>>> {
         << adt::errors::TypeError{
                std::string() +
                "the argument 1 of OrderedDict() should be list, " +
-               GetTypeName(args.at(0)) + " found."};
+               axpr::GetTypeName(args.at(0)) + " found."};
     OrderedDict<ValueT> ordered_dict{};
     int i = 0;
     for (const auto& elt : *lst) {
       ADT_LET_CONST_REF(pair, elt.template TryGet<adt::List<ValueT>>())
-          << adt::errors::TypeError{
-                 std::string() + "sequence item " + std::to_string(i) +
-                 " : expected list instance, " + GetTypeName(elt) + " found."};
+          << adt::errors::TypeError{std::string() + "sequence item " +
+                                    std::to_string(i) +
+                                    " : expected list instance, " +
+                                    axpr::GetTypeName(elt) + " found."};
       ADT_CHECK(pair->size() == 2) << adt::errors::TypeError{
           std::string() + "sequence item " + std::to_string(i) +
           " : expected 2-item list, " + std::to_string(pair->size()) +

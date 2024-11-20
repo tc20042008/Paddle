@@ -88,7 +88,7 @@ Result<Val> DispatchCtxGetOutputs(const DispatchCtx<Val>& ctx,
 template <typename Val>
 Result<adt::List<ArgValue>> GetKernelArgs(const Val& args) {
   const Result<adt::List<Val>>& arg_list =
-      MethodClass<Val>::template TryGet<adt::List<Val>>(args);
+      args.template TryGet<adt::List<Val>>();
   ADT_RETURN_IF_ERR(arg_list);
   adt::List<ArgValue> ret;
   ret->reserve(arg_list.GetOkValue()->size());
@@ -109,16 +109,14 @@ Result<Val> LaunchCuda(const Val& self, const std::vector<Val>& args) {
         std::to_string(args.size()) + " were given."};
   }
   const Result<DispatchCtx<Val>>& ctx =
-      MethodClass<Val>::template TryGet<DispatchCtx<Val>>(self);
+      self.template TryGet<DispatchCtx<Val>>();
   ADT_RETURN_IF_ERR(ctx);
   const Result<std::string>& func_name =
-      MethodClass<Val>::template TryGet<std::string>(args.at(0));
+      args.at(0).template TryGet<std::string>();
   ADT_RETURN_IF_ERR(func_name);
-  const Result<int64_t>& num_blocks =
-      MethodClass<Val>::template TryGet<int64_t>(args.at(1));
+  const Result<int64_t>& num_blocks = args.at(1).template TryGet<int64_t>();
   ADT_RETURN_IF_ERR(num_blocks);
-  const Result<int64_t>& num_threads =
-      MethodClass<Val>::template TryGet<int64_t>(args.at(2));
+  const Result<int64_t>& num_threads = args.at(2).template TryGet<int64_t>();
   ADT_RETURN_IF_ERR(num_threads);
   const Result<adt::List<ArgValue>>& kernel_args = GetKernelArgs(args.at(3));
   ADT_RETURN_IF_ERR(kernel_args);

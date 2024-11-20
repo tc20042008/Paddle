@@ -21,6 +21,7 @@
 #include <type_traits>
 #include "ap/axpr/adt.h"
 #include "ap/axpr/builtin_func_type.h"
+#include "ap/axpr/class_instance.h"
 #include "ap/axpr/constants.h"
 #include "ap/axpr/type.h"
 
@@ -215,23 +216,6 @@ template <typename ValueT>
 struct MethodClass {
   using This = MethodClass;
 
-  template <typename T>
-  static adt::Result<T> TryGet(const ValueT& val) {
-    if (val.template Has<T>()) {
-      return val.template Get<T>();
-    }
-    return adt::errors::TypeError{
-        std::string() + "cast failed. expected type: " + TypeImpl<T>{}.Name() +
-        ", actual type: " + This::Name(val)};
-  }
-
-  static const char* Name(const ValueT& val) {
-    return val.Match([](const auto& impl) -> const char* {
-      using T = std::decay_t<decltype(impl)>;
-      return TypeImpl<T>{}.Name();
-    });
-  }
-
   static BuiltinUnaryFuncT<ValueT> Hash(const ValueT& val) {
     using S = builtin_symbol::Hash;
     return val.Match([](const auto& impl) -> BuiltinUnaryFuncT<ValueT> {
@@ -269,7 +253,7 @@ struct MethodClass {
   template <typename T>
   static adt::Result<ValueT> InstanceDefaultHash(const ValueT& val) {
     std::ostringstream ss;
-    ADT_LET_CONST_REF(impl, This::TryGet<T>(val));
+    ADT_LET_CONST_REF(impl, val.template TryGet<T>());
     // please implement MethodClassImpl<ValueT, T>::Hash if T is not defined
     // by DEFINE_ADT_RC.
     const void* ptr = impl.__adt_rc_shared_ptr_raw_ptr();
@@ -314,11 +298,11 @@ struct MethodClass {
   template <typename T>
   static adt::Result<ValueT> InstanceDefaultToString(const ValueT& val) {
     std::ostringstream ss;
-    ADT_LET_CONST_REF(impl, This::TryGet<T>(val));
+    ADT_LET_CONST_REF(impl, val.template TryGet<T>());
     // please implement MethodClassImpl<ValueT, T>::ToString if T is not defined
     // by DEFINE_ADT_RC.
     const void* ptr = impl.__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << This::Name(val) << " object at " << ptr << ">";
+    ss << "<" << TypeImpl<T>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
@@ -375,7 +359,7 @@ using __AltT = decltype(std::declval<ValueT&>().template Get<T>());
 template <typename T, typename ValueT>
 adt::Result<T> TryGetAlternative(const ValueT& val) {
   if constexpr (std::experimental::is_detected_v<__AltT, ValueT, T>) {
-    return MethodClass<ValueT>::template TryGet<T>(val);
+    return val.template TryGet<T>();
   } else {
     return detail::IndirectAlternative<ValueT, T>::TryGet(val);
   }
@@ -387,8 +371,15 @@ adt::Result<T> TryGetImpl(const ValueT& val) {
 }
 
 template <typename ValueT>
-const char* GetTypeName(const ValueT& val) {
-  return MethodClass<ValueT>::Name(val);
+std::string GetTypeName(const ValueT& val) {
+  return val.Match(
+      [](const ClassInstance<ValueT>& impl) -> std::string {
+        return impl->type.class_attrs->class_name;
+      },
+      [](const auto& impl) -> std::string {
+        using T = std::decay_t<decltype(impl)>;
+        return TypeImpl<T>{}.Name();
+      });
 }
 
 }  // namespace ap::axpr

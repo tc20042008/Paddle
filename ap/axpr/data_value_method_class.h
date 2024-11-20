@@ -30,11 +30,9 @@ Result<Val> ArgValueStaticCast(const Val& self, const std::vector<Val>& args) {
     return TypeError{std::string() + "'DataValue.cast' take 1 arguments. but " +
                      std::to_string(args.size()) + " were given."};
   }
-  const Result<DataValue>& arg_value =
-      MethodClass<Val>::template TryGet<DataValue>(self);
+  const Result<DataValue>& arg_value = self.template TryGet<DataValue>();
   ADT_RETURN_IF_ERR(arg_value);
-  const Result<DataType>& arg_type =
-      MethodClass<Val>::template TryGet<DataType>(args.at(0));
+  const Result<DataType>& arg_type = args.at(0).template TryGet<DataType>();
   ADT_RETURN_IF_ERR(arg_type);
   const auto& data_value =
       arg_value.GetOkValue().StaticCastTo(arg_type.GetOkValue());
@@ -98,12 +96,10 @@ struct DataValueMethodClass {
 
   static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
                                      const ValueT& attr_name_val) {
-    const auto& opt_obj =
-        MethodClass<ValueT>::template TryGet<DataValue>(obj_val);
+    const auto& opt_obj = obj_val.template TryGet<DataValue>();
     ADT_RETURN_IF_ERR(opt_obj);
     const auto& obj = opt_obj.GetOkValue();
-    const auto& opt_attr_name =
-        MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
+    const auto& opt_attr_name = attr_name_val.template TryGet<std::string>();
     ADT_RETURN_IF_ERR(opt_attr_name);
     const auto& attr_name = opt_attr_name.GetOkValue();
     return detail::DataValueGetAttr<ValueT>(obj, attr_name);
@@ -112,12 +108,10 @@ struct DataValueMethodClass {
   template <typename ArithmeticOp>
   static adt::Result<ValueT> BinaryFunc(const ValueT& lhs_val,
                                         const ValueT& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<DataValue>(lhs_val);
+    const auto& opt_lhs = lhs_val.template TryGet<DataValue>();
     ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
-    const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<DataValue>(rhs_val);
+    const auto& opt_rhs = rhs_val.template TryGet<DataValue>();
     ADT_RETURN_IF_ERR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& ret = ArithmeticBinaryFunc<ArithmeticOp>(lhs, rhs);
@@ -127,8 +121,7 @@ struct DataValueMethodClass {
 
   template <typename ArithmeticOp>
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
-    const auto& opt_operand =
-        MethodClass<ValueT>::template TryGet<DataValue>(val);
+    const auto& opt_operand = val.template TryGet<DataValue>();
     ADT_RETURN_IF_ERR(opt_operand);
     const auto& operand = opt_operand.GetOkValue();
     const auto& ret = ArithmeticUnaryFunc<ArithmeticOp>(operand);
@@ -155,12 +148,12 @@ adt::Result<ValueT> ConstructDataValue(const ValueT&,
       [](bool c) -> adt::Result<ValueT> { return DataValue{c}; },
       [](int64_t c) -> adt::Result<ValueT> { return DataValue{c}; },
       [](const DataValue& c) -> adt::Result<ValueT> { return c; },
-      [](const auto& impl) -> adt::Result<ValueT> {
+      [&](const auto& impl) -> adt::Result<ValueT> {
         using T = std::decay_t<decltype(impl)>;
         return adt::errors::TypeError{
             std::string() +
             "unsupported operand type for constructor of 'DataValue': '" +
-            TypeImpl<T>{}.Name() + "'"};
+            axpr::GetTypeName(args.at(0)) + "'"};
       });
 }
 

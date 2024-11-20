@@ -14,6 +14,23 @@
 
 #pragma once
 
-#include "ap/kernel_dispatch/const_tensor_method_class.h"
-#include "ap/kernel_dispatch/dispatch_ctx_method_class.h"
-#include "ap/kernel_dispatch/mutable_tensor_method_class.h"
+#include "ap/adt/adt.h"
+#include "ap/axpr/builtin_serializable_object.h"
+
+namespace ap::axpr {
+
+template <typename ValueT>
+struct ClassAttrsImpl {
+  std::string class_name;
+  adt::List<std::shared_ptr<ClassAttrsImpl>> superclasses;
+  BuiltinSerializableObject<ValueT> attrs;
+
+  const std::string& Name() const { return this->class_name; }
+
+  bool operator==(const ClassAttrsImpl& other) const { return this == &other; }
+};
+
+template <typename ValueT>
+DEFINE_ADT_RC(ClassAttrs, ClassAttrsImpl<ValueT>);
+
+}  // namespace ap::axpr

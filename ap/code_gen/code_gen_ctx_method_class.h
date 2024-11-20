@@ -323,7 +323,7 @@ struct CodeGenCtxMethodClass {
     }
     ADT_LET_CONST_REF(
         anchor_local_var_name,
-        kwargs->template GetOpt<std::string>("anchor_local_var_name"))
+        kwargs->template OptGet<std::string>("anchor_local_var_name"))
         << adt::errors::TypeError{std::string() +
                                   "keyword argument 'anchor_local_var_name' of "
                                   "'CodeGenCtx.op_code_gen' should be a str"};

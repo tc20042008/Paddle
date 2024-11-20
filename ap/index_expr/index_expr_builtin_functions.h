@@ -69,7 +69,7 @@ Result<Val> MakeOutIndexTupleExprSignature(const Val&,
 
 template <typename T, typename Val>
 inline Maybe<T> TryGetConcretIndexExprValue(const Val& val) {
-  const auto& ret = axpr::MethodClass<Val>::template TryGet<T>(val);
+  const auto& ret = val.template TryGet<T>();
   if (ret.template HasOkValue()) {
     return ret.GetOkValue();
   }
@@ -385,8 +385,7 @@ Result<Val> MakeIndexTupleExprTransform(const axpr::ApplyT<Val>& Apply,
   adt::List<IndexExpr> transform_index_exprs;
   transform_index_exprs->reserve(args.size() - 1);
   for (int i = 1; i < args.size(); ++i) {
-    const auto& opt_closure =
-        axpr::MethodClass<Val>::template TryGet<axpr::Closure<Val>>(args.at(i));
+    const auto& opt_closure = args.at(i).template TryGet<axpr::Closure<Val>>();
     ADT_RETURN_IF_ERR(opt_closure);
     const auto& closure = opt_closure.GetOkValue();
 
@@ -424,15 +423,11 @@ Result<Val> MakeOpIndexTupleExprSignature(const Val&,
         std::to_string(args.size()) + "were given."};
   }
   const auto& in_sig = args.at(0);
-  const auto& opt_in =
-      axpr::MethodClass<Val>::template TryGet<InIndexTupleExprSignature>(
-          in_sig);
+  const auto& opt_in = in_sig.template TryGet<InIndexTupleExprSignature>();
   ADT_RETURN_IF_ERR(opt_in);
   const auto& in = opt_in.GetOkValue();
   const auto& out_sig = args.at(1);
-  const auto& opt_out =
-      axpr::MethodClass<Val>::template TryGet<OutIndexTupleExprSignature>(
-          out_sig);
+  const auto& opt_out = out_sig.template TryGet<OutIndexTupleExprSignature>();
   ADT_RETURN_IF_ERR(opt_out);
   const auto& out = opt_out.GetOkValue();
   return OpIndexTupleExprSignature{in, out};

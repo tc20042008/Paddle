@@ -28,9 +28,6 @@ class Environment;
 template <typename ValueT>
 class CpsInterpreterBase {
  public:
-  virtual Result<ValueT> Interpret(const ValueT& closure,
-                                   const std::vector<ValueT>& args) = 0;
-
   virtual Result<adt::Ok> InterpretLambdaCall(
       const std::shared_ptr<Environment<ValueT>>& env,
       const ValueT& outter_func,

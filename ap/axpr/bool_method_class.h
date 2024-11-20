@@ -60,7 +60,7 @@ struct BoolMethodClass {
   template <typename ArithmeticOp>
   static adt::Result<ValueT> BinaryFunc(const ValueT& lhs_val,
                                         const ValueT& rhs_val) {
-    const auto& opt_lhs = MethodClass<ValueT>::template TryGet<bool>(lhs_val);
+    const auto& opt_lhs = lhs_val.template TryGet<bool>();
     ADT_RETURN_IF_ERR(opt_lhs);
     bool lhs = opt_lhs.GetOkValue();
     return rhs_val.Match(
@@ -80,16 +80,14 @@ struct BoolMethodClass {
           using T = std::decay_t<decltype(impl)>;
           return adt::errors::TypeError{
               std::string() + "unsupported operand type(s) for " +
-              ArithmeticOp::Name() + ": 'bool' and '" + TypeImpl<T>{}.Name() +
-              "'"};
+              ArithmeticOp::Name() + ": 'bool' and '" +
+              axpr::GetTypeName(rhs_val) + "'"};
         });
   }
 
   template <typename ArithmeticOp>
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
-    const auto& opt_operand = MethodClass<ValueT>::template TryGet<bool>(val);
-    ADT_RETURN_IF_ERR(opt_operand);
-    bool operand = opt_operand.GetOkValue();
+    ADT_LET_CONST_REF(operand, val.template TryGet<bool>());
     return BoolIntDoubleArithmeticUnaryFunc<ArithmeticOp, ValueT>(operand);
   }
 };

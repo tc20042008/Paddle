@@ -40,7 +40,7 @@ struct KernelArgIdHelper {
               std::string() +
               "only DimExprKernelArgId, InTensorDataPtrKernelArgId and "
               "OutTensorDataPtrKernelArgId (not including '" +
-              GetTypeName(val) + "') can be cast to KernelArgId"};
+              axpr::GetTypeName(val) + "') can be cast to KernelArgId"};
         });
   }
 

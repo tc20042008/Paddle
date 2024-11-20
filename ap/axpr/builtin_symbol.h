@@ -36,6 +36,7 @@ inline constexpr const char* kBuiltinHash() { return "__builtin_hash__"; }
 inline constexpr const char* kBuiltinGetAttr() { return "__builtin_getattr__"; }
 inline constexpr const char* kBuiltinSetAttr() { return "__builtin_setattr__"; }
 inline constexpr const char* kBuiltinGetItem() { return "__builtin_getitem__"; }
+inline constexpr const char* kBuiltinSetItem() { return "__builtin_setitem__"; }
 inline constexpr const char* kBuiltinLength() { return "__builtin_len__"; }
 inline constexpr const char* kBuiltinReturn() { return "__builtin_return__"; }
 
@@ -122,6 +123,13 @@ struct GetItem : public std::monostate {
   std::size_t GetHashValue() const { return 0; }
 };
 
+struct SetItem : public std::monostate {
+  using std::monostate::monostate;
+  static constexpr const char* Name() { return kBuiltinSetItem(); }
+  static constexpr int num_operands = 2;
+  std::size_t GetHashValue() const { return 0; }
+};
+
 struct Length : public std::monostate {
   using std::monostate::monostate;
   static constexpr const char* Name() { return kBuiltinLength(); }
@@ -163,6 +171,7 @@ PEXPR_FOR_EACH_BINARY_OP(DEFINE_BINARY_SYMBOL);
   _(GetAttr, .)                    \
   _(SetAttr, .)                    \
   _(GetItem, [])                   \
+  _(SetItem, [])                   \
   _(Length, len)
 
 using OpImpl = std::variant<
@@ -177,6 +186,7 @@ using OpImpl = std::variant<
     GetAttr,
     SetAttr,
     GetItem,
+    SetItem,
     Length>;
 
 struct Op : public OpImpl {
@@ -224,6 +234,7 @@ inline adt::Maybe<Symbol> GetSymbolFromString(const std::string& name) {
       {GetAttr::Name(), Op{GetAttr{}}},
       {SetAttr::Name(), Op{SetAttr{}}},
       {GetItem::Name(), Op{GetItem{}}},
+      {SetItem::Name(), Op{SetItem{}}},
       {Length::Name(), Op{Length{}}},
 #define MAKE_SYMBOL_ENTRY(cls, op) {cls::Name(), Op{cls{}}},
       PEXPR_FOR_EACH_BINARY_OP(MAKE_SYMBOL_ENTRY)

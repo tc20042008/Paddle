@@ -14,51 +14,65 @@
 
 #pragma once
 
+#include "ap/axpr/class_instance.h"
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
 
-template <typename ValueT, typename T>
-struct TypeMethodClass {
-  using Self = TypeMethodClass;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
-  }
-};
-
 template <typename ValueT, typename... Ts>
-struct MethodClassImpl<ValueT, Type<Ts...>> {
-  using method_class = TypeMethodClass<ValueT, Type<Ts...>>;
-
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
+struct MethodClassImpl<ValueT, Type<Ts...>> {};
 
 template <typename ValueT, typename... Ts>
 struct MethodClassImpl<ValueT, TypeImpl<Type<Ts...>>> {
-  template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
+  using Self = TypeImpl<Type<Ts...>>;
+  using This = MethodClassImpl<ValueT, Self>;
+
+  adt::Result<ValueT> Call(const Self& value) {
+    return &This::StaticGetOrConstruct;
   }
 
-  template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  static adt::Result<ValueT> StaticGetOrConstruct(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    if (args.size() == 1) {
+      return GetType(args.at(0));
+    }
+    if (args.size() == 3) {
+      return This{}.MakeClass(args.at(0), args.at(1), args.at(2));
+    }
+    return adt::errors::TypeError{std::string() +
+                                  "type() takes 1 or 3 arguments, but " +
+                                  std::to_string(args.size()) + " were given."};
+  }
+
+  adt::Result<ValueT> MakeClass(const ValueT& class_name_val,
+                                const ValueT& superclasses_val,
+                                const ValueT& attributes_object) {
+    ADT_LET_CONST_REF(class_name, class_name_val.template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() + "the argument 1 of type() should be str not " +
+               GetTypeName(class_name_val)};
+    adt::List<std::shared_ptr<ClassAttrsImpl<ValueT>>> superclasses;
+    {
+      ADT_LET_CONST_REF(superclass_vals,
+                        superclasses_val.template TryGet<adt::List<ValueT>>())
+          << adt::errors::TypeError{
+                 std::string() +
+                 "the argument 2 of type() should be list not " +
+                 GetTypeName(superclasses_val)};
+      superclasses->reserve(superclass_vals->size());
+      for (const auto& superclass_val : *superclass_vals) {
+        ADT_LET_CONST_REF(
+            type_impl,
+            CastToTypeImpl<TypeImpl<ClassInstance<ValueT>>>(superclass_val));
+        superclasses->emplace_back(type_impl.class_attrs.shared_ptr());
+      }
+    }
+    ADT_LET_CONST_REF(
+        attrs,
+        attributes_object.template TryGet<BuiltinSerializableObject<ValueT>>());
+    ClassAttrs<ValueT> class_attrs{class_name, superclasses, attrs};
+    return TypeImpl<ClassInstance<ValueT>>{class_attrs};
   }
 };
 

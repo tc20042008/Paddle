@@ -39,6 +39,10 @@ adt::Result<bool> ConvertToBool(const Val& cond) {
       [](const adt::List<Val>& list) -> Result<bool> {
         return list->size() > 0;
       },
+      [](const MutableList<Val>& list) -> Result<bool> {
+        ADT_LET_CONST_REF(list_ptr, list.Get());
+        return list_ptr->size() > 0;
+      },
       [](const BuiltinObject<Val>& obj) -> Result<bool> {
         return obj->size() > 0;
       },
@@ -53,7 +57,7 @@ adt::Result<bool> ConvertToBool(const Val& cond) {
         return true;
       },
       [&](const auto&) -> Result<bool> {
-        return TypeError{std::string() + "'" + GetTypeName(cond) +
+        return TypeError{std::string() + "'" + axpr::GetTypeName(cond) +
                          "' could not be convert to bool"};
       });
 }
@@ -70,12 +74,10 @@ Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
   }
   const auto& cond = args.at(0);
   ADT_LET_CONST_REF(select_true_branch, detail::ConvertToBool<Val>(cond));
-  const auto& opt_true_closure =
-      MethodClass<Val>::template TryGet<Closure<Val>>(args.at(1));
+  const auto& opt_true_closure = args.at(1).template TryGet<Closure<Val>>();
   ADT_RETURN_IF_ERR(opt_true_closure);
   const auto& true_closure = opt_true_closure.GetOkValue();
-  const auto& opt_false_closure =
-      MethodClass<Val>::template TryGet<Closure<Val>>(args.at(2));
+  const auto& opt_false_closure = args.at(2).template TryGet<Closure<Val>>();
   ADT_RETURN_IF_ERR(opt_false_closure);
   const auto& false_closure = opt_true_closure.GetOkValue();
   Closure<Val> closure{select_true_branch ? true_closure : false_closure};
@@ -93,11 +95,10 @@ Result<adt::Ok> CpsBuiltinApply(ComposedCallImpl<Val>* composed_call) {
     return TypeError{std::string(kBuiltinApply()) + "takes 2 arguments, but " +
                      std::to_string(args.size()) + "were given."};
   }
-  const auto& opt_arg_list =
-      MethodClass<Val>::template TryGet<adt::List<Val>>(args.at(1));
+  const auto& opt_arg_list = args.at(1).template TryGet<adt::List<Val>>();
   if (!opt_arg_list.HasOkValue()) {
     return TypeError{std::string() + "the second arguments must be list, " +
-                     MethodClass<Val>::Name(args.at(1)) + " were given."};
+                     axpr::GetTypeName(args.at(1)) + " were given."};
   }
   const auto& arg_list = opt_arg_list.GetOkValue();
   composed_call->inner_func = args.at(0);
@@ -121,10 +122,8 @@ Result<ValueT> BuiltinList(const ValueT&, const std::vector<ValueT>& args) {
   for (const auto& arg : args) {
     const auto& arg_ret = arg.Match(
         [&](const Starred<ValueT>& starred) -> Result<adt::Ok> {
-          ADT_LET_CONST_REF(
-              sublist,
-              MethodClass<ValueT>::template TryGet<adt::List<ValueT>>(
-                  starred->obj));
+          ADT_LET_CONST_REF(sublist,
+                            starred->obj.template TryGet<adt::List<ValueT>>());
           for (const auto& elt : *sublist) {
             l->emplace_back(elt);
           }
@@ -156,9 +155,9 @@ adt::Result<ValueT> Print(const ValueT&, const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(str_val, func(obj));
     ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
         << adt::errors::TypeError{
-               std::string() + "'" + GetTypeName(obj) +
+               std::string() + "'" + axpr::GetTypeName(obj) +
                ".__builtin_ToString__ should return a 'str' but '" +
-               GetTypeName(str_val) + "' were returned."};
+               axpr::GetTypeName(str_val) + "' were returned."};
     ss << str;
   }
   LOG(ERROR) << "Print\n" << ss.str();
@@ -176,19 +175,19 @@ adt::Result<ValueT> ReplaceOrTrimLeftComma(const ValueT&,
              std::string() +
              "the argument 1 of 'replace_or_trim_left_comma' should be a str "
              "(not '" +
-             GetTypeName(args.at(0)) + "')."};
+             axpr::GetTypeName(args.at(0)) + "')."};
   ADT_LET_CONST_REF(pattern, args.at(1).template TryGet<std::string>())
       << adt::errors::TypeError{
              std::string() +
              "the argument 2 of 'replace_or_trim_left_comma' should be a str "
              "(not '" +
-             GetTypeName(args.at(1)) + "')."};
+             axpr::GetTypeName(args.at(1)) + "')."};
   ADT_LET_CONST_REF(replacement, args.at(2).template TryGet<std::string>())
       << adt::errors::TypeError{
              std::string() +
              "the argument 3 of 'replace_or_trim_left_comma' should be a str "
              "(not '" +
-             GetTypeName(args.at(2)) + "')."};
+             axpr::GetTypeName(args.at(2)) + "')."};
   std::size_t pattern_pos = self.find(pattern);
   if (pattern_pos == std::string::npos) {
     return self;
@@ -258,19 +257,19 @@ adt::Result<ValueT> MakeRange(const ValueT&, const std::vector<ValueT>& args) {
   if (args.size() == 1) {
     start = 0;
     ADT_LET_CONST_REF(arg0, args.at(0).template TryGet<int64_t>())
-        << adt::errors::TypeError{std::string() +
-                                  "'range' takes int argument but " +
-                                  GetTypeName(args.at(0)) + " were given."};
+        << adt::errors::TypeError{
+               std::string() + "'range' takes int argument but " +
+               axpr::GetTypeName(args.at(0)) + " were given."};
     end = arg0;
   } else if (args.size() == 2) {
     ADT_LET_CONST_REF(arg0, args.at(0).template TryGet<int64_t>())
-        << adt::errors::TypeError{std::string() +
-                                  "'range' takes int argument but " +
-                                  GetTypeName(args.at(0)) + " were given."};
+        << adt::errors::TypeError{
+               std::string() + "'range' takes int argument but " +
+               axpr::GetTypeName(args.at(0)) + " were given."};
     ADT_LET_CONST_REF(arg1, args.at(1).template TryGet<int64_t>())
-        << adt::errors::TypeError{std::string() +
-                                  "'range' takes int argument but " +
-                                  GetTypeName(args.at(1)) + " were given."};
+        << adt::errors::TypeError{
+               std::string() + "'range' takes int argument but " +
+               axpr::GetTypeName(args.at(1)) + " were given."};
     start = arg0;
     end = arg1;
   } else {
@@ -397,12 +396,12 @@ Result<Val> Max(const Val&, const std::vector<Val>& args) {
       << adt::errors::TypeError{std::string() +
                                 "the argument 1 of max() should be 'bool', "
                                 "'int' or 'float' (not '" +
-                                GetTypeName(args.at(0)) + "')."};
+                                axpr::GetTypeName(args.at(0)) + "')."};
   ADT_LET_CONST_REF(rhs, BoolIntDouble::CastFrom(args.at(1)))
       << adt::errors::TypeError{std::string() +
                                 "the argument 1 of max() should be 'bool', "
                                 "'int' or 'float' (not '" +
-                                GetTypeName(args.at(0)) + "')."};
+                                axpr::GetTypeName(args.at(0)) + "')."};
   BoolIntDoubleHelper<Val> helper{};
   ADT_LET_CONST_REF(cmp_ret,
                     helper.template BinaryFunc<ArithmeticGE>(lhs, rhs));
@@ -419,12 +418,12 @@ Result<Val> Min(const Val&, const std::vector<Val>& args) {
       << adt::errors::TypeError{std::string() +
                                 "the argument 1 of min() should be 'bool', "
                                 "'int' or 'float' (not '" +
-                                GetTypeName(args.at(0)) + "')."};
+                                axpr::GetTypeName(args.at(0)) + "')."};
   ADT_LET_CONST_REF(rhs, BoolIntDouble::CastFrom(args.at(1)))
       << adt::errors::TypeError{std::string() +
                                 "the argument 1 of min() should be 'bool', "
                                 "'int' or 'float' (not '" +
-                                GetTypeName(args.at(0)) + "')."};
+                                axpr::GetTypeName(args.at(0)) + "')."};
   BoolIntDoubleHelper<Val> helper{};
   ADT_LET_CONST_REF(cmp_ret,
                     helper.template BinaryFunc<ArithmeticLE>(lhs, rhs));

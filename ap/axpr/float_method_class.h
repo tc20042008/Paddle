@@ -61,9 +61,7 @@ struct FloatMethodClass {
   template <typename ArithmeticOp>
   static adt::Result<ValueT> BinaryFunc(const ValueT& lhs_val,
                                         const ValueT& rhs_val) {
-    const auto& opt_lhs = MethodClass<ValueT>::template TryGet<double>(lhs_val);
-    ADT_RETURN_IF_ERR(opt_lhs);
-    double lhs = opt_lhs.GetOkValue();
+    ADT_LET_CONST_REF(lhs, lhs_val.template TryGet<double>());
     return rhs_val.Match(
         [&](bool rhs) -> adt::Result<ValueT> {
           return BoolIntDoubleArithmeticBinaryFunc<ArithmeticOp, ValueT>(lhs,
@@ -82,15 +80,13 @@ struct FloatMethodClass {
           return adt::errors::TypeError{std::string() +
                                         "unsupported operand type(s) for " +
                                         ArithmeticOp::Name() + ": 'int' and '" +
-                                        TypeImpl<T>{}.Name() + "'"};
+                                        axpr::GetTypeName(rhs_val) + "'"};
         });
   }
 
   template <typename ArithmeticOp>
   static adt::Result<ValueT> UnaryFunc(const ValueT& val) {
-    const auto& opt_operand = MethodClass<ValueT>::template TryGet<double>(val);
-    ADT_RETURN_IF_ERR(opt_operand);
-    double operand = opt_operand.GetOkValue();
+    ADT_LET_CONST_REF(operand, val.template TryGet<double>());
     return BoolIntDoubleArithmeticUnaryFunc<ArithmeticOp, ValueT>(operand);
   }
 };

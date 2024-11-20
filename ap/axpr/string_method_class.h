@@ -55,14 +55,15 @@ struct StringMethodClass {
         << adt::errors::TypeError{
                std::string() +
                "the argument 1 of join() should be 'list' not '" +
-               GetTypeName(args.at(0)) + "'."};
+               axpr::GetTypeName(args.at(0)) + "'."};
     std::ostringstream ss;
     int i = 0;
     for (const auto& elt : *lst) {
       ADT_LET_CONST_REF(item, elt.template TryGet<std::string>())
-          << adt::errors::TypeError{
-                 std::string() + "sequence item " + std::to_string(i) +
-                 ": expected str instance, " + GetTypeName(elt) + " found"};
+          << adt::errors::TypeError{std::string() + "sequence item " +
+                                    std::to_string(i) +
+                                    ": expected str instance, " +
+                                    axpr::GetTypeName(elt) + " found"};
       if (i++ > 0) {
         ss << self;
       }
@@ -112,8 +113,7 @@ struct StringMethodClass {
 
   template <typename ArithmeticOp>
   static adt::Result<Val> BinaryFunc(const Val& lhs_val, const Val& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<Val>::template TryGet<std::string>(lhs_val);
+    const auto& opt_lhs = lhs_val.template TryGet<std::string>();
     ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
     return BuiltinStringBinary<ArithmeticOp>(lhs, rhs_val);

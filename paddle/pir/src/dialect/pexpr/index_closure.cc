@@ -45,7 +45,7 @@ adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::CallLambda(
   const auto& opt_ret = (*this->interpreter)(lambda, args);
   ADT_RETURN_IF_ERR(opt_ret);
   const auto& ret = opt_ret.GetOkValue();
-  return axpr::MethodClass<Val>::TryGet<OpIndexTupleExprSignature>(ret);
+  return ret.template TryGet<OpIndexTupleExprSignature>();
 }
 
 namespace {

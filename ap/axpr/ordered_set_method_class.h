@@ -78,7 +78,7 @@ struct MethodClassImpl<ValueT, TypeImpl<OrderedSet<ValueT>>> {
         << adt::errors::TypeError{
                std::string() +
                "the argument 1 of OrderedSet() should be list, " +
-               GetTypeName(args.at(0)) + " found."};
+               axpr::GetTypeName(args.at(0)) + " found."};
     OrderedSet<ValueT> ordered_dict{};
     for (const auto& elt : *lst) {
       ADT_RETURN_IF_ERR(ordered_dict->Insert(elt));

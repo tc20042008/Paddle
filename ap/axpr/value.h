@@ -19,7 +19,9 @@
 #include "ap/axpr/builtin_func_type.h"
 #include "ap/axpr/builtin_high_order_func_type.h"
 #include "ap/axpr/builtin_object.h"
+#include "ap/axpr/builtin_serializable_object.h"
 #include "ap/axpr/builtin_symbol.h"
+#include "ap/axpr/class_instance.h"
 #include "ap/axpr/closure.h"
 #include "ap/axpr/continuation.h"
 #include "ap/axpr/cps_builtin_high_order_func_type.h"
@@ -34,6 +36,7 @@
 #include "ap/axpr/lambda.h"
 #include "ap/axpr/list.h"
 #include "ap/axpr/method.h"
+#include "ap/axpr/mutable_list.h"
 #include "ap/axpr/nothing.h"
 #include "ap/axpr/ordered_dict.h"
 #include "ap/axpr/ordered_set.h"
@@ -56,9 +59,12 @@ using ValueBase = std::variant<Type<Nothing,
                                     double,
                                     std::string,
                                     adt::List<ValueT>,
-                                    axpr::BuiltinObject<ValueT>,
-                                    axpr::OrderedSet<ValueT>,
-                                    axpr::OrderedDict<ValueT>,
+                                    MutableList<ValueT>,
+                                    BuiltinObject<ValueT>,
+                                    BuiltinSerializableObject<ValueT>,
+                                    OrderedSet<ValueT>,
+                                    OrderedDict<ValueT>,
+                                    ClassInstance<ValueT>,
                                     PackedArgs<ValueT>,
                                     Lambda<CoreExpr>,
                                     Closure<ValueT>,
@@ -76,9 +82,12 @@ using ValueBase = std::variant<Type<Nothing,
                                double,
                                std::string,
                                adt::List<ValueT>,
-                               axpr::BuiltinObject<ValueT>,
-                               axpr::OrderedSet<ValueT>,
-                               axpr::OrderedDict<ValueT>,
+                               MutableList<ValueT>,
+                               BuiltinObject<ValueT>,
+                               BuiltinSerializableObject<ValueT>,
+                               OrderedSet<ValueT>,
+                               OrderedDict<ValueT>,
+                               ClassInstance<ValueT>,
                                PackedArgs<ValueT>,
                                Lambda<CoreExpr>,
                                Closure<ValueT>,
@@ -96,9 +105,26 @@ using Builtin = ValueBase<ValueT>;
 
 template <typename ValueT>
 ValueT GetType(const ValueT& value) {
-  return value.Match([](const auto& impl) -> ValueT {
-    return TypeImpl<std::decay_t<decltype(impl)>>{};
-  });
+  return value.Match(
+      [](const ClassInstance<ValueT>& impl) -> ValueT { return impl->type; },
+      [](const auto& impl) -> ValueT {
+        using T = std::decay_t<decltype(impl)>;
+        return TypeImpl<T>{};
+      });
+}
+
+template <typename ValueT>
+adt::Result<typename TypeTrait<ValueT>::TypeT> CastToType(const ValueT& value) {
+  ADT_LET_CONST_REF(type,
+                    value.template TryGet<typename TypeTrait<ValueT>::TypeT>());
+  return type;
+}
+
+template <typename TypeImplT, typename ValueT>
+adt::Result<TypeImplT> CastToTypeImpl(const ValueT& value) {
+  ADT_LET_CONST_REF(type, CastToType(value));
+  ADT_LET_CONST_REF(type_impl, type.template TryGet<TypeImplT>());
+  return type_impl;
 }
 
 }  // namespace ap::axpr

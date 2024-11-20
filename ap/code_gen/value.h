@@ -40,7 +40,6 @@ template <typename ValueT, typename BirNode>
 using ValueImpl = ap::axpr::ValueBase<ValueT,
                                       axpr::DataType,
                                       axpr::PointerType,
-                                      axpr::BuiltinSerializableObject<ValueT>,
                                       index_expr::Slice,
                                       index_expr::IndexExpr,
                                       index_expr::IndexTupleExpr,
@@ -69,19 +68,17 @@ struct Value : public ValueImpl<Value<BirNode>, BirNode> {
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value<BirNode>, BirNode>);
 
   static axpr::BuiltinObject<Value<BirNode>> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<
-        Value<BirNode>,
-        axpr::DataType,
-        axpr::PointerType,
-        axpr::BuiltinSerializableObject<Value<BirNode>>,
-        typename BirNode::dim_expr_type,
-        index_expr::Slice,
-        index_expr::IndexExpr,
-        index_expr::IndexTupleExpr,
-        code_module::FuncDeclare,
-        code_module::SourceCode,
-        code_module::Module,
-        CodeGenResult<Value<BirNode>>>();
+    return axpr::GetObjectTypeName2Type<Value<BirNode>,
+                                        axpr::DataType,
+                                        axpr::PointerType,
+                                        typename BirNode::dim_expr_type,
+                                        index_expr::Slice,
+                                        index_expr::IndexExpr,
+                                        index_expr::IndexTupleExpr,
+                                        code_module::FuncDeclare,
+                                        code_module::SourceCode,
+                                        code_module::Module,
+                                        CodeGenResult<Value<BirNode>>>();
   }
 };
 

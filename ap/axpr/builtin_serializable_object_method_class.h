@@ -16,6 +16,7 @@
 
 #include <sstream>
 #include "ap/axpr/builtin_serializable_object.h"
+#include "ap/axpr/class_instance.h"
 #include "ap/axpr/constants.h"
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/packed_args.h"
@@ -71,7 +72,31 @@ struct TypeImplBuiltinSerializableObjectMethodClass {
 
   adt::Result<adt::Ok> CheckValueIsBuiltinSerializable(const ValueT& val) {
     using Ok = adt::Result<adt::Ok>;
+    using TypeT = typename TypeTrait<ValueT>::TypeT;
     return val.Match(
+        [&](const TypeT& type) -> Ok {
+          return type.Match(
+              [](const TypeImpl<adt::Nothing>&) -> Ok { return adt::Ok{}; },
+              [](const TypeImpl<bool>&) -> Ok { return adt::Ok{}; },
+              [](const TypeImpl<int64_t>&) -> Ok { return adt::Ok{}; },
+              [](const TypeImpl<double>&) -> Ok { return adt::Ok{}; },
+              [](const TypeImpl<std::string>&) -> Ok { return adt::Ok{}; },
+              [](const TypeImpl<ClassInstance<ValueT>>&) -> Ok {
+                return adt::Ok{};
+              },
+              [](const TypeImpl<BuiltinSerializableObject<ValueT>>&) -> Ok {
+                return adt::Ok{};
+              },
+              [&](const auto&) -> Ok {
+                std::ostringstream ss;
+                ss << "Builtin serializable types are: NoneType, bool, int, "
+                      "float, "
+                      "str, class, BuiltinSerializableObject (not "
+                      "include '"
+                   << axpr::GetTypeName(val) << "').";
+                return adt::errors::ValueError{ss.str()};
+              });
+        },
         [](const Nothing&) -> Ok { return adt::Ok{}; },
         [](bool) -> Ok { return adt::Ok{}; },
         [](int64_t) -> Ok { return adt::Ok{}; },
@@ -90,10 +115,10 @@ struct TypeImplBuiltinSerializableObjectMethodClass {
         },
         [&](const auto&) -> Ok {
           std::ostringstream ss;
-          ss << "Builtin serializable types are: NoneType, bool, int, float, "
+          ss << "Builtin serializable objects are: NoneType, bool, int, float, "
                 "str, function_code, list, BuiltinSerializableObject (not "
                 "include '"
-             << GetTypeName(val) << "').";
+             << axpr::GetTypeName(val) << "').";
           return adt::errors::ValueError{ss.str()};
         });
   }

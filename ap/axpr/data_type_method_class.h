@@ -54,14 +54,8 @@ struct DataTypeMethodClass {
   }
 
   static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<DataType>(lhs_val);
-    ADT_RETURN_IF_ERR(opt_lhs);
-    const auto& lhs = opt_lhs.GetOkValue();
-    const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<DataType>(rhs_val);
-    ADT_RETURN_IF_ERR(opt_rhs);
-    const auto& rhs = opt_rhs.GetOkValue();
+    ADT_LET_CONST_REF(lhs, lhs_val.template TryGet<DataType>());
+    ADT_LET_CONST_REF(rhs, rhs_val.template TryGet<DataType>());
     const auto& pattern_match =
         ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {
           return std::is_same_v<decltype(lhs), decltype(rhs)>;
@@ -70,14 +64,8 @@ struct DataTypeMethodClass {
   }
 
   static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<DataType>(lhs_val);
-    ADT_RETURN_IF_ERR(opt_lhs);
-    const auto& lhs = opt_lhs.GetOkValue();
-    const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<DataType>(rhs_val);
-    ADT_RETURN_IF_ERR(opt_rhs);
-    const auto& rhs = opt_rhs.GetOkValue();
+    ADT_LET_CONST_REF(lhs, lhs_val.template TryGet<DataType>());
+    ADT_LET_CONST_REF(rhs, rhs_val.template TryGet<DataType>());
     const auto& pattern_match =
         ::common::Overloaded{[](auto lhs, auto rhs) -> ValueT {
           return !std::is_same_v<decltype(lhs), decltype(rhs)>;

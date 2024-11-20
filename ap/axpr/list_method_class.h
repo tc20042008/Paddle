@@ -42,9 +42,9 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
       ADT_LET_CONST_REF(str_val, func(elt));
       ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
           << adt::errors::TypeError{
-                 std::string() + "'" + GetTypeName(elt) +
+                 std::string() + "'" + axpr::GetTypeName(elt) +
                  ".__builtin_ToString__ should return a 'str' but '" +
-                 GetTypeName(str_val) + "' were returned."};
+                 axpr::GetTypeName(str_val) + "' were returned."};
       ss << str;
     }
     ss << "]";
@@ -58,9 +58,9 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
       ADT_LET_CONST_REF(elt_hash_val, func(elt));
       ADT_LET_CONST_REF(elt_hash, elt_hash_val.template TryGet<int64_t>())
           << adt::errors::TypeError{
-                 std::string() + "'" + GetTypeName(elt) +
+                 std::string() + "'" + axpr::GetTypeName(elt) +
                  ".__builtin_hash__ should return a 'int' but '" +
-                 GetTypeName(elt_hash_val) + "' were returned."};
+                 axpr::GetTypeName(elt_hash_val) + "' were returned."};
       hash_value = adt::hash_combine(hash_value, elt_hash);
     }
     return hash_value;
@@ -80,7 +80,7 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
         [&](const auto&) -> Result<ValueT> {
           return adt::errors::TypeError{std::string() +
                                         "list indices must be integers, not " +
-                                        MethodClass<ValueT>::Name(idx)};
+                                        axpr::GetTypeName(idx)};
         });
   }
 

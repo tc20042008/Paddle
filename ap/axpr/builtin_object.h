@@ -54,13 +54,21 @@ struct BuiltinObjectImpl {
   }
 
   template <typename T>
-  Result<std::optional<T>> GetOpt(const std::string& var) const {
+  Result<std::optional<T>> OptGet(const std::string& var) const {
     if (!this->Has(var)) {
       return std::nullopt;
     }
     ADT_LET_CONST_REF(val, this->Get(var));
     ADT_CHECK(val.template Has<T>());
     return val.template Get<T>();
+  }
+
+  std::optional<ValueT> OptGet(const std::string& var) const {
+    const auto& iter = storage.find(var);
+    if (iter == storage.end()) {
+      return std::nullopt;
+    }
+    return iter->second;
   }
 
   void Set(const std::string& var, const ValueT& val) {

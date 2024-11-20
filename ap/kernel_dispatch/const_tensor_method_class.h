@@ -101,14 +101,8 @@ struct ConstTensorMethodClass {
 
   static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
                                      const ValueT& attr_name_val) {
-    const auto& opt_obj =
-        MethodClass<ValueT>::template TryGet<ConstTensor<Val>>(obj_val);
-    ADT_RETURN_IF_ERR(opt_obj);
-    const auto& obj = opt_obj.GetOkValue();
-    const auto& opt_attr_name =
-        MethodClass<ValueT>::template TryGet<std::string>(attr_name_val);
-    ADT_RETURN_IF_ERR(opt_attr_name);
-    const auto& attr_name = opt_attr_name.GetOkValue();
+    ADT_LET_CONST_REF(obj, obj_val.template TryGet<ConstTensor<Val>>());
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     return detail::TensorGetAttr<Val>(obj, attr_name);
   }
 };

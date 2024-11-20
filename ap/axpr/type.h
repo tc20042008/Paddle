@@ -42,8 +42,8 @@ struct Type : public TypeBase<Type<Ts...>, Ts...> {
 
   DEFINE_ADT_VARIANT_METHODS(TypeBase<Type<Ts...>, Ts...>);
 
-  const char* Name() const {
-    return Match([](const auto& impl) { return impl.Name(); });
+  std::string Name() const {
+    return Match([](const auto& impl) -> std::string { return impl.Name(); });
   }
 };
 

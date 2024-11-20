@@ -57,12 +57,10 @@ struct PointerValueMethodClass {
   }
 
   static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<PointerValue>(lhs_val);
+    const auto& opt_lhs = lhs_val.template TryGet<PointerValue>();
     ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
-    const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<PointerValue>(rhs_val);
+    const auto& opt_rhs = rhs_val.template TryGet<PointerValue>();
     ADT_RETURN_IF_ERR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =
@@ -77,12 +75,10 @@ struct PointerValueMethodClass {
   }
 
   static Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<PointerValue>(lhs_val);
+    const auto& opt_lhs = lhs_val.template TryGet<PointerValue>();
     ADT_RETURN_IF_ERR(opt_lhs);
     const auto& lhs = opt_lhs.GetOkValue();
-    const auto& opt_rhs =
-        MethodClass<ValueT>::template TryGet<PointerValue>(rhs_val);
+    const auto& opt_rhs = rhs_val.template TryGet<PointerValue>();
     ADT_RETURN_IF_ERR(opt_rhs);
     const auto& rhs = opt_rhs.GetOkValue();
     const auto& pattern_match =

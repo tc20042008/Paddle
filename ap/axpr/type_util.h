@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/axpr/builtin_object.h"
+#include "ap/axpr/mutable_list.h"
 #include "ap/axpr/ordered_dict.h"
 #include "ap/axpr/ordered_set.h"
 #include "ap/axpr/packed_args.h"
@@ -48,14 +49,17 @@ template <typename ValueT, typename... ValueImplTypes>
 BuiltinObject<ValueT> GetObjectTypeName2Type() {
   BuiltinObject<ValueT> object;
   detail::GetTypeName2TypeHelper<ValueT,
+                                 typename TypeTrait<ValueT>::TypeT,
                                  Nothing,
                                  bool,
                                  int64_t,
                                  double,
                                  std::string,
+                                 MutableList<ValueT>,
                                  OrderedSet<ValueT>,
                                  OrderedDict<ValueT>,
                                  PackedArgs<ValueT>,
+                                 BuiltinSerializableObject<ValueT>,
                                  ValueImplTypes...>::Call(&object);
   return object;
 }

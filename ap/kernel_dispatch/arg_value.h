@@ -68,7 +68,7 @@ Result<ArgValue> CastToArgValue(const ValueT& value) {
         return TypeError{std::string() +
                          "CastToArgValue failed. expected types: "
                          "(DataValue, PointerValue), actual type: " +
-                         ap::axpr::MethodClass<ValueT>::Name(value)};
+                         axpr::GetTypeName(value)};
       });
 }
 

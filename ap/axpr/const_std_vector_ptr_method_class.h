@@ -52,10 +52,8 @@ struct ConstStdVectorPtrMethodClass {
 
   static adt::Result<ValueT> GetItem(const ValueT& vect_value,
                                      const ValueT& idx) {
-    const auto& opt_vect =
-        MethodClass<ValueT>::template TryGet<const std::vector<T>*>(vect_value);
-    ADT_RETURN_IF_ERR(opt_vect);
-    const auto& vect = opt_vect.GetOkValue();
+    ADT_LET_CONST_REF(vect,
+                      vect_value.template TryGet<const std::vector<T>*>());
     return idx.Match(
         [&](int64_t index) -> Result<ValueT> {
           if (index < 0) {
@@ -69,7 +67,7 @@ struct ConstStdVectorPtrMethodClass {
         [&](const auto&) -> Result<ValueT> {
           return adt::errors::TypeError{
               std::string() + "vector indices must be integers, not " +
-              MethodClass<ValueT>::Name(idx)};
+              axpr::GetTypeName(idx)};
         });
   }
 

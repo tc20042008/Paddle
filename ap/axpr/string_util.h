@@ -90,10 +90,17 @@ struct BuiltinStringBinaryHelper<ArithmeticMul, Val, bool> {
 
 template <typename ArithmeticOp, typename Val>
 Result<Val> BuiltinStringBinary(const std::string& str, const Val& rhs_val) {
-  return rhs_val.Match([&](const auto& rhs) -> Result<Val> {
-    using T = std::decay_t<decltype(rhs)>;
-    return BuiltinStringBinaryHelper<ArithmeticOp, Val, T>::Call(str, rhs);
-  });
+  return rhs_val.Match(
+      [&](const ClassInstance<Val>& impl) -> Result<Val> {
+        return adt::errors::TypeError{std::string() +
+                                      "unsupported operand types for " +
+                                      ArithmeticOp::Name() + ": 'str' and '" +
+                                      impl->type.class_attrs->class_name + "'"};
+      },
+      [&](const auto& rhs) -> Result<Val> {
+        using T = std::decay_t<decltype(rhs)>;
+        return BuiltinStringBinaryHelper<ArithmeticOp, Val, T>::Call(str, rhs);
+      });
 }
 
 }  // namespace ap::axpr

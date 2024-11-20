@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "ap/axpr/builtin_serializable_object_method_class.h"
 #include "ap/axpr/dim_expr_method_class.h"
 #include "ap/code_gen/code_gen_ctx_method_class.h"
 #include "ap/code_gen/code_gen_result_method_class.h"

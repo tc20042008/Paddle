@@ -23,6 +23,7 @@
 #include "ap/axpr/to_string.h"
 #include "ap/axpr/value.h"
 #include "ap/axpr/value_method_class.h"
+#include "ap/memory/thread_local_circlable_ref_list_helper.h"
 
 namespace ap::axpr {
 
@@ -47,13 +48,26 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
 
   Result<ValueT> Interpret(const Lambda<CoreExpr>& lambda,
                            const std::vector<ValueT>& args) {
-    Closure<ValueT> closure{lambda, env_mgr()->New(builtin_env())};
-    const auto& ret = Interpret(closure, args);
-    return ret;
+    memory::ThreadLocalCirclableRefListHelper helper{};
+    return helper.Guard([&] { return ProtectedInterpret(lambda, args); });
   }
 
   Result<ValueT> Interpret(const ValueT& func,
-                           const std::vector<ValueT>& args) override {
+                           const std::vector<ValueT>& args) {
+    memory::ThreadLocalCirclableRefListHelper helper{};
+    return helper.Guard([&] { return ProtectedInterpret(func, args); });
+  }
+
+ protected:
+  Result<ValueT> ProtectedInterpret(const Lambda<CoreExpr>& lambda,
+                                    const std::vector<ValueT>& args) {
+    Closure<ValueT> closure{lambda, env_mgr()->New(builtin_env())};
+    const auto& ret = ProtectedInterpret(closure, args);
+    return ret;
+  }
+
+  Result<ValueT> ProtectedInterpret(const ValueT& func,
+                                    const std::vector<ValueT>& args) {
     ComposedCallImpl<ValueT> composed_call{&BuiltinHalt<ValueT>, func, args};
     ADT_RETURN_IF_ERR(InterpretComposedCallUntilHalt(&composed_call));
     ADT_CHECK(IsHalt(composed_call.inner_func))
@@ -64,7 +78,6 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
     return composed_call.args.at(0);
   }
 
- protected:
   Result<adt::Ok> InterpretComposedCallUntilHalt(
       ComposedCallImpl<ValueT>* composed_call) {
     while (!IsHalt(composed_call->inner_func)) {
@@ -127,8 +140,7 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
               MethodClass<ValueT>::template GetBuiltinUnaryFunc<
                   builtin_symbol::Call>(composed_call->inner_func);
           ADT_CHECK(opt_func.has_value()) << TypeError{
-              std::string("'") +
-              MethodClass<ValueT>::Name(composed_call->inner_func) +
+              std::string("'") + axpr::GetTypeName(composed_call->inner_func) +
               "' object is not callable"};
           ADT_LET_CONST_REF(func, opt_func.value()(composed_call->inner_func));
           composed_call->inner_func = func;
@@ -246,7 +258,7 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
     ADT_CHECK(opt_func.has_value())
         << TypeError{std::string() + "unsupported operand type for " +
                      GetBuiltinSymbolDebugString<BuiltinSymbol>() + ": '" +
-                     MethodClass<ValueT>::Name(operand) + "'"};
+                     axpr::GetTypeName(operand) + "'"};
     ADT_LET_CONST_REF(ret, opt_func.value()(operand));
     ret_composed_call->args = {ret};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
@@ -280,7 +292,7 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
     ADT_CHECK(opt_func.has_value())
         << TypeError{std::string() + "unsupported operand type for " +
                      GetBuiltinSymbolDebugString<BuiltinSymbol>() + ": '" +
-                     MethodClass<ValueT>::Name(lhs) + "'"};
+                     axpr::GetTypeName(lhs) + "'"};
     const auto& rhs = ret_composed_call->args.at(1);
     ADT_LET_CONST_REF(ret, opt_func.value()(lhs, rhs));
     ret_composed_call->args = {ret};
@@ -401,7 +413,7 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
       ComposedCallImpl<ValueT>* composed_call) {
     const auto& Apply = [this](const ValueT& func,
                                const std::vector<ValueT>& args) {
-      return this->Interpret(func, args);
+      return this->ProtectedInterpret(func, args);
     };
     ADT_LET_CONST_REF(inner_ret, func(Apply, obj, composed_call->args));
     composed_call->inner_func = composed_call->outter_func;

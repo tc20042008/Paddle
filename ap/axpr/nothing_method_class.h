@@ -29,16 +29,14 @@ struct NothingMethodClass {
   adt::Result<ValueT> Hash(const Self& self) { return static_cast<int64_t>(0); }
 
   Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
+    const auto& opt_lhs = lhs_val.template TryGet<adt::Nothing>();
     ADT_RETURN_IF_ERR(opt_lhs);
     return rhs_val.Match([](adt::Nothing) -> ValueT { return true; },
                          [](const auto&) -> ValueT { return false; });
   }
 
   Result<ValueT> NE(const ValueT& lhs_val, const ValueT& rhs_val) {
-    const auto& opt_lhs =
-        MethodClass<ValueT>::template TryGet<adt::Nothing>(lhs_val);
+    const auto& opt_lhs = lhs_val.template TryGet<adt::Nothing>();
     ADT_RETURN_IF_ERR(opt_lhs);
     return rhs_val.Match([](adt::Nothing) -> ValueT { return false; },
                          [](const auto&) -> ValueT { return true; });

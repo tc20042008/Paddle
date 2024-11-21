@@ -14,16 +14,18 @@
 
 #pragma once
 
-#include "ap/axpr/builtin_object.h"
-#include "ap/memory/circlable_ref.h"
+#include "ap/axpr/adt.h"
+#include "ap/axpr/error.h"
+#include "ap/axpr/serializable_value.h"
+#include "ap/axpr/type.h"
 
 namespace ap::axpr {
 
-template <typename ValueT>
-struct Frame
-    : public memory::CirclableRef<Frame<ValueT>, BuiltinObjectImpl<ValueT>> {
-  using memory::CirclableRef<Frame<ValueT>,
-                             BuiltinObjectImpl<ValueT>>::CirclableRef;
+template <>
+struct TypeImpl<adt::List<SerializableValue>> : public std::monostate {
+  using value_type = adt::List<SerializableValue>;
+
+  const char* Name() const { return "SerializableList"; }
 };
 
 }  // namespace ap::axpr

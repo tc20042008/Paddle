@@ -38,6 +38,7 @@
 #include "ap/axpr/packed_args_method_class.h"
 #include "ap/axpr/pointer_type_method_class.h"
 #include "ap/axpr/pointer_value_method_class.h"
+#include "ap/axpr/serializable_list_method_class.h"
 #include "ap/axpr/starred_method_class.h"
 #include "ap/axpr/string_method_class.h"
 #include "ap/axpr/type_method_class.h"

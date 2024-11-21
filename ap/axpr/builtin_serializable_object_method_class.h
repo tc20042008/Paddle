@@ -20,29 +20,42 @@
 #include "ap/axpr/constants.h"
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/packed_args.h"
+#include "ap/axpr/serializable_value_helper.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
 struct BuiltinSerializableObjectMethodClass {
   using This = BuiltinSerializableObjectMethodClass;
-  using Self = BuiltinSerializableObject<ValueT>;
+  using Self = BuiltinObject<SerializableValue>;
+
+  adt::Result<ValueT> Length(const Self& self) {
+    return static_cast<int64_t>(self->size());
+  }
+
+  adt::Result<ValueT> ToString(const Self& self) {
+    ADT_LET_CONST_REF(str, SerializableValueHelper{}.ToString(self));
+    return str;
+  }
+
+  adt::Result<ValueT> Hash(const Self& self) {
+    ADT_LET_CONST_REF(hash_value, SerializableValueHelper{}.Hash(self));
+    return hash_value;
+  }
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
-    ADT_LET_CONST_REF(val, self->object->Get(attr_name))
-        << adt::errors::AttributeError{
-               std::string() +
-               "'BuiltinSerializableObject' has no attribute '" + attr_name +
-               "'."};
-    return val;
+    ADT_LET_CONST_REF(val, self->Get(attr_name)) << adt::errors::AttributeError{
+        std::string() + "'BuiltinSerializableObject' has no attribute '" +
+        attr_name + "'."};
+    return val.template CastTo<ValueT>();
   }
 };
 
 template <typename ValueT>
 struct TypeImplBuiltinSerializableObjectMethodClass {
   using This = TypeImplBuiltinSerializableObjectMethodClass;
-  using Self = TypeImpl<BuiltinSerializableObject<ValueT>>;
+  using Self = TypeImpl<BuiltinObject<SerializableValue>>;
 
   adt::Result<ValueT> Call(const Self&) { return &This::StaticConstruct; }
 
@@ -58,78 +71,21 @@ struct TypeImplBuiltinSerializableObjectMethodClass {
         << adt::errors::TypeError{std::string() +
                                   "the construct of BuiltinSerializableObject "
                                   "takes no positional arguments."};
-    ADT_RETURN_IF_ERR(CheckObjectIsBuiltinSerializable(kwargs));
-    return BuiltinSerializableObject<ValueT>{kwargs};
-  }
-
-  adt::Result<adt::Ok> CheckObjectIsBuiltinSerializable(
-      const BuiltinObject<ValueT>& kwargs) {
-    for (const auto& [_, val] : kwargs->storage) {
-      ADT_RETURN_IF_ERR(CheckValueIsBuiltinSerializable(val));
-    }
-    return adt::Ok{};
-  }
-
-  adt::Result<adt::Ok> CheckValueIsBuiltinSerializable(const ValueT& val) {
-    using Ok = adt::Result<adt::Ok>;
-    using TypeT = typename TypeTrait<ValueT>::TypeT;
-    return val.Match(
-        [&](const TypeT& type) -> Ok {
-          return type.Match(
-              [](const TypeImpl<adt::Nothing>&) -> Ok { return adt::Ok{}; },
-              [](const TypeImpl<bool>&) -> Ok { return adt::Ok{}; },
-              [](const TypeImpl<int64_t>&) -> Ok { return adt::Ok{}; },
-              [](const TypeImpl<double>&) -> Ok { return adt::Ok{}; },
-              [](const TypeImpl<std::string>&) -> Ok { return adt::Ok{}; },
-              [](const TypeImpl<ClassInstance<ValueT>>&) -> Ok {
-                return adt::Ok{};
-              },
-              [](const TypeImpl<BuiltinSerializableObject<ValueT>>&) -> Ok {
-                return adt::Ok{};
-              },
-              [&](const auto&) -> Ok {
-                std::ostringstream ss;
-                ss << "Builtin serializable types are: NoneType, bool, int, "
-                      "float, "
-                      "str, class, BuiltinSerializableObject (not "
-                      "include '"
-                   << axpr::GetTypeName(val) << "').";
-                return adt::errors::ValueError{ss.str()};
-              });
-        },
-        [](const Nothing&) -> Ok { return adt::Ok{}; },
-        [](bool) -> Ok { return adt::Ok{}; },
-        [](int64_t) -> Ok { return adt::Ok{}; },
-        [](double) -> Ok { return adt::Ok{}; },
-        [](const std::string&) -> Ok { return adt::Ok{}; },
-        [](const Lambda<CoreExpr>&) -> Ok { return adt::Ok{}; },
-        [&](const adt::List<ValueT>& list) -> Ok {
-          for (const auto& elt : *list) {
-            ADT_RETURN_IF_ERR(CheckValueIsBuiltinSerializable(elt));
-          }
-          return adt::Ok{};
-        },
-        [&](const BuiltinSerializableObject<ValueT>& object) -> Ok {
-          ADT_RETURN_IF_ERR(CheckObjectIsBuiltinSerializable(object->object));
-          return adt::Ok{};
-        },
-        [&](const auto&) -> Ok {
-          std::ostringstream ss;
-          ss << "Builtin serializable objects are: NoneType, bool, int, float, "
-                "str, function_code, list, BuiltinSerializableObject (not "
-                "include '"
-             << axpr::GetTypeName(val) << "').";
-          return adt::errors::ValueError{ss.str()};
-        });
+    ADT_LET_CONST_REF(serializable_val,
+                      SerializableValueHelper{}.CastObjectFrom(kwargs));
+    ADT_LET_CONST_REF(
+        serializable_obj,
+        serializable_val.template TryGet<BuiltinObject<SerializableValue>>());
+    return serializable_obj;
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, BuiltinSerializableObject<ValueT>>
+struct MethodClassImpl<ValueT, BuiltinObject<SerializableValue>>
     : public BuiltinSerializableObjectMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<BuiltinSerializableObject<ValueT>>>
+struct MethodClassImpl<ValueT, TypeImpl<BuiltinObject<SerializableValue>>>
     : public TypeImplBuiltinSerializableObjectMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

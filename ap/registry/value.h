@@ -38,6 +38,4 @@ using Val = Value;
 
 using Env = ap::axpr::Environment<Val>;
 
-using EnvMgr = ap::axpr::EnvironmentManager<Val>;
-
 }  // namespace ap::registry

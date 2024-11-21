@@ -101,7 +101,7 @@ struct MethodClassImpl<ValueT, TypeImpl<ClassInstance<ValueT>>> {
         << adt::errors::AttributeError{
                std::string() + "type object '" + self.class_attrs->class_name +
                "' has no attribute '" + attr_name + "'"};
-    return attr;
+    return attr.template CastTo<ValueT>();
   }
 
   adt::Result<ValueT> Call(const Self& self) {

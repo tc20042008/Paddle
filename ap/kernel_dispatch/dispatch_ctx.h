@@ -35,7 +35,7 @@ template <typename ValueT>
 struct DispatchCtxImpl {
   DispatchRawCtx<ValueT> raw_ctx;
 
-  axpr::BuiltinSerializableObject<ValueT> kernel_dispatch_const_data;
+  axpr::BuiltinObject<axpr::SerializableValue> kernel_dispatch_const_data;
 
   bool operator==(const DispatchCtxImpl& other) const { return &other == this; }
 };

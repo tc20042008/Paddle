@@ -25,7 +25,7 @@ namespace ap::code_gen {
 template <typename ValueT>
 struct CodeGenResultImpl {
   code_module::Module code_module;
-  axpr::BuiltinSerializableObject<ValueT> kernel_dispatch_const_data;
+  axpr::BuiltinObject<axpr::SerializableValue> kernel_dispatch_const_data;
 
   bool operator==(const CodeGenResultImpl& other) const {
     return this == &other;

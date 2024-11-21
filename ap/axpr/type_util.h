@@ -59,7 +59,7 @@ BuiltinObject<ValueT> GetObjectTypeName2Type() {
                                  OrderedSet<ValueT>,
                                  OrderedDict<ValueT>,
                                  PackedArgs<ValueT>,
-                                 BuiltinSerializableObject<ValueT>,
+                                 BuiltinObject<axpr::SerializableValue>,
                                  ValueImplTypes...>::Call(&object);
   return object;
 }

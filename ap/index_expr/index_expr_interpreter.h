@@ -22,27 +22,26 @@
 
 namespace ap::index_expr {
 
-class IndexExprInterpreterImpl;
-
 class IndexExprInterpreter {
  public:
   IndexExprInterpreter();
-  explicit IndexExprInterpreter(const std::shared_ptr<EnvMgr>& env_mgr);
   IndexExprInterpreter(const IndexExprInterpreter&) = delete;
   IndexExprInterpreter(IndexExprInterpreter&&) = delete;
 
   Result<Val> operator()(const axpr::Lambda<axpr::CoreExpr>& lambda,
-                         const std::vector<Val>& args) const;
+                         const std::vector<Val>& args) const {
+    return adt::errors::NotImplementedError{
+        "IndexExprInterpreter::operator()(lambda, args)"};
+  }
 
   Result<Val> operator()(
       const std::unordered_map<std::string, axpr::BuiltinFuncType<Val>>&
           global_functions,
       const axpr::Lambda<axpr::CoreExpr>& lambda,
-      const std::vector<Val>& args) const;
-
- private:
-  std::shared_ptr<EnvMgr> env_mgr_;
-  std::shared_ptr<IndexExprInterpreterImpl> impl_;
+      const std::vector<Val>& args) const {
+    return adt::errors::NotImplementedError{
+        "IndexExprInterpreter::operator()(global_functions, lambda, args)"};
+  }
 };
 
 }  // namespace ap::index_expr

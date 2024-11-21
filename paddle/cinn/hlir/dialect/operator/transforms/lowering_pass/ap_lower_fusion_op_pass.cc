@@ -643,11 +643,10 @@ struct ApRewriter {
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObject(
       ap::axpr::LetContext* ctx,
-      const ap::axpr::BuiltinSerializableObject<CGValue>&
+      const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
           kernel_dispatch_const_data) const {
     std::vector<AnfExpr> kwargs;
-    for (const auto& [keyword, val] :
-         kernel_dispatch_const_data->object->storage) {
+    for (const auto& [keyword, val] : kernel_dispatch_const_data->storage) {
       const AnfExpr& keyword_anf = ctx->String(keyword);
       ADT_LET_CONST_REF(val_anf,
                         GetCodeFromBuiltinSerializableObjectItem(ctx, val));
@@ -663,7 +662,8 @@ struct ApRewriter {
   }
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObjectItem(
-      ap::axpr::LetContext* ctx, const CGValue& item) const {
+      ap::axpr::LetContext* ctx,
+      const ap::axpr::SerializableValue& item) const {
     return item.Match(
         [&](const adt::Nothing&) -> adt::Result<AnfExpr> {
           return ctx->None();
@@ -674,10 +674,11 @@ struct ApRewriter {
         [&](const std::string& str) -> adt::Result<AnfExpr> {
           return ctx->String(str);
         },
-        [&](const adt::List<CGValue>& l) -> adt::Result<AnfExpr> {
+        [&](const adt::List<ap::axpr::SerializableValue>& l)
+            -> adt::Result<AnfExpr> {
           return GetCodeFromBuiltinSerializableObjectList(ctx, l);
         },
-        [&](const ap::axpr::BuiltinSerializableObject<CGValue>& object)
+        [&](const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>& object)
             -> adt::Result<AnfExpr> {
           return GetCodeFromBuiltinSerializableObject(ctx, object);
         },
@@ -692,13 +693,14 @@ struct ApRewriter {
           ss << "Builtin serializable types are: NoneType, bool, int, float, "
                 "str, function_code, list, BuiltinSerializableObject (not "
                 "include '"
-             << ap::axpr::GetTypeName(item) << "').";
+             << ap::axpr::GetTypeName(item.template CastTo<CGValue>()) << "').";
           return adt::errors::ValueError{ss.str()};
         });
   }
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableObjectList(
-      ap::axpr::LetContext* ctx, const adt::List<CGValue>& list) const {
+      ap::axpr::LetContext* ctx,
+      const adt::List<ap::axpr::SerializableValue>& list) const {
     std::vector<AnfExpr> elt_anf_exprs;
     for (const auto& elt : *list) {
       ADT_LET_CONST_REF(elt_anf_expr,
@@ -711,7 +713,7 @@ struct ApRewriter {
   adt::Result<std::string> GetDispatchCtxLambdaStr(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx,
-      const ap::axpr::BuiltinSerializableObject<CGValue>&
+      const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
           kernel_dispatch_const_data) const {
     ap::axpr::LambdaExprBuilder lmbd;
     auto ConstructLambdaBody = [&](auto& ctx) -> adt::Result<AnfExpr> {
@@ -726,7 +728,8 @@ struct ApRewriter {
 
   struct SerializedCodeGenResult {
     std::string kernel_define_lambda_str;
-    ap::axpr::BuiltinSerializableObject<CGValue> kernel_dispatch_const_data;
+    ap::axpr::BuiltinObject<ap::axpr::SerializableValue>
+        kernel_dispatch_const_data;
   };
 
   adt::Result<SerializedCodeGenResult> GetSerializedCodeGenResult(
@@ -755,46 +758,46 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelInputIndexOrSlices(
-      ap::axpr::BuiltinSerializableObject<CGValue>* object,
+      ap::axpr::BuiltinObject<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    adt::List<CGValue> list;
+    adt::List<ap::axpr::SerializableValue> list;
     using Ok = adt::Result<adt::Ok>;
     auto DoEachIndex = [&](int64_t idx) -> Ok {
       list->emplace_back(idx);
       return adt::Ok{};
     };
     auto DoEachSlice = [&](int64_t start, int64_t end) -> Ok {
-      adt::List<CGValue> range{start, end};
+      adt::List<ap::axpr::SerializableValue> range{start, end};
       list->emplace_back(range);
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitApKernelInputIndexOrSlice(
         res_ptn_ir_op, match_ctx, DoEachIndex, DoEachSlice));
-    ADT_CHECK((*object)->object->Emplace(
-        "__builtin_ap_kernel_input_indexes_slices", list));
+    ADT_CHECK(
+        (*object)->Emplace("__builtin_ap_kernel_input_indexes_slices", list));
     return adt::Ok{};
   }
 
   adt::Result<adt::Ok> InsertApKernelOutputIndexOrSlices(
-      ap::axpr::BuiltinSerializableObject<CGValue>* object,
+      ap::axpr::BuiltinObject<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    adt::List<CGValue> list;
+    adt::List<ap::axpr::SerializableValue> list;
     using Ok = adt::Result<adt::Ok>;
     auto DoEachIndex = [&](int64_t idx) -> Ok {
       list->emplace_back(idx);
       return adt::Ok{};
     };
     auto DoEachSlice = [&](int64_t start, int64_t end) -> Ok {
-      adt::List<CGValue> range{start, end};
+      adt::List<ap::axpr::SerializableValue> range{start, end};
       list->emplace_back(range);
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitApKernelOutputIndexOrSlice(
         res_ptn_ir_op, match_ctx, DoEachIndex, DoEachSlice));
-    ADT_CHECK((*object)->object->Emplace(
-        "__builtin_ap_kernel_output_indexes_slices", list));
+    ADT_CHECK(
+        (*object)->Emplace("__builtin_ap_kernel_output_indexes_slices", list));
     return adt::Ok{};
   }
 
@@ -984,40 +987,40 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelInputName2Index(
-      ap::axpr::BuiltinSerializableObject<CGValue>* object,
+      ap::axpr::BuiltinObject<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    ap::axpr::BuiltinSerializableObject<CGValue> name2idx;
+    ap::axpr::BuiltinObject<ap::axpr::SerializableValue> name2idx;
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      ADT_CHECK(name2idx->object->Emplace(drr_ir_value.name(), idx));
+      ADT_CHECK(name2idx->Emplace(drr_ir_value.name(), idx));
       ++idx;
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(
         VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachIrValue));
-    ADT_CHECK((*object)->object->Emplace(
-        "__builtin_ap_kernel_input_name_to_index", name2idx));
+    ADT_CHECK((*object)->Emplace("__builtin_ap_kernel_input_name_to_index",
+                                 name2idx));
     return adt::Ok{};
   }
 
   adt::Result<adt::Ok> InsertApKernelOutputName2Index(
-      ap::axpr::BuiltinSerializableObject<CGValue>* object,
+      ap::axpr::BuiltinObject<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    ap::axpr::BuiltinSerializableObject<CGValue> name2idx;
+    ap::axpr::BuiltinObject<ap::axpr::SerializableValue> name2idx;
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
-      ADT_CHECK(name2idx->object->Emplace(drr_ir_value.name(), idx));
+      ADT_CHECK(name2idx->Emplace(drr_ir_value.name(), idx));
       ++idx;
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(
         VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachIrValue));
-    ADT_CHECK((*object)->object->Emplace(
-        "__builtin_ap_kernel_output_name_to_index", name2idx));
+    ADT_CHECK((*object)->Emplace("__builtin_ap_kernel_output_name_to_index",
+                                 name2idx));
     return adt::Ok{};
   }
 

@@ -19,6 +19,7 @@
 #include "ap/axpr/class_attrs.h"
 #include "ap/axpr/error.h"
 #include "ap/axpr/instance_attrs.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
@@ -29,10 +30,10 @@ struct ClassInstance;
 template <typename ValueT>
 struct TypeImpl<ClassInstance<ValueT>> {
   explicit TypeImpl<ClassInstance<ValueT>>(
-      const ClassAttrs<ValueT>& class_attr_val)
+      const ClassAttrs<SerializableValue>& class_attr_val)
       : class_attrs(class_attr_val) {}
 
-  ClassAttrs<ValueT> class_attrs;
+  ClassAttrs<SerializableValue> class_attrs;
 
   const std::string& Name() const { return class_attrs->Name(); }
 
@@ -56,7 +57,7 @@ DEFINE_ADT_RC(ClassInstance, ClassInstanceImpl<ValueT>);
 
 template <typename ValueT>
 adt::Result<ClassInstance<ValueT>> MakeThreadLocalTrackedClassInstance(
-    const ClassAttrs<ValueT>& class_attrs) {
+    const ClassAttrs<SerializableValue>& class_attrs) {
   ADT_LET_CONST_REF(instance_attrs,
                     InstanceAttrs<ValueT>::ThreadLocalTracked());
   TypeImpl<ClassInstance<ValueT>> type(class_attrs);

@@ -28,10 +28,8 @@
 #include "ap/axpr/data_type.h"
 #include "ap/axpr/data_value.h"
 #include "ap/axpr/environment.h"
-#include "ap/axpr/environment_mgr.h"
 #include "ap/axpr/error.h"
 #include "ap/axpr/float.h"
-#include "ap/axpr/frame.h"
 #include "ap/axpr/int.h"
 #include "ap/axpr/lambda.h"
 #include "ap/axpr/list.h"
@@ -43,6 +41,8 @@
 #include "ap/axpr/packed_args.h"
 #include "ap/axpr/pointer_type.h"
 #include "ap/axpr/pointer_value.h"
+#include "ap/axpr/serializable_list.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/starred.h"
 #include "ap/axpr/string.h"
 #include "ap/axpr/type.h"
@@ -59,9 +59,10 @@ using ValueBase = std::variant<Type<Nothing,
                                     double,
                                     std::string,
                                     adt::List<ValueT>,
+                                    adt::List<SerializableValue>,
                                     MutableList<ValueT>,
                                     BuiltinObject<ValueT>,
-                                    BuiltinSerializableObject<ValueT>,
+                                    BuiltinObject<SerializableValue>,
                                     OrderedSet<ValueT>,
                                     OrderedDict<ValueT>,
                                     ClassInstance<ValueT>,
@@ -82,9 +83,10 @@ using ValueBase = std::variant<Type<Nothing,
                                double,
                                std::string,
                                adt::List<ValueT>,
+                               adt::List<SerializableValue>,
                                MutableList<ValueT>,
                                BuiltinObject<ValueT>,
-                               BuiltinSerializableObject<ValueT>,
+                               BuiltinObject<SerializableValue>,
                                OrderedSet<ValueT>,
                                OrderedDict<ValueT>,
                                ClassInstance<ValueT>,

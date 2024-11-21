@@ -16,61 +16,21 @@
 
 #include <string>
 #include "ap/axpr/adt.h"
-#include "ap/axpr/builtin_object.h"
-#include "ap/axpr/frame.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-class EnvironmentManager;
-
-template <typename ValueT>
 class Environment {
  public:
-  Result<ValueT> Get(const std::string& var) const {
-    const Result<ValueT>& res = frame_.Get(var);
-    if (res.template Has<ValueT>()) {
-      return res;
-    }
-    if (parent_ == nullptr) {
-      return NameError{std::string("name '") + var + "' is not defined."};
-    }
-    return parent_->Get(var);
-  }
+  virtual adt::Result<ValueT> Get(const std::string& var) const = 0;
 
-  void Set(const std::string& var, const ValueT& val) {
-    return frame_.Set(var, val);
-  }
+  virtual adt::Result<adt::Ok> Set(const std::string& var,
+                                   const ValueT& val) = 0;
 
-  void ClearFrame() {
-    parent_ = nullptr;
-    frame_.ClearFrame();
-  }
-
-  const Frame<ValueT>& frame() const { return frame_; }
-
- private:
-  static std::shared_ptr<Environment> New(
-      const std::shared_ptr<Environment>& parent) {
-    return std::shared_ptr<Environment>(
-        new Environment(parent, Frame<ValueT>{}));
-  }
-
-  static std::shared_ptr<Environment> NewInitEnv(const Frame<ValueT>& frame) {
-    return std::shared_ptr<Environment>(new Environment(nullptr, frame));
-  }
-
-  explicit Environment(const std::shared_ptr<Environment>& parent,
-                       const Frame<ValueT>& frame)
-      : parent_(parent), frame_(frame) {}
-
+ protected:
+  Environment() = default;
   Environment(const Environment&) = delete;
   Environment(Environment&&) = delete;
-
-  friend class EnvironmentManager<ValueT>;
-
-  std::shared_ptr<Environment> parent_;
-  Frame<ValueT> frame_;
 };
 
 }  // namespace ap::axpr

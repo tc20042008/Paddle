@@ -55,6 +55,4 @@ using Val = Value;
 
 using Env = axpr::Environment<Val>;
 
-using EnvMgr = axpr::EnvironmentManager<Val>;
-
 }  // namespace ap::index_expr

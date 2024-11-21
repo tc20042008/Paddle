@@ -167,19 +167,22 @@ adt::List<Val> MakeTensorDims(const phi::DenseTensor& tensor) {
   return ret;
 }
 
-adt::Result<adt::List<Val>> GetIndexesSlices(
-    const axpr::BuiltinSerializableObject<Val>& kernel_dispatch_const_data,
+adt::Result<adt::List<ap::axpr::SerializableValue>> GetIndexesSlices(
+    const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
+        kernel_dispatch_const_data,
     const std::string& attr_name) {
   ADT_LET_CONST_REF(
       val,
-      kernel_dispatch_const_data->object->TryGet<adt::List<Val>>(attr_name));
+      kernel_dispatch_const_data
+          ->TryGet<adt::List<ap::axpr::SerializableValue>>(attr_name));
   return val;
 }
 
 template <typename DoEachIdxT, typename DoEachRangeT>
-adt::Result<adt::Ok> VisitTensorIdxOrRange(const adt::List<Val>& list,
-                                           const DoEachIdxT& DoEachIdx,
-                                           const DoEachRangeT& DoEachRange) {
+adt::Result<adt::Ok> VisitTensorIdxOrRange(
+    const adt::List<ap::axpr::SerializableValue>& list,
+    const DoEachIdxT& DoEachIdx,
+    const DoEachRangeT& DoEachRange) {
   using Ok = adt::Result<adt::Ok>;
   for (int i = 0; i < list->size(); ++i) {
     const auto& elt = list->at(i);
@@ -188,7 +191,7 @@ adt::Result<adt::Ok> VisitTensorIdxOrRange(const adt::List<Val>& list,
           ADT_RETURN_IF_ERR(DoEachIdx(idx));
           return adt::Ok{};
         },
-        [&](const adt::List<Val>& range_val) -> Ok {
+        [&](const adt::List<ap::axpr::SerializableValue>& range_val) -> Ok {
           ADT_CHECK(range_val->size() == 2);
           ADT_LET_CONST_REF(start, range_val->at(0).TryGet<int64_t>());
           ADT_LET_CONST_REF(end, range_val->at(1).TryGet<int64_t>());
@@ -204,7 +207,8 @@ adt::Result<adt::Ok> VisitTensorIdxOrRange(const adt::List<Val>& list,
 
 adt::Result<adt::List<Val>> MakeConstTensors(
     const std::vector<const phi::DenseTensor*>& xs,
-    const axpr::BuiltinSerializableObject<Val>& kernel_dispatch_const_data) {
+    const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
+        kernel_dispatch_const_data) {
   ADT_LET_CONST_REF(
       indexes_slices,
       GetIndexesSlices(kernel_dispatch_const_data,
@@ -244,7 +248,8 @@ adt::Result<adt::List<Val>> MakeConstTensors(
 
 adt::Result<adt::List<Val>> MakeMutableTensors(
     const std::vector<phi::DenseTensor*>& xs,
-    const axpr::BuiltinSerializableObject<Val>& kernel_dispatch_const_data) {
+    const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
+        kernel_dispatch_const_data) {
   ADT_LET_CONST_REF(
       indexes_slices,
       GetIndexesSlices(kernel_dispatch_const_data,
@@ -307,7 +312,8 @@ adt::Result<adt::Ok> ApUnaryKernel(
   ADT_LET_CONST_REF(ctx_maker_ret, helper.InterpretCtxMaker(ctx_maker_lambda));
   ADT_LET_CONST_REF(
       kernel_dispatch_const_data,
-      ctx_maker_ret.TryGet<axpr::BuiltinSerializableObject<Val>>());
+      ctx_maker_ret
+          .TryGet<ap::axpr::BuiltinObject<ap::axpr::SerializableValue>>());
   ADT_LET_CONST_REF(
       cuda_module, code_module::MakeOrGetApUnaryCudaModule(code_module_lambda));
   ADT_LET_CONST_REF(inputs, MakeConstTensors(xs, kernel_dispatch_const_data));

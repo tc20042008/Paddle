@@ -210,10 +210,9 @@ struct DispatchCtxMethodClass {
     const auto& data = self->kernel_dispatch_const_data;
     ADT_LET_CONST_REF(
         name2idx,
-        data->object->template TryGet<axpr::BuiltinSerializableObject<ValueT>>(
+        data->template TryGet<axpr::BuiltinObject<axpr::SerializableValue>>(
             "__builtin_ap_kernel_input_name_to_index"));
-    ADT_LET_CONST_REF(index,
-                      name2idx->object->template TryGet<int64_t>(tensor_name));
+    ADT_LET_CONST_REF(index, name2idx->template TryGet<int64_t>(tensor_name));
     return index;
   }
 
@@ -238,10 +237,9 @@ struct DispatchCtxMethodClass {
     const auto& data = self->kernel_dispatch_const_data;
     ADT_LET_CONST_REF(
         name2idx,
-        data->object->template TryGet<axpr::BuiltinSerializableObject<ValueT>>(
+        data->template TryGet<axpr::BuiltinObject<axpr::SerializableValue>>(
             "__builtin_ap_kernel_output_name_to_index"));
-    ADT_LET_CONST_REF(index,
-                      name2idx->object->template TryGet<int64_t>(tensor_name));
+    ADT_LET_CONST_REF(index, name2idx->template TryGet<int64_t>(tensor_name));
     return index;
   }
 };

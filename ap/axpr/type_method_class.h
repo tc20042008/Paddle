@@ -16,6 +16,7 @@
 
 #include "ap/axpr/class_instance.h"
 #include "ap/axpr/method_class.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
@@ -52,7 +53,7 @@ struct MethodClassImpl<ValueT, TypeImpl<Type<Ts...>>> {
         << adt::errors::TypeError{
                std::string() + "the argument 1 of type() should be str not " +
                GetTypeName(class_name_val)};
-    adt::List<std::shared_ptr<ClassAttrsImpl<ValueT>>> superclasses;
+    adt::List<std::shared_ptr<ClassAttrsImpl<SerializableValue>>> superclasses;
     {
       ADT_LET_CONST_REF(superclass_vals,
                         superclasses_val.template TryGet<adt::List<ValueT>>())
@@ -70,8 +71,9 @@ struct MethodClassImpl<ValueT, TypeImpl<Type<Ts...>>> {
     }
     ADT_LET_CONST_REF(
         attrs,
-        attributes_object.template TryGet<BuiltinSerializableObject<ValueT>>());
-    ClassAttrs<ValueT> class_attrs{class_name, superclasses, attrs};
+        attributes_object
+            .template TryGet<BuiltinObject<axpr::SerializableValue>>());
+    ClassAttrs<SerializableValue> class_attrs{class_name, superclasses, attrs};
     return TypeImpl<ClassInstance<ValueT>>{class_attrs};
   }
 };

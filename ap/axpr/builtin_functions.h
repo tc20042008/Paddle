@@ -65,7 +65,7 @@ adt::Result<bool> ConvertToBool(const Val& cond) {
 }  // namespace detail
 
 template <typename Val>
-Result<adt::Ok> CpsBuiltinIf(CpsInterpreterBase<Val>* interpreter,
+Result<adt::Ok> CpsBuiltinIf(InterpreterBase<Val>* interpreter,
                              ComposedCallImpl<Val>* composed_call) {
   const auto args = composed_call->args;
   if (args.size() != 3) {
@@ -288,7 +288,7 @@ adt::Result<ValueT> MakeRange(const ValueT&, const std::vector<ValueT>& args) {
 }
 
 template <typename Val>
-Result<Val> Map(const axpr::ApplyT<Val>& Apply,
+Result<Val> Map(axpr::InterpreterBase<Val>* interpreter,
                 const Val&,
                 const std::vector<Val>& args) {
   ADT_CHECK(args.size() == 2)
@@ -300,14 +300,15 @@ Result<Val> Map(const axpr::ApplyT<Val>& Apply,
   ret->reserve(lst->size());
   const auto& f = args.at(0);
   for (const auto& elt : *lst) {
-    ADT_LET_CONST_REF(converted_elt, Apply(f, std::vector<Val>{elt}));
+    ADT_LET_CONST_REF(converted_elt,
+                      interpreter->InterpretCall(f, std::vector<Val>{elt}));
     ret->emplace_back(converted_elt);
   }
   return ret;
 }
 
 template <typename Val>
-Result<Val> Filter(const axpr::ApplyT<Val>& Apply,
+Result<Val> Filter(axpr::InterpreterBase<Val>* interpreter,
                    const Val&,
                    const std::vector<Val>& args) {
   ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
@@ -319,7 +320,8 @@ Result<Val> Filter(const axpr::ApplyT<Val>& Apply,
   ret->reserve(lst->size());
   const auto& f = args.at(0);
   for (const auto& elt : *lst) {
-    ADT_LET_CONST_REF(filter_result, Apply(f, std::vector<Val>{elt}));
+    ADT_LET_CONST_REF(filter_result,
+                      interpreter->InterpretCall(f, std::vector<Val>{elt}));
     ADT_LET_CONST_REF(is_true, detail::ConvertToBool<Val>(filter_result));
     if (is_true) {
       ret->emplace_back(elt);
@@ -357,7 +359,7 @@ Result<Val> Zip(const Val&, const std::vector<Val>& args) {
 }
 
 template <typename Val>
-Result<Val> Reduce(const axpr::ApplyT<Val>& Apply,
+Result<Val> Reduce(axpr::InterpreterBase<Val>* interpreter,
                    const Val&,
                    const std::vector<Val>& args) {
   ADT_CHECK(args.size() == 2 || args.size() == 3) << adt::errors::TypeError{
@@ -381,7 +383,8 @@ Result<Val> Reduce(const axpr::ApplyT<Val>& Apply,
   const auto& f = args.at(0);
   for (int i = start.value(); i < lst->size(); ++i) {
     const auto& elt = lst->at(i);
-    ADT_LET_CONST_REF(cur_reduced, Apply(f, std::vector<Val>{elt, ret}));
+    ADT_LET_CONST_REF(
+        cur_reduced, interpreter->InterpretCall(f, std::vector<Val>{elt, ret}));
     ret = cur_reduced;
   }
   return ret;

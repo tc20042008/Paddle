@@ -266,11 +266,11 @@ struct CodeGenCtxMethodClass {
   }
 
   static adt::Result<ValueT> StaticRenderModuleTemplate(
-      const axpr::ApplyT<ValueT>& Apply,
+      axpr::InterpreterBase<ValueT>* interpreter,
       const ValueT& self_val,
       const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    return This{}.RenderModuleTemplate(Apply, self, args);
+    return This{}.RenderModuleTemplate(interpreter, self, args);
   }
 
   using NativeOrRefIrValue = ir_match::NativeOrRefIrValue<BirNode>;
@@ -371,7 +371,7 @@ struct CodeGenCtxMethodClass {
   using Object = axpr::BuiltinObject<ValueT>;
 
   adt::Result<ValueT> RenderModuleTemplate(
-      const axpr::ApplyT<ValueT>& Apply,
+      axpr::InterpreterBase<ValueT>* interpreter,
       const Self& self,
       const std::vector<ValueT>& packed_args_vec) {
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_vec);
@@ -387,15 +387,15 @@ struct CodeGenCtxMethodClass {
                "'CodeGenCtx.render_module_template' should be a 'str' but '" +
                axpr::GetTypeName(args->at(0)) + "' were given."};
     ADT_LET_CONST_REF(lambda, GetHighPriorModuleTemplate(template_name));
-    ADT_LET_CONST_REF(m, CreateModule(Apply, lambda, kwargs));
+    ADT_LET_CONST_REF(m, CreateModule(interpreter, lambda, kwargs));
     return m;
   }
 
   adt::Result<code_module::Module> CreateModule(
-      const axpr::ApplyT<ValueT>& Apply,
+      axpr::InterpreterBase<ValueT>* interpreter,
       const Function& lambda,
       const Object& ctx) {
-    ADT_LET_CONST_REF(module_val, Apply(lambda, {ctx}));
+    ADT_LET_CONST_REF(module_val, interpreter->InterpretCall(lambda, {ctx}));
     ADT_LET_CONST_REF(m, module_val.template TryGet<code_module::Module>());
     return m;
   }

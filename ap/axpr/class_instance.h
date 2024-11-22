@@ -55,13 +55,4 @@ struct ClassInstanceImpl {
 template <typename ValueT>
 DEFINE_ADT_RC(ClassInstance, ClassInstanceImpl<ValueT>);
 
-template <typename ValueT>
-adt::Result<ClassInstance<ValueT>> MakeThreadLocalTrackedClassInstance(
-    const ClassAttrs<SerializableValue>& class_attrs) {
-  ADT_LET_CONST_REF(instance_attrs,
-                    InstanceAttrs<ValueT>::ThreadLocalTracked());
-  TypeImpl<ClassInstance<ValueT>> type(class_attrs);
-  return ClassInstance<ValueT>{type, instance_attrs};
-}
-
 }  // namespace ap::axpr

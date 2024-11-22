@@ -51,7 +51,7 @@ template <typename Val>
 Result<Val> MakeIndexTupleExprReshape(const Val&, const std::vector<Val>& args);
 
 template <typename Val>
-Result<Val> MakeIndexTupleExprTransform(const axpr::ApplyT<Val>& Apply,
+Result<Val> MakeIndexTupleExprTransform(axpr::InterpreterBase<Val>* interpreter,
                                         const Val& obj,
                                         const std::vector<Val>& args);
 
@@ -350,7 +350,7 @@ Result<Val> MakeIndexTupleExprReshape(const Val&,
 }
 
 template <typename Val>
-Result<Val> MakeIndexTupleExprTransform(const axpr::ApplyT<Val>& Apply,
+Result<Val> MakeIndexTupleExprTransform(axpr::InterpreterBase<Val>* interpreter,
                                         const Val&,
                                         const std::vector<Val>& args) {
   if (args.size() < 1) {
@@ -396,7 +396,8 @@ Result<Val> MakeIndexTupleExprTransform(const axpr::ApplyT<Val>& Apply,
     }
     int idx = i - 1;
     IndexExprDomain domain{dim_exprs->at(idx)};
-    const auto& ret_lambda_call = Apply(closure, {Val{domain}});
+    const auto& ret_lambda_call =
+        interpreter->InterpretCall(closure, {Val{domain}});
     ADT_RETURN_IF_ERR(ret_lambda_call);
     const auto& ret_index_expr =
         TryGetConcretIndexExprValue<IndexExpr>(ret_lambda_call.GetOkValue());

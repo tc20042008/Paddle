@@ -72,8 +72,8 @@ class MutableGlobalEnvironment : public Environment<ValueT> {
     return adt::Ok{};
   }
 
-  bool IsTempVar(const std::string& var) {
-    static std::string tmp_var_prefix("__axpr_generated_tmp_var");
+  bool IsTempVar(const std::string& var) const {
+    static std::string tmp_var_prefix("__");
     return var.substr(0, tmp_var_prefix.size()) == tmp_var_prefix;
   }
 

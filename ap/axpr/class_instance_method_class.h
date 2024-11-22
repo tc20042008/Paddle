@@ -117,25 +117,30 @@ struct MethodClassImpl<ValueT, TypeImpl<ClassInstance<ValueT>>> {
     return reinterpret_cast<int64_t>(self.class_attrs.shared_ptr().get());
   }
 
-  static adt::Result<ValueT> StaticConstruct(const ApplyT<ValueT>& Apply,
-                                             const ValueT& self_val,
-                                             const std::vector<ValueT>& args) {
+  static adt::Result<ValueT> StaticConstruct(
+      axpr::InterpreterBase<ValueT>* interpreter,
+      const ValueT& self_val,
+      const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, axpr::CastToTypeImpl<Self>(self_val));
-    return This{}.Construct(Apply, self, args);
+    return This{}.Construct(interpreter, self, args);
   }
 
-  adt::Result<ValueT> Construct(const ApplyT<ValueT>& Apply,
+  adt::Result<ValueT> Construct(axpr::InterpreterBase<ValueT>* interpreter,
                                 const Self& self,
                                 const std::vector<ValueT>& args) {
     const auto& class_attrs = self.class_attrs;
-    ADT_LET_CONST_REF(
-        instance,
-        MakeThreadLocalTrackedClassInstance<ValueT>(self.class_attrs));
+    const auto& instance = [&] {
+      const auto& instance_attrs = InstanceAttrs<ValueT>::Make(
+          interpreter->circlable_ref_list(),
+          std::make_shared<BuiltinObjectImpl<ValueT>>());
+      TypeImpl<ClassInstance<ValueT>> type(class_attrs);
+      return ClassInstance<ValueT>{type, instance_attrs};
+    }();
     const auto& init_func =
         ClassAttrsHelper<ValueT>{}.OptGet(class_attrs, "__init__");
     if (init_func.has_value()) {
       Method<ValueT> f{instance, init_func.value()};
-      ADT_RETURN_IF_ERR(Apply(f, args));
+      ADT_RETURN_IF_ERR(interpreter->InterpretCall(f, args));
     } else {
       ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
           std::string() + self.class_attrs->class_name +

@@ -23,16 +23,17 @@
 #include "ap/axpr/const_global_environment.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/error.h"
+#include "ap/axpr/interpreter_base.h"
+#include "ap/axpr/module_mgr_helper.h"
 #include "ap/axpr/mutable_global_environment.h"
 #include "ap/axpr/to_string.h"
 #include "ap/axpr/value.h"
 #include "ap/axpr/value_method_class.h"
-#include "ap/memory/thread_local_circlable_ref_list_helper.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-class CpsInterpreter : public CpsInterpreterBase<ValueT> {
+class CpsInterpreter : public InterpreterBase<ValueT> {
  public:
   using This = CpsInterpreter;
   using Env = Environment<ValueT>;
@@ -47,51 +48,17 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
   Result<ValueT> Interpret(const Lambda<CoreExpr>& lambda,
                            const std::vector<ValueT>& args) {
     Function<SerializableValue> function{lambda, std::nullopt};
-    memory::ThreadLocalCirclableRefListHelper helper{};
-    return helper.Guard([&] { return ProtectedInterpret(function, args); });
+    return Interpret(function, args);
   }
 
   Result<ValueT> Interpret(const Function<SerializableValue>& function,
                            const std::vector<ValueT>& args) {
-    memory::ThreadLocalCirclableRefListHelper helper{};
-    return helper.Guard([&] { return ProtectedInterpret(function, args); });
-  }
-
-  Result<ValueT> InterpretModule(
-      const Frame<SerializableValue>& const_global_frame,
-      const Lambda<CoreExpr>& lambda) {
-    memory::ThreadLocalCirclableRefListHelper helper{};
-    return helper.Guard(
-        [&] { return ProtectedInterpretModule(const_global_frame, lambda); });
-  }
-
- protected:
-  Result<ValueT> ProtectedInterpret(const Function<SerializableValue>& function,
-                                    const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(closure, ConvertFunctionToClosure(function));
-    return ProtectedInterpretCall(closure, args);
+    return InterpretCall(closure, args);
   }
 
-  Result<ValueT> ProtectedInterpretModule(
-      const Frame<SerializableValue>& const_global_frame,
-      const Lambda<CoreExpr>& lambda) {
-    std::optional<std::shared_ptr<Environment<ValueT>>> env;
-    {
-      auto tmp_frame_object = std::make_shared<BuiltinObjectImpl<ValueT>>();
-      auto tmp_frame =
-          Frame<ValueT>::Make(circlable_ref_list_, tmp_frame_object);
-      const auto& mut_global_env = MakeMutableGlobalEnvironment(
-          builtin_env(), const_global_frame, tmp_frame);
-      env = mut_global_env;
-    }
-    ADT_CHECK(lambda->args.empty());
-    Continuation<ValueT> continuation{lambda, env.value()};
-    const auto& ret = ProtectedInterpretCall(continuation, {});
-    return ret;
-  }
-
-  Result<ValueT> ProtectedInterpretCall(const ValueT& func,
-                                        const std::vector<ValueT>& args) {
+  Result<ValueT> InterpretCall(const ValueT& func,
+                               const std::vector<ValueT>& args) override {
     ComposedCallImpl<ValueT> composed_call{&BuiltinHalt<ValueT>, func, args};
     ADT_RETURN_IF_ERR(InterpretComposedCallUntilHalt(&composed_call));
     ADT_CHECK(IsHalt(composed_call.inner_func))
@@ -102,6 +69,26 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
     return composed_call.args.at(0);
   }
 
+  Result<ValueT> InterpretModule(
+      const Frame<SerializableValue>& const_global_frame,
+      const Lambda<CoreExpr>& lambda) override {
+    std::optional<std::shared_ptr<Environment<ValueT>>> env;
+    {
+      auto tmp_frame_object = std::make_shared<BuiltinObjectImpl<ValueT>>();
+      auto tmp_frame =
+          Frame<ValueT>::Make(circlable_ref_list_, tmp_frame_object);
+      const auto& mut_global_env = MakeMutableGlobalEnvironment(
+          builtin_env(), const_global_frame, tmp_frame);
+      env = mut_global_env;
+    }
+    ADT_CHECK(lambda->args.empty());
+    ADT_RETURN_IF_ERR(env.value()->Set(kBuiltinReturn(), &BuiltinHalt<ValueT>));
+    Continuation<ValueT> continuation{lambda, env.value()};
+    const auto& ret = InterpretCall(continuation, {});
+    return ret;
+  }
+
+ protected:
   Result<adt::Ok> InterpretComposedCallUntilHalt(
       ComposedCallImpl<ValueT>* composed_call) {
     while (!IsHalt(composed_call->inner_func)) {
@@ -445,11 +432,7 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
       const BuiltinHighOrderFuncType<ValueT>& func,
       const ValueT& obj,
       ComposedCallImpl<ValueT>* composed_call) {
-    const auto& Apply = [this](const ValueT& func,
-                               const std::vector<ValueT>& args) {
-      return this->ProtectedInterpretCall(func, args);
-    };
-    ADT_LET_CONST_REF(inner_ret, func(Apply, obj, composed_call->args));
+    ADT_LET_CONST_REF(inner_ret, func(this, obj, composed_call->args));
     composed_call->inner_func = composed_call->outter_func;
     composed_call->outter_func = &BuiltinHalt<ValueT>;
     composed_call->args = {inner_ret};
@@ -467,6 +450,11 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
     composed_call->inner_func = method->func;
     composed_call->args = std::move(new_args);
     return adt::Ok{};
+  }
+
+  std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list()
+      const override {
+    return circlable_ref_list_;
   }
 
   std::shared_ptr<Env> builtin_env_;
@@ -517,6 +505,7 @@ class CpsInterpreter : public CpsInterpreterBase<ValueT> {
 
   static BuiltinObject<ValueT> MakeBuiltinFrameObject() {
     BuiltinObject<ValueT> object{ValueT::GetExportedTypes()};
+    object->Set("import", &ModuleMgrHelper<ValueT>::ImportModule);
     object->Set("print", &Print<ValueT>);
     object->Set("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma<ValueT>);
     object->Set("range", &MakeRange<ValueT>);

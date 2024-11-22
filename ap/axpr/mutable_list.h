@@ -26,23 +26,6 @@ struct MutableList
     : public memory::CirclableRef<MutableList<T>, std::vector<T>> {
   using Base = memory::CirclableRef<MutableList<T>, std::vector<T>>;
   using Base::CirclableRef;
-
-  static MutableList Make(
-      const std::shared_ptr<memory::CirclableRefListBase>& ref_list,
-      std::initializer_list<T> ilist) {
-    std::shared_ptr<std::vector<T>> obj(new std::vector<T>(ilist));
-    return Base::Make(ref_list, obj);
-  }
-
-  static adt::Result<MutableList<T>> ThreadLocalTracked(
-      std::initializer_list<T> ilist) {
-    std::shared_ptr<std::vector<T>> obj(new std::vector<T>(ilist));
-    return Base::ThreadLocalTracked(obj);
-  }
-
-  static adt::Result<MutableList<T>> ThreadLocalTracked() {
-    return ThreadLocalTracked({});
-  }
 };
 
 template <typename ValueT>

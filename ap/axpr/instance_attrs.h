@@ -25,15 +25,6 @@ struct InstanceAttrs
     : public memory::CirclableRef<InstanceAttrs<T>, BuiltinObjectImpl<T>> {
   using Base = memory::CirclableRef<InstanceAttrs<T>, BuiltinObjectImpl<T>>;
   using Base::CirclableRef;
-
-  static adt::Result<InstanceAttrs<T>> ThreadLocalTracked(
-      const std::shared_ptr<BuiltinObjectImpl<T>>& obj) {
-    return Base::ThreadLocalTracked(obj);
-  }
-
-  static adt::Result<InstanceAttrs<T>> ThreadLocalTracked() {
-    return ThreadLocalTracked(std::make_shared<BuiltinObjectImpl<T>>());
-  }
 };
 
 }  // namespace ap::axpr

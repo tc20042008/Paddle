@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "ap/axpr/builtin_high_order_func_type.h"
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
 #include "ap/drr/drr_ctx.h"
@@ -36,15 +37,18 @@ struct TypeImplDrrCtxMethodClass {
   using This = TypeImplDrrCtxMethodClass;
   using Self = axpr::TypeImpl<DrrCtx<ValueT, NodeT>>;
 
-  adt::Result<ValueT> Call(const Self&) { return &This::StaticConstruct; }
-
-  static adt::Result<ValueT> StaticConstruct(const axpr::ApplyT<ValueT>& Apply,
-                                             const ValueT&,
-                                             const std::vector<ValueT>& args) {
-    return This{}.Construct(Apply, args);
+  adt::Result<ValueT> Call(const Self&) {
+    return ValueT{&This::StaticConstruct};
   }
 
-  adt::Result<ValueT> Construct(const axpr::ApplyT<ValueT>& Apply,
+  static adt::Result<ValueT> StaticConstruct(
+      axpr::InterpreterBase<ValueT>* interpreter,
+      const ValueT&,
+      const std::vector<ValueT>& args) {
+    return This{}.Construct(interpreter, args);
+  }
+
+  adt::Result<ValueT> Construct(axpr::InterpreterBase<ValueT>* interpreter,
                                 const std::vector<ValueT>& packed_args_val) {
     DrrCtx<ValueT, NodeT> self{};
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_val);
@@ -65,10 +69,10 @@ struct TypeImplDrrCtxMethodClass {
               std::map<std::string, IrValue<NodeT>>{},
               self.shared_ptr()}};
       self.shared_ptr()->source_pattern_ctx = source_pattern_ctx;
-      ADT_RETURN_IF_ERR(
-          Apply(def_source_pattern,
-                {SrcPtn(source_pattern_ctx->op_pattern_ctx),
-                 SrcPtn(source_pattern_ctx->tensor_pattern_ctx)}));
+      ADT_RETURN_IF_ERR(interpreter->InterpretCall(
+          def_source_pattern,
+          {SrcPtn(source_pattern_ctx->op_pattern_ctx),
+           SrcPtn(source_pattern_ctx->tensor_pattern_ctx)}));
     }
     {
       ADT_LET_CONST_REF(def_result_pattern, kwargs->Get("result_pattern"));
@@ -85,10 +89,10 @@ struct TypeImplDrrCtxMethodClass {
               self.shared_ptr()},
           self->source_pattern_ctx.value()};
       self.shared_ptr()->result_pattern_ctx = result_pattern_ctx;
-      ADT_RETURN_IF_ERR(
-          Apply(def_result_pattern,
-                {ResPtn(result_pattern_ctx->op_pattern_ctx),
-                 ResPtn(result_pattern_ctx->tensor_pattern_ctx)}));
+      ADT_RETURN_IF_ERR(interpreter->InterpretCall(
+          def_result_pattern,
+          {ResPtn(result_pattern_ctx->op_pattern_ctx),
+           ResPtn(result_pattern_ctx->tensor_pattern_ctx)}));
     }
     return self;
   }

@@ -18,27 +18,14 @@
 #include "ap/axpr/atomic.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/error.h"
+#include "ap/axpr/interpreter_base.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-class Environment;
-
-template <typename ValueT>
-class CpsInterpreterBase {
- public:
-  virtual Result<adt::Ok> InterpretLambdaCall(
-      const std::shared_ptr<Environment<ValueT>>& env,
-      const ValueT& outter_func,
-      const Lambda<CoreExpr>& lambda,
-      const std::vector<ValueT>& args,
-      ComposedCallImpl<ValueT>* ret_composed_call) = 0;
-};
-
-template <typename ValueT>
 using CpsBuiltinHighOrderFuncType =
-    Result<adt::Ok> (*)(CpsInterpreterBase<ValueT>* CpsInterpret,
+    Result<adt::Ok> (*)(InterpreterBase<ValueT>* CpsInterpret,
                         ComposedCallImpl<ValueT>* composed_call);
 
 template <typename ValueT>

@@ -15,24 +15,38 @@
 #pragma once
 
 #include "ap/axpr/adt.h"
+#include "ap/axpr/atomic.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/error.h"
-#include "ap/axpr/interpreter_base.h"
+#include "ap/axpr/frame.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
+#include "ap/memory/circlable_ref_list_base.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-using BuiltinHighOrderFuncType =
-    Result<ValueT> (*)(InterpreterBase<ValueT>* interpreter,
-                       const ValueT& obj,
-                       const std::vector<ValueT>& args);
+class Environment;
 
 template <typename ValueT>
-struct TypeImpl<BuiltinHighOrderFuncType<ValueT>> : public std::monostate {
-  using value_type = BuiltinHighOrderFuncType<ValueT>;
+class InterpreterBase {
+ public:
+  virtual Result<ValueT> InterpretCall(const ValueT& func,
+                                       const std::vector<ValueT>& args) = 0;
 
-  const char* Name() const { return "builtin_high_order_function"; }
+  virtual Result<ValueT> InterpretModule(
+      const Frame<SerializableValue>& const_global_frame,
+      const Lambda<CoreExpr>& lambda) = 0;
+
+  virtual std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list()
+      const = 0;
+
+  virtual Result<adt::Ok> InterpretLambdaCall(
+      const std::shared_ptr<Environment<ValueT>>& env,
+      const ValueT& outter_func,
+      const Lambda<CoreExpr>& lambda,
+      const std::vector<ValueT>& args,
+      ComposedCallImpl<ValueT>* ret_composed_call) = 0;
 };
 
 }  // namespace ap::axpr

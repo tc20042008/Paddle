@@ -379,6 +379,17 @@ struct SyntaxError {
   const char* class_name() const { return "SyntaxError"; }
 };
 
+struct ModuleNotFoundError {
+  std::string msg;
+  source_code::CallStack call_stack{};
+
+  bool operator==(const ModuleNotFoundError& other) const {
+    return this->msg == other.msg && this->call_stack == other.call_stack;
+  }
+
+  const char* class_name() const { return "ModuleNotFoundError"; }
+};
+
 using ErrorBase = std::variant<RuntimeError,
                                InvalidArgumentError,
                                AttributeError,
@@ -390,7 +401,8 @@ using ErrorBase = std::variant<RuntimeError,
                                KeyError,
                                MismatchError,
                                NotImplementedError,
-                               SyntaxError>;
+                               SyntaxError,
+                               ModuleNotFoundError>;
 
 struct [[nodiscard]] Error : public ErrorBase {
   using ErrorBase::ErrorBase;

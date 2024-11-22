@@ -17,7 +17,6 @@
 #include "ap/adt/adt.h"
 #include "ap/memory/circlable_ref_impl.h"
 #include "ap/memory/circlable_ref_list.h"
-#include "ap/memory/thread_local_circlable_ref_list_helper.h"
 
 namespace ap::memory {
 
@@ -48,18 +47,6 @@ class CirclableRef {
 
   static Derived Make(const std::shared_ptr<CirclableRefListBase>& ref_list,
                       const std::shared_ptr<T>& obj) {
-    auto impl = std::make_shared<CirclableRefImpl<T>>(obj);
-    auto iter = ref_list->AddWeakRef(impl);
-    const auto& ok = impl->InitWeakRefIterAndList(iter, ref_list);
-    (void)ok;
-    return Derived(impl);
-  }
-
-  static adt::Result<Derived> ThreadLocalTracked(
-      const std::shared_ptr<T>& obj) {
-    const auto& opt_ref_list = ThreadLocalCirclableRefListHelper{}.Current();
-    ADT_CHECK(opt_ref_list.has_value());
-    const auto& ref_list = opt_ref_list.value();
     auto impl = std::make_shared<CirclableRefImpl<T>>(obj);
     auto iter = ref_list->AddWeakRef(impl);
     const auto& ok = impl->InitWeakRefIterAndList(iter, ref_list);

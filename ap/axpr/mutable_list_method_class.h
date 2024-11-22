@@ -137,13 +137,18 @@ struct MethodClassImpl<ValueT, TypeImpl<MutableList<ValueT>>> {
 
   adt::Result<ValueT> Call(const Self&) { return &This::StaticConstruct; }
 
-  static adt::Result<ValueT> StaticConstruct(const ValueT&,
-                                             const std::vector<ValueT>& args) {
-    return This{}.Construct(args);
+  static adt::Result<ValueT> StaticConstruct(
+      axpr::InterpreterBase<ValueT>* interpreter,
+      const ValueT&,
+      const std::vector<ValueT>& args) {
+    return This{}.Construct(interpreter, args);
   }
 
-  adt::Result<ValueT> Construct(const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(mut_list, MutableList<ValueT>::ThreadLocalTracked());
+  adt::Result<ValueT> Construct(axpr::InterpreterBase<ValueT>* interpreter,
+                                const std::vector<ValueT>& args) {
+    const auto& mut_list =
+        MutableList<ValueT>::Make(interpreter->circlable_ref_list(),
+                                  std::make_shared<std::vector<ValueT>>());
     ADT_LET_CONST_REF(ptr, mut_list.Mut());
     *ptr = args;
     return mut_list;

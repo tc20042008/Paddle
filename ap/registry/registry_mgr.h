@@ -22,6 +22,7 @@
 #include "ap/axpr/anf_expr_util.h"
 #include "ap/axpr/cps_interpreter.h"
 #include "ap/axpr/function.h"
+#include "ap/axpr/module_mgr.h"
 #include "ap/axpr/serializable_value.h"
 #include "ap/registry/value.h"
 #include "ap/registry/value_method_class.h"
@@ -37,8 +38,8 @@ struct RegistryMgr {
   adt::Result<adt::Ok> LoadAllOnce() {
     std::unique_lock<std::mutex> lock(mutex_);
     if (!load_result_.has_value()) {
-      load_result_ = VisitEachConfigFilePath(
-          [&](const auto& filepath) { return Load(filepath); });
+      ADT_LET_CONST_REF(filepath, GetApEntryFilePath());
+      load_result_ = Load(filepath);
     }
     return load_result_.value();
   }
@@ -54,10 +55,13 @@ struct RegistryMgr {
     }
     ADT_LET_CONST_REF(anf_expr, axpr::MakeAnfExprFromJsonString(file_content));
     const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    const auto& frame = axpr::Frame<axpr::SerializableValue>::Make(
+        axpr::ModuleMgr::Singleton()->circlable_ref_list(),
+        std::make_shared<axpr::BuiltinObjectImpl<axpr::SerializableValue>>());
     std::vector<axpr::tVar<std::string>> args{};
     axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
     axpr::CpsInterpreter<registry::Val> cps_expr_interpreter{};
-    ADT_RETURN_IF_ERR(cps_expr_interpreter.Interpret(lambda, {}));
+    ADT_RETURN_IF_ERR(cps_expr_interpreter.InterpretModule(frame, lambda));
     return adt::Ok{};
   }
 
@@ -68,21 +72,23 @@ struct RegistryMgr {
     return content;
   }
 
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitEachConfigFilePath(const DoEachT& DoEach) {
-    const char* ap_path_chars = std::getenv("AP_PATH");
-    if (ap_path_chars == nullptr) {
-      return adt::Ok{};
+  adt::Result<std::string> GetApEntryFilePath() {
+    const char* ap_entry_chars = std::getenv("AP_ENTRY");
+    ADT_CHECK(ap_entry_chars != nullptr);
+    std::string ap_path(ap_entry_chars);
+    ADT_CHECK(FileExists(ap_path));
+    return ap_path;
+  }
+
+  bool FileExists(const std::string& filepath) {
+    std::fstream fp;
+    fp.open(filepath, std::fstream::in);
+    if (fp.is_open()) {
+      fp.close();
+      return true;
+    } else {
+      return false;
     }
-    std::string ap_path(ap_path_chars);
-    std::string path;
-    std::istringstream ss(ap_path);
-    while (std::getline(ss, path, ':')) {
-      if (!path.empty()) {
-        return DoEach(path);
-      }
-    }
-    return adt::Ok{};
   }
 };
 

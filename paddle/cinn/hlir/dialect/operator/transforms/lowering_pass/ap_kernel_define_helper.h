@@ -24,15 +24,14 @@
 namespace cinn::dialect::ir {
 
 struct ApKernelDefineHelper {
-  using CoreExpr = ap::axpr::CoreExpr;
-  using Lambda = ap::axpr::Lambda<CoreExpr>;
+  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
   using Module = ap::code_module::Module;
   using PirNode = ap::paddle::PirNode;
   using CGValue = ap::code_gen::Value<PirNode>;
   using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
   using CodeGenResult = ap::code_gen::CodeGenResult<CGValue>;
 
-  adt::Result<CodeGenResult> Interpret(const Lambda& lambda,
+  adt::Result<CodeGenResult> Interpret(const Function& lambda,
                                        const CodeGenCtx& code_gen_ctx);
 };
 

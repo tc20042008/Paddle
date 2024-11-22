@@ -17,7 +17,9 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/anf_expr_builder.h"
 #include "ap/axpr/core_expr.h"
+#include "ap/axpr/function.h"
 #include "ap/axpr/lambda_expr_builder.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/code_gen/arg_source_ctx.h"
 #include "ap/code_gen/kernel_arg_id.h"
 
@@ -27,7 +29,8 @@ template <typename BirNode>
 struct ArgSourceHelper {
   const ArgSourceCtx<BirNode>& arg_source_ctx;
 
-  adt::Result<axpr::Lambda<axpr::CoreExpr>> MakeRuntimeKerneArgsGetter(
+  adt::Result<axpr::Function<axpr::SerializableValue>>
+  MakeRuntimeKerneArgsGetter(
       const std::list<KernelArgId<BirNode>>& kernel_arg_ids) const {
     auto GetBody =
         [&](axpr::LetVar* dispatch_ctx) -> adt::Result<axpr::LetVar*> {
@@ -42,7 +45,8 @@ struct ArgSourceHelper {
       *ret_ptr = ctx->Call(axpr::kBuiltinList(), items);
       return ret_ptr;
     };
-    return CreateLambda("ctx", GetBody);
+    ADT_LET_CONST_REF(lambda, CreateLambda("ctx", GetBody));
+    return axpr::Function<axpr::SerializableValue>{lambda, std::nullopt};
   }
 
  private:

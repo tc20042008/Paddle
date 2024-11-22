@@ -712,11 +712,11 @@ struct OpCudaCodeGenImpl {
         ss, lambda, ir_op, input_var_names, output_var_names);
   }
 
-  adt::Result<axpr::Lambda<axpr::CoreExpr>> GetOpComputeLambda(
+  adt::Result<axpr::Function<axpr::SerializableValue>> GetOpComputeLambda(
       const OpCodeGenCtx& op_code_gen_ctx,
       const IndexedIrOp<IndexedIrNode>& ir_op) {
     const auto& op_name = ir_op->op->name();
-    std::optional<axpr::Lambda<axpr::CoreExpr>> ret;
+    std::optional<axpr::Function<axpr::SerializableValue>> ret;
     auto FetchLambda = [&](const auto& cell) -> adt::Result<adt::LoopCtrl> {
       ret = cell->data;
       if (ret.has_value()) {
@@ -836,7 +836,7 @@ struct OpCudaCodeGenImpl {
 
   adt::Result<adt::Ok> CodeGenOpComputeByLambda(
       std::ostringstream* ss,
-      const axpr::Lambda<axpr::CoreExpr>& lambda,
+      const axpr::Function<axpr::SerializableValue>& lambda,
       const IndexedIrOp<IndexedIrNode>& ir_op,
       const std::vector<std::string>& input_var_names,
       const std::vector<std::string>& output_var_names) {

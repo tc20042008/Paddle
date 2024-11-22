@@ -30,8 +30,8 @@
 #include "ap/axpr/environment.h"
 #include "ap/axpr/error.h"
 #include "ap/axpr/float.h"
+#include "ap/axpr/function.h"
 #include "ap/axpr/int.h"
-#include "ap/axpr/lambda.h"
 #include "ap/axpr/list.h"
 #include "ap/axpr/method.h"
 #include "ap/axpr/mutable_list.h"
@@ -67,7 +67,7 @@ using ValueBase = std::variant<Type<Nothing,
                                     OrderedDict<ValueT>,
                                     ClassInstance<ValueT>,
                                     PackedArgs<ValueT>,
-                                    Lambda<CoreExpr>,
+                                    Function<SerializableValue>,
                                     Closure<ValueT>,
                                     Continuation<ValueT>,
                                     Method<ValueT>,
@@ -91,7 +91,7 @@ using ValueBase = std::variant<Type<Nothing,
                                OrderedDict<ValueT>,
                                ClassInstance<ValueT>,
                                PackedArgs<ValueT>,
-                               Lambda<CoreExpr>,
+                               Function<SerializableValue>,
                                Closure<ValueT>,
                                Continuation<ValueT>,
                                Method<ValueT>,

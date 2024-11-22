@@ -45,6 +45,15 @@ class ConstGlobalEnvironment : public Environment<ValueT> {
     return adt::errors::RuntimeError{"const global environment is immutable."};
   }
 
+  std::optional<Frame<SerializableValue>> GetConstGlobalFrame() const override {
+    return frame_;
+  }
+
+  std::optional<Frame<SerializableValue>> RecursivelyGetConstGlobalFrame()
+      const override {
+    return frame_;
+  }
+
   const Frame<SerializableValue>& frame() const { return frame_; }
 
  private:

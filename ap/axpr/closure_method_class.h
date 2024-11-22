@@ -15,8 +15,11 @@
 #pragma once
 
 #include "ap/axpr/closure.h"
-#include "ap/axpr/constants.h"
+#include "ap/axpr/const_global_environment.h"
+#include "ap/axpr/function.h"
 #include "ap/axpr/method_class.h"
+#include "ap/axpr/mutable_global_environment.h"
+#include "ap/axpr/serializable_value.h"
 
 namespace ap::axpr {
 
@@ -24,14 +27,24 @@ template <typename ValueT>
 struct ClosureMethodClass {
   using This = ClosureMethodClass;
   using Self = Closure<ValueT>;
+
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, TryGetImpl<std::string>(attr_name_val));
     if (attr_name == "__code__") {
-      return self->lambda;
+      return Function<SerializableValue>{self->lambda, std::nullopt};
+    }
+    if (attr_name == "__function__") {
+      return ToFunction(self);
     }
     return adt::errors::AttributeError{std::string() +
                                        "closure object has not attribute '" +
                                        attr_name + "'."};
+  }
+
+  adt::Result<ValueT> ToFunction(const Self& self) {
+    const auto& global_frame =
+        self->environment->RecursivelyGetConstGlobalFrame();
+    return Function<SerializableValue>{self->lambda, global_frame};
   }
 };
 

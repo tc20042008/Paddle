@@ -46,6 +46,14 @@ class CallEnvironment : public Environment<ValueT> {
     return adt::Ok{};
   }
 
+  std::optional<Frame<SerializableValue>> RecursivelyGetConstGlobalFrame()
+      const override {
+    if (parent_ == nullptr) {
+      return std::nullopt;
+    }
+    return parent_->RecursivelyGetConstGlobalFrame();
+  }
+
   const Frame<ValueT>& frame() const { return frame_; }
 
  private:

@@ -35,6 +35,11 @@ class BuiltinEnvironment : public Environment<ValueT> {
     return adt::errors::RuntimeError{"builtin environment is immutable."};
   }
 
+  std::optional<Frame<SerializableValue>> RecursivelyGetConstGlobalFrame()
+      const override {
+    return std::nullopt;
+  }
+
  private:
   BuiltinEnvironment(const BuiltinEnvironment&) = delete;
   BuiltinEnvironment(BuiltinEnvironment&&) = delete;

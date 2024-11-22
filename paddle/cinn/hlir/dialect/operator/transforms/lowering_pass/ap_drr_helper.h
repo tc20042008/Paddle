@@ -20,14 +20,13 @@
 namespace cinn::dialect::ir {
 
 struct ApDrrHelper {
-  using CoreExpr = ap::axpr::CoreExpr;
-  using Lambda = ap::axpr::Lambda<CoreExpr>;
+  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
 
   using DrrValue = ap::drr::Value;
   using DrrNode = ap::drr::Node<DrrValue>;
   using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
 
-  adt::Result<DrrCtx> Interpret(const Lambda& lambda,
+  adt::Result<DrrCtx> Interpret(const Function& lambda,
                                 const std::string& drr_pass_name);
 };
 

@@ -16,7 +16,7 @@
 
 #include "ap/axpr/anf_expr_helper.h"
 #include "ap/axpr/anf_expr_util.h"
-#include "ap/axpr/lambda.h"
+#include "ap/axpr/function.h"
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/serializable_value.h"
 
@@ -51,7 +51,7 @@ struct SerializableValueHelper {
         [](int64_t impl) -> RetT { return impl; },
         [](double impl) -> RetT { return impl; },
         [](const std::string& impl) -> RetT { return impl; },
-        [](const Lambda<CoreExpr>& impl) -> RetT { return impl; },
+        [](const Function<SerializableValue>& impl) -> RetT { return impl; },
         [](const adt::List<SerializableValue>& impl) -> RetT { return impl; },
         [](const BuiltinObject<SerializableValue>& impl) -> RetT {
           return impl;
@@ -111,8 +111,8 @@ struct SerializableValueHelper {
         [](const std::string& c) -> RetT {
           return static_cast<int64_t>(std::hash<std::string>()(c));
         },
-        [](const Lambda<CoreExpr>& lambda) -> RetT {
-          return reinterpret_cast<int64_t>(lambda.shared_ptr().get());
+        [](const Function<SerializableValue>& impl) -> RetT {
+          return impl->GetHashValue();
         },
         [&](const adt::List<SerializableValue>& lst) -> RetT {
           return HashImpl(lst);
@@ -164,7 +164,8 @@ struct SerializableValueHelper {
           ss << std::quoted(c);
           return ss.str();
         },
-        [](const Lambda<CoreExpr>& lambda) -> RetT {
+        [](const Function<SerializableValue>& impl) -> RetT {
+          const auto& lambda = impl->lambda;
           const auto& anf_expr = ConvertCoreExprToAnfExpr(lambda);
           ADT_LET_CONST_REF(anf_atomic,
                             anf_expr.template TryGet<Atomic<AnfExpr>>());

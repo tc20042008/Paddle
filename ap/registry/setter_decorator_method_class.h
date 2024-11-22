@@ -29,15 +29,30 @@ struct SetterDecoratorMethodClass {
     return axpr::Method<ValueT>{self, &This::StaticCall};
   }
 
+  using Function = axpr::Function<axpr::SerializableValue>;
+
   static adt::Result<ValueT> StaticCall(const ValueT& self_val,
                                         const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
     ADT_CHECK(args.size() == 1);
-    ADT_LET_CONST_REF(closure,
-                      axpr::TryGetImpl<axpr::Closure<ValueT>>(args.at(0)))
-        << adt::errors::TypeError{"decorator must be applied to a function."};
-    self->lambda.shared_ptr()->data = closure->lambda;
+    ADT_LET_CONST_REF(function, This{}.CastToFunction(args.at(0)));
+    self->lambda.shared_ptr()->data = function;
     return adt::Nothing{};
+  }
+
+  adt::Result<Function> CastToFunction(const ValueT& val) {
+    using RetT = adt::Result<Function>;
+    return val.Match(
+        [&](const Function& function) -> RetT { return function; },
+        [&](const axpr::Closure<ValueT>& closure) -> RetT {
+          return Function{closure->lambda, std::nullopt};
+        },
+        [&](const auto&) -> RetT {
+          return adt::errors::TypeError{
+              std::string() +
+              "decorator must be applied to a function or closure (not " +
+              axpr::GetTypeName(val) + ")"};
+        });
   }
 };
 

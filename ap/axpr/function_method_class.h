@@ -16,14 +16,19 @@
 
 #include "ap/axpr/anf_expr_helper.h"
 #include "ap/axpr/anf_expr_util.h"
-#include "ap/axpr/lambda.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/method_class.h"
+#include "ap/axpr/serializable_value.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, Lambda<CoreExpr>>
+struct MethodClassImpl<ValueT, Function<SerializableValue>>
     : public EmptyMethodClass<ValueT> {
-  adt::Result<ValueT> ToString(const Lambda<CoreExpr>& lambda) {
+  using Self = Function<SerializableValue>;
+
+  adt::Result<ValueT> ToString(const Self& function) {
+    const auto& lambda = function->lambda;
     const auto& anf_expr = ConvertCoreExprToAnfExpr(lambda);
     ADT_LET_CONST_REF(anf_atomic, anf_expr.template TryGet<Atomic<AnfExpr>>());
     ADT_LET_CONST_REF(anf_lambda,
@@ -33,10 +38,27 @@ struct MethodClassImpl<ValueT, Lambda<CoreExpr>>
                       anf_expr_helper.FunctionToString(anf_lambda));
     return anf_expr_str;
   }
+
+  adt::Result<ValueT> Hash(const Self& function) {
+    ADT_LET_CONST_REF(hash_value, function->GetHashValue());
+    return hash_value;
+  }
+
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, TryGetImpl<std::string>(attr_name_val));
+    if (attr_name == "__code__") {
+      return Function<SerializableValue>{self->lambda, std::nullopt};
+    }
+    if (attr_name == "__function__") {
+      return self;
+    }
+    return adt::errors::AttributeError{
+        std::string() + "function has not attribute '" + attr_name + "'."};
+  }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<Lambda<CoreExpr>>>
+struct MethodClassImpl<ValueT, TypeImpl<Function<SerializableValue>>>
     : public EmptyMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

@@ -25,8 +25,7 @@ namespace cinn::dialect::ir {
 
 namespace {
 
-using CoreExpr = ap::axpr::CoreExpr;
-using Lambda = ap::axpr::Lambda<CoreExpr>;
+using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
 using Module = ap::code_module::Module;
 using PirNode = ap::paddle::PirNode;
 using Val = ap::code_gen::Value<PirNode>;
@@ -36,7 +35,7 @@ using CodeGenResult = ap::code_gen::CodeGenResult<Val>;
 }  // namespace
 
 adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
-    const Lambda& lambda, const CodeGenCtx& code_gen_ctx) {
+    const Function& lambda, const CodeGenCtx& code_gen_ctx) {
   ap::axpr::CpsInterpreter<Val> interpreter;
   ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
   const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();

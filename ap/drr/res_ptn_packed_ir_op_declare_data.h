@@ -15,6 +15,8 @@
 #pragma once
 
 #include "ap/axpr/core_expr.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/drr/packed_ir_op_declare_data.h"
 
 namespace ap::drr {
@@ -22,22 +24,22 @@ namespace ap::drr {
 class ResPtnPackedIrOpDeclareData : public PackedIrOpDeclareData {
  public:
   ResPtnPackedIrOpDeclareData(
-      const axpr::Lambda<axpr::CoreExpr>& kernel_define,
-      const axpr::Lambda<axpr::CoreExpr>& kernel_dispatch)
+      const axpr::Function<axpr::SerializableValue>& kernel_define,
+      const axpr::Function<axpr::SerializableValue>& kernel_dispatch)
       : PackedIrOpDeclareData(),
         kernel_define_(kernel_define),
         kernel_dispatch_(kernel_dispatch) {}
 
-  const axpr::Lambda<axpr::CoreExpr>& kernel_define() const {
+  const axpr::Function<axpr::SerializableValue>& kernel_define() const {
     return kernel_define_;
   }
-  const axpr::Lambda<axpr::CoreExpr>& kernel_dispatch() const {
+  const axpr::Function<axpr::SerializableValue>& kernel_dispatch() const {
     return kernel_dispatch_;
   }
 
  private:
-  axpr::Lambda<axpr::CoreExpr> kernel_define_;
-  axpr::Lambda<axpr::CoreExpr> kernel_dispatch_;
+  axpr::Function<axpr::SerializableValue> kernel_define_;
+  axpr::Function<axpr::SerializableValue> kernel_dispatch_;
 };
 
 }  // namespace ap::drr

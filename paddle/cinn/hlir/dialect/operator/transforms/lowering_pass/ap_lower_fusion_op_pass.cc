@@ -682,8 +682,9 @@ struct ApRewriter {
             -> adt::Result<AnfExpr> {
           return GetCodeFromBuiltinSerializableObject(ctx, object);
         },
-        [&](const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda)
+        [&](const ap::axpr::Function<ap::axpr::SerializableValue>& function)
             -> adt::Result<AnfExpr> {
+          const auto& lambda = function->lambda;
           const AnfExpr& anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
           AnfExpr ret{ctx->Attr(anf_expr, "__code__")};
           return ret;
@@ -802,7 +803,7 @@ struct ApRewriter {
   }
 
   adt::Result<CodeGenResult> GetApKernelModule(
-      const ap::axpr::Lambda<ap::axpr::CoreExpr>& lambda,
+      const ap::axpr::Function<ap::axpr::SerializableValue>& lambda,
       const GraphMatchCtx& match_ctx,
       const DrrPackedIrOp& res_ptn_ir_op) const {
     ADT_LET_CONST_REF(src_ptn_ctx, ctx_.drr_ctx->GetSourcePatternCtx());
@@ -873,7 +874,8 @@ struct ApRewriter {
     const auto& op_declare = res_ptn_ir_op->op_declare;
     ADT_LET_CONST_REF(
         data, op_declare->cast_data<ap::drr::ResPtnPackedIrOpDeclareData>());
-    const auto& lambda = data->kernel_dispatch();
+    const auto& function = data->kernel_dispatch();
+    const auto& lambda = function->lambda;
     ap::axpr::AnfExpr anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
     return anf_expr.DumpToJsonString();
   }

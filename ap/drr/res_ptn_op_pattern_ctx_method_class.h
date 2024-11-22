@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include "ap/axpr/function.h"
 #include "ap/axpr/method_class.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
 
 #include "ap/drr/native_ir_op_declare.h"
@@ -156,9 +158,10 @@ struct ResPtnOpPatternCtxMethodClass {
     return ResPtn(op_declare);
   }
 
-  adt::Result<axpr::Lambda<axpr::CoreExpr>> CastToLambda(const ValueT& val) {
-    ADT_LET_CONST_REF(lambda,
-                      val.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+  adt::Result<axpr::Function<axpr::SerializableValue>> CastToLambda(
+      const ValueT& val) {
+    ADT_LET_CONST_REF(
+        lambda, val.template TryGet<axpr::Function<axpr::SerializableValue>>());
     return lambda;
   }
 

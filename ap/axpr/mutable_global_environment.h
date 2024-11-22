@@ -19,6 +19,7 @@
 #include "ap/axpr/environment.h"
 #include "ap/axpr/frame.h"
 #include "ap/axpr/serializable_value.h"
+#include "ap/axpr/serializable_value_helper.h"
 
 namespace ap::axpr {
 
@@ -26,14 +27,23 @@ template <typename ValueT>
 class MutableGlobalEnvironment : public Environment<ValueT> {
  public:
   MutableGlobalEnvironment(const std::shared_ptr<Environment<ValueT>>& parent,
-                           const Frame<ValueT>& frame)
-      : parent_(parent), frame_(frame) {}
+                           const Frame<SerializableValue>& const_frame,
+                           const Frame<ValueT>& temp_frame)
+      : parent_(parent), const_frame_(const_frame), temp_frame_(temp_frame) {}
 
   adt::Result<ValueT> Get(const std::string& var) const override {
-    ADT_LET_CONST_REF(frame_ptr, frame_.Get());
-    const auto& res = frame_ptr->OptGet(var);
-    if (res.has_value()) {
-      return res.value();
+    if (IsTempVar(var)) {
+      ADT_LET_CONST_REF(temp_frame_ptr, temp_frame_.Get());
+      const auto& val_in_temp_frame = temp_frame_ptr->OptGet(var);
+      if (val_in_temp_frame.has_value()) {
+        return val_in_temp_frame.value();
+      }
+    } else {
+      ADT_LET_CONST_REF(const_frame_ptr, const_frame_.Get());
+      const auto& val_in_const_frame = const_frame_ptr->OptGet(var);
+      if (val_in_const_frame.has_value()) {
+        return val_in_const_frame.value().template CastTo<ValueT>();
+      }
     }
     if (parent_ == nullptr) {
       return NameError{std::string("name '") + var + "' is not defined."};
@@ -42,33 +52,49 @@ class MutableGlobalEnvironment : public Environment<ValueT> {
   }
 
   adt::Result<adt::Ok> Set(const std::string& var, const ValueT& val) override {
-    ADT_LET_CONST_REF(frame_ptr, frame_.Mut());
-    {
-      static std::string tmp_var_prefix("__axpr_generated_tmp_var");
-      if (var.substr(0, tmp_var_prefix.size()) != tmp_var_prefix) {
-        ADT_CHECK(SerializableValue::IsSerializable(val)) << [&] {
-          std::ostringstream ss;
-          ss << "Only serializable values are supported insert into global "
-                "environment. ";
-          ss << "Builtin serializable types are: ";
-          ss << SerializableValue::SerializableTypeNames();
-          ss << " (not include '" << axpr::GetTypeName(val) << "').";
-          return adt::errors::ValueError{ss.str()};
-        }();
-      }
+    if (IsTempVar(var)) {
+      ADT_LET_CONST_REF(temp_frame_ptr, temp_frame_.Mut());
+      temp_frame_ptr->Set(var, val);
+    } else {
+      ADT_LET_CONST_REF(const_frame_ptr, const_frame_.Mut());
+      SerializableValueHelper helper{};
+      ADT_LET_CONST_REF(serializable_val, helper.CastFrom(val)) << [&] {
+        std::ostringstream ss;
+        ss << "Only serializable values are supported insert into global "
+              "environment. ";
+        ss << "Builtin serializable types are: ";
+        ss << SerializableValue::SerializableTypeNames();
+        ss << " (not include '" << axpr::GetTypeName(val) << "').";
+        return adt::errors::ValueError{ss.str()};
+      }();
+      const_frame_ptr->Set(var, serializable_val);
     }
-    frame_ptr->Set(var, val);
     return adt::Ok{};
   }
 
-  const Frame<ValueT>& frame() const { return frame_; }
+  bool IsTempVar(const std::string& var) {
+    static std::string tmp_var_prefix("__axpr_generated_tmp_var");
+    return var.substr(0, tmp_var_prefix.size()) == tmp_var_prefix;
+  }
+
+  std::optional<Frame<SerializableValue>> GetConstGlobalFrame() const override {
+    return const_frame_;
+  }
+
+  std::optional<Frame<SerializableValue>> RecursivelyGetConstGlobalFrame()
+      const override {
+    return const_frame_;
+  }
+
+  const Frame<ValueT>& temp_frame() const { return temp_frame_; }
 
  private:
   MutableGlobalEnvironment(const MutableGlobalEnvironment&) = delete;
   MutableGlobalEnvironment(MutableGlobalEnvironment&&) = delete;
 
   std::shared_ptr<Environment<ValueT>> parent_;
-  Frame<ValueT> frame_;
+  Frame<SerializableValue> const_frame_;
+  Frame<ValueT> temp_frame_;
 };
 
 }  // namespace ap::axpr

@@ -16,7 +16,8 @@
 
 #include <vector>
 #include "ap/adt/adt.h"
-#include "ap/axpr/core_expr.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/registry/cell.h"
 #include "ap/registry/nice.h"
 
@@ -25,7 +26,7 @@ namespace ap::registry {
 struct DrrRegistryItemImpl {
   std::string drr_pass_name;
   Nice nice;
-  Cell<axpr::Lambda<axpr::CoreExpr>> lambda;
+  Cell<axpr::Function<axpr::SerializableValue>> lambda;
 };
 
 DEFINE_ADT_RC(DrrRegistryItem, DrrRegistryItemImpl);

@@ -21,6 +21,8 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/anf_expr_util.h"
 #include "ap/axpr/cps_interpreter.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/registry/value.h"
 #include "ap/registry/value_method_class.h"
 

@@ -16,6 +16,8 @@
 
 #include <string>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/frame.h"
+#include "ap/axpr/serializable_value.h"
 
 namespace ap::axpr {
 
@@ -26,6 +28,13 @@ class Environment {
 
   virtual adt::Result<adt::Ok> Set(const std::string& var,
                                    const ValueT& val) = 0;
+
+  virtual std::optional<Frame<SerializableValue>> GetConstGlobalFrame() const {
+    return std::nullopt;
+  }
+
+  virtual std::optional<Frame<SerializableValue>>
+  RecursivelyGetConstGlobalFrame() const = 0;
 
  protected:
   Environment() = default;

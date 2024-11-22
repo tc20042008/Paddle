@@ -23,8 +23,7 @@ namespace cinn::dialect::ir {
 
 namespace {
 
-using CoreExpr = ap::axpr::CoreExpr;
-using Lambda = ap::axpr::Lambda<CoreExpr>;
+using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
 
 using DrrValue = ap::drr::Value;
 using DrrNode = ap::drr::Node<DrrValue>;
@@ -32,7 +31,7 @@ using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
 
 }  // namespace
 
-adt::Result<DrrCtx> ApDrrHelper::Interpret(const Lambda& lambda,
+adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
   ap::axpr::CpsInterpreter<DrrValue> interpreter{};
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));

@@ -367,7 +367,7 @@ struct CodeGenCtxMethodClass {
     return code_str;
   }
 
-  using Lambda = axpr::Lambda<axpr::CoreExpr>;
+  using Function = axpr::Function<axpr::SerializableValue>;
   using Object = axpr::BuiltinObject<ValueT>;
 
   adt::Result<ValueT> RenderModuleTemplate(
@@ -393,14 +393,14 @@ struct CodeGenCtxMethodClass {
 
   adt::Result<code_module::Module> CreateModule(
       const axpr::ApplyT<ValueT>& Apply,
-      const Lambda& lambda,
+      const Function& lambda,
       const Object& ctx) {
     ADT_LET_CONST_REF(module_val, Apply(lambda, {ctx}));
     ADT_LET_CONST_REF(m, module_val.template TryGet<code_module::Module>());
     return m;
   }
 
-  adt::Result<Lambda> GetHighPriorModuleTemplate(
+  adt::Result<Function> GetHighPriorModuleTemplate(
       const std::string& template_name) {
     ADT_LET_CONST_REF(registry, registry::RegistrySingleton::Singleton());
     const auto& module_templates = registry->module_template_registry_items;

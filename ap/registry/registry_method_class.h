@@ -79,7 +79,7 @@ struct TypeImplRegistryMethodClass {
                                   kOpIndexExpr() + "' should be int, but '" +
                                   axpr::GetTypeName(nice_val) +
                                   "' were given."};
-    Cell<axpr::Lambda<axpr::CoreExpr>> lambda{};
+    Cell<axpr::Function<axpr::SerializableValue>> lambda{};
     for (const auto& op_name : op_names) {
       OpIndexesExprRegistryItem item{op_name, nice, lambda};
       RegistrySingleton::Add(item);
@@ -104,7 +104,7 @@ struct TypeImplRegistryMethodClass {
                                   kDrr() + "' should be int, but '" +
                                   axpr::GetTypeName(nice_val) +
                                   "' were given."};
-    Cell<axpr::Lambda<axpr::CoreExpr>> lambda{};
+    Cell<axpr::Function<axpr::SerializableValue>> lambda{};
     DrrRegistryItem item{drr_name, nice, lambda};
     RegistrySingleton::Add(item);
     return SetterDecorator{lambda};
@@ -134,7 +134,7 @@ struct TypeImplRegistryMethodClass {
                                   kOpCompute() + "' should be int, but '" +
                                   axpr::GetTypeName(nice_val) +
                                   "' were given."};
-    Cell<axpr::Lambda<axpr::CoreExpr>> lambda{};
+    Cell<axpr::Function<axpr::SerializableValue>> lambda{};
     OpComputeRegistryItem item{op_name, arch_type, nice, lambda};
     RegistrySingleton::Add(item);
     return SetterDecorator{lambda};
@@ -165,7 +165,7 @@ struct TypeImplRegistryMethodClass {
                                   kOpCompute() + "' should be int, but '" +
                                   axpr::GetTypeName(nice_val) +
                                   "' were given."};
-    Cell<axpr::Lambda<axpr::CoreExpr>> lambda{};
+    Cell<axpr::Function<axpr::SerializableValue>> lambda{};
     ModuleTemplateRegistryItem item{template_name, arch_type, nice, lambda};
     RegistrySingleton::Add(item);
     return SetterDecorator{lambda};

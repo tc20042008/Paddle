@@ -18,13 +18,15 @@
 #include <vector>
 #include "ap/adt/adt.h"
 #include "ap/axpr/builtin_object.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
 #include "ap/registry/cell.h"
 
 namespace ap::registry {
 
 struct SetterDecoratorImpl {
-  Cell<axpr::Lambda<axpr::CoreExpr>> lambda;
+  Cell<axpr::Function<axpr::SerializableValue>> lambda;
 
   bool operator==(const SetterDecoratorImpl& other) const {
     return this == &other;

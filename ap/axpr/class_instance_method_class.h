@@ -65,7 +65,7 @@ struct MethodClassImpl<ValueT, ClassInstance<ValueT>> {
         "' has no attribute '" + attr_name + "'"};
     using RetT = adt::Result<ValueT>;
     return opt_func.value().Match(
-        [&](const Lambda<CoreExpr>& f) -> RetT {
+        [&](const Function<SerializableValue>& f) -> RetT {
           return Method<ValueT>{self, f};
         },
         [&](const auto&) -> RetT { return opt_func.value(); });

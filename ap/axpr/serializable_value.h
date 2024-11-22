@@ -18,8 +18,8 @@
 #include "ap/axpr/bool.h"
 #include "ap/axpr/builtin_object.h"
 #include "ap/axpr/class_attrs.h"
-#include "ap/axpr/core_expr.h"
 #include "ap/axpr/float.h"
+#include "ap/axpr/function.h"
 #include "ap/axpr/int.h"
 #include "ap/axpr/nothing.h"
 #include "ap/axpr/string.h"
@@ -39,7 +39,7 @@ using SerializableValueImpl = std::variant<TypeImpl<adt::Nothing>,
                                            int64_t,
                                            double,
                                            std::string,
-                                           Lambda<CoreExpr>,
+                                           Function<SerializableValueT>,
                                            adt::List<SerializableValueT>,
                                            BuiltinObject<SerializableValueT>>;
 
@@ -81,7 +81,9 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
         [](int64_t) -> bool { return true; },
         [](double) -> bool { return true; },
         [](const std::string&) -> bool { return true; },
-        [](const Lambda<CoreExpr>&) -> bool { return true; },
+        [](const Function<SerializableValue>&) -> bool { return true; },
+        [](const adt::List<SerializableValue>&) -> bool { return true; },
+        [](const BuiltinObject<SerializableValue>&) -> bool { return true; },
         [&](const adt::List<ValueT>& list) -> bool {
           for (const auto& elt : *list) {
             if (!IsSerializable(elt)) {

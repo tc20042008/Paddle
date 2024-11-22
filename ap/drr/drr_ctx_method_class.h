@@ -52,9 +52,7 @@ struct TypeImplDrrCtxMethodClass {
     ADT_CHECK(args->size() == 0) << adt::errors::TypeError{
         "the constructor of DrrCtx takes keyword arguments only."};
     {
-      ADT_LET_CONST_REF(
-          def_source_pattern,
-          kwargs->template Get<axpr::Closure<ValueT>>("source_pattern"));
+      ADT_LET_CONST_REF(def_source_pattern, kwargs->Get("source_pattern"));
       auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
       SourcePatternCtx<ValueT, NodeT> source_pattern_ctx{
           node_arena,
@@ -73,10 +71,7 @@ struct TypeImplDrrCtxMethodClass {
                  SrcPtn(source_pattern_ctx->tensor_pattern_ctx)}));
     }
     {
-      ADT_LET_CONST_REF(
-          def_result_pattern,
-          kwargs->template Get<axpr::Closure<ValueT>>("result_pattern"));
-
+      ADT_LET_CONST_REF(def_result_pattern, kwargs->Get("result_pattern"));
       auto node_arena = std::make_shared<graph::NodeArena<NodeT>>();
       ResultPatternCtx<ValueT, NodeT> result_pattern_ctx{
           node_arena,

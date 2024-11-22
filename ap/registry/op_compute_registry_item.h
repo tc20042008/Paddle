@@ -16,7 +16,8 @@
 
 #include <vector>
 #include "ap/adt/adt.h"
-#include "ap/axpr/core_expr.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/registry/cell.h"
 #include "ap/registry/nice.h"
 
@@ -26,7 +27,7 @@ struct OpComputeRegistryItemImpl {
   std::string op_name;
   std::string arch_type;
   Nice nice;
-  Cell<axpr::Lambda<axpr::CoreExpr>> lambda;
+  Cell<axpr::Function<axpr::SerializableValue>> lambda;
 };
 
 DEFINE_ADT_RC(OpComputeRegistryItem, OpComputeRegistryItemImpl);

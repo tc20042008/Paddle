@@ -32,14 +32,17 @@ class LetVar {
 
   const std::string& name() const { return name_; }
 
-  explicit operator AnfExpr() const { return tVar<std::string>{name()}; }
+  operator Atomic<AnfExpr>() const { return tVar<std::string>{name()}; }
 
   LetVar& Attr(const std::string& attr_name);
   void SetAttr(const std::string& attr_name, const AnfExpr& anf_expr);
   LetVar& At(int64_t idx);
+  LetVar& At(const Atomic<AnfExpr>& idx);
 
   template <typename... Args>
-  AnfExpr Call(Args&&... args);
+  LetVar& Call(Args&&... args);
+
+  LetVar& Apply(const std::vector<AnfExpr>& args);
 
   LetContext* ctx() const { return let_ctx_; }
 
@@ -233,9 +236,22 @@ inline LetVar& LetVar::At(int64_t idx) {
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 
+inline LetVar& LetVar::At(const Atomic<AnfExpr>& idx) {
+  AnfExprBuilder anf{};
+  AnfExpr anf_expr = anf.Call(tVar<std::string>{kBuiltinGetItem()},
+                              {tVar<std::string>{name()}, idx});
+  return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
+}
+
 template <typename... Args>
-inline AnfExpr LetVar::Call(Args&&... args) {
-  return let_ctx_->Call(*this, std::forward<Args>(args)...);
+inline LetVar& LetVar::Call(Args&&... args) {
+  const auto& anf_expr = let_ctx_->Call(*this, std::forward<Args>(args)...);
+  return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
+}
+
+inline LetVar& LetVar::Apply(const std::vector<AnfExpr>& args) {
+  const auto& anf_expr = let_ctx_->Call(this->name(), args);
+  return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 
 class LambdaExprBuilder {
@@ -245,15 +261,6 @@ class LambdaExprBuilder {
       : SeqNoGenerator_(SeqNoGenerator) {}
   LambdaExprBuilder(const LambdaExprBuilder&) = delete;
   LambdaExprBuilder(LambdaExprBuilder&&) = delete;
-
-  AnfExpr Lambda(const std::vector<std::string>& args,
-                 const std::function<LetVar(LetContext&)>& GetBody) {
-    std::function<AnfExpr(LetContext&)> GetAnfExprBody =
-        [&](LetContext& ctx) -> AnfExpr {
-      return Atomic<AnfExpr>{tVar<std::string>{GetBody(ctx).name()}};
-    };
-    return Lambda(args, GetAnfExprBody);
-  }
 
   AnfExpr Lambda(const std::vector<std::string>& args,
                  const std::function<AnfExpr(LetContext&)>& GetBody) {

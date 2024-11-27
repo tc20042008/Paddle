@@ -45,11 +45,8 @@ struct CodeGenCtxMethodClass {
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "op_code_gen") {
-      return axpr::Method<ValueT>{self, &This::StaticOpCodeGen};
-    }
-    if (attr_name == "render_module_template") {
-      return axpr::Method<ValueT>{self, &This::StaticRenderModuleTemplate};
+    if (attr_name == "make_fusion_op_code_gen_class") {
+      return axpr::Method<ValueT>{self, &This::StaticMakeFusionOpCodeGenClass};
     }
     if (attr_name == "make_kernel_args_getter") {
       return axpr::Method<ValueT>{self, &This::StaticMakeKernelArgsGetter};
@@ -92,7 +89,11 @@ struct CodeGenCtxMethodClass {
                "'NativeIrValue' or 'RefIrValue' (not '" +
                axpr::GetTypeName(args.at(0)) + "')."};
     ADT_RETURN_IF_ERR(CheckOutTensorDataPtrRuntimeAvailable(self, ir_value));
-    return OutTensorDataPtrKernelArgId<BirNode>{ir_value};
+    OutTensorDataPtrKernelArgId<BirNode> uninitialized{ir_value, std::nullopt};
+    ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
+    ADT_LET_CONST_REF(runtime_getter,
+                      helper.MakeRuntimeKerneArgGetter(uninitialized));
+    return OutTensorDataPtrKernelArgId<BirNode>{ir_value, runtime_getter};
   }
 
   adt::Result<adt::Ok> CheckOutTensorDataPtrRuntimeAvailable(
@@ -128,7 +129,11 @@ struct CodeGenCtxMethodClass {
                "'NativeIrValue' or 'RefIrValue' (not '" +
                axpr::GetTypeName(args.at(0)) + "')."};
     ADT_RETURN_IF_ERR(CheckInTensorDataPtrRuntimeAvailable(self, ir_value));
-    return InTensorDataPtrKernelArgId<BirNode>{ir_value};
+    InTensorDataPtrKernelArgId<BirNode> uninitialized{ir_value, std::nullopt};
+    ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
+    ADT_LET_CONST_REF(runtime_getter,
+                      helper.MakeRuntimeKerneArgGetter(uninitialized));
+    return InTensorDataPtrKernelArgId<BirNode>{ir_value, runtime_getter};
   }
 
   adt::Result<adt::Ok> CheckInTensorDataPtrRuntimeAvailable(
@@ -179,7 +184,11 @@ struct CodeGenCtxMethodClass {
                                   "should be 'DimExpr' (not '" +
                                   axpr::GetTypeName(args.at(0)) + "')."};
     ADT_RETURN_IF_ERR(CheckDimExprRuntimeAvailable(self, dim_expr));
-    return DimExprKernelArgId<BirNode>{dim_expr};
+    DimExprKernelArgId<BirNode> uninitialized{dim_expr, std::nullopt};
+    ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
+    ADT_LET_CONST_REF(runtime_getter,
+                      helper.MakeRuntimeKerneArgGetter(uninitialized));
+    return DimExprKernelArgId<BirNode>{dim_expr, runtime_getter};
   }
 
   adt::Result<adt::Ok> CheckDimExprRuntimeAvailable(
@@ -230,27 +239,6 @@ struct CodeGenCtxMethodClass {
     return kernel_arg_ids;
   }
 
-  adt::Result<std::unordered_map<KernelArgId<BirNode>, std::string>>
-  CastToKernelArgId2Name(const axpr::OrderedDict<ValueT>& ordered_dict) {
-    std::unordered_map<KernelArgId<BirNode>, std::string> kernel_arg_id2name{};
-    int i = 0;
-    for (const auto& [k, v] : ordered_dict->items()) {
-      ADT_LET_CONST_REF(kernel_arg_id, KernelArgId<BirNode>::CastFrom(k))
-          << adt::errors::TypeError{std::string() + "pair sequence item " +
-                                    std::to_string(i) +
-                                    ": expected KernelArgId as pair.first, " +
-                                    axpr::GetTypeName(k) + " found."};
-      ADT_LET_CONST_REF(name, v.template TryGet<std::string>())
-          << adt::errors::TypeError{std::string() + "pair sequence item " +
-                                    std::to_string(i) +
-                                    ": expected str as pair.second, " +
-                                    axpr::GetTypeName(v) + " found."};
-      kernel_arg_id2name[kernel_arg_id] = name;
-      ++i;
-    }
-    return kernel_arg_id2name;
-  }
-
   adt::Result<ValueT> MakeKernelArgsGetterByKernelArgIds(
       const Self& self, const std::list<KernelArgId<BirNode>>& kernel_arg_ids) {
     ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
@@ -259,164 +247,82 @@ struct CodeGenCtxMethodClass {
     return getter;
   }
 
-  static adt::Result<ValueT> StaticOpCodeGen(const ValueT& self_val,
-                                             const std::vector<ValueT>& args) {
+  static adt::Result<ValueT> StaticMakeFusionOpCodeGenClass(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    return This{}.OpCodeGen(self, args);
-  }
-
-  static adt::Result<ValueT> StaticRenderModuleTemplate(
-      axpr::InterpreterBase<ValueT>* interpreter,
-      const ValueT& self_val,
-      const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    return This{}.RenderModuleTemplate(interpreter, self, args);
+    return This{}.MakeFusionOpCodeGenClass(self, args);
   }
 
   using NativeOrRefIrValue = ir_match::NativeOrRefIrValue<BirNode>;
 
-  adt::Result<ValueT> OpCodeGen(const Self& self,
-                                const std::vector<ValueT>& packed_args_vec) {
+  adt::Result<ValueT> MakeFusionOpCodeGenClass(
+      const Self& self, const std::vector<ValueT>& packed_args_vec) {
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_vec);
     const auto& [args, kwargs] = *packed_args;
     ADT_CHECK(args->size() == 1) << adt::errors::TypeError{
-        "'CodeGenCtx.op_code_gen' takes 1 positional arguments but " +
+        "'CodeGenCtx.conver_fusion_op_to_function' takes 1 positional "
+        "arguments but " +
         std::to_string(args->size()) + " were given."};
     ADT_LET_CONST_REF(ir_op, IrOp<BirNode>::CastFrom(args->at(0)))
         << adt::errors::TypeError{
                std::string() +
-               "the positional argument 1 of 'CodeGenCtx.op_code_gen' should "
-               "be able to cast to a NativeIrOp, PackedIrOp or RefIrOp."};
-    ADT_LET_CONST_REF(kernel_arg_id2arg_name_val,
-                      kwargs->template Get<axpr::OrderedDict<ValueT>>(
-                          "kernel_arg_id_to_arg_name"))
-        << adt::errors::TypeError{
-               std::string() +
-               "op_code_gen() requires 'OrderedDict' typed keyword argument "
-               "'kernel_arg_id_to_arg_name'."};
-    ADT_LET_CONST_REF(kernel_arg_id2arg_name,
-                      CastToKernelArgId2Name(kernel_arg_id2arg_name_val));
-    ADT_LET_CONST_REF(loop_index_tuple_expr,
-                      kwargs->template Get<index_expr::IndexTupleExpr>(
-                          "loop_index_tuple_expr"))
-        << adt::errors::TypeError{
-               std::string() +
-               "'CodeGenCtx.op_code_gen' requires 'IndexTupleExpr' typed "
-               "keyword argument 'loop_index_tuple_expr'."};
-    std::vector<std::string> loop_var_names{};
-    {
-      ADT_LET_CONST_REF(
-          loop_var_names_val,
-          kwargs->template Get<adt::List<ValueT>>("loop_var_names"))
-          << adt::errors::TypeError{std::string() +
-                                    "'CodeGenCtx.op_code_gen' requires 'list' "
-                                    "typed keyword argument 'loop_var_names'."};
-      loop_var_names.reserve(loop_var_names_val->size());
-      for (const auto& elt : *loop_var_names_val) {
-        ADT_LET_CONST_REF(loop_var_name, axpr::TryGetImpl<std::string>(elt))
-            << adt::errors::TypeError{
-                   std::string() +
-                   "keyword argument 'loop_var_names' of "
-                   "'CodeGenCtx.op_code_gen' should be a list of string."};
-        loop_var_names.emplace_back(loop_var_name);
-      }
-    }
-    ADT_LET_CONST_REF(
-        anchor_local_var_name,
-        kwargs->template OptGet<std::string>("anchor_local_var_name"))
-        << adt::errors::TypeError{std::string() +
-                                  "keyword argument 'anchor_local_var_name' of "
-                                  "'CodeGenCtx.op_code_gen' should be a str"};
-    std::vector<LocalVarBinding<BirNode>> local_var_name_bindings{};
-    {
-      ADT_LET_CONST_REF(ir_value_to_local_var_name,
-                        kwargs->template Get<axpr::OrderedDict<ValueT>>(
-                            "ir_value_to_local_var_name"))
-          << adt::errors::TypeError{
-                 std::string() +
-                 "'CodeGenCtx.op_code_gen' requires 'list' typed keyword "
-                 "argument 'local_var_name_bindings'."};
-      local_var_name_bindings.reserve(
-          ir_value_to_local_var_name->items().size());
-      for (const auto& [k, v] : ir_value_to_local_var_name->items()) {
-        ADT_LET_CONST_REF(local_var_name, axpr::TryGetImpl<std::string>(v))
-            << adt::errors::TypeError{
-                   std::string() +
-                   "keyword argument 'ir_value_to_local_var_name' of "
-                   "'CodeGenCtx.op_code_gen' should be OrderedDict[str, "
-                   "'NativeIrValue|RefIrValue']."};
-        ADT_LET_CONST_REF(ir_tensor, NativeOrRefIrValue::CastFrom(k))
-            << adt::errors::TypeError{
-                   std::string() +
-                   "keyword argument 'ir_value_to_local_var_name' of "
-                   "'CodeGenCtx.op_code_gen' should be OrderedDict[str, "
-                   "'NativeIrValue|RefIrValue']."};
-        LocalVarBinding<BirNode> binding{local_var_name, ir_tensor};
-        local_var_name_bindings.emplace_back(binding);
-      }
-    }
-    OpCodeGenCtx<BirNode> op_code_gen_ctx{
-        self.shared_ptr(),
-        loop_index_tuple_expr,
-        loop_var_names,
-        local_var_name_bindings,
-        anchor_local_var_name,
-        kernel_arg_id2arg_name,
-    };
-    ADT_LET_CONST_REF(code_str, OpCudaCodeGen<BirNode>(op_code_gen_ctx, ir_op));
-    return code_str;
-  }
-
-  using Function = axpr::Function<axpr::SerializableValue>;
-  using Object = axpr::BuiltinObject<ValueT>;
-
-  adt::Result<ValueT> RenderModuleTemplate(
-      axpr::InterpreterBase<ValueT>* interpreter,
-      const Self& self,
-      const std::vector<ValueT>& packed_args_vec) {
-    const auto& packed_args = axpr::CastToPackedArgs(packed_args_vec);
-    const auto& [args, kwargs] = *packed_args;
-    ADT_CHECK(args->size() == 1) << adt::errors::TypeError{
-        std::string() +
-        "'CodeGenCtx.render_module_template' takes 1 postional argument but " +
-        std::to_string(args->size()) + " were given."};
-    ADT_LET_CONST_REF(template_name, args->at(0).template TryGet<std::string>())
-        << adt::errors::TypeError{
-               std::string() +
                "the positional argument 1 of "
-               "'CodeGenCtx.render_module_template' should be a 'str' but '" +
-               axpr::GetTypeName(args->at(0)) + "' were given."};
-    ADT_LET_CONST_REF(lambda, GetHighPriorModuleTemplate(template_name));
-    ADT_LET_CONST_REF(m, CreateModule(interpreter, lambda, kwargs));
-    return m;
-  }
-
-  adt::Result<code_module::Module> CreateModule(
-      axpr::InterpreterBase<ValueT>* interpreter,
-      const Function& lambda,
-      const Object& ctx) {
-    ADT_LET_CONST_REF(module_val, interpreter->InterpretCall(lambda, {ctx}));
-    ADT_LET_CONST_REF(m, module_val.template TryGet<code_module::Module>());
-    return m;
-  }
-
-  adt::Result<Function> GetHighPriorModuleTemplate(
-      const std::string& template_name) {
-    ADT_LET_CONST_REF(registry, registry::RegistrySingleton::Singleton());
-    const auto& module_templates = registry->module_template_registry_items;
-    const auto& iter = module_templates.find(template_name);
-    ADT_CHECK(iter != module_templates.end())
-        << adt::errors::KeyError{std::string() + "no module template named '" +
-                                 template_name + "' were found."};
-    for (const auto& [nice, templates] : iter->second) {
-      for (const auto& item : templates) {
-        const auto& module_template = item->lambda->data;
-        ADT_CHECK(module_template.has_value());
-        return module_template.value();
+               "'CodeGenCtx.conver_fusion_op_to_function' should "
+               "be able to cast to a NativeIrOp, PackedIrOp or RefIrOp."};
+    ADT_LET_CONST_REF(input_index_loop_anchor_flags_lst,
+                      kwargs->template Get<adt::List<ValueT>>(
+                          "input_index_loop_anchor_flags"))
+        << adt::errors::TypeError{
+               std::string() +
+               "'CodeGenCtx.input_index_loop_anchor_flags' requires bool list "
+               "typed "
+               "keyword argument 'input_index_loop_anchor_flags'."};
+    LoopAnchorFlags input_index_loop_anchor_flags;
+    {
+      input_index_loop_anchor_flags->reserve(
+          input_index_loop_anchor_flags_lst->size());
+      for (const auto& elt : *input_index_loop_anchor_flags_lst) {
+        ADT_LET_CONST_REF(mask, elt.template TryGet<bool>())
+            << adt::errors::TypeError{
+                   std::string() +
+                   "'CodeGenCtx.input_index_loop_anchor_flags' requires bool "
+                   "list typed "
+                   "keyword argument 'input_index_loop_anchor_flags'."};
+        input_index_loop_anchor_flags->emplace_back(
+            tLoopAnchorFlag<bool>{mask});
       }
     }
-    return adt::errors::KeyError{std::string() + "no module template named '" +
-                                 template_name + "' were found."};
+    ADT_LET_CONST_REF(output_index_loop_anchor_flags_lst,
+                      kwargs->template Get<adt::List<ValueT>>(
+                          "output_index_loop_anchor_flags"))
+        << adt::errors::TypeError{
+               std::string() +
+               "'CodeGenCtx.output_index_loop_anchor_flags' requires bool list "
+               "typed "
+               "keyword argument 'output_index_loop_anchor_flags'."};
+    LoopAnchorFlags output_index_loop_anchor_flags;
+    {
+      output_index_loop_anchor_flags->reserve(
+          output_index_loop_anchor_flags_lst->size());
+      for (const auto& elt : *output_index_loop_anchor_flags_lst) {
+        ADT_LET_CONST_REF(mask, elt.template TryGet<bool>())
+            << adt::errors::TypeError{
+                   std::string() +
+                   "'CodeGenCtx.output_index_loop_anchor_flags' requires bool "
+                   "list typed "
+                   "keyword argument 'output_index_loop_anchor_flags'."};
+        output_index_loop_anchor_flags->emplace_back(
+            tLoopAnchorFlag<bool>{mask});
+      }
+    }
+
+    OpCodeGenCtx<BirNode> op_code_gen_ctx{self.shared_ptr(),
+                                          input_index_loop_anchor_flags,
+                                          output_index_loop_anchor_flags};
+    ADT_LET_CONST_REF(
+        class_attrs,
+        ConvertFusionOpToClassAttrs<BirNode>(op_code_gen_ctx, ir_op));
+    return axpr::TypeImpl<axpr::ClassInstance<ValueT>>(class_attrs);
   }
 };
 

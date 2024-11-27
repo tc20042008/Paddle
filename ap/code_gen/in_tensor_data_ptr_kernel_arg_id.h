@@ -15,6 +15,8 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
 
 namespace ap::code_gen {
@@ -22,6 +24,7 @@ namespace ap::code_gen {
 template <typename BirNode>
 struct InTensorDataPtrKernelArgIdImpl {
   BirNode ir_value;
+  std::optional<axpr::Function<axpr::SerializableValue>> runtime_getter;
 
   bool operator==(const InTensorDataPtrKernelArgIdImpl& other) const {
     return this->ir_value == other.ir_value;

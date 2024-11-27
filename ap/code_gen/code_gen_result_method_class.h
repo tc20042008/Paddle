@@ -43,8 +43,16 @@ struct TypeImplCodeGenResultMethodClass {
     ADT_LET_CONST_REF(m, kwargs->template TryGet<code_module::Module>("module"))
         << adt::errors::TypeError{
                std::string() +
-               "the constructor of 'CodeGenResult' needs keyword argument "
+               "the constructor of 'CodeGenResult' missing keyword argument "
                "'module' of type 'Module'."};
+    ADT_LET_CONST_REF(
+        kernel_dispatch_func,
+        kwargs->template TryGet<axpr::Function<axpr::SerializableValue>>(
+            "kernel_dispatch_func"))
+        << adt::errors::TypeError{
+               std::string() +
+               "the constructor of 'CodeGenResult' missing keyword argument "
+               "'kernel_dispatch_func' of type 'Function'."};
     std::optional<axpr::BuiltinObject<axpr::SerializableValue>>
         kernel_dispatch_const_data;
     if (kwargs->Has("kernel_dispatch_const_data")) {
@@ -63,7 +71,8 @@ struct TypeImplCodeGenResultMethodClass {
           axpr::BuiltinObject<axpr::SerializableValue>{};
     }
     ADT_CHECK(kernel_dispatch_const_data.has_value());
-    return CodeGenResult<ValueT>{m, kernel_dispatch_const_data.value()};
+    return CodeGenResult<ValueT>{
+        m, kernel_dispatch_func, kernel_dispatch_const_data.value()};
   }
 };
 

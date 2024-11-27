@@ -15,6 +15,8 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/class_attrs.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/code_gen/ir_op.h"
 #include "ap/code_gen/op_code_gen_ctx.h"
 
@@ -24,6 +26,9 @@ template <typename BirNode>
 struct OpCudaCodeGenImpl {
   adt::Result<std::string> CodeGen(const OpCodeGenCtx<BirNode>& op_code_gen_ctx,
                                    const IrOp<BirNode>& ir_op);
+  adt::Result<axpr::ClassAttrs<axpr::SerializableValue>>
+  ConvertFusionOpToClassAttrs(const OpCodeGenCtx<BirNode>& op_code_gen_ctx,
+                              const IrOp<BirNode>& ir_op);
 };
 
 }  // namespace ap::code_gen

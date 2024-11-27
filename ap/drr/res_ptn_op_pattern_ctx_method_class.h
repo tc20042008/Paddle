@@ -139,7 +139,7 @@ struct ResPtnOpPatternCtxMethodClass {
   adt::Result<ValueT> DeclareApPatternFusionOp(
       const ValueT& self_val, const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
-    ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() +
         "ResPtnOpPatternCtx.ap_pattern_fusion_op takes 2 arguments. but " +
         std::to_string(args.size()) + " were given."};
@@ -147,12 +147,8 @@ struct ResPtnOpPatternCtxMethodClass {
         << adt::errors::TypeError{std::string() +
                                   "argument 1 of o.ap_pattern_fusion_op should "
                                   "be a function_code object."};
-    ADT_LET_CONST_REF(kernel_dispatch_lambda, CastToLambda(args.at(1)))
-        << adt::errors::TypeError{std::string() +
-                                  "argument 2 of o.ap_pattern_fusion_op should "
-                                  "be a function_code object"};
-    auto data = std::make_shared<ResPtnPackedIrOpDeclareData>(
-        kernel_define_lambda, kernel_dispatch_lambda);
+    auto data =
+        std::make_shared<ResPtnPackedIrOpDeclareData>(kernel_define_lambda);
     PackedIrOpDeclare<ValueT, NodeT> op_declare{
         "ap_pattern_fusion_op", self.value().shared_ptr(), data};
     return ResPtn(op_declare);

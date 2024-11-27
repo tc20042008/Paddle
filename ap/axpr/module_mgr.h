@@ -68,8 +68,8 @@ class ModuleMgr {
     const auto& frame =
         Frame<SerializableValue>::Make(circlable_ref_list_, frame_object);
     ADT_LET_CONST_REF(lambda, GetLambdaByFilePath(file_path));
-    ADT_RETURN_IF_ERR(Init(frame, lambda));
     ADT_CHECK(file_path2const_global_frame_.emplace(file_path, frame).second);
+    ADT_RETURN_IF_ERR(Init(frame, lambda));
     return frame;
   }
 

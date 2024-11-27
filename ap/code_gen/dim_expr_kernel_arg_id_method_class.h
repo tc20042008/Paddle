@@ -34,6 +34,11 @@ struct DimExprKernelArgIdMethodClass {
     if (attr_name == "type") {
       return GetArgType(self);
     }
+    if (attr_name == "runtime_getter") {
+      ADT_CHECK(self->runtime_getter.has_value())
+          << adt::errors::ValueError{"no runtime getter initialized"};
+      return self->runtime_getter.value();
+    }
     return adt::errors::AttributeError{
         std::string() + "'DimExprKernelArgId' instance has no attribute '" +
         attr_name + "'."};

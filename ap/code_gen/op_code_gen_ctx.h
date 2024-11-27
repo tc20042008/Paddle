@@ -17,6 +17,7 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
 #include "ap/code_gen/kernel_arg_id.h"
+#include "ap/code_gen/loop_anchor_flags.h"
 #include "ap/index_expr/index_tuple_expr.h"
 #include "ap/ir_match/native_or_ref_ir_value.h"
 
@@ -25,59 +26,15 @@ namespace ap::code_gen {
 template <typename BirNode>
 struct CodeGenCtxImpl;
 
-using LocalVarName = std::string;
-
-template <typename BirNode>
-struct LocalVarBinding {
-  LocalVarName local_var_name;
-  ir_match::NativeOrRefIrValue<BirNode> ir_value;
-};
-
 template <typename BirNode>
 struct OpCodeGenCtxImpl {
   std::weak_ptr<CodeGenCtxImpl<BirNode>> code_gen_ctx;
 
-  index_expr::IndexTupleExpr loop_index_tuple_expr;
-
-  std::vector<std::string> loop_var_names;
-
-  std::vector<LocalVarBinding<BirNode>> local_var_binding;
-
-  std::optional<LocalVarName> anchor_local_var_name;
-
-  std::unordered_map<KernelArgId<BirNode>, std::string> kernel_arg_id2arg_name;
-
-  adt::Result<LocalVarName> GetAnchorLocalVarName() const {
-    const auto& opt_anchor = GetAnchorLocalVarNameWithoutCheck();
-    ADT_CHECK(opt_anchor.has_value());
-    ADT_RETURN_IF_ERR(CheckAnchorLocalVarName(opt_anchor.value()));
-    return opt_anchor.value();
-  }
+  LoopAnchorFlags input_index_loop_anchor_flags;
+  LoopAnchorFlags output_index_loop_anchor_flags;
 
   bool operator==(const OpCodeGenCtxImpl& other) const {
     return this == &other;
-  }
-
- private:
-  std::optional<LocalVarName> GetAnchorLocalVarNameWithoutCheck() const {
-    if (this->anchor_local_var_name.has_value()) {
-      return this->anchor_local_var_name.value();
-    }
-    if (this->loop_var_names.size() != 1) {
-      return std::nullopt;
-    }
-    return this->loop_var_names.at(0);
-  }
-
-  adt::Result<adt::Ok> CheckAnchorLocalVarName(
-      const LocalVarName& anchor) const {
-    for (const auto& [local_var_name, _] : this->loop_var_names) {
-      if (anchor == local_var_name) {
-        return adt::Ok{};
-      }
-    }
-    return adt::errors::ValueError{
-        "anchor local var name not found in local var name bindings."};
   }
 };
 

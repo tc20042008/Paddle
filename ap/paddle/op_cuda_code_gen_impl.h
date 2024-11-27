@@ -49,9 +49,6 @@ struct OpCudaCodeGenImpl {
   using OpCodeGenCtx = code_gen::OpCodeGenCtx<BirNode>;
   using IrOp = code_gen::IrOp<BirNode>;
 
-  using LocalVarBinding = code_gen::LocalVarBinding<BirNode>;
-  using LocalVarBindingList = std::vector<LocalVarBinding>;
-
   using DrrValue = drr::Value;
   using DrrNode = drr::Node<DrrValue>;
   using DrrGraphNode = graph::Node<DrrNode>;
@@ -77,340 +74,703 @@ struct OpCudaCodeGenImpl {
 
   using GraphMatchCtx = ir_match::GraphMatchCtx<BirNode>;
 
-  using IndexTupleExprCodeGenerator =
-      index_expr::IndexTupleExprCudaCodeGenerator;
-
   using Registry = registry::Registry;
 
-  adt::Result<std::string> CodeGen(const OpCodeGenCtx& op_code_gen_ctx,
-                                   const IrOp& ir_op) {
-    using RetString = adt::Result<std::string>;
+  using ClassAttrs = axpr::ClassAttrs<axpr::SerializableValue>;
+
+  using Function = axpr::Function<axpr::SerializableValue>;
+
+  adt::Result<ClassAttrs> ConvertFusionOpToClassAttrs(
+      const OpCodeGenCtx& op_code_gen_ctx, const IrOp& ir_op) {
+    using RetT = adt::Result<ClassAttrs>;
     return ir_op.Match(
-        [&](const PackedIrOp& packed_ir_op) -> RetString {
-          return PackedIrOpCodeGen(op_code_gen_ctx, packed_ir_op);
+        [&](const PackedIrOp& packed_ir_op) -> RetT {
+          return PackedIrOpConvertFusionOpToClassAttrs(op_code_gen_ctx,
+                                                       packed_ir_op);
         },
-        [&](const RefIrOp& ref_ir_op) -> RetString {
-          return RefIrOpCodeGen(op_code_gen_ctx, ref_ir_op);
+        [&](const RefIrOp& ref_ir_op) -> RetT {
+          return RefIrOpConvertFusionOpToClassAttrs(op_code_gen_ctx, ref_ir_op);
         },
-        [&](const auto&) -> RetString {
+        [&](const auto&) -> RetT {
           return adt::errors::TypeError{
               std::string() +
-              "paddle pir only support generating code for packed ir op."};
+              "only packed ir op get supported in ConvertFusionOpToLambda."};
         });
   }
 
-  using DefaultDrrGraph =
-      graph::GraphDescriptor<DrrGraphNode, drr::topo_kind::Default>;
-  adt::Result<std::string> RefIrOpCodeGen(const OpCodeGenCtx& op_code_gen_ctx,
-                                          const RefIrOp& ref_ir_op) {
-    ADT_LET_CONST_REF(in_out, GetInputOutput(op_code_gen_ctx, ref_ir_op));
-    const auto& [input, output] = in_out;
-    ADT_LET_CONST_REF(input_var_name,
-                      GetBoundLocalVarName(op_code_gen_ctx, input));
-    ADT_LET_CONST_REF(output_var_name,
-                      GetBoundLocalVarName(op_code_gen_ctx, output));
-    return std::string() + output_var_name + " = " + input_var_name + ";\n";
+  adt::Result<ClassAttrs> PackedIrOpConvertFusionOpToClassAttrs(
+      const OpCodeGenCtx& op_code_gen_ctx, const PackedIrOp& packed_ir_op) {
+    ADT_LET_CONST_REF(
+        index_tuple_expr,
+        GetPureElementwiseLoopIndexTupleExpr(op_code_gen_ctx, packed_ir_op));
+    ADT_LET_CONST_REF(
+        ir_graph,
+        CreatePureElementwiseIndexedIrGraph(packed_ir_op, index_tuple_expr));
+    ADT_LET_CONST_REF(init_func,
+                      PackedIrOpMakeInitFuncByFusionOp(
+                          op_code_gen_ctx, ir_graph, packed_ir_op));
+    ADT_LET_CONST_REF(compute_func,
+                      PackedIrOpMakeComputeFuncByFusionOp(
+                          op_code_gen_ctx, ir_graph, packed_ir_op));
+    ADT_LET_CONST_REF(load_from_register_func,
+                      PackedIrOpMakeLoadFromRegisterFuncByFusionOp(
+                          op_code_gen_ctx, ir_graph, packed_ir_op));
+    ADT_LET_CONST_REF(store_to_register_func,
+                      PackedIrOpMakeStoreToRegisterFuncByFusionOp(
+                          op_code_gen_ctx, ir_graph, packed_ir_op));
+    std::string class_name = "PackedIrOpClass";
+    adt::List<std::shared_ptr<axpr::ClassAttrsImpl<axpr::SerializableValue>>>
+        empty_bases{};
+    axpr::BuiltinObject<axpr::SerializableValue> methods{};
+    methods->Set("__init__", init_func);
+    methods->Set("compute", compute_func);
+    methods->Set("load_from_register", load_from_register_func);
+    methods->Set("store_to_register", store_to_register_func);
+    return ClassAttrs{class_name, empty_bases, methods};
+  }
+
+  adt::Result<index_expr::IndexTupleExpr> GetPureElementwiseLoopIndexTupleExpr(
+      const OpCodeGenCtx& op_code_gen_ctx, const PackedIrOp& packed_ir_op) {
+    ADT_LET_CONST_REF(
+        shape, GetPureElementwiseLoopDimExpr(op_code_gen_ctx, packed_ir_op));
+    return index_expr::IndexTupleExprDomain{shape};
+  }
+
+  adt::Result<adt::List<symbol::DimExpr>> GetPureElementwiseLoopDimExpr(
+      const OpCodeGenCtx& op_code_gen_ctx, const PackedIrOp& packed_ir_op) {
+    const auto& input_flags = op_code_gen_ctx->input_index_loop_anchor_flags;
+    {
+      ADT_LET_CONST_REF(
+          num_native_ir_inputs,
+          NumNativeIrInputBirValues(op_code_gen_ctx, packed_ir_op));
+      ADT_CHECK(input_flags->size() == num_native_ir_inputs)
+          << adt::errors::TypeError{
+                 std::string() +
+                 "len(input_index_loop_anchor_flags) should equal to number of "
+                 "native ir inputs of fusion op. (" +
+                 std::to_string(input_flags->size()) + " v.s. " +
+                 std::to_string(num_native_ir_inputs) + ")"};
+    }
+    const auto& output_flags = op_code_gen_ctx->output_index_loop_anchor_flags;
+    {
+      ADT_LET_CONST_REF(
+          num_native_ir_outputs,
+          NumNativeIrOutputBirValues(op_code_gen_ctx, packed_ir_op));
+      ADT_CHECK(output_flags->size() == num_native_ir_outputs)
+          << adt::errors::TypeError{
+                 std::string() +
+                 "len(output_index_loop_anchor_flags) should equal to number "
+                 "of native ir outputs of fusion op. (" +
+                 std::to_string(output_flags->size()) + " v.s. " +
+                 std::to_string(num_native_ir_outputs) + ")"};
+    }
+    using Shape = adt::List<symbol::DimExpr>;
+    auto GetShape = [&](pir::Value value) -> adt::Result<Shape> {
+      ADT_LET_CONST_REF(shape_ptr, NativeIrValue{value}.GetShapeDimExprsPtr());
+      Shape shape;
+      shape->reserve(shape_ptr->size());
+      shape->assign(shape_ptr->begin(), shape_ptr->end());
+      return shape;
+    };
+    std::optional<Shape> opt_shape;
+    auto InitOrCheckShape = [&](pir::Value value) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(shape, GetShape(value));
+      if (opt_shape.has_value()) {
+        ADT_CHECK(opt_shape.value() == shape) << adt::errors::TypeError{
+            "All loop anchors should have same shapes."};
+      } else {
+        opt_shape = shape;
+      }
+      return adt::Ok{};
+    };
+    {
+      int input_idx = 0;
+      auto DoEachNativeInput = [&](pir::Value value) -> adt::Result<adt::Ok> {
+        if (input_flags->at(input_idx++).value()) {
+          ADT_RETURN_IF_ERR(InitOrCheckShape(value));
+        }
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(VisitNativeIrInputBirValue(
+          op_code_gen_ctx, packed_ir_op, DoEachNativeInput));
+    }
+    {
+      int output_idx = 0;
+      auto DoEachNativeOutput = [&](pir::Value value) -> adt::Result<adt::Ok> {
+        if (output_flags->at(output_idx++).value()) {
+          ADT_RETURN_IF_ERR(InitOrCheckShape(value));
+        }
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(VisitNativeIrOutputBirValue(
+          op_code_gen_ctx, packed_ir_op, DoEachNativeOutput));
+    }
+    ADT_CHECK(opt_shape.has_value()) << adt::errors::TypeError{
+        "At least one flag should be set in input_index_loop_anchor_flags or "
+        "output_index_loop_anchor_flags"};
+    return opt_shape.value();
+  }
+
+  adt::Result<std::size_t> NumNativeIrInputBirValues(
+      const OpCodeGenCtx& op_code_gen_ctx, const PackedIrOp& packed_ir_op) {
+    std::size_t num_values = 0;
+    auto Acc = [&](pir::Value) -> adt::Result<adt::Ok> {
+      ++num_values;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(
+        VisitNativeIrInputBirValue(op_code_gen_ctx, packed_ir_op, Acc));
+    return num_values;
+  }
+
+  adt::Result<std::size_t> NumNativeIrOutputBirValues(
+      const OpCodeGenCtx& op_code_gen_ctx, const PackedIrOp& packed_ir_op) {
+    std::size_t num_values = 0;
+    auto Acc = [&](pir::Value) -> adt::Result<adt::Ok> {
+      ++num_values;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(
+        VisitNativeIrOutputBirValue(op_code_gen_ctx, packed_ir_op, Acc));
+    return num_values;
+  }
+
+  adt::Result<ClassAttrs> RefIrOpConvertFusionOpToClassAttrs(
+      const OpCodeGenCtx& op_code_gen_ctx, const RefIrOp& ref_ir_op) {
+    ADT_LET_CONST_REF(
+        init_func, RefIrOpMakeInitFuncByFusionOp(op_code_gen_ctx, ref_ir_op));
+    ADT_LET_CONST_REF(
+        compute_func,
+        RefIrOpMakeComputeFuncByFusionOp(op_code_gen_ctx, ref_ir_op));
+    ADT_LET_CONST_REF(
+        load_from_register_func,
+        RefIrOpMakeLoadFromRegisterFuncByFusionOp(op_code_gen_ctx, ref_ir_op));
+    ADT_LET_CONST_REF(
+        store_to_register_func,
+        RefIrOpMakeStoreToRegisterFuncByFusionOp(op_code_gen_ctx, ref_ir_op));
+    std::string class_name = "RefIrOpClass";
+    adt::List<std::shared_ptr<axpr::ClassAttrsImpl<axpr::SerializableValue>>>
+        empty_bases{};
+    axpr::BuiltinObject<axpr::SerializableValue> methods{};
+    methods->Set("__init__", init_func);
+    methods->Set("compute", compute_func);
+    methods->Set("load_from_register", load_from_register_func);
+    methods->Set("store_to_register", load_from_register_func);
+    return ClassAttrs{class_name, empty_bases, methods};
+  }
+
+  adt::Result<Function> PackedIrOpMakeInitFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const IndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    return ir_graph.Match([&](const auto& impl) -> adt::Result<Function> {
+      return PackedIrOpMakeInitFuncByFusionOpImpl(
+          op_code_gen_ctx, impl, packed_ir_op);
+    });
+  }
+
+  adt::Result<Function> PackedIrOpMakeStoreToRegisterFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const IndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    return ir_graph.Match([&](const auto& impl) -> adt::Result<Function> {
+      return PackedIrOpMakeStoreToRegisterFuncByFusionOpImpl(
+          op_code_gen_ctx, impl, packed_ir_op);
+    });
+  }
+
+  adt::Result<Function> PackedIrOpMakeLoadFromRegisterFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const IndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    return ir_graph.Match([&](const auto& impl) -> adt::Result<Function> {
+      return PackedIrOpMakeLoadFromRegisterFuncByFusionOpImpl(
+          op_code_gen_ctx, impl, packed_ir_op);
+    });
+  }
+
+  adt::Result<Function> PackedIrOpMakeLoadFromRegisterFuncByFusionOpImpl(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const PureElementwiseIndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    axpr::LambdaExprBuilder lmbd;
+    auto GetMapFunc = [&](auto& ctx) -> axpr::AnfExpr {
+      auto& value_class_var =
+          ctx.Var("self").Attr("class_factory").Attr("get_value_class").Call();
+      auto& name_var = ctx.Var("indexed_ir_node_info_tuple").At(0);
+      auto& index_tuple_expr_var = ctx.Var("indexed_ir_node_info_tuple").At(1);
+      auto& dtype_var = ctx.Var("indexed_ir_node_info_tuple").At(2);
+      auto& input_var = value_class_var.Call(
+          index_tuple_expr_var, dtype_var, ctx.Var("input_local_var_name"));
+      return ctx.Var(axpr::kBuiltinList()).Call(name_var, input_var);
+    };
+    using AnfExprs = std::vector<axpr::AnfExpr>;
+    auto GetAllInputIndexedIrNodeInfo =
+        [&](auto* ctx) -> adt::Result<AnfExprs> {
+      AnfExprs ret;
+      auto DoEachNativeIrValue =
+          [&](pir::Value ir_value) -> adt::Result<adt::Ok> {
+        AnfExprs indexed_ir_info_tuple;
+        ADT_LET_CONST_REF(dtype, ConvertToDataType(ir_value));
+        for (const auto& input : ir_graph->inputs) {
+          if (input->value == ir_value) {
+            auto& info_var =
+                ctx->Var(axpr::kBuiltinList())
+                    .Call(ctx->String(input->GetUniqueNameInsideNodeArena()),
+                          ctx->Var("self").Attr("loop_index_tuple_expr"),
+                          ctx->Var("DataType").Attr(dtype.Name()));
+            indexed_ir_info_tuple.emplace_back(
+                static_cast<axpr::AnfExpr>(info_var));
+          }
+        }
+        auto& indexed_ir_info_var =
+            ctx->Var(axpr::kBuiltinList()).Apply(indexed_ir_info_tuple);
+        ret.emplace_back(static_cast<axpr::AnfExpr>(indexed_ir_info_var));
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(VisitNativeIrInputBirValue(
+          op_code_gen_ctx, packed_ir_op, DoEachNativeIrValue));
+      return ret;
+    };
+    auto GetBody = [&](auto& ctx) -> adt::Result<axpr::AnfExpr> {
+      const auto& map_func_var_name = ctx.NewTmpVarName();
+      ctx.Var(map_func_var_name) =
+          lmbd.Lambda({"indexed_ir_node_info_tuple"}, GetMapFunc);
+      ADT_LET_CONST_REF(indexed_nodes, GetAllInputIndexedIrNodeInfo(&ctx));
+      auto& indexed_nodes_var =
+          ctx.Var(axpr::kBuiltinList()).Apply(indexed_nodes);
+      auto& native_input_indexed_nodes_var =
+          indexed_nodes_var.At(ctx.Var("native_input_index"));
+      auto& items_var = ctx.Var("map").Call(ctx.Var(map_func_var_name),
+                                            native_input_indexed_nodes_var);
+      auto& ret = ctx.Var("OrderedDict").Call(items_var);
+      return static_cast<axpr::Atomic<axpr::AnfExpr>>(ret);
+    };
+    ADT_LET_CONST_REF(anf_expr,
+                      lmbd.TryLambda({"self",
+                                      "code_gen_ctx",
+                                      "input_local_var_name",
+                                      "native_input_index"},
+                                     GetBody));
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
+  }
+
+  adt::Result<Function> PackedIrOpMakeStoreToRegisterFuncByFusionOpImpl(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const PureElementwiseIndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    ADT_CHECK(ir_graph->yield_op_inputs.size() == ir_graph->outputs.size());
+    auto GetOutputIndex =
+        [&](pir::Value output) -> adt::Result<std::optional<int>> {
+      for (int i = 0; i < ir_graph->outputs.size(); ++i) {
+        if (output == ir_graph->outputs.at(i)) {
+          return i;
+        }
+      }
+      return std::nullopt;
+    };
+    axpr::LambdaExprBuilder lmbd;
+    using AnfExprs = std::vector<axpr::AnfExpr>;
+    auto GetAllOutputIndexedIrNodeInfo =
+        [&](auto* ctx) -> adt::Result<AnfExprs> {
+      AnfExprs ret;
+      auto DoEachNativeIrValue =
+          [&](pir::Value ir_value) -> adt::Result<adt::Ok> {
+        ADT_LET_CONST_REF(dtype, ConvertToDataType(ir_value));
+        ADT_LET_CONST_REF(opt_idx, GetOutputIndex(ir_value));
+        ADT_CHECK(opt_idx.has_value());
+        const auto& output = ir_graph->yield_op_inputs.at(opt_idx.value());
+        auto& indexed_ir_info_tuple =
+            ctx->Var(axpr::kBuiltinList())
+                .Call(ctx->String(output->GetUniqueNameInsideNodeArena()),
+                      ctx->Var("self").Attr("loop_index_tuple_expr"),
+                      ctx->Var("DataType").Attr(dtype.Name()));
+        ret.emplace_back(indexed_ir_info_tuple);
+        return adt::Ok{};
+      };
+      ADT_RETURN_IF_ERR(VisitNativeIrOutputBirValue(
+          op_code_gen_ctx, packed_ir_op, DoEachNativeIrValue));
+      return ret;
+    };
+
+    auto GetBody = [&](auto& ctx) -> adt::Result<axpr::AnfExpr> {
+      ADT_LET_CONST_REF(indexed_nodes, GetAllOutputIndexedIrNodeInfo(&ctx));
+      auto& indexed_nodes_var =
+          ctx.Var(axpr::kBuiltinList()).Apply(indexed_nodes);
+      auto& native_output_indexed_node_var =
+          indexed_nodes_var.At(ctx.Var("native_output_index"));
+      auto& name_var = native_output_indexed_node_var.At(0);
+      auto& output_var = ctx.Var("compute_results").At(name_var);
+      auto& value_class_var =
+          ctx.Var("self").Attr("class_factory").Attr("get_value_class").Call();
+      auto& index_tuple_expr_var = native_output_indexed_node_var.At(1);
+      auto& dtype_var = native_output_indexed_node_var.At(2);
+      auto& store_var = value_class_var.Call(
+          index_tuple_expr_var, dtype_var, ctx.Var("out_value_local_var_name"));
+      ctx.Var("code_gen_ctx").Attr("assign").Call(store_var, output_var);
+      return ctx.None();
+    };
+    ADT_LET_CONST_REF(anf_expr,
+                      lmbd.TryLambda({"self",
+                                      "code_gen_ctx",
+                                      "compute_results",
+                                      "out_value_local_var_name",
+                                      "native_output_index"},
+                                     GetBody));
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
+  }
+
+  adt::Result<Function> PackedIrOpMakeComputeFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const IndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    return ir_graph.Match([&](const auto& impl) -> adt::Result<Function> {
+      return PackedIrOpMakeComputeFuncByFusionOpImpl(
+          op_code_gen_ctx, impl, packed_ir_op);
+    });
+  }
+
+  adt::Result<Function> PackedIrOpMakeComputeFuncByFusionOpImpl(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const PureElementwiseIndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    axpr::LambdaExprBuilder lmbd;
+    using Ok = adt::Result<adt::Ok>;
+    auto UnpackInputs = [&](auto* ctx) -> Ok {
+      for (const auto& input : ir_graph->inputs) {
+        const auto& name = input->GetUniqueNameInsideNodeArena();
+        ctx->Var(name) = ctx->Var("inputs").At(ctx->String(name));
+      }
+      return adt::Ok{};
+    };
+    auto ComputeNativeOpCodeGen = [&](auto* ctx,
+                                      const auto& indexed_ir_op) -> Ok {
+      ADT_LET_CONST_REF(input_var_names, GetInputVarNames(indexed_ir_op));
+      const auto& indexed_ir_op_name =
+          indexed_ir_op->GetUniqueNameInsideNodeArena();
+      ADT_LET_CONST_REF(output_var_names, GetOutputVarNames(indexed_ir_op));
+      std::vector<axpr::AnfExpr> args{ctx->Var("code_gen_ctx")};
+      args.reserve(input_var_names.size() + 1);
+      for (const auto& input_var_name : input_var_names) {
+        args.push_back(ctx->Var(input_var_name));
+      }
+      auto& outputs_var = ctx->Var("self").Attr(indexed_ir_op_name).Apply(args);
+      for (int i = 0; i < output_var_names.size(); ++i) {
+        const auto& output_var_name = output_var_names.at(i);
+        ctx->Var(output_var_name) = outputs_var.At(i);
+      }
+      return adt::Ok{};
+    };
+    auto PackedOutputs = [&](auto* ctx) -> adt::Result<axpr::AnfExpr> {
+      std::vector<axpr::AnfExpr> yield_op_input_items;
+      yield_op_input_items.reserve(ir_graph->yield_op_inputs.size());
+      for (const auto& yield_op_input : ir_graph->yield_op_inputs) {
+        const auto& name = yield_op_input->GetUniqueNameInsideNodeArena();
+        const auto& pair =
+            ctx->Call(axpr::kBuiltinList(), ctx->String(name), ctx->Var(name));
+        yield_op_input_items.emplace_back(static_cast<axpr::AnfExpr>(pair));
+      }
+      const auto& items = ctx->Call(axpr::kBuiltinList(), yield_op_input_items);
+      return ctx->Call("OrderedDict", items);
+    };
+    auto GetBody = [&](auto& ctx) -> adt::Result<axpr::AnfExpr> {
+      auto* ctx_ptr = &ctx;
+      ADT_RETURN_IF_ERR(UnpackInputs(ctx_ptr));
+      ADT_RETURN_IF_ERR(
+          VisitIndexedIrOp(ir_graph, [&](const auto& indexed_ir_op) -> Ok {
+            return ComputeNativeOpCodeGen(ctx_ptr, indexed_ir_op);
+          }));
+      ADT_LET_CONST_REF(packed_outputs, PackedOutputs(ctx_ptr));
+      return packed_outputs;
+    };
+    std::vector<std::string> arg_names{"self", "code_gen_ctx", "inputs"};
+    ADT_LET_CONST_REF(anf_expr, lmbd.TryLambda(arg_names, GetBody));
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
+  }
+
+  adt::Result<std::vector<std::string>> GetInputVarNames(
+      const IndexedIrOp<IndexedIrNode>& indexed_ir_op) const {
+    ADT_LET_CONST_REF(upstreams, indexed_ir_op->node.UpstreamNodes());
+    std::vector<std::string> ret{};
+    ret.reserve(upstreams.size());
+    auto DoEach = [&](const auto& node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(ir_node, node.Get());
+      ADT_LET_CONST_REF(
+          ir_value, ir_node.template TryGet<IndexedIrValue<IndexedIrNode>>());
+      ret.push_back(ir_value->GetUniqueNameInsideNodeArena());
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(upstreams.VisitNodes(DoEach));
+    return ret;
+  }
+
+  adt::Result<std::vector<std::string>> GetOutputVarNames(
+      const IndexedIrOp<IndexedIrNode>& indexed_ir_op) {
+    ADT_LET_CONST_REF(downstreams, indexed_ir_op->node.DownstreamNodes());
+    std::vector<std::string> ret{};
+    ret.reserve(downstreams.size());
+    auto DoEach = [&](const auto& node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(ir_node, node.Get());
+      ADT_LET_CONST_REF(
+          ir_value, ir_node.template TryGet<IndexedIrValue<IndexedIrNode>>());
+      ret.push_back(ir_value->GetUniqueNameInsideNodeArena());
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(downstreams.VisitNodes(DoEach));
+    return ret;
+  }
+
+  adt::Result<Function> PackedIrOpMakeInitFuncByFusionOpImpl(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const PureElementwiseIndexedIrGraph& ir_graph,
+      const PackedIrOp& packed_ir_op) {
+    axpr::LambdaExprBuilder lmbd;
+    using Ok = adt::Result<adt::Ok>;
+    auto ConstructNativeOpCodeGen = [&](auto* ctx,
+                                        const auto& indexed_ir_op) -> Ok {
+      const auto& op_name = indexed_ir_op->op->name();
+      auto& class_var = ctx->Var("get_native_op_code_generator_class")
+                            .Call(ctx->String(op_name));
+      {
+        std::vector<axpr::AnfExpr> input_dtype_anf_exprs;
+        for (int i = 0; i < indexed_ir_op->op->num_operands(); ++i) {
+          ADT_LET_CONST_REF(
+              dtype, ConvertToDataType(indexed_ir_op->op->operand_source(i)));
+          const auto& dtype_var = ctx->Var("DataType").Attr(dtype.Name());
+          input_dtype_anf_exprs.emplace_back(
+              static_cast<axpr::AnfExpr>(dtype_var));
+        }
+        ctx->Var("input_dtypes") =
+            ctx->Call(axpr::kBuiltinList(), input_dtype_anf_exprs);
+      }
+      {
+        std::vector<axpr::AnfExpr> output_dtype_anf_exprs;
+        for (int i = 0; i < indexed_ir_op->op->num_results(); ++i) {
+          ADT_LET_CONST_REF(dtype,
+                            ConvertToDataType(indexed_ir_op->op->result(i)));
+          const auto& dtype_var = ctx->Var("DataType").Attr(dtype.Name());
+          output_dtype_anf_exprs.emplace_back(
+              static_cast<axpr::AnfExpr>(dtype_var));
+        }
+        ctx->Var("output_dtypes") =
+            ctx->Call(axpr::kBuiltinList(), output_dtype_anf_exprs);
+      }
+      {
+        std::vector<axpr::AnfExpr> input_index_tuple_exprs;
+        input_index_tuple_exprs.reserve(indexed_ir_op->op->num_operands());
+        for (int i = 0; i < indexed_ir_op->op->num_operands(); ++i) {
+          input_index_tuple_exprs.emplace_back(
+              ctx->Var("loop_index_tuple_expr"));
+        }
+        ctx->Var("input_index_tuple_exprs") =
+            ctx->Call(axpr::kBuiltinList(), input_index_tuple_exprs);
+      }
+      {
+        std::vector<axpr::AnfExpr> output_index_tuple_exprs;
+        output_index_tuple_exprs.reserve(indexed_ir_op->op->num_results());
+        for (int i = 0; i < indexed_ir_op->op->num_results(); ++i) {
+          output_index_tuple_exprs.emplace_back(
+              ctx->Var("loop_index_tuple_expr"));
+        }
+        ctx->Var("output_index_tuple_exprs") =
+            ctx->Call(axpr::kBuiltinList(), output_index_tuple_exprs);
+      }
+      const auto& indexed_op_name =
+          indexed_ir_op->GetUniqueNameInsideNodeArena();
+      axpr::AnfExpr indexed_op =
+          class_var.Call(ctx->Var("index_expr_code_gen"),
+                         ctx->String(indexed_op_name),
+                         ctx->Var("input_dtypes"),
+                         ctx->Var("output_dtypes"),
+                         ctx->Var("input_index_tuple_exprs"),
+                         ctx->Var("output_index_tuple_exprs"),
+                         /*attrs*/ ctx->None());
+      ctx->Var("self").SetAttr(indexed_op_name, indexed_op);
+      return adt::Ok{};
+    };
+    auto GetBody = [&](auto& ctx) -> adt::Result<axpr::AnfExpr> {
+      ctx.Var("self").SetAttr("class_factory", ctx.Var("class_factory"));
+      ctx.Var("self").SetAttr("loop_index_tuple_expr",
+                              ctx.Var("loop_index_tuple_expr"));
+      ctx.Var("index_expr_code_generator_class") =
+          ctx.Var("class_factory")
+              .Attr("get_index_expr_code_generator_class")
+              .Call();
+      ctx.Var("index_expr_code_gen") =
+          ctx.Var("index_expr_code_generator_class")
+              .Call(ctx.Var("loop_var_names"));
+      ctx.Var("get_native_op_code_generator_class") =
+          ctx.Var("class_factory")
+              .Attr("get_native_op_code_generator_class")
+              .Call();
+      auto* ctx_ptr = &ctx;
+      ADT_RETURN_IF_ERR(
+          VisitIndexedIrOp(ir_graph, [&](const auto& indexed_ir_op) -> Ok {
+            return ConstructNativeOpCodeGen(ctx_ptr, indexed_ir_op);
+          }));
+      return ctx.None();
+    };
+    ADT_LET_CONST_REF(anf_expr,
+                      lmbd.TryLambda({"self",
+                                      "class_factory",
+                                      "loop_index_tuple_expr",
+                                      "loop_var_names"},
+                                     GetBody));
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
+  }
+
+  template <typename DoEachIndexIrNodeT>
+  adt::Result<adt::Ok> VisitIndexedIrOp(
+      const PureElementwiseIndexedIrGraph& ir_graph,
+      const DoEachIndexIrNodeT& DoEachIndexIrNode) {
+    for (const auto& node : ir_graph->node_arena->nodes()) {
+      if (node.template Has<IndexedIrOp<IndexedIrNode>>()) {
+        ADT_RETURN_IF_ERR(
+            DoEachIndexIrNode(node.template Get<IndexedIrOp<IndexedIrNode>>()));
+      }
+    }
+    return adt::Ok{};
+  }
+
+  adt::Result<Function> RefIrOpMakeInitFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx, const RefIrOp& ref_ir_op) {
+    axpr::LambdaExprBuilder lmbd;
+    auto GetBody = [](auto& ctx) {
+      ctx.Var("self").SetAttr("class_factory", ctx.Var("class_factory"));
+      ctx.Var("self").SetAttr("loop_index_tuple_expr",
+                              ctx.Var("loop_index_tuple_expr"));
+      return ctx.None();
+    };
+    const auto& anf_expr = lmbd.Lambda(
+        {"self", "class_factory", "loop_index_tuple_expr", "loop_var_names"},
+        GetBody);
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
+  }
+
+  adt::Result<Function> RefIrOpMakeComputeFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx, const RefIrOp& ref_ir_op) {
+    axpr::LambdaExprBuilder lmbd;
+    auto GetBody = [](auto& ctx) -> axpr::AnfExpr { return ctx.Var("inputs"); };
+    const auto& anf_expr =
+        lmbd.Lambda({"self", "code_gen_ctx", "inputs"}, GetBody);
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
+  }
+
+  adt::Result<Function> RefIrOpMakeLoadFromRegisterFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx, const RefIrOp& ref_ir_op) {
+    pir::Value value = ref_ir_op.ref_node_info->ir_value.value;
+    ADT_LET_CONST_REF(dtype, ConvertToDataType(value));
+    axpr::LambdaExprBuilder lmbd;
+    auto GetBody = [&](auto& ctx) {
+      auto& value_class_var =
+          ctx.Var("self").Attr("class_factory").Attr("get_value_class").Call();
+      auto& index_tuple_expr_var =
+          ctx.Var("self").Attr("loop_index_tuple_expr");
+      auto& dtype_var = ctx.Var("DataType").Attr(dtype.Name());
+      auto& input_var = value_class_var.Call(
+          index_tuple_expr_var, dtype_var, ctx.Var("input_local_var_name"));
+      return ctx.Var("OrderedDict")
+          .Call(ctx.Var(axpr::kBuiltinList())
+                    .Call(ctx.Var(axpr::kBuiltinList())
+                              .Call(ctx.String("sole_ir_value"), input_var)));
+    };
+    const auto& anf_expr = lmbd.Lambda(
+        {"self", "code_gen_ctx", "input_local_var_name", "native_input_index"},
+        GetBody);
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
+  }
+
+  adt::Result<Function> RefIrOpMakeStoreToRegisterFuncByFusionOp(
+      const OpCodeGenCtx& op_code_gen_ctx, const RefIrOp& ref_ir_op) {
+    pir::Value value = ref_ir_op.ref_node_info->ir_value.value;
+    ADT_LET_CONST_REF(dtype, ConvertToDataType(value));
+    axpr::LambdaExprBuilder lmbd;
+    auto GetBody = [&](auto& ctx) {
+      auto& value_class_var =
+          ctx.Var("self").Attr("class_factory").Attr("get_value_class").Call();
+      auto& index_tuple_expr_var =
+          ctx.Var("self").Attr("loop_index_tuple_expr");
+      auto& dtype_var = ctx.Var("DataType").Attr(dtype.Name());
+      auto& output_var = value_class_var.Call(
+          index_tuple_expr_var, dtype_var, ctx.Var("out_value_local_var_name"));
+      ctx.Var("code_gen_ctx")
+          .Attr("assign")
+          .Call(output_var,
+                ctx.Var("compute_results").At(ctx.String("sole_ir_value")));
+      return ctx.None();
+    };
+    const auto& anf_expr = lmbd.Lambda({"self",
+                                        "code_gen_ctx",
+                                        "compute_results",
+                                        "out_value_local_var_name",
+                                        "native_output_index"},
+                                       GetBody);
+    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    ADT_LET_CONST_REF(
+        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
+    ADT_LET_CONST_REF(lambda,
+                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
+    return Function{lambda, std::nullopt};
   }
 
   using NativeOrRefIrValue = ir_match::NativeOrRefIrValue<BirNode>;
 
-  adt::Result<std::string> GetBoundLocalVarName(
-      const OpCodeGenCtx& op_code_gen_ctx, const NativeOrRefIrValue& ir_value) {
-    for (const auto& [var_name, v] : op_code_gen_ctx->local_var_binding) {
-      if (v == ir_value) {
-        return var_name;
-      }
-    }
-    return adt::errors::KeyError{"no local var bounded."};
-  }
-
-  adt::Result<std::pair<NativeIrValue, RefIrValue>> GetInputOutput(
-      const OpCodeGenCtx& op_code_gen_ctx, const RefIrOp& ref_ir_op) const {
-    DefaultDrrGraph drr_graph;
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitNativeIrInputBirValue(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const PackedIrOp& packed_ir_op,
+      const DoEachT& DoEach) {
     ADT_LET_CONST_REF(graph_match_ctx, GetGraphMatchCtx(op_code_gen_ctx));
-    ADT_LET_CONST_REF(drr_opt_packed_ir_op_node,
-                      graph_match_ctx->GetMatchedSmallGraphNode(ref_ir_op));
-    ADT_LET_CONST_REF(drr_opt_packed_ir_op, drr_opt_packed_ir_op_node.Get());
-    ADT_LET_CONST_REF(
-        drr_opt_op_operand,
-        drr_graph.template CastSoleUnignoredInput<DrrOptPackedIrOpOperand>(
-            drr_opt_packed_ir_op));
-    ADT_LET_CONST_REF(
-        drr_op_input,
-        drr_graph.template CastSoleUnignoredInput<DrrNativeIrValue>(
-            drr_opt_op_operand));
-    ADT_LET_CONST_REF(
-        drr_opt_op_result,
-        drr_graph.template CastSoleUnignoredOutput<DrrOptPackedIrOpResult>(
-            drr_opt_packed_ir_op));
-    ADT_LET_CONST_REF(
-        drr_op_output,
-        drr_graph.template CastSoleUnignoredOutput<DrrNativeIrValue>(
-            drr_opt_op_result));
-    ADT_LET_CONST_REF(pir_op_input,
-                      graph_match_ctx->GetSoleBigGraphNode(drr_op_input->node));
-    ADT_LET_CONST_REF(
-        pir_op_output,
-        graph_match_ctx->GetSoleBigGraphNode(drr_op_output->node));
-    ADT_LET_CONST_REF(pir_op_input_ir_value,
-                      pir_op_input.template TryGet<NativeIrValue>());
-    ADT_LET_CONST_REF(pir_op_output_ir_ref_value,
-                      pir_op_output.template TryGet<RefIrValue>());
-    return std::make_pair(pir_op_input_ir_value, pir_op_output_ir_ref_value);
-  }
-
-  adt::Result<std::string> PackedIrOpCodeGen(
-      const OpCodeGenCtx& op_code_gen_ctx, const PackedIrOp& packed_ir_op) {
-    const auto& loop_indexes_expr = op_code_gen_ctx->loop_index_tuple_expr;
-    ADT_LET_CONST_REF(
-        ir_graph,
-        CreatePureElementwiseIndexedIrGraph(packed_ir_op, loop_indexes_expr));
-    ADT_LET_CONST_REF(ss,
-                      IrGraphCodeGen(op_code_gen_ctx, ir_graph, packed_ir_op));
-    return ss.str();
-  }
-
-  adt::Result<std::ostringstream> IrGraphCodeGen(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const IndexedIrGraph& ir_graph,
-      const PackedIrOp& packed_ir_op) {
-    return ir_graph.Match(
-        [&](const auto& impl) -> adt::Result<std::ostringstream> {
-          return IrGraphCodeGenImpl(op_code_gen_ctx, impl, packed_ir_op);
-        });
-  }
-
-  using IrGraphNode = graph::Node<IndexedIrNode>;
-
-  struct IrGraphNodeInfoImpl {
-    std::optional<std::string> global_ptr_name;
-    std::string local_var_name;
-  };
-  DEFINE_ADT_RC(IrGraphNodeInfo, IrGraphNodeInfoImpl);
-
-  struct IrGraphTranslateCtx {
-    std::unordered_map<IrGraphNode, IrGraphNodeInfo> node2value;
-
-    adt::Result<adt::Ok> Emplace(const IrGraphNode& node,
-                                 const IrGraphNodeInfo& value) {
-      ADT_CHECK(TryEmplace(node, value));
-      return adt::Ok{};
-    }
-
-    bool TryEmplace(const IrGraphNode& node, const IrGraphNodeInfo& value) {
-      return this->node2value.emplace(node, value).second;
-    }
-
-    adt::Result<IrGraphNodeInfo> Get(const IrGraphNode& node) const {
-      const auto& iter = this->node2value.find(node);
-      ADT_CHECK(iter != this->node2value.end());
-      return iter->second;
-    }
-  };
-
-  adt::Result<std::ostringstream> IrGraphCodeGenImpl(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const PureElementwiseIndexedIrGraph& ir_graph,
-      const PackedIrOp& packed_ir_op) {
-    std::ostringstream ss;
-    IrGraphTranslateCtx ctx{};
-    const auto& loop_var_names = op_code_gen_ctx->loop_var_names;
-    using OptStr = std::optional<std::string>;
-    auto ArgName4DimExpr = [&](const symbol::DimExpr& dim_expr) -> OptStr {
-      code_gen::DimExprKernelArgId<PirNode> kernel_arg_id{dim_expr};
-      const auto iter =
-          op_code_gen_ctx->kernel_arg_id2arg_name.find(kernel_arg_id);
-      if (iter == op_code_gen_ctx->kernel_arg_id2arg_name.end()) {
-        return std::nullopt;
-      }
-      return iter->second;
+    ADT_LET_CONST_REF(drr_trivial_fusion_ir_op,
+                      GetDrrTrivialFusionIrOp(graph_match_ctx, packed_ir_op));
+    auto DoEachNativeValue =
+        [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(value, GetPirValue(graph_match_ctx, drr_ir_value));
+      return DoEach(value);
     };
-    IndexTupleExprCodeGenerator indexes_expr_gen(
-        &ss, loop_var_names, ArgName4DimExpr);
-    ADT_RETURN_IF_ERR(CodeGenInputs(
-        &ss, &ctx, &indexes_expr_gen, op_code_gen_ctx, ir_graph, packed_ir_op));
-    ADT_RETURN_IF_ERR(CodeGenBody(&ss, &ctx, op_code_gen_ctx, ir_graph));
-    ADT_RETURN_IF_ERR(CodeGenOutputs(
-        &ss, &ctx, &indexes_expr_gen, op_code_gen_ctx, ir_graph, packed_ir_op));
-    return ss;
-  }
-
-  adt::Result<adt::Ok> CodeGenInputs(
-      std::ostringstream* ss,
-      IrGraphTranslateCtx* ctx,
-      IndexTupleExprCodeGenerator* indexes_expr_gen,
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const PureElementwiseIndexedIrGraph& ir_graph,
-      const PackedIrOp& packed_ir_op) {
-    LOG(ERROR) << "CodeGenInputs enter:\n" << ss->str();
-    std::unordered_set<pir::Value> registered_values;
-    auto DoEachDeclare = [&](pir::Value value) -> adt::Result<adt::Ok> {
-      if (!registered_values.emplace(value).second) {
-        return adt::Ok{};
-      }
-      ADT_LET_CONST_REF(node_info,
-                        MakeInputIrGraphNodeInfo(op_code_gen_ctx, value));
-      ADT_LET_CONST_REF(ir_value, ir_graph->GetIndexedIrValue(value));
-      LOG(ERROR) << "CodeGenInputs value: " << value.impl() << ", node_id: "
-                 << std::to_string(ir_value->node.node_id().value());
-      ADT_RETURN_IF_ERR(
-          InitIrGraphTranslateCtxNodeInfo(ctx, ir_value, node_info));
-      ADT_RETURN_IF_ERR(GenLoadCode(ss, indexes_expr_gen, ir_value, node_info));
+    auto DoEachPackedValue =
+        [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
+      // Do nothing.
       return adt::Ok{};
     };
-    ADT_RETURN_IF_ERR(VisitInputBirNativeIrValue(
-        op_code_gen_ctx, packed_ir_op, DoEachDeclare));
-    LOG(ERROR) << "CodeGenInputs leave:\n" << ss->str();
-    return adt::Ok{};
+    return VisitDrrTrivialFusionIrOpInput(
+        drr_trivial_fusion_ir_op, DoEachNativeValue, DoEachPackedValue);
   }
-
-  adt::Result<adt::Ok> GenLoadCode(
-      std::ostringstream* ss,
-      IndexTupleExprCodeGenerator* indexes_expr_gen,
-      const IndexedIrValue<IndexedIrNode>& ir_value,
-      const IrGraphNodeInfo& node_info) {
-    if (!node_info->global_ptr_name.has_value()) {
-      return adt::Ok{};
-    }
-    const auto& global_ptr_name = node_info->global_ptr_name.value();
-    const auto& indexes_expr = ir_value->indexes_expr;
-    ADT_LET_CONST_REF(index_var_name, indexes_expr_gen->CodeGen(indexes_expr));
-    (*ss) << "auto " << node_info->local_var_name << " = " << global_ptr_name
-          << "[" << index_var_name << "];\n";
-    return adt::Ok{};
-  }
-
-  adt::Result<IrGraphNodeInfo> MakeInputIrGraphNodeInfo(
-      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
-    using InArg = code_gen::InTensorDataPtrKernelArgId<BirNode>;
-    return MakeIrGraphNodeInfo<InArg>(op_code_gen_ctx, value);
-  }
-
-  adt::Result<IrGraphNodeInfo> MakeOutputIrGraphNodeInfo(
-      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
-    using OutArg = code_gen::OutTensorDataPtrKernelArgId<BirNode>;
-    return MakeIrGraphNodeInfo<OutArg>(op_code_gen_ctx, value);
-  }
-
-  template <typename KernelArgIdImpl>
-  adt::Result<IrGraphNodeInfo> MakeIrGraphNodeInfo(
-      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
-    ADT_LET_CONST_REF(
-        opt_kernel_arg_name,
-        GetKernelArgName<KernelArgIdImpl>(op_code_gen_ctx, value));
-    std::optional<std::string> default_global_ptr_name;
-    std::optional<std::string> default_local_var_name;
-    if (opt_kernel_arg_name.has_value()) {
-      default_global_ptr_name = opt_kernel_arg_name.value();
-      default_local_var_name = opt_kernel_arg_name.value() + "_local_var";
-    }
-    return MakeIrGraphNodeInfoByNames(op_code_gen_ctx,
-                                      default_global_ptr_name,
-                                      default_local_var_name,
-                                      value);
-  }
-
-  template <typename KernelArgIdImpl>
-  adt::Result<std::optional<std::string>> GetKernelArgName(
-      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
-    BirNode pir_node{NativeIrValue{value}};
-    KernelArgIdImpl kernel_arg_id_impl{pir_node};
-    code_gen::KernelArgId<BirNode> kernel_arg_id{kernel_arg_id_impl};
-    const auto& iter =
-        op_code_gen_ctx->kernel_arg_id2arg_name.find(kernel_arg_id);
-    if (iter == op_code_gen_ctx->kernel_arg_id2arg_name.end()) {
-      return std::nullopt;
-    }
-    return iter->second;
-  }
-
-  adt::Result<IrGraphNodeInfo> MakeIrGraphNodeInfoByNames(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const std::optional<std::string>& default_global_ptr_name,
-      const std::optional<std::string>& default_local_var_name,
-      pir::Value value) {
-    ADT_LET_CONST_REF(opt_local_var_name,
-                      GetReplacedLocalVar(op_code_gen_ctx, value));
-    std::optional<std::string> global_ptr_name{};
-    std::string local_var_name{};
-    if (opt_local_var_name.has_value()) {
-      global_ptr_name = std::nullopt;
-      local_var_name = opt_local_var_name.value();
-    } else {
-      ADT_CHECK(default_global_ptr_name.has_value());
-      global_ptr_name = default_global_ptr_name.value();
-      ADT_CHECK(default_local_var_name.has_value());
-      local_var_name = default_local_var_name.value();
-    }
-    return IrGraphNodeInfo{global_ptr_name, local_var_name};
-  }
-
-  adt::Result<adt::Ok> CodeGenOutputs(
-      std::ostringstream* ss,
-      IrGraphTranslateCtx* ctx,
-      IndexTupleExprCodeGenerator* indexes_expr_gen,
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const PureElementwiseIndexedIrGraph& ir_graph,
-      const PackedIrOp& packed_ir_op) {
-    std::unordered_set<pir::Value> registered_values;
-    auto DoEachDeclare = [&](pir::Value value) -> adt::Result<adt::Ok> {
-      if (!registered_values.emplace(value).second) {
-        return adt::Ok{};
-      }
-      ADT_LET_CONST_REF(yield_op_input,
-                        GetYieldOpInputIndexedIrValue(ir_graph, value));
-      ADT_LET_CONST_REF(yield_op_input_node_info,
-                        ctx->Get(yield_op_input->node));
-      ADT_LET_CONST_REF(output_node_info,
-                        MakeOutputIrGraphNodeInfo(op_code_gen_ctx, value));
-      ADT_RETURN_IF_ERR(GenStoreCode(ss,
-                                     indexes_expr_gen,
-                                     yield_op_input->indexes_expr,
-                                     yield_op_input_node_info,
-                                     output_node_info));
-      return adt::Ok{};
-    };
-    ADT_RETURN_IF_ERR(
-        VisitOutputNativeIrValue(op_code_gen_ctx, packed_ir_op, DoEachDeclare));
-    return adt::Ok{};
-  }
-
-  adt::Result<IndexedIrValue<IndexedIrNode>> GetYieldOpInputIndexedIrValue(
-      const PureElementwiseIndexedIrGraph& ir_graph, pir::Value output) {
-    ADT_CHECK(ir_graph->yield_op_inputs.size() == ir_graph->outputs.size());
-    std::optional<IndexedIrValue<IndexedIrNode>> yield_op_input;
-    for (int i = 0; i < ir_graph->yield_op_inputs.size(); ++i) {
-      if (ir_graph->outputs.at(i) == output) {
-        yield_op_input = ir_graph->yield_op_inputs.at(i);
-        break;
-      }
-    }
-    ADT_CHECK(yield_op_input.has_value())
-        << adt::errors::KeyError{std::string() + "no yield_op_input found."};
-    return yield_op_input.value();
-  }
-
-  adt::Result<adt::Ok> GenStoreCode(
-      std::ostringstream* ss,
-      IndexTupleExprCodeGenerator* indexes_expr_gen,
-      const index_expr::IndexTupleExpr& indexes_expr,
-      const IrGraphNodeInfo& yield_op_input_node_info,
-      const IrGraphNodeInfo& output_node_info) {
-    if (!output_node_info->global_ptr_name.has_value()) {
-      (*ss) << output_node_info->local_var_name << " = "
-            << yield_op_input_node_info->local_var_name << ";\n";
-    } else {
-      ADT_LET_CONST_REF(index_var_name,
-                        indexes_expr_gen->CodeGen(indexes_expr));
-      const auto& global_ptr_name = output_node_info->global_ptr_name.value();
-      (*ss) << global_ptr_name << "[" << index_var_name
-            << "] = " << yield_op_input_node_info->local_var_name << ";\n";
-    }
-    return adt::Ok{};
-  }
-
-  adt::Result<std::string> IndexesExprCodeGen(
-      const IndexTupleExpr& indexes_expr, std::ostringstream* ss) {}
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitInputBirNativeIrValue(
@@ -448,6 +808,28 @@ struct OpCudaCodeGenImpl {
     ADT_RETURN_IF_ERR(
         matc_ctx->VisitPackedBigGraphIrValueNode(node, DoEachPirNode));
     return adt::Ok{};
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitNativeIrOutputBirValue(
+      const OpCodeGenCtx& op_code_gen_ctx,
+      const PackedIrOp& packed_ir_op,
+      const DoEachT& DoEach) {
+    ADT_LET_CONST_REF(graph_match_ctx, GetGraphMatchCtx(op_code_gen_ctx));
+    ADT_LET_CONST_REF(drr_trivial_fusion_ir_op,
+                      GetDrrTrivialFusionIrOp(graph_match_ctx, packed_ir_op));
+    auto DoEachNativeValue =
+        [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(value, GetPirValue(graph_match_ctx, drr_ir_value));
+      return DoEach(value);
+    };
+    auto DoEachPackedValue =
+        [&](const auto& drr_ir_value) -> adt::Result<adt::Ok> {
+      // Do nothing.
+      return adt::Ok{};
+    };
+    return VisitDrrTrivialFusionIrOpOutput(
+        drr_trivial_fusion_ir_op, DoEachNativeValue, DoEachPackedValue);
   }
 
   template <typename DoEachT>
@@ -558,27 +940,6 @@ struct OpCudaCodeGenImpl {
     return downstreams.VisitNodes(DoEach);
   }
 
-  adt::Result<axpr::Lambda<axpr::CoreExpr>> GetNativeIrValueGetterLambda(
-      const DrrNativeIrValue& drr_native_ir_value) {
-    ADT_LET_CONST_REF(anf_expr,
-                      GetNativeIrValueGetterAnfExpr(drr_native_ir_value));
-    const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
-    ADT_LET_CONST_REF(
-        atomic, core_expr.template TryGet<axpr::Atomic<axpr::CoreExpr>>());
-    ADT_LET_CONST_REF(lambda,
-                      atomic.template TryGet<axpr::Lambda<axpr::CoreExpr>>());
-    return lambda;
-  }
-
-  adt::Result<axpr::AnfExpr> GetNativeIrValueGetterAnfExpr(
-      const DrrNativeIrValue& drr_native_ir_value) {
-    axpr::LambdaExprBuilder lmd{};
-    const std::string& name = drr_native_ir_value->name;
-    return lmd.Lambda({"ctx"}, [&](auto& ctx) {
-      return ctx.Var("ctx").Attr("tensor").Attr(name).Attr("data_ptr");
-    });
-  }
-
   adt::Result<pir::Value> GetPirValue(
       const GraphMatchCtx& graph_match_ctx,
       const DrrNativeIrValue& drr_native_ir_value) {
@@ -645,226 +1006,6 @@ struct OpCudaCodeGenImpl {
     const auto dense_tensor_type =
         value.type().dyn_cast<pir::DenseTensorType>();
     return dense_tensor_type.dtype();
-  }
-
-  adt::Result<adt::Ok> InitIrGraphTranslateCtxNodeInfo(
-      IrGraphTranslateCtx* ctx,
-      const IndexedIrValue<IndexedIrNode>& ir_value,
-      const IrGraphNodeInfo& node_info) {
-    ADT_RETURN_IF_ERR(ctx->Emplace(ir_value->node, node_info));
-    return adt::Ok{};
-  }
-
-  adt::Result<std::optional<std::string>> GetReplacedLocalVar(
-      const OpCodeGenCtx& op_code_gen_ctx, pir::Value value) {
-    ADT_LET_CONST_REF(local_var_bindings, GetLocalVarBindings(op_code_gen_ctx));
-    for (const auto& [local_var_name, native_or_ref] : *local_var_bindings) {
-      ADT_LET_CONST_REF(native_ir_value, native_or_ref.TryGet<NativeIrValue>());
-      if (native_ir_value.value == value) {
-        return std::optional<std::string>{local_var_name};
-      }
-    }
-    return std::optional<std::string>{std::nullopt};
-  }
-
-  adt::Result<const LocalVarBindingList*> GetLocalVarBindings(
-      const OpCodeGenCtx& op_code_gen_ctx) {
-    return &op_code_gen_ctx->local_var_binding;
-  }
-
-  adt::Result<adt::Ok> CodeGenBody(
-      std::ostringstream* ss,
-      IrGraphTranslateCtx* ctx,
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const PureElementwiseIndexedIrGraph& ir_graph) {
-    auto DoEach =
-        [&](const IndexedIrOp<IndexedIrNode>& ir_op) -> adt::Result<adt::Ok> {
-      return CodeGenOpCompute(ss, ctx, op_code_gen_ctx, ir_op);
-    };
-    return VisitOrderedIndexedIrOp(ir_graph, DoEach);
-  }
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitOrderedIndexedIrOp(
-      const PureElementwiseIndexedIrGraph& ir_graph, const DoEachT& DoEach) {
-    for (const auto& node : ir_graph->node_arena->nodes()) {
-      if (node.template Has<IndexedIrOp<IndexedIrNode>>()) {
-        ADT_RETURN_IF_ERR(
-            DoEach(node.template Get<IndexedIrOp<IndexedIrNode>>()));
-      }
-    }
-    return adt::Ok{};
-  }
-
-  adt::Result<adt::Ok> CodeGenOpCompute(
-      std::ostringstream* ss,
-      IrGraphTranslateCtx* ctx,
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const IndexedIrOp<IndexedIrNode>& ir_op) {
-    ADT_LET_CONST_REF(lambda, GetOpComputeLambda(op_code_gen_ctx, ir_op));
-    ADT_RETURN_IF_ERR(InsertOutputVarNameToCtx(ctx, ir_op));
-    ADT_LET_CONST_REF(input_var_names, GetInputVarNames(*ctx, ir_op));
-    ADT_LET_CONST_REF(output_var_names, GetOutputVarNames(*ctx, ir_op));
-    ADT_LET_CONST_REF(output_type_names, GetOutputTypeNames(ir_op));
-    ADT_RETURN_IF_ERR(
-        CodeGenOutputLocalVarDeclares(ss, output_type_names, output_var_names));
-    return CodeGenOpComputeByLambda(
-        ss, lambda, ir_op, input_var_names, output_var_names);
-  }
-
-  adt::Result<axpr::Function<axpr::SerializableValue>> GetOpComputeLambda(
-      const OpCodeGenCtx& op_code_gen_ctx,
-      const IndexedIrOp<IndexedIrNode>& ir_op) {
-    const auto& op_name = ir_op->op->name();
-    std::optional<axpr::Function<axpr::SerializableValue>> ret;
-    auto FetchLambda = [&](const auto& cell) -> adt::Result<adt::LoopCtrl> {
-      ret = cell->data;
-      if (ret.has_value()) {
-        return adt::Break{};
-      } else {
-        return adt::Continue{};
-      }
-    };
-    ADT_RETURN_IF_ERR(ForEachOpComputeLambda(op_name, FetchLambda));
-    ADT_CHECK(ret.has_value()) << adt::errors::AttributeError{
-        std::string() + "no op_compute lambda registered for op name '" +
-        op_name + "'."};
-    return ret.value();
-  }
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> ForEachOpComputeLambda(const std::string& op_name,
-                                              const DoEachT& DoEach) {
-    ADT_RETURN_IF_ERR(ap::registry::RegistryMgr::Singleton()->LoadAllOnce());
-    using RegistryVal = ap::registry::Value;
-    ADT_LET_CONST_REF(registry, ap::registry::RegistrySingleton::Singleton());
-    const auto& key2nice2op_computes = registry->op_compute_registry_items;
-    const auto& iter = key2nice2op_computes.find(op_name);
-    ADT_CHECK(iter != key2nice2op_computes.end())
-        << adt::errors::AttributeError{
-               std::string() + "no op_compute lambda registered for op name '" +
-               op_name + "'."};
-    const auto& nice2op_computes = iter->second;
-    for (const auto& [nice, op_computes] : nice2op_computes) {
-      for (const auto& op_compute : op_computes) {
-        if (op_compute->arch_type == "cuda") {
-          ADT_LET_CONST_REF(loop_ctrl, DoEach(op_compute->lambda));
-          if (loop_ctrl.template Has<adt::Break>()) {
-            break;
-          }
-        }
-      }
-    }
-    return adt::Ok{};
-  }
-
-  adt::Result<std::vector<std::string>> GetOutputTypeNames(
-      const IndexedIrOp<IndexedIrNode>& ir_op) {
-    ADT_LET_CONST_REF(downstreams, ir_op->node.DownstreamNodes());
-    std::vector<std::string> ret{};
-    ret.reserve(downstreams.size());
-    auto DoEach = [&](const auto& node) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(ir_node, node.Get());
-      ADT_LET_CONST_REF(
-          ir_value, ir_node.template TryGet<IndexedIrValue<IndexedIrNode>>());
-      ADT_LET_CONST_REF(data_type, ConvertToDataType(ir_value->value));
-      ret.push_back(data_type.Name());
-      return adt::Ok{};
-    };
-    ADT_RETURN_IF_ERR(downstreams.VisitNodes(DoEach));
-    return ret;
-  }
-
-  adt::Result<std::vector<std::string>> GetInputVarNames(
-      const IrGraphTranslateCtx& ctx, const IndexedIrOp<IndexedIrNode>& ir_op) {
-    ADT_LET_CONST_REF(upstreams, ir_op->node.UpstreamNodes());
-    std::vector<std::string> ret{};
-    ret.reserve(upstreams.size());
-    auto DoEach = [&](const auto& node) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(ir_node, node.Get());
-      ADT_CHECK(ir_node.template Has<IndexedIrValue<IndexedIrNode>>());
-      ADT_LET_CONST_REF(node_info, ctx.Get(node));
-      ret.push_back(node_info->local_var_name);
-      return adt::Ok{};
-    };
-    ADT_RETURN_IF_ERR(upstreams.VisitNodes(DoEach));
-    return ret;
-  }
-
-  adt::Result<std::vector<std::string>> GetOutputVarNames(
-      const IrGraphTranslateCtx& ctx, const IndexedIrOp<IndexedIrNode>& ir_op) {
-    ADT_LET_CONST_REF(downstreams, ir_op->node.DownstreamNodes());
-    std::vector<std::string> ret{};
-    ret.reserve(downstreams.size());
-    auto DoEach = [&](const auto& node) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(ir_node, node.Get());
-      ADT_CHECK(ir_node.template Has<IndexedIrValue<IndexedIrNode>>());
-      ADT_LET_CONST_REF(node_info, ctx.Get(node));
-      ret.push_back(node_info->local_var_name);
-      return adt::Ok{};
-    };
-    ADT_RETURN_IF_ERR(downstreams.VisitNodes(DoEach));
-    return ret;
-  }
-
-  adt::Result<adt::Ok> InsertOutputVarNameToCtx(
-      IrGraphTranslateCtx* ctx, const IndexedIrOp<IndexedIrNode>& ir_op) {
-    ADT_LET_CONST_REF(downstreams, ir_op->node.DownstreamNodes());
-    auto DoEach = [&](const auto& node) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(ir_node, node.Get());
-      ADT_CHECK(ir_node.template Has<IndexedIrValue<IndexedIrNode>>());
-      IrGraphNodeInfo node_info{std::nullopt,
-                                ap::common::NewUniqueId("_ap_local_var")};
-      ADT_RETURN_IF_ERR(ctx->Emplace(node, node_info));
-      return adt::Ok{};
-    };
-    ADT_RETURN_IF_ERR(downstreams.VisitNodes(DoEach));
-    return adt::Ok{};
-  }
-
-  adt::Result<adt::Ok> CodeGenOutputLocalVarDeclares(
-      std::ostringstream* ss,
-      const std::vector<std::string>& output_type_names,
-      const std::vector<std::string>& output_var_names) {
-    ADT_CHECK(output_var_names.size() == output_type_names.size());
-    for (int i = 0; i < output_var_names.size(); ++i) {
-      (*ss) << output_type_names.at(i) << " " << output_var_names.at(i)
-            << ";\n";
-    }
-    return adt::Ok{};
-  }
-
-  adt::Result<adt::Ok> CodeGenOpComputeByLambda(
-      std::ostringstream* ss,
-      const axpr::Function<axpr::SerializableValue>& lambda,
-      const IndexedIrOp<IndexedIrNode>& ir_op,
-      const std::vector<std::string>& input_var_names,
-      const std::vector<std::string>& output_var_names) {
-    const auto& inputs = ConvertToOpComputeList(input_var_names);
-    op_compute::Val inputs_val{inputs};
-    const auto& outputs = ConvertToOpComputeList(output_var_names);
-    op_compute::Val outputs_val{outputs};
-    // TODO(tianchao): support op attributes.
-    const auto& attrs = axpr::BuiltinObject<op_compute::Val>{};
-    op_compute::Val attrs_val{attrs};
-    axpr::CpsInterpreter<op_compute::Val> cps_expr_interpreter;
-    ADT_LET_CONST_REF(op_compute_code_gen_ret,
-                      cps_expr_interpreter.Interpret(
-                          lambda, {inputs_val, outputs_val, attrs_val}));
-    ADT_LET_CONST_REF(op_compute_str,
-                      op_compute_code_gen_ret.template TryGet<std::string>());
-    (*ss) << op_compute_str << ";\n";
-    return adt::Ok{};
-  }
-
-  adt::List<op_compute::Value> ConvertToOpComputeList(
-      const std::vector<std::string>& var_names) {
-    adt::List<op_compute::Value> ret{};
-    ret->reserve(var_names.size());
-    for (const auto& var_name : var_names) {
-      ret->emplace_back(var_name);
-    }
-    return ret;
   }
 };
 

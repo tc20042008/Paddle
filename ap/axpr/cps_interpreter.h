@@ -15,6 +15,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <set>
 #include <utility>
 #include "ap/axpr/adt.h"
 #include "ap/axpr/builtin_environment.h"
@@ -334,13 +335,85 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
       const Lambda<CoreExpr>& lambda,
       const std::vector<ValueT>& args,
       ComposedCallImpl<ValueT>* ret_composed_call) override {
-    ADT_CHECK(args.size() == lambda->args.size()) << TypeError{
-        std::string("<lambda>() takes ") + std::to_string(lambda->args.size()) +
-        " positional arguments but " + std::to_string(args.size()) +
-        " was given"};
-    for (int i = 0; i < args.size(); ++i) {
-      const auto& arg_name = lambda->args.at(i).value();
-      ADT_RETURN_IF_ERR(env->Set(arg_name, args.at(i)));
+    auto PassPackedArgs = [&](const std::optional<ValueT>& self,
+                              const ValueT& packed) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(packed_args,
+                        packed.template TryGet<PackedArgs<ValueT>>());
+      const auto& [pos_args, kwargs] = *packed_args;
+      int lambda_arg_idx = (self.has_value() ? 1 : 0);
+      ADT_CHECK(lambda_arg_idx + pos_args->size() <= lambda->args.size())
+          << TypeError{std::string("<lambda>() takes ") +
+                       std::to_string(lambda->args.size()) +
+                       "at most positional arguments but " +
+                       std::to_string(pos_args->size()) + " was given"};
+      std::set<std::string> passed_args;
+      if (self.has_value()) {
+        const auto& self_name = lambda->args.at(0).value();
+        passed_args.insert(self_name);
+        ADT_RETURN_IF_ERR(env->Set(self_name, self.value()));
+      }
+      for (int pos_arg_idx = 0; pos_arg_idx < pos_args->size();
+           ++pos_arg_idx, ++lambda_arg_idx) {
+        const auto& arg_name = lambda->args.at(lambda_arg_idx).value();
+        passed_args.insert(arg_name);
+        ADT_RETURN_IF_ERR(env->Set(arg_name, pos_args->at(pos_arg_idx)));
+      }
+      for (; lambda_arg_idx < lambda->args.size(); ++lambda_arg_idx) {
+        const auto& arg_name = lambda->args.at(lambda_arg_idx).value();
+        if (passed_args.count(arg_name) > 0) {
+          return adt::errors::TypeError{
+              std::string() + "<lambda>() got multiple values for argument '" +
+              arg_name + "'"};
+        }
+        passed_args.insert(arg_name);
+        ADT_LET_CONST_REF(kwarg, kwargs->Get(arg_name))
+            << adt::errors::TypeError{
+                   std::string() +
+                   "<lambda>() missing 1 required positional argument: '" +
+                   arg_name + "'"};
+        ADT_RETURN_IF_ERR(env->Set(arg_name, kwarg));
+      }
+      for (const auto& [key, _] : kwargs->storage) {
+        ADT_CHECK(passed_args.count(key) > 0) << adt::errors::TypeError{
+            std::string() + "<lambda>() got an unexpected keyword argument '" +
+            key + "'"};
+      }
+      return adt::Ok{};
+    };
+    if (args.size() == 1 && args.at(0).template Has<PackedArgs<ValueT>>()) {
+      ADT_RETURN_IF_ERR(
+          PassPackedArgs(/*self=*/std::nullopt, /*packed=*/args.at(0)));
+    } else if (args.size() == 2 &&
+               args.at(1).template Has<PackedArgs<ValueT>>()) {
+      ADT_RETURN_IF_ERR(
+          PassPackedArgs(/*self=*/args.at(0), /*packed=*/args.at(1)));
+    } else {
+      if (args.size() > lambda->args.size()) {
+        return adt::errors::TypeError{
+            std::string("<lambda>() takes ") +
+            std::to_string(lambda->args.size()) + " positional arguments but " +
+            std::to_string(args.size()) + " was given"};
+      }
+      if (args.size() < lambda->args.size()) {
+        if (args.size() + 1 == lambda->args.size()) {
+          return adt::errors::TypeError{
+              "<lambda>() mising 1 required positional argument: '" +
+              lambda->args.at(args.size()).value() + "'"};
+        } else {
+          std::ostringstream ss;
+          ss << "<lambda>() mising " << (lambda->args.size() - args.size())
+             << " required positional arguments: ";
+          ss << "'" << lambda->args.at(args.size()).value() << "'";
+          for (int i = args.size() + 1; i < lambda->args.size(); ++i) {
+            ss << "and '" << lambda->args.at(i).value() << "'";
+          }
+          return adt::errors::TypeError{ss.str()};
+        }
+      }
+      for (int i = 0; i < args.size(); ++i) {
+        const auto& arg_name = lambda->args.at(i).value();
+        ADT_RETURN_IF_ERR(env->Set(arg_name, args.at(i)));
+      }
     }
     return InterpretLambdaBody(
         env, outter_func, lambda->body, ret_composed_call);

@@ -15,6 +15,7 @@
 #pragma once
 #include <functional>
 #include <sstream>
+#include "ap/axpr/abstract_list.h"
 #include "ap/axpr/bool_int_double_helper.h"
 #include "ap/axpr/builtin_high_order_func_type.h"
 #include "ap/axpr/data_value_util.h"
@@ -295,15 +296,18 @@ Result<Val> Map(axpr::InterpreterBase<Val>* interpreter,
       << adt::errors::TypeError{std::string() + "map() takes 2 arguments but " +
                                 std::to_string(args.size()) + " were given."};
 
-  ADT_LET_CONST_REF(lst, args.at(1).template TryGet<adt::List<Val>>());
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<Val>::CastFrom(args.at(1)));
+  ADT_LET_CONST_REF(lst_size, lst.size());
   adt::List<Val> ret;
-  ret->reserve(lst->size());
+  ret->reserve(lst_size);
   const auto& f = args.at(0);
-  for (const auto& elt : *lst) {
-    ADT_LET_CONST_REF(converted_elt,
-                      interpreter->InterpretCall(f, std::vector<Val>{elt}));
-    ret->emplace_back(converted_elt);
-  }
+  ADT_RETURN_IF_ERR(
+      lst.Visit([&](const auto& elt) -> adt::Result<adt::LoopCtrl> {
+        ADT_LET_CONST_REF(converted_elt,
+                          interpreter->InterpretCall(f, std::vector<Val>{elt}));
+        ret->emplace_back(converted_elt);
+        return adt::Continue{};
+      }));
   return ret;
 }
 
@@ -315,18 +319,21 @@ Result<Val> Filter(axpr::InterpreterBase<Val>* interpreter,
       std::string() + "filter() takes 2 arguments but " +
       std::to_string(args.size()) + " were given."};
 
-  ADT_LET_CONST_REF(lst, args.at(1).template TryGet<adt::List<Val>>());
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<Val>::CastFrom(args.at(1)));
+  ADT_LET_CONST_REF(lst_size, lst.size());
   adt::List<Val> ret;
-  ret->reserve(lst->size());
+  ret->reserve(lst_size);
   const auto& f = args.at(0);
-  for (const auto& elt : *lst) {
-    ADT_LET_CONST_REF(filter_result,
-                      interpreter->InterpretCall(f, std::vector<Val>{elt}));
-    ADT_LET_CONST_REF(is_true, detail::ConvertToBool<Val>(filter_result));
-    if (is_true) {
-      ret->emplace_back(elt);
-    }
-  }
+  ADT_RETURN_IF_ERR(
+      lst.Visit([&](const auto& elt) -> adt::Result<adt::LoopCtrl> {
+        ADT_LET_CONST_REF(filter_result,
+                          interpreter->InterpretCall(f, std::vector<Val>{elt}));
+        ADT_LET_CONST_REF(is_true, detail::ConvertToBool<Val>(filter_result));
+        if (is_true) {
+          ret->emplace_back(elt);
+        }
+        return adt::Continue{};
+      }));
   return ret;
 }
 
@@ -334,14 +341,15 @@ template <typename Val>
 Result<Val> Zip(const Val&, const std::vector<Val>& args) {
   std::optional<std::size_t> size;
   for (const auto& arg : args) {
-    ADT_LET_CONST_REF(lst, arg.template TryGet<adt::List<Val>>())
+    ADT_LET_CONST_REF(lst, axpr::AbstractList<Val>::CastFrom(arg))
         << adt::errors::TypeError{std::string() +
-                                  "the argument of 'zip' should list."};
+                                  "the argument of 'zip' should be list."};
+    ADT_LET_CONST_REF(lst_size, lst.size());
     if (size.has_value()) {
-      ADT_CHECK(size.value() == lst->size()) << adt::errors::TypeError{
+      ADT_CHECK(size.value() == lst_size) << adt::errors::TypeError{
           std::string() + "the arguments of 'zip' should be the same size."};
     } else {
-      size = lst->size();
+      size = lst_size;
     }
   }
   adt::List<Val> ret;
@@ -350,8 +358,9 @@ Result<Val> Zip(const Val&, const std::vector<Val>& args) {
     adt::List<Val> tuple;
     tuple->reserve(args.size());
     for (const auto& arg : args) {
-      ADT_LET_CONST_REF(lst, arg.template TryGet<adt::List<Val>>());
-      tuple->emplace_back(lst->at(i));
+      ADT_LET_CONST_REF(lst, axpr::AbstractList<Val>::CastFrom(arg));
+      ADT_LET_CONST_REF(elt, lst.at(i));
+      tuple->emplace_back(elt);
     }
     ret->emplace_back(tuple);
   }
@@ -365,14 +374,16 @@ Result<Val> Reduce(axpr::InterpreterBase<Val>* interpreter,
   ADT_CHECK(args.size() == 2 || args.size() == 3) << adt::errors::TypeError{
       std::string() + "'reduce' takes 2 or 3 arguments but " +
       std::to_string(args.size()) + " were given."};
-  ADT_LET_CONST_REF(lst, args.at(1).template TryGet<adt::List<Val>>());
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<Val>::CastFrom(args.at(1)));
   std::optional<Val> init;
   std::optional<int64_t> start;
-  if (lst->size() > 0) {
-    init = lst->at(0);
+  ADT_LET_CONST_REF(lst_size, lst.size());
+  if (lst_size > 0) {
+    ADT_LET_CONST_REF(init_val, lst.at(0));
+    init = init_val;
     start = 1;
   } else {
-    ADT_CHECK(lst->size() == 3) << adt::errors::TypeError{
+    ADT_CHECK(args.size() == 3) << adt::errors::TypeError{
         std::string() + "reduce() of empty sequence with no initial value"};
     init = args.at(2);
     start = 0;
@@ -381,8 +392,8 @@ Result<Val> Reduce(axpr::InterpreterBase<Val>* interpreter,
   ADT_CHECK(start.has_value());
   Val ret{init.value()};
   const auto& f = args.at(0);
-  for (int i = start.value(); i < lst->size(); ++i) {
-    const auto& elt = lst->at(i);
+  for (int i = start.value(); i < lst_size; ++i) {
+    ADT_LET_CONST_REF(elt, lst.at(i));
     ADT_LET_CONST_REF(
         cur_reduced, interpreter->InterpretCall(f, std::vector<Val>{elt, ret}));
     ret = cur_reduced;

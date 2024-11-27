@@ -24,22 +24,15 @@ namespace ap::drr {
 class ResPtnPackedIrOpDeclareData : public PackedIrOpDeclareData {
  public:
   ResPtnPackedIrOpDeclareData(
-      const axpr::Function<axpr::SerializableValue>& kernel_define,
-      const axpr::Function<axpr::SerializableValue>& kernel_dispatch)
-      : PackedIrOpDeclareData(),
-        kernel_define_(kernel_define),
-        kernel_dispatch_(kernel_dispatch) {}
+      const axpr::Function<axpr::SerializableValue>& code_gen_func)
+      : PackedIrOpDeclareData(), code_gen_func_(code_gen_func) {}
 
-  const axpr::Function<axpr::SerializableValue>& kernel_define() const {
-    return kernel_define_;
-  }
-  const axpr::Function<axpr::SerializableValue>& kernel_dispatch() const {
-    return kernel_dispatch_;
+  const axpr::Function<axpr::SerializableValue>& code_gen_func() const {
+    return code_gen_func_;
   }
 
  private:
-  axpr::Function<axpr::SerializableValue> kernel_define_;
-  axpr::Function<axpr::SerializableValue> kernel_dispatch_;
+  axpr::Function<axpr::SerializableValue> code_gen_func_;
 };
 
 }  // namespace ap::drr

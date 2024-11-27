@@ -456,27 +456,29 @@ struct ApRewriter {
                       InsertCombinedOp(new_ops, rewriter, input_values));
     ADT_LET_CONST_REF(code_gen_result,
                       GetSerializedCodeGenResult(res_ptn_ir_op, match_ctx));
-    const auto& [kernel_define_lambda_str, kernel_dispatch_const_data] =
-        code_gen_result;
+    const auto& [code_gen_lambda_str,
+                 kernel_dispatch_func,
+                 kernel_dispatch_const_data] = code_gen_result;
     ADT_LET_CONST_REF(infer_meta_lambda_str,
                       GetInferMetaLambdaStr(res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(kernel_dispatch_lambda_str,
-                      GetKernelDispatchLambdaStr(res_ptn_ir_op));
+                      GetKernelDispatchLambdaStr(kernel_dispatch_func));
     ADT_LET_CONST_REF(
-        dispatch_ctx_lambda_str,
-        GetDispatchCtxLambdaStr(
+        kernel_dispatch_const_data_lambda_str,
+        GetKernelDispatchConstDataLambdaStr(
             res_ptn_ir_op, match_ctx, kernel_dispatch_const_data));
     ADT_LET_CONST_REF(num_outputs,
                       GetApKernelNumOutputs(res_ptn_ir_op, match_ctx));
-    ADT_LET_CONST_REF(ap_pattern_fusion_combined_out,
-                      MakeApPatternFusionOp(rewriter,
-                                            new_ops,
-                                            combined_value,
-                                            num_outputs,
-                                            kernel_define_lambda_str,
-                                            infer_meta_lambda_str,
-                                            kernel_dispatch_lambda_str,
-                                            dispatch_ctx_lambda_str));
+    ADT_LET_CONST_REF(
+        ap_pattern_fusion_combined_out,
+        MakeApPatternFusionOp(rewriter,
+                              new_ops,
+                              combined_value,
+                              num_outputs,
+                              code_gen_lambda_str,
+                              infer_meta_lambda_str,
+                              kernel_dispatch_lambda_str,
+                              kernel_dispatch_const_data_lambda_str));
     ADT_LET_CONST_REF(output_values,
                       GetPackedOpOutputValues(
                           rewriter, new_ops, ap_pattern_fusion_combined_out));
@@ -686,7 +688,7 @@ struct ApRewriter {
             -> adt::Result<AnfExpr> {
           const auto& lambda = function->lambda;
           const AnfExpr& anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
-          AnfExpr ret{ctx->Attr(anf_expr, "__code__")};
+          AnfExpr ret{ctx->Attr(anf_expr, "__function__")};
           return ret;
         },
         [&](const auto&) -> adt::Result<AnfExpr> {
@@ -711,7 +713,7 @@ struct ApRewriter {
     return ctx->Call(ap::axpr::kBuiltinList(), elt_anf_exprs);
   }
 
-  adt::Result<std::string> GetDispatchCtxLambdaStr(
+  adt::Result<std::string> GetKernelDispatchConstDataLambdaStr(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx,
       const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
@@ -728,7 +730,8 @@ struct ApRewriter {
   }
 
   struct SerializedCodeGenResult {
-    std::string kernel_define_lambda_str;
+    std::string code_gen_lambda_str;
+    ap::axpr::Function<ap::axpr::SerializableValue> kernel_dispatch_func;
     ap::axpr::BuiltinObject<ap::axpr::SerializableValue>
         kernel_dispatch_const_data;
   };
@@ -740,12 +743,13 @@ struct ApRewriter {
     ADT_LET_CONST_REF(
         op_declare_data,
         op_declare->cast_data<ap::drr::ResPtnPackedIrOpDeclareData>());
-    const auto& lambda = op_declare_data->kernel_define();
+    const auto& lambda = op_declare_data->code_gen_func();
     ADT_LET_CONST_REF(code_gen_result,
                       GetApKernelModule(lambda, match_ctx, res_ptn_ir_op));
     ap::axpr::AnfExpr anf_expr =
         ConvertApKernelModuleToAnfExpr(code_gen_result->code_module);
-    const std::string& kernel_define_lambda_str = anf_expr.DumpToJsonString();
+    const std::string& code_gen_lambda_str = anf_expr.DumpToJsonString();
+    const auto& kernel_dispatch_func = code_gen_result->kernel_dispatch_func;
     auto* data = &code_gen_result.shared_ptr()->kernel_dispatch_const_data;
     ADT_RETURN_IF_ERR(
         InsertApKernelInputIndexOrSlices(data, res_ptn_ir_op, match_ctx));
@@ -755,7 +759,8 @@ struct ApRewriter {
         InsertApKernelInputName2Index(data, res_ptn_ir_op, match_ctx));
     ADT_RETURN_IF_ERR(
         InsertApKernelOutputName2Index(data, res_ptn_ir_op, match_ctx));
-    return SerializedCodeGenResult{kernel_define_lambda_str, *data};
+    return SerializedCodeGenResult{
+        code_gen_lambda_str, kernel_dispatch_func, *data};
   }
 
   adt::Result<adt::Ok> InsertApKernelInputIndexOrSlices(
@@ -870,12 +875,9 @@ struct ApRewriter {
   }
 
   adt::Result<std::string> GetKernelDispatchLambdaStr(
-      const DrrPackedIrOp& res_ptn_ir_op) const {
-    const auto& op_declare = res_ptn_ir_op->op_declare;
-    ADT_LET_CONST_REF(
-        data, op_declare->cast_data<ap::drr::ResPtnPackedIrOpDeclareData>());
-    const auto& function = data->kernel_dispatch();
-    const auto& lambda = function->lambda;
+      const ap::axpr::Function<ap::axpr::SerializableValue>&
+          kernel_dispatch_func) const {
+    const auto& lambda = kernel_dispatch_func->lambda;
     ap::axpr::AnfExpr anf_expr = ap::axpr::ConvertCoreExprToAnfExpr(lambda);
     return anf_expr.DumpToJsonString();
   }
@@ -885,17 +887,17 @@ struct ApRewriter {
       std::set<pir::Operation*>* new_ops,
       pir::Value input,
       std::size_t num_outputs,
-      const std::string& kernel_define_lambda_str,
+      const std::string& code_gen_lambda_str,
       const std::string& infer_meta_lambda_str,
       const std::string& kernel_dispatch_lambda_str,
-      const std::string& dispatch_ctx_lambda_str) const {
-    auto ap_unary =
-        rewriter->Build<paddle::dialect::ApUnaryOp>(input,
-                                                    num_outputs,
-                                                    kernel_define_lambda_str,
-                                                    infer_meta_lambda_str,
-                                                    kernel_dispatch_lambda_str,
-                                                    dispatch_ctx_lambda_str);
+      const std::string& kernel_dispatch_const_data_lambda_str) const {
+    auto ap_unary = rewriter->Build<paddle::dialect::ApUnaryOp>(
+        input,
+        num_outputs,
+        code_gen_lambda_str,
+        infer_meta_lambda_str,
+        kernel_dispatch_lambda_str,
+        kernel_dispatch_const_data_lambda_str);
     ADT_CHECK(new_ops->emplace(ap_unary).second);
     return ap_unary.out();
   }

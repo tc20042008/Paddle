@@ -49,6 +49,16 @@ struct ArgSourceHelper {
     return axpr::Function<axpr::SerializableValue>{lambda, std::nullopt};
   }
 
+  adt::Result<axpr::Function<axpr::SerializableValue>>
+  MakeRuntimeKerneArgGetter(const KernelArgId<BirNode>& kernel_arg_id) const {
+    auto GetBody =
+        [&](axpr::LetVar* dispatch_ctx) -> adt::Result<axpr::LetVar*> {
+      return MakeRuntimeGetter(dispatch_ctx, kernel_arg_id);
+    };
+    ADT_LET_CONST_REF(lambda, CreateLambda("ctx", GetBody));
+    return axpr::Function<axpr::SerializableValue>{lambda, std::nullopt};
+  }
+
  private:
   adt::Result<axpr::LetVar*> MakeRuntimeGetter(
       axpr::LetVar* dispatch_ctx,

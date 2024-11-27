@@ -27,11 +27,13 @@ struct OutTensorDataPtrKernelArgIdMethodClass {
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
-    if (attr_name == "value") {
-      return self->template CastData<ValueT>();
-    }
     if (attr_name == "type") {
       return GetArgType(self);
+    }
+    if (attr_name == "runtime_getter") {
+      ADT_CHECK(self->runtime_getter.has_value())
+          << adt::errors::ValueError{"no runtime getter initialized"};
+      return self->runtime_getter.value();
     }
     return adt::errors::AttributeError{
         std::string() +

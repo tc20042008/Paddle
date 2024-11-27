@@ -30,9 +30,6 @@ struct ClosureMethodClass {
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "__code__") {
-      return Function<SerializableValue>{self->lambda, std::nullopt};
-    }
     if (attr_name == "__function__") {
       return ToFunction(self);
     }

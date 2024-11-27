@@ -45,7 +45,9 @@ struct SetterDecoratorMethodClass {
     return val.Match(
         [&](const Function& function) -> RetT { return function; },
         [&](const axpr::Closure<ValueT>& closure) -> RetT {
-          return Function{closure->lambda, std::nullopt};
+          const auto& global_frame =
+              closure->environment->RecursivelyGetConstGlobalFrame();
+          return Function{closure->lambda, global_frame};
         },
         [&](const auto&) -> RetT {
           return adt::errors::TypeError{

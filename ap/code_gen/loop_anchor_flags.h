@@ -14,19 +14,12 @@
 
 #pragma once
 
-#include "ap/code_gen/op_cuda_gen_impl.h"
-#include "ap/code_gen/value.h"
+#include "ap/adt/adt.h"
 
 namespace ap::code_gen {
 
-template <typename BirNode>
-adt::Result<axpr::ClassAttrs<axpr::SerializableValue>>
-ConvertFusionOpToClassAttrs(const OpCodeGenCtx<BirNode>& op_code_gen_ctx,
-                            const IrOp<BirNode>& ir_op) {
-  OpCudaCodeGenImpl<BirNode> impl{};
-  ADT_LET_CONST_REF(class_attrs,
-                    impl.ConvertFusionOpToClassAttrs(op_code_gen_ctx, ir_op));
-  return class_attrs;
-}
+DEFINE_ADT_TAG(tLoopAnchorFlag);
+
+using LoopAnchorFlags = adt::List<tLoopAnchorFlag<bool>>;
 
 }  // namespace ap::code_gen

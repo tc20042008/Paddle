@@ -15,6 +15,8 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
@@ -23,6 +25,7 @@ namespace ap::code_gen {
 template <typename BirNode>
 struct DimExprKernelArgIdImpl {
   symbol::DimExpr dim_expr;
+  std::optional<axpr::Function<axpr::SerializableValue>> runtime_getter;
 
   bool operator==(const DimExprKernelArgIdImpl& other) const {
     return this->dim_expr == other.dim_expr;

@@ -112,8 +112,6 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
         [&](const BuiltinHighOrderFuncType<ValueT>& func) -> Result<adt::Ok> {
           return InterpretBuiltinHighOrderFuncCall(func, composed_call);
         },
-        [&](const CpsBuiltinHighOrderFuncType<ValueT>& func)
-            -> Result<adt::Ok> { return func(this, composed_call); },
         [&](const Method<ValueT>& method) -> Result<adt::Ok> {
           return method->func.Match(
               [&](const BuiltinFuncType<ValueT>& func) {

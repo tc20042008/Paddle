@@ -18,14 +18,12 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/function.h"
 #include "ap/axpr/serializable_value.h"
-#include "ap/registry/cell.h"
-#include "ap/registry/nice.h"
 
 namespace ap::registry {
 
 struct DrrPassRegistryItemImpl {
   std::string drr_pass_name;
-  Nice nice;
+  int64_t nice;
   axpr::ClassAttrs<axpr::SerializableValue> cls;
 };
 

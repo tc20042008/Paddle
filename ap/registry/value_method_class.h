@@ -15,4 +15,3 @@
 #pragma once
 
 #include "ap/registry/registry_method_class.h"
-#include "ap/registry/setter_decorator_method_class.h"

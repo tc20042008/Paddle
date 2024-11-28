@@ -18,12 +18,11 @@
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/value.h"
 #include "ap/registry/registry.h"
-#include "ap/registry/setter_decorator.h"
 
 namespace ap::registry {
 
 template <typename ValueT>
-using ValueImpl = axpr::ValueBase<ValueT, Registry, SetterDecorator>;
+using ValueImpl = axpr::ValueBase<ValueT, Registry>;
 
 struct Value : public ValueImpl<Value> {
   using ValueImpl<Value>::ValueImpl;

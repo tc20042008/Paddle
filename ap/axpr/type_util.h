@@ -17,7 +17,6 @@
 #include "ap/axpr/builtin_object.h"
 #include "ap/axpr/mutable_list.h"
 #include "ap/axpr/ordered_dict.h"
-#include "ap/axpr/ordered_set.h"
 #include "ap/axpr/packed_args.h"
 #include "ap/axpr/type.h"
 
@@ -56,7 +55,6 @@ BuiltinObject<ValueT> GetObjectTypeName2Type() {
                                  double,
                                  std::string,
                                  MutableList<ValueT>,
-                                 OrderedSet<ValueT>,
                                  OrderedDict<ValueT>,
                                  PackedArgs<ValueT>,
                                  BuiltinObject<axpr::SerializableValue>,

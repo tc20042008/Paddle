@@ -1904,39 +1904,7 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachDrrCtx(const DoEachT& DoEach) {
-    ADT_RETURN_IF_ERR(VisitEachDrrCtxByDrrRegistryItems(DoEach));
     ADT_RETURN_IF_ERR(VisitEachDrrCtxByDrrPassRegistryItems(DoEach));
-    return adt::Ok{};
-  }
-
-  template <typename DoEachT>
-  adt::Result<adt::Ok> VisitEachDrrCtxByDrrRegistryItems(
-      const DoEachT& DoEach) {
-    ADT_LET_CONST_REF(registry, ApRegistryHelper{}.SingltonRegistry());
-    const auto& drr_registry_items = registry->drr_registry_items;
-    for (const auto& [drr_pass_name, nice2drr_items] : drr_registry_items) {
-      std::optional<DrrCtx> opt_drr_ctx;
-      for (const auto& [nice, drr_items] : nice2drr_items) {
-        if (opt_drr_ctx.has_value()) {
-          break;
-        }
-        for (const auto& drr_item : drr_items) {
-          const auto& drr_ctx = GetDrrCtx(drr_pass_name, drr_item);
-          if (drr_ctx.HasOkValue()) {
-            ADT_RETURN_IF_ERR(DoEach(drr_ctx.GetOkValue()));
-            opt_drr_ctx = drr_ctx.GetOkValue();
-            break;
-          } else {
-            LOG(ERROR) << "\nTraceback (most recent call last):\n"
-                       << drr_ctx.GetError().CallStackToString() << "\n"
-                       << drr_ctx.GetError().class_name()
-                       << ": drr_pass_name: " << drr_pass_name
-                       << " nice: " << nice
-                       << " msg: " << drr_ctx.GetError().msg();
-          }
-        }
-      }
-    }
     return adt::Ok{};
   }
 
@@ -1970,18 +1938,6 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
       }
     }
     return adt::Ok{};
-  }
-
-  adt::Result<DrrCtx> GetDrrCtx(const std::string& drr_pass_name,
-                                const ap::registry::DrrRegistryItem& drr_item) {
-    ADT_CHECK(drr_item->lambda->data.has_value());
-    const auto& drr_func = drr_item->lambda->data.value();
-    ADT_LET_CONST_REF(drr_ctx,
-                      ApDrrHelper{}.Interpret(drr_func, drr_pass_name));
-    if (!drr_ctx->pass_name.has_value()) {
-      drr_ctx.shared_ptr()->pass_name = drr_pass_name;
-    }
-    return drr_ctx;
   }
 
   adt::Result<DrrCtx> GetDrrCtx(

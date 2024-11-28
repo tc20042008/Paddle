@@ -29,45 +29,12 @@ struct RegistrySingleton {
     return MutOptSingleton()->value();
   }
 
-  static void Add(const OpIndexesExprRegistryItem& item) {
-    auto registry = MutSingleton();
-    const auto& op_name = item->op_name;
-    int64_t nice = item->nice;
-    std::unique_lock<std::mutex> lock(*SingletonMutex());
-    registry->op_indexes_expr_registry_items[op_name][nice].emplace_back(item);
-  }
-
-  static void Add(const DrrRegistryItem& item) {
-    auto registry = MutSingleton();
-    const auto& drr_pass_name = item->drr_pass_name;
-    int64_t nice = item->nice;
-    std::unique_lock<std::mutex> lock(*SingletonMutex());
-    registry->drr_registry_items[drr_pass_name][nice].emplace_back(item);
-  }
-
   static void Add(const DrrPassRegistryItem& item) {
     auto registry = MutSingleton();
     const auto& drr_pass_name = item->drr_pass_name;
     int64_t nice = item->nice;
     std::unique_lock<std::mutex> lock(*SingletonMutex());
     registry->drr_pass_registry_items[drr_pass_name][nice].emplace_back(item);
-  }
-
-  static void Add(const OpComputeRegistryItem& item) {
-    auto registry = MutSingleton();
-    const auto& op_name = item->op_name;
-    int64_t nice = item->nice;
-    std::unique_lock<std::mutex> lock(*SingletonMutex());
-    registry->op_compute_registry_items[op_name][nice].emplace_back(item);
-  }
-
-  static void Add(const ModuleTemplateRegistryItem& item) {
-    auto registry = MutSingleton();
-    const auto& template_name = item->template_name;
-    int64_t nice = item->nice;
-    std::unique_lock<std::mutex> lock(*SingletonMutex());
-    registry->module_template_registry_items[template_name][nice].emplace_back(
-        item);
   }
 
   static std::mutex* SingletonMutex() {

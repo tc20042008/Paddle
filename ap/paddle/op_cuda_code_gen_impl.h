@@ -30,8 +30,6 @@
 #include "ap/graph/node.h"
 #include "ap/index_expr/index_tuple_expr_cuda_code_generator.h"
 #include "ap/ir_match/native_or_ref_ir_value.h"
-#include "ap/op_compute/value.h"
-#include "ap/op_compute/value_method_class.h"
 #include "ap/paddle/indexed_ir_graph_util.h"
 #include "ap/paddle/pir_graph_descriptor.h"
 #include "ap/paddle/pir_node.h"

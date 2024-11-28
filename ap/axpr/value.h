@@ -24,7 +24,6 @@
 #include "ap/axpr/class_instance.h"
 #include "ap/axpr/closure.h"
 #include "ap/axpr/continuation.h"
-#include "ap/axpr/cps_builtin_high_order_func_type.h"
 #include "ap/axpr/data_type.h"
 #include "ap/axpr/data_value.h"
 #include "ap/axpr/environment.h"
@@ -37,7 +36,6 @@
 #include "ap/axpr/mutable_list.h"
 #include "ap/axpr/nothing.h"
 #include "ap/axpr/ordered_dict.h"
-#include "ap/axpr/ordered_set.h"
 #include "ap/axpr/packed_args.h"
 #include "ap/axpr/pointer_type.h"
 #include "ap/axpr/pointer_value.h"
@@ -63,7 +61,6 @@ using ValueBase = std::variant<Type<Nothing,
                                     MutableList<ValueT>,
                                     BuiltinObject<ValueT>,
                                     BuiltinObject<SerializableValue>,
-                                    OrderedSet<ValueT>,
                                     OrderedDict<ValueT>,
                                     BuiltinClassInstance<ValueT>,
                                     ClassInstance<ValueT>,
@@ -76,7 +73,6 @@ using ValueBase = std::variant<Type<Nothing,
                                     Starred<ValueT>,
                                     BuiltinFuncType<ValueT>,
                                     BuiltinHighOrderFuncType<ValueT>,
-                                    CpsBuiltinHighOrderFuncType<ValueT>,
                                     Ts...>,
                                Nothing,
                                bool,
@@ -88,7 +84,6 @@ using ValueBase = std::variant<Type<Nothing,
                                MutableList<ValueT>,
                                BuiltinObject<ValueT>,
                                BuiltinObject<SerializableValue>,
-                               OrderedSet<ValueT>,
                                OrderedDict<ValueT>,
                                BuiltinClassInstance<ValueT>,
                                ClassInstance<ValueT>,
@@ -101,7 +96,6 @@ using ValueBase = std::variant<Type<Nothing,
                                Starred<ValueT>,
                                BuiltinFuncType<ValueT>,
                                BuiltinHighOrderFuncType<ValueT>,
-                               CpsBuiltinHighOrderFuncType<ValueT>,
                                Ts...>;
 
 template <typename ValueT>

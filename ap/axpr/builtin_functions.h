@@ -54,9 +54,6 @@ adt::Result<bool> ConvertToBool(const Val& cond) {
       [](const builtin_symbol::Symbol&) -> Result<bool> { return true; },
       [](const BuiltinFuncType<Val>&) -> Result<bool> { return true; },
       [](const BuiltinHighOrderFuncType<Val>&) -> Result<bool> { return true; },
-      [](const CpsBuiltinHighOrderFuncType<Val>&) -> Result<bool> {
-        return true;
-      },
       [&](const auto&) -> Result<bool> {
         return TypeError{std::string() + "'" + axpr::GetTypeName(cond) +
                          "' could not be convert to bool"};

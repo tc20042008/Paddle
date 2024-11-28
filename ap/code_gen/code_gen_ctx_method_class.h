@@ -20,7 +20,6 @@
 #include "ap/code_gen/cuda_code_gen_util.h"
 #include "ap/code_gen/ir_op.h"
 #include "ap/code_gen/kernel_arg_id_helper.h"
-#include "ap/code_gen/kernel_arg_id_ordered_set.h"
 #include "ap/code_gen/op_code_gen_ctx.h"
 #include "ap/code_module/module.h"
 #include "ap/index_expr/index_tuple_expr.h"
@@ -47,9 +46,6 @@ struct CodeGenCtxMethodClass {
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
     if (attr_name == "make_fusion_op_code_gen_class") {
       return axpr::Method<ValueT>{self, &This::StaticMakeFusionOpCodeGenClass};
-    }
-    if (attr_name == "make_kernel_args_getter") {
-      return axpr::Method<ValueT>{self, &This::StaticMakeKernelArgsGetter};
     }
     if (attr_name == "dim_expr_kernel_arg_id") {
       return axpr::Method<ValueT>{self,
@@ -199,52 +195,6 @@ struct CodeGenCtxMethodClass {
                "DimExpr could not evaluated in runtime. value: " +
                symbol::ToString(dim_expr)};
     return adt::Ok{};
-  }
-
-  static adt::Result<ValueT> StaticMakeKernelArgsGetter(
-      const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
-    return This{}.MakeKernelArgsGetter(self, args);
-  }
-
-  adt::Result<ValueT> MakeKernelArgsGetter(const Self& self,
-                                           const std::vector<ValueT>& args) {
-    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
-        std::string() +
-        "make_kernel_args_getter() method takes 1 argument but " +
-        std::to_string(args.size()) + " were given."};
-    ADT_LET_CONST_REF(ordered_set,
-                      args.at(0).template TryGet<axpr::OrderedSet<ValueT>>())
-        << adt::errors::TypeError{std::string() +
-                                  "the argument 1 of make_kernel_args_getter() "
-                                  "should be OrderedSet, " +
-                                  axpr::GetTypeName(args.at(0)) + " found."};
-    ADT_LET_CONST_REF(kernel_arg_ids, GetKernelArgIds(ordered_set));
-    return MakeKernelArgsGetterByKernelArgIds(self, kernel_arg_ids);
-  }
-
-  adt::Result<std::list<KernelArgId<BirNode>>> GetKernelArgIds(
-      const axpr::OrderedSet<ValueT>& ordered_set) {
-    std::list<KernelArgId<BirNode>> kernel_arg_ids{};
-    int i = 0;
-    for (const auto& elt : ordered_set->items()) {
-      ADT_LET_CONST_REF(kernel_arg_id, KernelArgId<BirNode>::CastFrom(elt))
-          << adt::errors::TypeError{std::string() + "sequence item " +
-                                    std::to_string(i) +
-                                    ": expected KernelArgId, " +
-                                    axpr::GetTypeName(elt) + " found."};
-      kernel_arg_ids.emplace_back(kernel_arg_id);
-      ++i;
-    }
-    return kernel_arg_ids;
-  }
-
-  adt::Result<ValueT> MakeKernelArgsGetterByKernelArgIds(
-      const Self& self, const std::list<KernelArgId<BirNode>>& kernel_arg_ids) {
-    ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
-    ADT_LET_CONST_REF(getter,
-                      helper.MakeRuntimeKerneArgsGetter(kernel_arg_ids));
-    return getter;
   }
 
   static adt::Result<ValueT> StaticMakeFusionOpCodeGenClass(

@@ -14,26 +14,21 @@
 
 #pragma once
 
+#include <map>
 #include <unordered_map>
 #include <vector>
 #include "ap/adt/adt.h"
 #include "ap/axpr/builtin_object.h"
 #include "ap/axpr/type.h"
 #include "ap/registry/drr_pass_registry_item.h"
-#include "ap/registry/drr_registry_item.h"
-#include "ap/registry/module_template_registry_item.h"
-#include "ap/registry/nice.h"
-#include "ap/registry/op_compute_registry_item.h"
-#include "ap/registry/op_indexes_expr_registry_item.h"
 
 namespace ap::registry {
 
+template <typename T>
+using Key2Nice2Items = std::map<std::string, std::map<int64_t, std::vector<T>>>;
+
 struct RegistryImpl {
-  Key2Nice2Items<OpIndexesExprRegistryItem> op_indexes_expr_registry_items;
-  Key2Nice2Items<DrrRegistryItem> drr_registry_items;
   Key2Nice2Items<DrrPassRegistryItem> drr_pass_registry_items;
-  Key2Nice2Items<OpComputeRegistryItem> op_compute_registry_items;
-  Key2Nice2Items<ModuleTemplateRegistryItem> module_template_registry_items;
 
   bool operator==(const RegistryImpl& other) const { return this == &other; }
 };

@@ -65,6 +65,7 @@ using ValueBase = std::variant<Type<Nothing,
                                     BuiltinObject<SerializableValue>,
                                     OrderedSet<ValueT>,
                                     OrderedDict<ValueT>,
+                                    BuiltinClassInstance<ValueT>,
                                     ClassInstance<ValueT>,
                                     PackedArgs<ValueT>,
                                     Function<SerializableValue>,
@@ -89,6 +90,7 @@ using ValueBase = std::variant<Type<Nothing,
                                BuiltinObject<SerializableValue>,
                                OrderedSet<ValueT>,
                                OrderedDict<ValueT>,
+                               BuiltinClassInstance<ValueT>,
                                ClassInstance<ValueT>,
                                PackedArgs<ValueT>,
                                Function<SerializableValue>,
@@ -108,6 +110,9 @@ using Builtin = ValueBase<ValueT>;
 template <typename ValueT>
 ValueT GetType(const ValueT& value) {
   return value.Match(
+      [](const BuiltinClassInstance<ValueT>& impl) -> ValueT {
+        return impl->type;
+      },
       [](const ClassInstance<ValueT>& impl) -> ValueT { return impl->type; },
       [](const auto& impl) -> ValueT {
         using T = std::decay_t<decltype(impl)>;

@@ -18,6 +18,7 @@
 #include <set>
 #include <utility>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_classes.h"
 #include "ap/axpr/builtin_environment.h"
 #include "ap/axpr/builtin_functions.h"
 #include "ap/axpr/call_environment.h"

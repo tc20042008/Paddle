@@ -20,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/builtin_func_type.h"
 #include "ap/axpr/class_instance.h"
 #include "ap/axpr/constants.h"
@@ -373,6 +374,9 @@ adt::Result<T> TryGetImpl(const ValueT& val) {
 template <typename ValueT>
 std::string GetTypeName(const ValueT& val) {
   return val.Match(
+      [](const BuiltinClassInstance<ValueT>& impl) -> std::string {
+        return impl->type.class_attrs->class_name;
+      },
       [](const ClassInstance<ValueT>& impl) -> std::string {
         return impl->type.class_attrs->class_name;
       },

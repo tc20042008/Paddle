@@ -19,6 +19,7 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/builtin_object.h"
 #include "ap/axpr/type.h"
+#include "ap/registry/drr_pass_registry_item.h"
 #include "ap/registry/drr_registry_item.h"
 #include "ap/registry/module_template_registry_item.h"
 #include "ap/registry/nice.h"
@@ -30,6 +31,7 @@ namespace ap::registry {
 struct RegistryImpl {
   Key2Nice2Items<OpIndexesExprRegistryItem> op_indexes_expr_registry_items;
   Key2Nice2Items<DrrRegistryItem> drr_registry_items;
+  Key2Nice2Items<DrrPassRegistryItem> drr_pass_registry_items;
   Key2Nice2Items<OpComputeRegistryItem> op_compute_registry_items;
   Key2Nice2Items<ModuleTemplateRegistryItem> module_template_registry_items;
 

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_drr_helper.h"
+#include "ap/axpr/anf_expr_util.h"
 #include "ap/axpr/cps_interpreter.h"
+#include "ap/axpr/lambda_expr_builder.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
 #include "ap/drr/value.h"
@@ -35,6 +37,29 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
   ap::axpr::CpsInterpreter<DrrValue> interpreter{};
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
+  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
+      << adt::errors::TypeError{
+             std::string() +
+             "drr function should return a 'DrrCtx' object but '" +
+             ap::axpr::GetTypeName(drr_ctx_val) + "' were given."};
+  return drr_ctx;
+}
+
+adt::Result<DrrCtx> ApDrrHelper::Interpret(
+    const ap::registry::DrrPassRegistryItem& item) {
+  static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
+    ap::axpr::LambdaExprBuilder lmd;
+    const ap::axpr::AnfExpr anf_expr = lmd.Lambda({"cls"}, [](auto& ctx) {
+      return ctx.Var("cls").Call().Attr("make_drr_ctx").Call();
+    });
+    const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+    return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
+  }());
+  ap::axpr::CpsInterpreter<DrrValue> interpreter{};
+  DrrValue cls{
+      ap::axpr::TypeImpl<ap::axpr::ClassInstance<DrrValue>>(item->cls)};
+  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
       << adt::errors::TypeError{
              std::string() +

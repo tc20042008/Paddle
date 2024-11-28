@@ -14,22 +14,21 @@
 
 #pragma once
 
+#include <vector>
 #include "ap/adt/adt.h"
-#include "ap/drr/value.h"
-#include "ap/registry/drr_pass_registry_item.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
+#include "ap/registry/cell.h"
+#include "ap/registry/nice.h"
 
-namespace cinn::dialect::ir {
+namespace ap::registry {
 
-struct ApDrrHelper {
-  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
-
-  using DrrValue = ap::drr::Value;
-  using DrrNode = ap::drr::Node<DrrValue>;
-  using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
-
-  adt::Result<DrrCtx> Interpret(const Function& lambda,
-                                const std::string& drr_pass_name);
-  adt::Result<DrrCtx> Interpret(const ap::registry::DrrPassRegistryItem& item);
+struct DrrPassRegistryItemImpl {
+  std::string drr_pass_name;
+  Nice nice;
+  axpr::ClassAttrs<axpr::SerializableValue> cls;
 };
 
-}  // namespace cinn::dialect::ir
+DEFINE_ADT_RC(DrrPassRegistryItem, DrrPassRegistryItemImpl);
+
+}  // namespace ap::registry

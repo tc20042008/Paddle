@@ -45,6 +45,14 @@ struct RegistrySingleton {
     registry->drr_registry_items[drr_pass_name][nice].emplace_back(item);
   }
 
+  static void Add(const DrrPassRegistryItem& item) {
+    auto registry = MutSingleton();
+    const auto& drr_pass_name = item->drr_pass_name;
+    int64_t nice = item->nice;
+    std::unique_lock<std::mutex> lock(*SingletonMutex());
+    registry->drr_pass_registry_items[drr_pass_name][nice].emplace_back(item);
+  }
+
   static void Add(const OpComputeRegistryItem& item) {
     auto registry = MutSingleton();
     const auto& op_name = item->op_name;

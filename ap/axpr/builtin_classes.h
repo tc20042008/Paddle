@@ -15,21 +15,12 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/drr/value.h"
-#include "ap/registry/drr_pass_registry_item.h"
 
-namespace cinn::dialect::ir {
+namespace ap::axpr {
 
-struct ApDrrHelper {
-  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
+template <typename DoEachT>
+adt::Result<adt::Ok> VisitEachBuiltinClass(const DoEachT& DoEach) {
+  return adt::Ok{};
+}
 
-  using DrrValue = ap::drr::Value;
-  using DrrNode = ap::drr::Node<DrrValue>;
-  using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
-
-  adt::Result<DrrCtx> Interpret(const Function& lambda,
-                                const std::string& drr_pass_name);
-  adt::Result<DrrCtx> Interpret(const ap::registry::DrrPassRegistryItem& item);
-};
-
-}  // namespace cinn::dialect::ir
+}  // namespace ap::axpr

@@ -14,22 +14,26 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
-#include "ap/drr/value.h"
-#include "ap/registry/drr_pass_registry_item.h"
+namespace ap::axpr {
 
-namespace cinn::dialect::ir {
+template <typename ValueT>
+class BuiltinInstance {
+ public:
+  virtual ~BuiltinInstance() = default;
 
-struct ApDrrHelper {
-  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
-
-  using DrrValue = ap::drr::Value;
-  using DrrNode = ap::drr::Node<DrrValue>;
-  using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
-
-  adt::Result<DrrCtx> Interpret(const Function& lambda,
-                                const std::string& drr_pass_name);
-  adt::Result<DrrCtx> Interpret(const ap::registry::DrrPassRegistryItem& item);
+ protected:
+  BuiltinInstance() = default;
 };
 
-}  // namespace cinn::dialect::ir
+template <typename ValueT>
+class TagBuiltinInstance : public BuiltinInstance<ValueT> {
+ public:
+  explicit TagBuiltinInstance(const ValueT& value) : value_(value) {}
+
+  const ValueT& value() const { return value_; }
+
+ private:
+  ValueT value_;
+};
+
+}  // namespace ap::axpr

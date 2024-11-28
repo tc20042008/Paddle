@@ -14,6 +14,8 @@
 
 #pragma once
 #include "ap/adt/adt.h"
+#include "ap/axpr/function.h"
+#include "ap/axpr/serializable_value.h"
 #include "ap/drr/result_pattern_ctx.h"
 #include "ap/drr/source_pattern_ctx.h"
 #include "ap/drr/tags.h"
@@ -25,6 +27,7 @@ struct DrrCtxImpl {
   std::optional<std::string> pass_name;
   std::optional<SourcePatternCtx<ValueT, NodeT>> source_pattern_ctx;
   std::optional<ResultPatternCtx<ValueT, NodeT>> result_pattern_ctx;
+  std::optional<axpr::Function<axpr::SerializableValue>> constraint_func;
 
   adt::Result<SourcePatternCtx<ValueT, NodeT>> GetSourcePatternCtx() const {
     ADT_CHECK(this->source_pattern_ctx.has_value());

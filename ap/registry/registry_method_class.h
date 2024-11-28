@@ -40,6 +40,9 @@ struct TypeImplRegistryMethodClass {
     if (attr_name == kDrr()) {
       return axpr::Method<ValueT>{self, &This::RegisterDrr};
     }
+    if (attr_name == "drr_pass") {
+      return axpr::Method<ValueT>{self, &This::RegisterDrrPass};
+    }
     if (attr_name == kOpCompute()) {
       return axpr::Method<ValueT>{self, &This::RegisterOpCompute};
     }
@@ -108,6 +111,37 @@ struct TypeImplRegistryMethodClass {
     DrrRegistryItem item{drr_name, nice, lambda};
     RegistrySingleton::Add(item);
     return SetterDecorator{lambda};
+  }
+
+  static adt::Result<ValueT> RegisterDrrPass(const ValueT& self_val,
+                                             const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 3) << adt::errors::TypeError{
+        std::string() + "'Registry." + kDrr() + "' takes 3 arguments. but " +
+        std::to_string(args.size()) + " were given."};
+    const auto& drr_name_val = args.at(0);
+    ADT_LET_CONST_REF(drr_name, axpr::TryGetImpl<std::string>(drr_name_val))
+        << adt::errors::TypeError{std::string() + "argument 1 of 'Registry." +
+                                  kDrr() + "' should be string, but '" +
+                                  axpr::GetTypeName(drr_name_val) +
+                                  "' were given."};
+    const auto& nice_val = args.at(1);
+    ADT_LET_CONST_REF(nice, axpr::TryGetImpl<int64_t>(nice_val))
+        << adt::errors::TypeError{std::string() + "argument 2 of 'Registry." +
+                                  kDrr() + "' should be int, but '" +
+                                  axpr::GetTypeName(nice_val) +
+                                  "' were given."};
+    const auto& cls_val = args.at(2);
+    ADT_LET_CONST_REF(
+        type_impl,
+        axpr::CastToTypeImpl<axpr::TypeImpl<axpr::ClassInstance<ValueT>>>(
+            cls_val))
+        << adt::errors::TypeError{std::string() + "argument 3 of 'Registry." +
+                                  kDrr() +
+                                  "' should be non-builtin class, but '" +
+                                  axpr::GetTypeName(cls_val) + "' were given."};
+    DrrPassRegistryItem item{drr_name, nice, type_impl.class_attrs};
+    RegistrySingleton::Add(item);
+    return adt::Nothing{};
   }
 
   static adt::Result<ValueT> RegisterOpCompute(

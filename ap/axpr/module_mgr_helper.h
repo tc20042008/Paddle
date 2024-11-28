@@ -44,7 +44,7 @@ struct ModuleMgrHelper {
     ADT_LET_CONST_REF(frame,
                       module_mgr->GetOrCreateByModuleName(module_name, Init));
     ADT_LET_CONST_REF(frame_impl_obj, frame.shared_ptr());
-    return axpr::Attribute<SerializableValue>{frame_impl_obj};
+    return axpr::AttrMap<SerializableValue>{frame_impl_obj};
   }
 };
 

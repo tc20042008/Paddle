@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "ap/axpr/attribute.h"
+#include "ap/axpr/attr_map.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/type.h"
 #include "ap/code_gen/kernel_arg_id.h"

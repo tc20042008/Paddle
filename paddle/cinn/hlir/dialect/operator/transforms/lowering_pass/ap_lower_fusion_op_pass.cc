@@ -643,15 +643,15 @@ struct ApRewriter {
         ctx->Var("inputs").At(idx.input_idx).Attr("dims").At(idx.tensor_axis));
   }
 
-  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttribute(
+  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttrMap(
       ap::axpr::LetContext* ctx,
-      const ap::axpr::Attribute<ap::axpr::SerializableValue>&
+      const ap::axpr::AttrMap<ap::axpr::SerializableValue>&
           kernel_dispatch_const_data) const {
     std::vector<AnfExpr> kwargs;
     for (const auto& [keyword, val] : kernel_dispatch_const_data->storage) {
       const AnfExpr& keyword_anf = ctx->String(keyword);
       ADT_LET_CONST_REF(val_anf,
-                        GetCodeFromBuiltinSerializableAttributeItem(ctx, val));
+                        GetCodeFromBuiltinSerializableAttrMapItem(ctx, val));
       const AnfExpr& item =
           ctx->Call(ap::axpr::kBuiltinList(), keyword_anf, val_anf);
       kwargs.emplace_back(item);
@@ -660,10 +660,10 @@ struct ApRewriter {
         ctx->Call("__builtin_PackedArgs__",
                   ctx->Call(ap::axpr::kBuiltinList()),
                   ctx->Call(ap::axpr::kBuiltinList(), kwargs));
-    return ctx->Call("BuiltinSerializableAttribute", packed_args);
+    return ctx->Call("BuiltinSerializableAttrMap", packed_args);
   }
 
-  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttributeItem(
+  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttrMapItem(
       ap::axpr::LetContext* ctx,
       const ap::axpr::SerializableValue& item) const {
     return item.Match(
@@ -678,11 +678,11 @@ struct ApRewriter {
         },
         [&](const adt::List<ap::axpr::SerializableValue>& l)
             -> adt::Result<AnfExpr> {
-          return GetCodeFromBuiltinSerializableAttributeList(ctx, l);
+          return GetCodeFromBuiltinSerializableAttrMapList(ctx, l);
         },
-        [&](const ap::axpr::Attribute<ap::axpr::SerializableValue>& object)
+        [&](const ap::axpr::AttrMap<ap::axpr::SerializableValue>& object)
             -> adt::Result<AnfExpr> {
-          return GetCodeFromBuiltinSerializableAttribute(ctx, object);
+          return GetCodeFromBuiltinSerializableAttrMap(ctx, object);
         },
         [&](const ap::axpr::Function<ap::axpr::SerializableValue>& function)
             -> adt::Result<AnfExpr> {
@@ -694,20 +694,20 @@ struct ApRewriter {
         [&](const auto&) -> adt::Result<AnfExpr> {
           std::ostringstream ss;
           ss << "Builtin serializable types are: NoneType, bool, int, float, "
-                "str, function_code, list, BuiltinSerializableAttribute (not "
+                "str, function_code, list, BuiltinSerializableAttrMap (not "
                 "include '"
              << ap::axpr::GetTypeName(item.template CastTo<CGValue>()) << "').";
           return adt::errors::ValueError{ss.str()};
         });
   }
 
-  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttributeList(
+  adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttrMapList(
       ap::axpr::LetContext* ctx,
       const adt::List<ap::axpr::SerializableValue>& list) const {
     std::vector<AnfExpr> elt_anf_exprs;
     for (const auto& elt : *list) {
       ADT_LET_CONST_REF(elt_anf_expr,
-                        GetCodeFromBuiltinSerializableAttributeItem(ctx, elt));
+                        GetCodeFromBuiltinSerializableAttrMapItem(ctx, elt));
       elt_anf_exprs.emplace_back(elt_anf_expr);
     }
     return ctx->Call(ap::axpr::kBuiltinList(), elt_anf_exprs);
@@ -716,12 +716,12 @@ struct ApRewriter {
   adt::Result<std::string> GetKernelDispatchConstDataLambdaStr(
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx,
-      const ap::axpr::Attribute<ap::axpr::SerializableValue>&
+      const ap::axpr::AttrMap<ap::axpr::SerializableValue>&
           kernel_dispatch_const_data) const {
     ap::axpr::LambdaExprBuilder lmbd;
     auto ConstructLambdaBody = [&](auto& ctx) -> adt::Result<AnfExpr> {
       ADT_LET_CONST_REF(data,
-                        GetCodeFromBuiltinSerializableAttribute(
+                        GetCodeFromBuiltinSerializableAttrMap(
                             &ctx, kernel_dispatch_const_data));
       return data;
     };
@@ -732,7 +732,7 @@ struct ApRewriter {
   struct SerializedCodeGenResult {
     std::string code_gen_lambda_str;
     ap::axpr::Function<ap::axpr::SerializableValue> kernel_dispatch_func;
-    ap::axpr::Attribute<ap::axpr::SerializableValue> kernel_dispatch_const_data;
+    ap::axpr::AttrMap<ap::axpr::SerializableValue> kernel_dispatch_const_data;
   };
 
   adt::Result<SerializedCodeGenResult> GetSerializedCodeGenResult(
@@ -763,7 +763,7 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelInputIndexOrSlices(
-      ap::axpr::Attribute<ap::axpr::SerializableValue>* object,
+      ap::axpr::AttrMap<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
     adt::List<ap::axpr::SerializableValue> list;
@@ -785,7 +785,7 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelOutputIndexOrSlices(
-      ap::axpr::Attribute<ap::axpr::SerializableValue>* object,
+      ap::axpr::AttrMap<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
     adt::List<ap::axpr::SerializableValue> list;
@@ -990,10 +990,10 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelInputName2Index(
-      ap::axpr::Attribute<ap::axpr::SerializableValue>* object,
+      ap::axpr::AttrMap<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    ap::axpr::Attribute<ap::axpr::SerializableValue> name2idx;
+    ap::axpr::AttrMap<ap::axpr::SerializableValue> name2idx;
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
@@ -1009,10 +1009,10 @@ struct ApRewriter {
   }
 
   adt::Result<adt::Ok> InsertApKernelOutputName2Index(
-      ap::axpr::Attribute<ap::axpr::SerializableValue>* object,
+      ap::axpr::AttrMap<ap::axpr::SerializableValue>* object,
       const DrrPackedIrOp& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
-    ap::axpr::Attribute<ap::axpr::SerializableValue> name2idx;
+    ap::axpr::AttrMap<ap::axpr::SerializableValue> name2idx;
     int64_t idx = 0;
     auto DoEachIrValue =
         [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {

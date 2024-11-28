@@ -14,7 +14,7 @@
 
 #pragma once
 #include "ap/adt/adt.h"
-#include "ap/axpr/builtin_serializable_object.h"
+#include "ap/axpr/builtin_serializable_attr_map.h"
 #include "ap/axpr/value.h"
 #include "ap/code_module/data_type.h"
 #include "ap/kernel_dispatch/arg_value.h"
@@ -39,7 +39,7 @@ struct Value : public ValueImpl<Value> {
   using ValueImpl<Value>::ValueImpl;
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 
-  static axpr::Attribute<Value> GetExportedTypes() {
+  static axpr::AttrMap<Value> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<Value,
                                         axpr::DataType,
                                         axpr::DataValue,

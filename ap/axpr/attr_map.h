@@ -83,11 +83,11 @@ struct AttributeImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(Attribute, AttributeImpl<ValueT>);
+DEFINE_ADT_RC(AttrMap, AttributeImpl<ValueT>);
 
 template <typename ValueT>
-struct TypeImpl<Attribute<ValueT>> : public std::monostate {
-  using value_type = Attribute<ValueT>;
+struct TypeImpl<AttrMap<ValueT>> : public std::monostate {
+  using value_type = AttrMap<ValueT>;
 
   const char* Name() const { return "object"; }
 };

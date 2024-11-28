@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/attribute.h"
+#include "ap/axpr/attr_map.h"
 
 namespace ap::axpr {
 
@@ -23,7 +23,7 @@ template <typename ValueT>
 struct ClassAttrsImpl {
   std::string class_name;
   adt::List<std::shared_ptr<ClassAttrsImpl>> superclasses;
-  Attribute<ValueT> attrs;
+  AttrMap<ValueT> attrs;
 
   const std::string& Name() const { return this->class_name; }
 

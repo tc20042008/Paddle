@@ -571,12 +571,12 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     return std::make_shared<CallEnvironment<ValueT>>(parent, frame);
   }
 
-  static Attribute<ValueT> GetBuiltinFrameObject() {
+  static AttrMap<ValueT> GetBuiltinFrameObject() {
     return MakeBuiltinFrameObject();
   }
 
-  static Attribute<ValueT> MakeBuiltinFrameObject() {
-    Attribute<ValueT> object{ValueT::GetExportedTypes()};
+  static AttrMap<ValueT> MakeBuiltinFrameObject() {
+    AttrMap<ValueT> object{ValueT::GetExportedTypes()};
     object->Set("import", &ModuleMgrHelper<ValueT>::ImportModule);
     object->Set("print", &Print<ValueT>);
     object->Set("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma<ValueT>);

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/attribute.h"
+#include "ap/axpr/attr_map.h"
 #include "ap/memory/circlable_ref.h"
 
 namespace ap::axpr {

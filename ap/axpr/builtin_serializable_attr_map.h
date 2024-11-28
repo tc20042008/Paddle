@@ -15,17 +15,17 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/attribute.h"
+#include "ap/axpr/attr_map.h"
 #include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
 
 template <>
-struct TypeImpl<Attribute<SerializableValue>> : public std::monostate {
-  using value_type = Attribute<SerializableValue>;
+struct TypeImpl<AttrMap<SerializableValue>> : public std::monostate {
+  using value_type = AttrMap<SerializableValue>;
 
-  const char* Name() const { return "BuiltinSerializableAttribute"; }
+  const char* Name() const { return "BuiltinSerializableAttrMap"; }
 };
 
 }  // namespace ap::axpr

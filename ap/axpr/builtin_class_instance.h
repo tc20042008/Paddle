@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include <any>
 #include <unordered_map>
 #include "ap/axpr/adt.h"
-#include "ap/axpr/builtin_instance.h"
 #include "ap/axpr/class_attrs.h"
 #include "ap/axpr/error.h"
 #include "ap/axpr/serializable_value.h"
@@ -45,7 +45,7 @@ struct TypeImpl<BuiltinClassInstance<ValueT>> {
 template <typename ValueT>
 struct BuiltinClassInstanceImpl {
   TypeImpl<BuiltinClassInstance<ValueT>> type;
-  std::optional<std::shared_ptr<BuiltinInstance<ValueT>>> instance;
+  std::optional<std::any> instance;
 
   bool operator==(const BuiltinClassInstanceImpl& other) const {
     return this == &other;

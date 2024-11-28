@@ -14,26 +14,31 @@
 
 #pragma once
 
+#include "ap/axpr/attr_map.h"
+#include "ap/axpr/constants.h"
+#include "ap/axpr/method_class.h"
+
 namespace ap::axpr {
 
 template <typename ValueT>
-class BuiltinInstance {
- public:
-  virtual ~BuiltinInstance() = default;
+struct ObjectMethodClass {
+  using This = ObjectMethodClass;
+  using Self = AttrMap<ValueT>;
 
- protected:
-  BuiltinInstance() = default;
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    ADT_LET_CONST_REF(val, self->Get(attr_name)) << adt::errors::AttributeError{
+        std::string() + "'object' has no attribute '" + attr_name + "'."};
+    return val;
+  }
 };
 
 template <typename ValueT>
-class TagBuiltinInstance : public BuiltinInstance<ValueT> {
- public:
-  explicit TagBuiltinInstance(const ValueT& value) : value_(value) {}
+struct MethodClassImpl<ValueT, AttrMap<ValueT>>
+    : public ObjectMethodClass<ValueT> {};
 
-  const ValueT& value() const { return value_; }
-
- private:
-  ValueT value_;
-};
+template <typename ValueT>
+struct MethodClassImpl<ValueT, TypeImpl<AttrMap<ValueT>>>
+    : public EmptyMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

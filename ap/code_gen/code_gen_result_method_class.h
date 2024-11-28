@@ -53,21 +53,21 @@ struct TypeImplCodeGenResultMethodClass {
                std::string() +
                "the constructor of 'CodeGenResult' missing keyword argument "
                "'kernel_dispatch_func' of type 'Function'."};
-    std::optional<axpr::Attribute<axpr::SerializableValue>>
+    std::optional<axpr::AttrMap<axpr::SerializableValue>>
         kernel_dispatch_const_data;
     if (kwargs->Has("kernel_dispatch_const_data")) {
       ADT_LET_CONST_REF(
           data,
-          kwargs->template TryGet<axpr::Attribute<axpr::SerializableValue>>(
+          kwargs->template TryGet<axpr::AttrMap<axpr::SerializableValue>>(
               "kernel_dispatch_const_data"))
           << adt::errors::TypeError{
                  std::string() +
                  "the constructor of 'CodeGenResult' needs keyword argument "
                  "'kernel_dispatch_const_data' of type "
-                 "'BuiltinSerializableAttribute'."};
+                 "'BuiltinSerializableAttrMap'."};
       kernel_dispatch_const_data = data;
     } else {
-      kernel_dispatch_const_data = axpr::Attribute<axpr::SerializableValue>{};
+      kernel_dispatch_const_data = axpr::AttrMap<axpr::SerializableValue>{};
     }
     ADT_CHECK(kernel_dispatch_const_data.has_value());
     return CodeGenResult<ValueT>{

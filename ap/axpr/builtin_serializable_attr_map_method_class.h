@@ -15,7 +15,7 @@
 #pragma once
 
 #include <sstream>
-#include "ap/axpr/builtin_serializable_object.h"
+#include "ap/axpr/builtin_serializable_attr_map.h"
 #include "ap/axpr/class_instance.h"
 #include "ap/axpr/constants.h"
 #include "ap/axpr/method_class.h"
@@ -25,9 +25,9 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-struct BuiltinSerializableAttributeMethodClass {
-  using This = BuiltinSerializableAttributeMethodClass;
-  using Self = Attribute<SerializableValue>;
+struct BuiltinSerializableAttrMapMethodClass {
+  using This = BuiltinSerializableAttrMapMethodClass;
+  using Self = AttrMap<SerializableValue>;
 
   adt::Result<ValueT> Length(const Self& self) {
     return static_cast<int64_t>(self->size());
@@ -46,16 +46,16 @@ struct BuiltinSerializableAttributeMethodClass {
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     ADT_LET_CONST_REF(val, self->Get(attr_name)) << adt::errors::AttributeError{
-        std::string() + "'BuiltinSerializableAttribute' has no attribute '" +
+        std::string() + "'BuiltinSerializableAttrMap' has no attribute '" +
         attr_name + "'."};
     return val.template CastTo<ValueT>();
   }
 };
 
 template <typename ValueT>
-struct TypeImplBuiltinSerializableAttributeMethodClass {
-  using This = TypeImplBuiltinSerializableAttributeMethodClass;
-  using Self = TypeImpl<Attribute<SerializableValue>>;
+struct TypeImplBuiltinSerializableAttrMapMethodClass {
+  using This = TypeImplBuiltinSerializableAttrMapMethodClass;
+  using Self = TypeImpl<AttrMap<SerializableValue>>;
 
   adt::Result<ValueT> Call(const Self&) { return &This::StaticConstruct; }
 
@@ -67,25 +67,25 @@ struct TypeImplBuiltinSerializableAttributeMethodClass {
   adt::Result<ValueT> Construct(const std::vector<ValueT>& args) {
     const auto& packed_args = CastToPackedArgs(args);
     const auto& [pos_args, kwargs] = *packed_args;
-    ADT_CHECK(pos_args->empty()) << adt::errors::TypeError{
-        std::string() +
-        "the construct of BuiltinSerializableAttribute "
-        "takes no positional arguments."};
+    ADT_CHECK(pos_args->empty())
+        << adt::errors::TypeError{std::string() +
+                                  "the construct of BuiltinSerializableAttrMap "
+                                  "takes no positional arguments."};
     ADT_LET_CONST_REF(serializable_val,
                       SerializableValueHelper{}.CastObjectFrom(kwargs));
     ADT_LET_CONST_REF(
         serializable_obj,
-        serializable_val.template TryGet<Attribute<SerializableValue>>());
+        serializable_val.template TryGet<AttrMap<SerializableValue>>());
     return serializable_obj;
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, Attribute<SerializableValue>>
-    : public BuiltinSerializableAttributeMethodClass<ValueT> {};
+struct MethodClassImpl<ValueT, AttrMap<SerializableValue>>
+    : public BuiltinSerializableAttrMapMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<Attribute<SerializableValue>>>
-    : public TypeImplBuiltinSerializableAttributeMethodClass<ValueT> {};
+struct MethodClassImpl<ValueT, TypeImpl<AttrMap<SerializableValue>>>
+    : public TypeImplBuiltinSerializableAttrMapMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

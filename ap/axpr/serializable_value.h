@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/attribute.h"
+#include "ap/axpr/attr_map.h"
 #include "ap/axpr/bool.h"
 #include "ap/axpr/class_attrs.h"
 #include "ap/axpr/float.h"
@@ -41,7 +41,7 @@ using SerializableValueImpl = std::variant<TypeImpl<adt::Nothing>,
                                            std::string,
                                            Function<SerializableValueT>,
                                            adt::List<SerializableValueT>,
-                                           Attribute<SerializableValueT>>;
+                                           AttrMap<SerializableValueT>>;
 
 template <typename ValueT>
 struct ClassInstance;
@@ -83,7 +83,7 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
         [](const std::string&) -> bool { return true; },
         [](const Function<SerializableValue>&) -> bool { return true; },
         [](const adt::List<SerializableValue>&) -> bool { return true; },
-        [](const Attribute<SerializableValue>&) -> bool { return true; },
+        [](const AttrMap<SerializableValue>&) -> bool { return true; },
         [&](const adt::List<ValueT>& list) -> bool {
           for (const auto& elt : *list) {
             if (!IsSerializable(elt)) {
@@ -92,7 +92,7 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
           }
           return true;
         },
-        [&](const Attribute<ValueT>& object) -> bool {
+        [&](const AttrMap<ValueT>& object) -> bool {
           for (const auto& [k, v] : object->object->storage) {
             if (!IsSerializable(v)) {
               return false;
@@ -105,7 +105,7 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
 
   static std::string SerializableTypeNames() {
     return "NoneType, bool, int, float, str, class, function, "
-           "BuiltinSerializableList, BuiltinSerializableAttribute";
+           "BuiltinSerializableList, BuiltinSerializableAttrMap";
   }
 };
 

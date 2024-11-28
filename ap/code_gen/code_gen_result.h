@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/axpr/adt.h"
-#include "ap/axpr/builtin_serializable_object.h"
+#include "ap/axpr/builtin_serializable_attr_map.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/type.h"
 #include "ap/code_module/module.h"
@@ -26,7 +26,7 @@ template <typename ValueT>
 struct CodeGenResultImpl {
   code_module::Module code_module;
   axpr::Function<axpr::SerializableValue> kernel_dispatch_func;
-  axpr::Attribute<axpr::SerializableValue> kernel_dispatch_const_data;
+  axpr::AttrMap<axpr::SerializableValue> kernel_dispatch_const_data;
 
   bool operator==(const CodeGenResultImpl& other) const {
     return this == &other;

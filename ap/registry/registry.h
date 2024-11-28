@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 #include "ap/adt/adt.h"
-#include "ap/axpr/attribute.h"
+#include "ap/axpr/attr_map.h"
 #include "ap/axpr/type.h"
 #include "ap/registry/drr_pass_registry_item.h"
 

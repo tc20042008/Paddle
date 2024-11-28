@@ -53,11 +53,11 @@ struct SerializableValueHelper {
         [](const std::string& impl) -> RetT { return impl; },
         [](const Function<SerializableValue>& impl) -> RetT { return impl; },
         [](const adt::List<SerializableValue>& impl) -> RetT { return impl; },
-        [](const Attribute<SerializableValue>& impl) -> RetT { return impl; },
+        [](const AttrMap<SerializableValue>& impl) -> RetT { return impl; },
         [&](const adt::List<ValueT>& list) -> RetT {
           return CastListFrom(list);
         },
-        [&](const Attribute<ValueT>& object) -> RetT {
+        [&](const AttrMap<ValueT>& object) -> RetT {
           return CastObjectFrom(object);
         },
         [&](const auto&) -> RetT {
@@ -115,7 +115,7 @@ struct SerializableValueHelper {
         [&](const adt::List<SerializableValue>& lst) -> RetT {
           return HashImpl(lst);
         },
-        [&](const axpr::Attribute<SerializableValue>& obj) -> RetT {
+        [&](const axpr::AttrMap<SerializableValue>& obj) -> RetT {
           return HashImpl(obj);
         });
   }
@@ -130,7 +130,7 @@ struct SerializableValueHelper {
   }
 
   adt::Result<int64_t> HashImpl(
-      const axpr::Attribute<SerializableValue>& object) {
+      const axpr::AttrMap<SerializableValue>& object) {
     return reinterpret_cast<int64_t>(object.shared_ptr().get());
   }
 
@@ -177,7 +177,7 @@ struct SerializableValueHelper {
         [&](const adt::List<SerializableValue>& lst) -> RetT {
           return ToStringImpl(lst);
         },
-        [&](const axpr::Attribute<SerializableValue>& obj) -> RetT {
+        [&](const axpr::AttrMap<SerializableValue>& obj) -> RetT {
           return ToStringImpl(obj);
         });
   }
@@ -199,7 +199,7 @@ struct SerializableValueHelper {
   }
 
   adt::Result<std::string> ToStringImpl(
-      const axpr::Attribute<SerializableValue>& object) {
+      const axpr::AttrMap<SerializableValue>& object) {
     std::ostringstream ss;
     ss << "{";
     int i = 0;
@@ -228,13 +228,13 @@ struct SerializableValueHelper {
   }
 
   template <typename ValueT>
-  adt::Result<SerializableValue> CastObjectFrom(const Attribute<ValueT>& obj) {
-    Attribute<SerializableValue> ret_object{};
+  adt::Result<SerializableValue> CastObjectFrom(const AttrMap<ValueT>& obj) {
+    AttrMap<SerializableValue> ret_object{};
     for (const auto& [k, v] : obj->storage) {
       ADT_LET_CONST_REF(converted, CastFrom(v));
       ret_object->Set(k, converted);
     }
-    return Attribute<SerializableValue>{ret_object};
+    return AttrMap<SerializableValue>{ret_object};
   }
 };
 

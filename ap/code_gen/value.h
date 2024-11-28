@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "ap/axpr/builtin_serializable_object.h"
+#include "ap/axpr/builtin_serializable_attr_map.h"
 #include "ap/axpr/dim_expr.h"
 #include "ap/axpr/value.h"
 #include "ap/code_gen/code_gen_ctx.h"
@@ -67,7 +67,7 @@ struct Value : public ValueImpl<Value<BirNode>, BirNode> {
   using ir_node_type = BirNode;
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value<BirNode>, BirNode>);
 
-  static axpr::Attribute<Value<BirNode>> GetExportedTypes() {
+  static axpr::AttrMap<Value<BirNode>> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<Value<BirNode>,
                                         axpr::DataType,
                                         axpr::PointerType,

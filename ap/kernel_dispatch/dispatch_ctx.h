@@ -14,7 +14,7 @@
 
 #pragma once
 #include "ap/adt/adt.h"
-#include "ap/axpr/builtin_serializable_object.h"
+#include "ap/axpr/builtin_serializable_attr_map.h"
 #include "ap/axpr/type.h"
 #include "ap/axpr/value.h"
 #include "ap/code_module/arg_type.h"
@@ -35,7 +35,7 @@ template <typename ValueT>
 struct DispatchCtxImpl {
   DispatchRawCtx<ValueT> raw_ctx;
 
-  axpr::Attribute<axpr::SerializableValue> kernel_dispatch_const_data;
+  axpr::AttrMap<axpr::SerializableValue> kernel_dispatch_const_data;
 
   bool operator==(const DispatchCtxImpl& other) const { return &other == this; }
 };

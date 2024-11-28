@@ -15,7 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/builtin_object.h"
+#include "ap/axpr/attribute.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
@@ -23,7 +23,7 @@ namespace ap::axpr {
 template <typename ValueT>
 struct PackedArgsImpl {
   adt::List<ValueT> args;
-  axpr::BuiltinObject<ValueT> kwargs;
+  axpr::Attribute<ValueT> kwargs;
 
   bool operator==(const PackedArgsImpl& other) const {
     return this->args == other.args && this->kwargs == other.kwargs;
@@ -43,7 +43,7 @@ PackedArgs<ValueT> CastToPackedArgs(
     adt::List<ValueT> pos_args{};
     pos_args->reserve(packed_args_vec.size());
     pos_args->assign(packed_args_vec.begin(), packed_args_vec.end());
-    return PackedArgs<ValueT>{pos_args, BuiltinObject<ValueT>{}};
+    return PackedArgs<ValueT>{pos_args, Attribute<ValueT>{}};
   }
 }
 

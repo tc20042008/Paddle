@@ -14,11 +14,11 @@
 
 #pragma once
 
+#include "ap/axpr/attribute_method_class.h"
 #include "ap/axpr/bool_method_class.h"
 #include "ap/axpr/builtin_class_instance_method_class.h"
 #include "ap/axpr/builtin_func_type_method_class.h"
 #include "ap/axpr/builtin_high_order_func_type_method_class.h"
-#include "ap/axpr/builtin_object_method_class.h"
 #include "ap/axpr/builtin_serializable_object_method_class.h"
 #include "ap/axpr/builtin_symbol_method_class.h"
 #include "ap/axpr/class_instance_method_class.h"

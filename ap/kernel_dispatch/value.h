@@ -39,7 +39,7 @@ struct Value : public ValueImpl<Value> {
   using ValueImpl<Value>::ValueImpl;
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 
-  static axpr::BuiltinObject<Value> GetExportedTypes() {
+  static axpr::Attribute<Value> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<Value,
                                         axpr::DataType,
                                         axpr::DataValue,

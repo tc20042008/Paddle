@@ -16,7 +16,7 @@
 
 #include <string>
 #include "ap/axpr/adt.h"
-#include "ap/axpr/builtin_object.h"
+#include "ap/axpr/attribute.h"
 #include "ap/axpr/environment.h"
 
 namespace ap::axpr {
@@ -24,7 +24,7 @@ namespace ap::axpr {
 template <typename ValueT>
 class BuiltinEnvironment : public Environment<ValueT> {
  public:
-  explicit BuiltinEnvironment(const BuiltinObject<ValueT>& builtin_object)
+  explicit BuiltinEnvironment(const Attribute<ValueT>& builtin_object)
       : builtin_object_(builtin_object) {}
 
   adt::Result<ValueT> Get(const std::string& var) const override {
@@ -44,7 +44,7 @@ class BuiltinEnvironment : public Environment<ValueT> {
   BuiltinEnvironment(const BuiltinEnvironment&) = delete;
   BuiltinEnvironment(BuiltinEnvironment&&) = delete;
 
-  BuiltinObject<ValueT> builtin_object_;
+  Attribute<ValueT> builtin_object_;
 };
 
 }  // namespace ap::axpr

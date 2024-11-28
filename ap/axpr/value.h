@@ -15,10 +15,10 @@
 #pragma once
 
 #include "ap/axpr/adt.h"
+#include "ap/axpr/attribute.h"
 #include "ap/axpr/bool.h"
 #include "ap/axpr/builtin_func_type.h"
 #include "ap/axpr/builtin_high_order_func_type.h"
-#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/builtin_serializable_object.h"
 #include "ap/axpr/builtin_symbol.h"
 #include "ap/axpr/class_instance.h"
@@ -59,8 +59,8 @@ using ValueBase = std::variant<Type<Nothing,
                                     adt::List<ValueT>,
                                     adt::List<SerializableValue>,
                                     MutableList<ValueT>,
-                                    BuiltinObject<ValueT>,
-                                    BuiltinObject<SerializableValue>,
+                                    Attribute<ValueT>,
+                                    Attribute<SerializableValue>,
                                     OrderedDict<ValueT>,
                                     BuiltinClassInstance<ValueT>,
                                     ClassInstance<ValueT>,
@@ -82,8 +82,8 @@ using ValueBase = std::variant<Type<Nothing,
                                adt::List<ValueT>,
                                adt::List<SerializableValue>,
                                MutableList<ValueT>,
-                               BuiltinObject<ValueT>,
-                               BuiltinObject<SerializableValue>,
+                               Attribute<ValueT>,
+                               Attribute<SerializableValue>,
                                OrderedDict<ValueT>,
                                BuiltinClassInstance<ValueT>,
                                ClassInstance<ValueT>,

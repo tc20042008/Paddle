@@ -119,7 +119,7 @@ struct OpCudaCodeGenImpl {
     std::string class_name = "PackedIrOpClass";
     adt::List<std::shared_ptr<axpr::ClassAttrsImpl<axpr::SerializableValue>>>
         empty_bases{};
-    axpr::BuiltinObject<axpr::SerializableValue> methods{};
+    axpr::Attribute<axpr::SerializableValue> methods{};
     methods->Set("__init__", init_func);
     methods->Set("compute", compute_func);
     methods->Set("load_from_register", load_from_register_func);
@@ -249,7 +249,7 @@ struct OpCudaCodeGenImpl {
     std::string class_name = "RefIrOpClass";
     adt::List<std::shared_ptr<axpr::ClassAttrsImpl<axpr::SerializableValue>>>
         empty_bases{};
-    axpr::BuiltinObject<axpr::SerializableValue> methods{};
+    axpr::Attribute<axpr::SerializableValue> methods{};
     methods->Set("__init__", init_func);
     methods->Set("compute", compute_func);
     methods->Set("load_from_register", load_from_register_func);

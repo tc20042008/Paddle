@@ -168,7 +168,7 @@ adt::List<Val> MakeTensorDims(const phi::DenseTensor& tensor) {
 }
 
 adt::Result<adt::List<ap::axpr::SerializableValue>> GetIndexesSlices(
-    const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
+    const ap::axpr::Attribute<ap::axpr::SerializableValue>&
         kernel_dispatch_const_data,
     const std::string& attr_name) {
   ADT_LET_CONST_REF(
@@ -207,7 +207,7 @@ adt::Result<adt::Ok> VisitTensorIdxOrRange(
 
 adt::Result<adt::List<Val>> MakeConstTensors(
     const std::vector<const phi::DenseTensor*>& xs,
-    const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
+    const ap::axpr::Attribute<ap::axpr::SerializableValue>&
         kernel_dispatch_const_data) {
   ADT_LET_CONST_REF(
       indexes_slices,
@@ -248,7 +248,7 @@ adt::Result<adt::List<Val>> MakeConstTensors(
 
 adt::Result<adt::List<Val>> MakeMutableTensors(
     const std::vector<phi::DenseTensor*>& xs,
-    const ap::axpr::BuiltinObject<ap::axpr::SerializableValue>&
+    const ap::axpr::Attribute<ap::axpr::SerializableValue>&
         kernel_dispatch_const_data) {
   ADT_LET_CONST_REF(
       indexes_slices,
@@ -312,8 +312,7 @@ adt::Result<adt::Ok> ApUnaryKernel(
   ADT_LET_CONST_REF(ctx_maker_ret, helper.InterpretCtxMaker(ctx_maker_lambda));
   ADT_LET_CONST_REF(
       kernel_dispatch_const_data,
-      ctx_maker_ret
-          .TryGet<ap::axpr::BuiltinObject<ap::axpr::SerializableValue>>());
+      ctx_maker_ret.TryGet<ap::axpr::Attribute<ap::axpr::SerializableValue>>());
   ADT_LET_CONST_REF(
       cuda_module, code_module::MakeOrGetApUnaryCudaModule(code_module_lambda));
   ADT_LET_CONST_REF(inputs, MakeConstTensors(xs, kernel_dispatch_const_data));

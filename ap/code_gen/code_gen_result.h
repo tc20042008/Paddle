@@ -26,7 +26,7 @@ template <typename ValueT>
 struct CodeGenResultImpl {
   code_module::Module code_module;
   axpr::Function<axpr::SerializableValue> kernel_dispatch_func;
-  axpr::BuiltinObject<axpr::SerializableValue> kernel_dispatch_const_data;
+  axpr::Attribute<axpr::SerializableValue> kernel_dispatch_const_data;
 
   bool operator==(const CodeGenResultImpl& other) const {
     return this == &other;

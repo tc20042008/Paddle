@@ -63,8 +63,7 @@ class ModuleMgr {
     if (iter != file_path2const_global_frame_.end()) {
       return iter->second;
     }
-    auto frame_object =
-        std::make_shared<BuiltinObjectImpl<SerializableValue>>();
+    auto frame_object = std::make_shared<AttributeImpl<SerializableValue>>();
     const auto& frame =
         Frame<SerializableValue>::Make(circlable_ref_list_, frame_object);
     ADT_LET_CONST_REF(lambda, GetLambdaByFilePath(file_path));

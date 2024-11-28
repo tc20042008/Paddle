@@ -76,7 +76,7 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
       const Lambda<CoreExpr>& lambda) override {
     std::optional<std::shared_ptr<Environment<ValueT>>> env;
     {
-      auto tmp_frame_object = std::make_shared<BuiltinObjectImpl<ValueT>>();
+      auto tmp_frame_object = std::make_shared<AttributeImpl<ValueT>>();
       auto tmp_frame =
           Frame<ValueT>::Make(circlable_ref_list_, tmp_frame_object);
       const auto& mut_global_env = MakeMutableGlobalEnvironment(
@@ -566,17 +566,17 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
 
   std::shared_ptr<Environment<ValueT>> MakeCallEnvironment(
       const std::shared_ptr<Environment<ValueT>>& parent) {
-    auto builtin_obj = std::make_shared<BuiltinObjectImpl<ValueT>>();
+    auto builtin_obj = std::make_shared<AttributeImpl<ValueT>>();
     const auto& frame = Frame<ValueT>::Make(circlable_ref_list_, builtin_obj);
     return std::make_shared<CallEnvironment<ValueT>>(parent, frame);
   }
 
-  static BuiltinObject<ValueT> GetBuiltinFrameObject() {
+  static Attribute<ValueT> GetBuiltinFrameObject() {
     return MakeBuiltinFrameObject();
   }
 
-  static BuiltinObject<ValueT> MakeBuiltinFrameObject() {
-    BuiltinObject<ValueT> object{ValueT::GetExportedTypes()};
+  static Attribute<ValueT> MakeBuiltinFrameObject() {
+    Attribute<ValueT> object{ValueT::GetExportedTypes()};
     object->Set("import", &ModuleMgrHelper<ValueT>::ImportModule);
     object->Set("print", &Print<ValueT>);
     object->Set("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma<ValueT>);

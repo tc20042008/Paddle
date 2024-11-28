@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include "ap/axpr/builtin_object.h"
+#include "ap/axpr/attribute.h"
 #include "ap/memory/circlable_ref.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
 struct Frame
-    : public memory::CirclableRef<Frame<ValueT>, BuiltinObjectImpl<ValueT>> {
+    : public memory::CirclableRef<Frame<ValueT>, AttributeImpl<ValueT>> {
   using memory::CirclableRef<Frame<ValueT>,
-                             BuiltinObjectImpl<ValueT>>::CirclableRef;
+                             AttributeImpl<ValueT>>::CirclableRef;
 };
 
 }  // namespace ap::axpr

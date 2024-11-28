@@ -15,15 +15,15 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/builtin_object.h"
+#include "ap/axpr/attribute.h"
 #include "ap/memory/circlable_ref.h"
 
 namespace ap::axpr {
 
 template <typename T>
 struct InstanceAttrs
-    : public memory::CirclableRef<InstanceAttrs<T>, BuiltinObjectImpl<T>> {
-  using Base = memory::CirclableRef<InstanceAttrs<T>, BuiltinObjectImpl<T>>;
+    : public memory::CirclableRef<InstanceAttrs<T>, AttributeImpl<T>> {
+  using Base = memory::CirclableRef<InstanceAttrs<T>, AttributeImpl<T>>;
   using Base::CirclableRef;
 };
 

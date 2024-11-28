@@ -132,7 +132,7 @@ struct MethodClassImpl<ValueT, TypeImpl<ClassInstance<ValueT>>> {
     const auto& instance = [&] {
       const auto& instance_attrs = InstanceAttrs<ValueT>::Make(
           interpreter->circlable_ref_list(),
-          std::make_shared<BuiltinObjectImpl<ValueT>>());
+          std::make_shared<AttributeImpl<ValueT>>());
       TypeImpl<ClassInstance<ValueT>> type(class_attrs);
       return ClassInstance<ValueT>{type, instance_attrs};
     }();

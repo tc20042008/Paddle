@@ -72,7 +72,7 @@ struct MethodClassImpl<ValueT, TypeImpl<Type<Ts...>>> {
     ADT_LET_CONST_REF(
         attrs,
         attributes_object
-            .template TryGet<BuiltinObject<axpr::SerializableValue>>());
+            .template TryGet<Attribute<axpr::SerializableValue>>());
     ClassAttrs<SerializableValue> class_attrs{class_name, superclasses, attrs};
     return TypeImpl<ClassInstance<ValueT>>{class_attrs};
   }

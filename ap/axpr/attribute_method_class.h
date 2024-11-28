@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "ap/axpr/builtin_object.h"
+#include "ap/axpr/attribute.h"
 #include "ap/axpr/constants.h"
 #include "ap/axpr/method_class.h"
 
@@ -23,7 +23,7 @@ namespace ap::axpr {
 template <typename ValueT>
 struct ObjectMethodClass {
   using This = ObjectMethodClass;
-  using Self = BuiltinObject<ValueT>;
+  using Self = Attribute<ValueT>;
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
@@ -34,11 +34,11 @@ struct ObjectMethodClass {
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, BuiltinObject<ValueT>>
+struct MethodClassImpl<ValueT, Attribute<ValueT>>
     : public ObjectMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<BuiltinObject<ValueT>>>
+struct MethodClassImpl<ValueT, TypeImpl<Attribute<ValueT>>>
     : public EmptyMethodClass<ValueT> {};
 
 }  // namespace ap::axpr

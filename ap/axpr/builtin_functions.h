@@ -44,9 +44,7 @@ adt::Result<bool> ConvertToBool(const Val& cond) {
         ADT_LET_CONST_REF(list_ptr, list.Get());
         return list_ptr->size() > 0;
       },
-      [](const BuiltinObject<Val>& obj) -> Result<bool> {
-        return obj->size() > 0;
-      },
+      [](const Attribute<Val>& obj) -> Result<bool> { return obj->size() > 0; },
       [](const Lambda<CoreExpr>&) -> Result<bool> { return true; },
       [](const Closure<Val>&) -> Result<bool> { return true; },
       [](const Continuation<Val>&) -> Result<bool> { return true; },

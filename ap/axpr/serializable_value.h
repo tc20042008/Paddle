@@ -15,8 +15,8 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/attribute.h"
 #include "ap/axpr/bool.h"
-#include "ap/axpr/builtin_object.h"
 #include "ap/axpr/class_attrs.h"
 #include "ap/axpr/float.h"
 #include "ap/axpr/function.h"
@@ -41,7 +41,7 @@ using SerializableValueImpl = std::variant<TypeImpl<adt::Nothing>,
                                            std::string,
                                            Function<SerializableValueT>,
                                            adt::List<SerializableValueT>,
-                                           BuiltinObject<SerializableValueT>>;
+                                           Attribute<SerializableValueT>>;
 
 template <typename ValueT>
 struct ClassInstance;
@@ -83,7 +83,7 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
         [](const std::string&) -> bool { return true; },
         [](const Function<SerializableValue>&) -> bool { return true; },
         [](const adt::List<SerializableValue>&) -> bool { return true; },
-        [](const BuiltinObject<SerializableValue>&) -> bool { return true; },
+        [](const Attribute<SerializableValue>&) -> bool { return true; },
         [&](const adt::List<ValueT>& list) -> bool {
           for (const auto& elt : *list) {
             if (!IsSerializable(elt)) {
@@ -92,7 +92,7 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
           }
           return true;
         },
-        [&](const BuiltinObject<ValueT>& object) -> bool {
+        [&](const Attribute<ValueT>& object) -> bool {
           for (const auto& [k, v] : object->object->storage) {
             if (!IsSerializable(v)) {
               return false;
@@ -105,7 +105,7 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
 
   static std::string SerializableTypeNames() {
     return "NoneType, bool, int, float, str, class, function, "
-           "BuiltinSerializableList, BuiltinSerializableObject";
+           "BuiltinSerializableList, BuiltinSerializableAttribute";
   }
 };
 

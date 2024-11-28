@@ -40,7 +40,7 @@ struct MethodClassImpl<ValueT, TypeImpl<PackedArgs<ValueT>>> {
                       TryGetImpl<adt::List<ValueT>>(args.at(0)));
     ADT_LET_CONST_REF(keyword_args_val,
                       TryGetImpl<adt::List<ValueT>>(args.at(1)));
-    axpr::BuiltinObject<ValueT> keyword_args;
+    axpr::Attribute<ValueT> keyword_args;
     for (const auto& pair_val : *keyword_args_val) {
       ADT_LET_CONST_REF(pair, TryGetImpl<adt::List<ValueT>>(pair_val));
       ADT_CHECK(pair->size() == 2);

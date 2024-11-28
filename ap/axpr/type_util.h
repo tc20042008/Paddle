@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "ap/axpr/builtin_object.h"
+#include "ap/axpr/attribute.h"
 #include "ap/axpr/mutable_list.h"
 #include "ap/axpr/ordered_dict.h"
 #include "ap/axpr/packed_args.h"
@@ -29,12 +29,12 @@ struct GetTypeName2TypeHelper;
 
 template <typename ValueT>
 struct GetTypeName2TypeHelper<ValueT> {
-  static void Call(BuiltinObject<ValueT>*) {}
+  static void Call(Attribute<ValueT>*) {}
 };
 
 template <typename ValueT, typename ValueImplType0, typename... ValueImplTypes>
 struct GetTypeName2TypeHelper<ValueT, ValueImplType0, ValueImplTypes...> {
-  static void Call(BuiltinObject<ValueT>* ret) {
+  static void Call(Attribute<ValueT>* ret) {
     TypeImpl<ValueImplType0> type_impl{};
     ValueT type{type_impl};
     (*ret)->Set(type_impl.Name(), type);
@@ -45,8 +45,8 @@ struct GetTypeName2TypeHelper<ValueT, ValueImplType0, ValueImplTypes...> {
 }  // namespace detail
 
 template <typename ValueT, typename... ValueImplTypes>
-BuiltinObject<ValueT> GetObjectTypeName2Type() {
-  BuiltinObject<ValueT> object;
+Attribute<ValueT> GetObjectTypeName2Type() {
+  Attribute<ValueT> object;
   detail::GetTypeName2TypeHelper<ValueT,
                                  typename TypeTrait<ValueT>::TypeT,
                                  Nothing,
@@ -57,7 +57,7 @@ BuiltinObject<ValueT> GetObjectTypeName2Type() {
                                  MutableList<ValueT>,
                                  OrderedDict<ValueT>,
                                  PackedArgs<ValueT>,
-                                 BuiltinObject<axpr::SerializableValue>,
+                                 Attribute<axpr::SerializableValue>,
                                  ValueImplTypes...>::Call(&object);
   return object;
 }

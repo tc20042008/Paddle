@@ -60,7 +60,8 @@ struct RegistryMgr {
         std::make_shared<axpr::AttributeImpl<axpr::SerializableValue>>());
     std::vector<axpr::tVar<std::string>> args{};
     axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
-    axpr::CpsInterpreter<registry::Val> cps_expr_interpreter{};
+    axpr::CpsInterpreter<registry::Val> cps_expr_interpreter(
+        axpr::MakeBuiltinFrameAttrMap<registry::Val>());
     ADT_RETURN_IF_ERR(cps_expr_interpreter.InterpretModule(frame, lambda));
     return adt::Ok{};
   }

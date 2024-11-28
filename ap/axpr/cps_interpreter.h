@@ -20,6 +20,7 @@
 #include "ap/axpr/adt.h"
 #include "ap/axpr/builtin_classes.h"
 #include "ap/axpr/builtin_environment.h"
+#include "ap/axpr/builtin_frame_util.h"
 #include "ap/axpr/builtin_functions.h"
 #include "ap/axpr/call_environment.h"
 #include "ap/axpr/const_global_environment.h"
@@ -39,8 +40,8 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
  public:
   using This = CpsInterpreter;
   using Env = Environment<ValueT>;
-  CpsInterpreter()
-      : builtin_env_(GetBuiltinEnvironment()),
+  explicit CpsInterpreter(const AttrMap<ValueT>& builtin_frame_attr_map)
+      : builtin_env_(GetBuiltinEnvironment(builtin_frame_attr_map)),
         circlable_ref_list_(std::make_shared<memory::CirclableRefList>()) {}
   CpsInterpreter(const CpsInterpreter&) = delete;
   CpsInterpreter(CpsInterpreter&&) = delete;
@@ -545,9 +546,9 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     }
   }
 
-  static std::shared_ptr<Environment<ValueT>> GetBuiltinEnvironment() {
-    return std::make_shared<BuiltinEnvironment<ValueT>>(
-        GetBuiltinFrameObject());
+  static std::shared_ptr<Environment<ValueT>> GetBuiltinEnvironment(
+      const AttrMap<ValueT>& builtin_frame_attr_map) {
+    return std::make_shared<BuiltinEnvironment<ValueT>>(builtin_frame_attr_map);
   }
 
   static std::shared_ptr<Environment<ValueT>> MakeConstGlobalEnvironment(
@@ -569,25 +570,6 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     auto builtin_obj = std::make_shared<AttributeImpl<ValueT>>();
     const auto& frame = Frame<ValueT>::Make(circlable_ref_list_, builtin_obj);
     return std::make_shared<CallEnvironment<ValueT>>(parent, frame);
-  }
-
-  static AttrMap<ValueT> GetBuiltinFrameObject() {
-    return MakeBuiltinFrameObject();
-  }
-
-  static AttrMap<ValueT> MakeBuiltinFrameObject() {
-    AttrMap<ValueT> object{ValueT::GetExportedTypes()};
-    object->Set("import", &ModuleMgrHelper<ValueT>::ImportModule);
-    object->Set("print", &Print<ValueT>);
-    object->Set("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma<ValueT>);
-    object->Set("range", &MakeRange<ValueT>);
-    object->Set("map", &Map<ValueT>);
-    object->Set("filter", &Filter<ValueT>);
-    object->Set("reduce", &Reduce<ValueT>);
-    object->Set("zip", &Zip<ValueT>);
-    object->Set("max", &Max<ValueT>);
-    object->Set("min", &Min<ValueT>);
-    return object;
   }
 };
 

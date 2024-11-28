@@ -36,7 +36,8 @@ using CodeGenResult = ap::code_gen::CodeGenResult<Val>;
 
 adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
     const Function& lambda, const CodeGenCtx& code_gen_ctx) {
-  ap::axpr::CpsInterpreter<Val> interpreter;
+  ap::axpr::CpsInterpreter<Val> interpreter(
+      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
   ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
   const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();
   ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};

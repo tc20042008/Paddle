@@ -31,13 +31,13 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
 
   adt::Result<ValueT> Hash(const Self& self) {
     ADT_CHECK(self->instance.has_value());
-    return reinterpret_cast<int64_t>(self->instance.value().get());
+    return reinterpret_cast<int64_t>(self.shared_ptr().get());
   }
 
   adt::Result<ValueT> ToString(const Self& self) {
     std::ostringstream ss;
     ADT_CHECK(self->instance.has_value());
-    const auto* ptr = self->instance.value().get();
+    const auto* ptr = self.shared_ptr().get();
     ss << "<" << self->type.class_attrs->class_name << " object at " << ptr
        << ">";
     return ss.str();

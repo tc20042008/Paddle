@@ -35,7 +35,8 @@ using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
-  ap::axpr::CpsInterpreter<DrrValue> interpreter{};
+  ap::axpr::CpsInterpreter<DrrValue> interpreter(
+      ap::axpr::MakeBuiltinFrameAttrMap<DrrValue>());
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
       << adt::errors::TypeError{
@@ -56,7 +57,8 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
     const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
     return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
   }());
-  ap::axpr::CpsInterpreter<DrrValue> interpreter{};
+  ap::axpr::CpsInterpreter<DrrValue> interpreter(
+      ap::axpr::MakeBuiltinFrameAttrMap<DrrValue>());
   DrrValue cls{
       ap::axpr::TypeImpl<ap::axpr::ClassInstance<DrrValue>>(item->cls)};
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls}));

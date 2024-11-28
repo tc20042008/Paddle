@@ -30,14 +30,16 @@ using DispatchCtx = ap::kernel_dispatch::DispatchCtx<Val>;
 
 adt::Result<Val> KernelDispatchHelper::InterpretCtxMaker(
     const Lambda& ctx_maker_lambda) {
-  ap::axpr::CpsInterpreter<Val> cps_interpreter{};
+  ap::axpr::CpsInterpreter<Val> cps_interpreter(
+      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(ctx, cps_interpreter.Interpret(ctx_maker_lambda, {}));
   return ctx;
 }
 
 adt::Result<adt::Ok> KernelDispatchHelper::InterpretKernelDispatcher(
     const Lambda& kernel_dispatch_lambda, const DispatchCtx& dispatch_ctx) {
-  ap::axpr::CpsInterpreter<Val> cps_interpreter{};
+  ap::axpr::CpsInterpreter<Val> cps_interpreter(
+      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
   ADT_RETURN_IF_ERR(
       cps_interpreter.Interpret(kernel_dispatch_lambda, {dispatch_ctx}));
   return adt::Ok{};

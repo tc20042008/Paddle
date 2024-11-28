@@ -65,7 +65,8 @@ adt::Result<adt::Ok> InferMetaByLambda(
     const Lambda& lambda,
     const std::vector<const MetaTensor*>* inputs,
     std::vector<MetaTensor*>* outputs) {
-  ap::axpr::CpsInterpreter<ap::paddle::Value> interpreter{};
+  ap::axpr::CpsInterpreter<ap::paddle::Value> interpreter(
+      ap::axpr::MakeBuiltinFrameAttrMap<ap::paddle::Value>());
   ADT_RETURN_IF_ERR(interpreter.Interpret(lambda, {inputs, outputs}));
   return adt::Ok{};
 }

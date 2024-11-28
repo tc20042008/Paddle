@@ -1,0 +1,50 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include "ap/adt/adt.h"
+#include "ap/axpr/attr_map.h"
+#include "ap/axpr/builtin_functions.h"
+#include "ap/axpr/module_mgr_helper.h"
+
+namespace ap::axpr {
+
+template <typename ValueT, typename DoEachT>
+void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
+  AttrMap<ValueT> base{ValueT::GetExportedTypes()};
+  for (const auto& [k, v] : base->storage) {
+    DoEach(k, v);
+  }
+  DoEach("import", &ModuleMgrHelper<ValueT>::ImportModule);
+  DoEach("print", &Print<ValueT>);
+  DoEach("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma<ValueT>);
+  DoEach("range", &MakeRange<ValueT>);
+  DoEach("map", &Map<ValueT>);
+  DoEach("filter", &Filter<ValueT>);
+  DoEach("reduce", &Reduce<ValueT>);
+  DoEach("zip", &Zip<ValueT>);
+  DoEach("max", &Max<ValueT>);
+  DoEach("min", &Min<ValueT>);
+}
+
+template <typename ValueT>
+AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
+  AttrMap<ValueT> attr_map;
+  VisitEachBuiltinFrameAttr<ValueT>(
+      [&](const std::string& k, const ValueT& v) { attr_map->Set(k, v); });
+  return attr_map;
+}
+
+}  // namespace ap::axpr

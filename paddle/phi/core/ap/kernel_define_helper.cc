@@ -33,7 +33,8 @@ using Val = ap::code_module::Value;
 
 adt::Result<Module> KernelDefineHelper::InterpretKernelDefineLambda(
     const Lambda& lambda) {
-  ap::axpr::CpsInterpreter<Val> cps_interpreter{};
+  ap::axpr::CpsInterpreter<Val> cps_interpreter(
+      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(m, interpret_ret.TryGet<Module>());
   return m;

@@ -15,16 +15,26 @@
 #pragma once
 
 #include "ap/adt/adt.h"
-#include "ap/axpr/core_expr.h"
-#include "ap/axpr/value.h"
-#include "ap/registry/registry.h"
+#include "ap/axpr/builtin_frame_util.h"
+#include "ap/registry/registry_class.h"
 
 namespace ap::registry {
 
-using axpr::Value;
+template <typename ValueT, typename DoEachT>
+void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
+  const auto& registry_class = MakeRegistryClass<ValueT>();
+  DoEach(registry_class.Name(), ValueT{registry_class});
+}
 
-using Val = Value;
-
-using Env = ap::axpr::Environment<Val>;
+template <typename ValueT>
+axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
+  axpr::AttrMap<ValueT> attr_map;
+  auto Insert = [&](const std::string& k, const ValueT& v) {
+    attr_map->Set(k, v);
+  };
+  axpr::VisitEachBuiltinFrameAttr<ValueT>(Insert);
+  VisitEachBuiltinFrameAttr<ValueT>(Insert);
+  return attr_map;
+}
 
 }  // namespace ap::registry

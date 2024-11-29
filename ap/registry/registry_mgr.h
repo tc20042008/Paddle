@@ -24,8 +24,8 @@
 #include "ap/axpr/function.h"
 #include "ap/axpr/module_mgr.h"
 #include "ap/axpr/serializable_value.h"
+#include "ap/registry/builtin_frame_util.h"
 #include "ap/registry/value.h"
-#include "ap/registry/value_method_class.h"
 
 namespace ap::registry {
 
@@ -61,7 +61,7 @@ struct RegistryMgr {
     std::vector<axpr::tVar<std::string>> args{};
     axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
     axpr::CpsInterpreter<registry::Val> cps_expr_interpreter(
-        axpr::MakeBuiltinFrameAttrMap<registry::Val>());
+        registry::MakeBuiltinFrameAttrMap<registry::Val>());
     ADT_RETURN_IF_ERR(cps_expr_interpreter.InterpretModule(frame, lambda));
     return adt::Ok{};
   }

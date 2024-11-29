@@ -55,4 +55,16 @@ struct BuiltinClassInstanceImpl {
 template <typename ValueT>
 DEFINE_ADT_RC(BuiltinClassInstance, BuiltinClassInstanceImpl<ValueT>);
 
+template <typename ValueT, typename VisitorT>
+TypeImpl<BuiltinClassInstance<ValueT>> MakeBuiltinClass(
+    const std::string& class_name, const VisitorT& Visitor) {
+  using TypeImplT = TypeImpl<BuiltinClassInstance<ValueT>>;
+  AttrMap<ValueT> attr_map;
+  Visitor(
+      [&](const auto& name, const auto& func) { attr_map->Set(name, func); });
+  adt::List<std::shared_ptr<ClassAttrsImpl<ValueT>>> empty_superclasses{};
+  ClassAttrs<ValueT> class_attrs{class_name, empty_superclasses, attr_map};
+  return TypeImplT(class_attrs);
+}
+
 }  // namespace ap::axpr

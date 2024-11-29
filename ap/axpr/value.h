@@ -65,12 +65,12 @@ using ValueBase = std::variant<Type<Nothing,
                                     BuiltinClassInstance<ValueT>,
                                     ClassInstance<ValueT>,
                                     PackedArgs<ValueT>,
+                                    Starred<ValueT>,
                                     Function<SerializableValue>,
                                     Closure<ValueT>,
                                     Continuation<ValueT>,
                                     Method<ValueT>,
                                     builtin_symbol::Symbol,
-                                    Starred<ValueT>,
                                     BuiltinFuncType<ValueT>,
                                     BuiltinHighOrderFuncType<ValueT>,
                                     Ts...>,
@@ -88,18 +88,24 @@ using ValueBase = std::variant<Type<Nothing,
                                BuiltinClassInstance<ValueT>,
                                ClassInstance<ValueT>,
                                PackedArgs<ValueT>,
+                               Starred<ValueT>,
                                Function<SerializableValue>,
                                Closure<ValueT>,
                                Continuation<ValueT>,
                                Method<ValueT>,
                                builtin_symbol::Symbol,
-                               Starred<ValueT>,
                                BuiltinFuncType<ValueT>,
                                BuiltinHighOrderFuncType<ValueT>,
                                Ts...>;
 
-template <typename ValueT>
-using Builtin = ValueBase<ValueT>;
+struct Value : public ValueBase<Value> {
+  using ValueBase<Value>::ValueBase;
+  DEFINE_ADT_VARIANT_METHODS(ValueBase<Value>);
+
+  static axpr::AttrMap<Value> GetExportedTypes() {
+    return axpr::GetObjectTypeName2Type<Value>();
+  }
+};
 
 template <typename ValueT>
 ValueT GetType(const ValueT& value) {

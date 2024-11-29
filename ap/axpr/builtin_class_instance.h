@@ -45,7 +45,18 @@ struct TypeImpl<BuiltinClassInstance<ValueT>> {
 template <typename ValueT>
 struct BuiltinClassInstanceImpl {
   TypeImpl<BuiltinClassInstance<ValueT>> type;
-  std::optional<std::any> instance;
+  std::any instance;
+
+  template <typename T>
+  adt::Result<T> TryGet() const {
+    try {
+      return std::any_cast<T>(this->instance);
+    } catch (const std::bad_any_cast& e) {
+      return adt::errors::TypeError{std::string() + type.Name() +
+                                    " class cast to " + typeid(T).name() +
+                                    "failed."};
+    }
+  }
 
   bool operator==(const BuiltinClassInstanceImpl& other) const {
     return this == &other;

@@ -20,7 +20,6 @@
 #include "ap/code_module/data_type.h"
 #include "ap/code_module/func_declare.h"
 #include "ap/code_module/module.h"
-#include "ap/code_module/source_code.h"
 #include "paddle/cinn/adt/adt.h"
 
 namespace ap::code_module {
@@ -28,12 +27,8 @@ namespace ap::code_module {
 namespace adt = ::cinn::adt;
 
 template <typename ValueT>
-using ValueImpl = ap::axpr::ValueBase<ValueT,
-                                      axpr::DataType,
-                                      axpr::PointerType,
-                                      FuncDeclare,
-                                      SourceCode,
-                                      Module>;
+using ValueImpl = ap::axpr::
+    ValueBase<ValueT, axpr::DataType, axpr::PointerType, FuncDeclare, Module>;
 
 struct Value : public ValueImpl<Value> {
   using ValueImpl<Value>::ValueImpl;
@@ -44,7 +39,6 @@ struct Value : public ValueImpl<Value> {
                                         axpr::DataType,
                                         axpr::PointerType,
                                         FuncDeclare,
-                                        SourceCode,
                                         Module>();
   }
 };

@@ -56,7 +56,6 @@ using ValueImpl = ap::axpr::ValueBase<ValueT,
                                       ir_match::TensorMatchCtx<BirNode>,
                                       CodeGenCtx<BirNode>,
                                       code_module::FuncDeclare,
-                                      code_module::SourceCode,
                                       code_module::Module,
                                       CodeGenResult<ValueT>>;
 
@@ -76,7 +75,6 @@ struct Value : public ValueImpl<Value<BirNode>, BirNode> {
                                         index_expr::IndexExpr,
                                         index_expr::IndexTupleExpr,
                                         code_module::FuncDeclare,
-                                        code_module::SourceCode,
                                         code_module::Module,
                                         CodeGenResult<Value<BirNode>>>();
   }

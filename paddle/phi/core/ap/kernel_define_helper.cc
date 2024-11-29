@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/ap/kernel_define_helper.h"
 #include "ap/axpr/cps_interpreter.h"
+#include "ap/code_module/builtin_frame_util.h"
 #include "ap/code_module/value.h"
 #include "ap/code_module/value_method_class.h"
 
@@ -34,7 +35,7 @@ using Val = ap::code_module::Value;
 adt::Result<Module> KernelDefineHelper::InterpretKernelDefineLambda(
     const Lambda& lambda) {
   ap::axpr::CpsInterpreter<Val> cps_interpreter(
-      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
+      ap::code_module::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(m, interpret_ret.TryGet<Module>());
   return m;

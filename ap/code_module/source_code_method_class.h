@@ -49,6 +49,32 @@ struct TypeImplSourceCodeMethodClass {
   }
 };
 
+template <typename ValueT>
+adt::Result<ValueT> InitSourceCode(const ValueT& self_val,
+                                   const std::vector<ValueT>& args) {
+  ADT_LET_CONST_REF(
+      instance, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
+  ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+      std::string("the constructor of 'SourceCode' takes 1 arguments. but ") +
+      std::to_string(args.size()) + "were given."};
+  ADT_LET_CONST_REF(str, axpr::TryGetImpl<std::string>(args.at(0)))
+      << adt::errors::TypeError{
+             std::string("the argument 1 of constructor of 'SourceCode' must "
+                         "be a 'str'.")};
+  instance.shared_ptr()->instance = std::make_any<SourceCode>(str);
+  return adt::Nothing{};
+}
+
+template <typename ValueT>
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeSourceCodeClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("SourceCode", [&](const auto& DoEach) {
+        DoEach("__init__", &InitSourceCode<ValueT>);
+      }));
+  return cls;
+}
+
 }  // namespace ap::code_module
 
 namespace ap::axpr {

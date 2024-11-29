@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
 #include "ap/axpr/cps_interpreter.h"
+#include "ap/code_gen/builtin_frame_util.h"
 #include "ap/code_gen/value.h"
 #include "ap/code_gen/value_method_class.h"
 #include "ap/drr/drr_graph_descriptor.h"
@@ -37,7 +38,7 @@ using CodeGenResult = ap::code_gen::CodeGenResult<Val>;
 adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
     const Function& lambda, const CodeGenCtx& code_gen_ctx) {
   ap::axpr::CpsInterpreter<Val> interpreter(
-      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
+      ap::code_gen::MakeBuiltinFrameAttrMap<Val>());
   ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
   const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();
   ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};

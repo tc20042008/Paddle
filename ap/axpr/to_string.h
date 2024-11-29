@@ -20,16 +20,35 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-adt::Result<std::string> ToString(const ValueT& val) {
-  const auto& unary_func = MethodClass<ValueT>::ToString(val);
-  ADT_LET_CONST_REF(str_val, unary_func(val));
-  ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>());
-  return str;
+class InterpreterBase;
+
+template <typename ValueT>
+adt::Result<std::string> ToString(InterpreterBase<ValueT>* interpreter,
+                                  const ValueT& val) {
+  const auto& func = MethodClass<ValueT>::ToString(val);
+  using RetT = adt::Result<std::string>;
+  return func.Match(
+      [&](const adt::Nothing&) -> RetT {
+        return adt::errors::TypeError{GetTypeName(val) +
+                                      " class has no __str__ function"};
+      },
+      [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> RetT {
+        ADT_LET_CONST_REF(str_val, unary_func(val));
+        ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>());
+        return str;
+      },
+      [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
+                                            const ValueT&)) -> RetT {
+        ADT_LET_CONST_REF(str_val, unary_func(interpreter, val));
+        ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>());
+        return str;
+      });
 }
 
 template <typename ValueT>
-std::string ToDebugString(const ValueT& val) {
-  const auto& str = ToString(val);
+std::string ToDebugString(InterpreterBase<ValueT>* interpreter,
+                          const ValueT& val) {
+  const auto& str = ToString(interpreter, val);
   if (str.HasError()) {
     return "[invalid debug string]";
   }

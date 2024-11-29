@@ -38,16 +38,16 @@ struct ConstStdVectorPtrMethodClass {
   }
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
+    return adt::Nothing{};
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     if constexpr (std::is_same_v<BultinBinarySymbol, builtin_symbol::GetItem>) {
       return &This::GetItem;
     }
-    return std::nullopt;
+    return adt::Nothing{};
   }
 
   static adt::Result<ValueT> GetItem(const ValueT& vect_value,

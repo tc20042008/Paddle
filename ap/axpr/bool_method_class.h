@@ -34,26 +34,26 @@ struct BoolMethodClass {
   adt::Result<ValueT> Hash(Self val) { return static_cast<int64_t>(val); }
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<
                       BuiltinUnarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BuiltinUnarySymbol>::arithmetic_op_type;
       return &This::UnaryFunc<ArithmeticOp>;
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<
                       BultinBinarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BultinBinarySymbol>::arithmetic_op_type;
       return &This::template BinaryFunc<ArithmeticOp>;
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 

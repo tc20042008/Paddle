@@ -23,10 +23,24 @@ namespace ap::axpr {
 template <typename ValueT>
 struct Hash {
   adt::Result<int64_t> operator()(const ValueT& val) const {
-    const auto& unary_func = MethodClass<ValueT>::Hash(val);
-    ADT_LET_CONST_REF(hash_val, unary_func(val));
-    ADT_LET_CONST_REF(hash, hash_val.template TryGet<int64_t>());
-    return hash;
+    const auto& func = MethodClass<ValueT>::Hash(val);
+    using RetT = adt::Result<int64_t>;
+    return func.Match(
+        [&](const adt::Nothing&) -> RetT {
+          return adt::errors::TypeError{GetTypeName(val) +
+                                        " class has no __hash__ function."};
+        },
+        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> RetT {
+          ADT_LET_CONST_REF(hash_val, unary_func(val));
+          ADT_LET_CONST_REF(hash, hash_val.template TryGet<int64_t>());
+          return hash;
+        },
+        [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
+                                              const ValueT&)) -> RetT {
+          return adt::errors::TypeError{
+              GetTypeName(val) +
+              ".__hash__ is high order function, which is not supported yet."};
+        });
   }
 };
 

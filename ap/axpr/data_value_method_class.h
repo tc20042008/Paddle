@@ -68,19 +68,19 @@ struct DataValueMethodClass {
   }
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<
                       BuiltinUnarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BuiltinUnarySymbol>::arithmetic_op_type;
       return &This::UnaryFunc<ArithmeticOp>;
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<
                       BultinBinarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
@@ -90,7 +90,7 @@ struct DataValueMethodClass {
                                         builtin_symbol::GetAttr>) {
       return &This::GetAttr;
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 
@@ -162,18 +162,18 @@ adt::Result<ValueT> ConstructDataValue(const ValueT&,
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
     if constexpr (std::is_same_v<BuiltinUnarySymbol, builtin_symbol::Call>) {
       return &UnaryFuncReturnCapturedValue<ValueT,
                                            &detail::ConstructDataValue<ValueT>>;
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
+    return adt::Nothing{};
   }
 };
 

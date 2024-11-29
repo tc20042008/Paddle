@@ -29,7 +29,20 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-using BuiltinUnaryFuncT = adt::Result<ValueT> (*)(const ValueT&);
+class InterpreterBase;
+
+template <typename ValueT>
+using BuiltinUnaryFuncImpl =
+    std::variant<adt::Nothing,
+                 adt::Result<ValueT> (*)(const ValueT&),
+                 adt::Result<ValueT> (*)(InterpreterBase<ValueT>*,
+                                         const ValueT&)>;
+
+template <typename ValueT>
+struct BuiltinUnaryFunc : public BuiltinUnaryFuncImpl<ValueT> {
+  using BuiltinUnaryFuncImpl<ValueT>::BuiltinUnaryFuncImpl;
+  DEFINE_ADT_VARIANT_METHODS(BuiltinUnaryFuncImpl<ValueT>);
+};
 
 template <typename ValueT, BuiltinFuncType<ValueT> BuiltinFunc>
 adt::Result<ValueT> UnaryFuncReturnCapturedValue(const ValueT&) {
@@ -37,21 +50,28 @@ adt::Result<ValueT> UnaryFuncReturnCapturedValue(const ValueT&) {
 }
 
 template <typename ValueT>
-using BuiltinBinaryFuncT = adt::Result<ValueT> (*)(const ValueT&,
-                                                   const ValueT&);
+using BuiltinBinaryFuncImpl =
+    std::variant<adt::Nothing,
+                 adt::Result<ValueT> (*)(const ValueT&, const ValueT&),
+                 adt::Result<ValueT> (*)(
+                     InterpreterBase<ValueT>*, const ValueT&, const ValueT&)>;
+
+template <typename ValueT>
+struct BuiltinBinaryFunc : public BuiltinBinaryFuncImpl<ValueT> {
+  using BuiltinBinaryFuncImpl<ValueT>::BuiltinBinaryFuncImpl;
+  DEFINE_ADT_VARIANT_METHODS(BuiltinBinaryFuncImpl<ValueT>);
+};
 
 template <typename ValueT>
 struct EmptyMethodClass {
   template <typename BuiltinUnarySymbol>
-  static constexpr std::optional<BuiltinUnaryFuncT<ValueT>>
-  GetBuiltinUnaryFunc() {
-    return std::nullopt;
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
+    return adt::Nothing{};
   }
 
   template <typename BultinBinarySymbol>
-  static constexpr std::optional<BuiltinBinaryFuncT<ValueT>>
-  GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
+    return adt::Nothing{};
   }
 };
 
@@ -74,9 +94,20 @@ struct BuiltinMethodHelperImpl;
         decltype(std::declval<MethodClassImpl<ValueT, ObjT>&>().symbol_name( \
             std::declval<const ObjT&>()));                                   \
                                                                              \
+    template <typename ObjT>                                                 \
+    using HighOrderUnaryMethodRetT =                                         \
+        decltype(std::declval<MethodClassImpl<ValueT, ObjT>&>().symbol_name( \
+            std::declval<InterpreterBase<ValueT>*>(),                        \
+            std::declval<const ObjT&>()));                                   \
+                                                                             \
     static constexpr bool HasUnaryMethod() {                                 \
       return builtin_symbol::symbol_name::num_operands == 1 &&               \
              std::experimental::is_detected_v<UnaryMethodRetT, T>;           \
+    }                                                                        \
+                                                                             \
+    static constexpr bool HasHighOrderUnaryMethod() {                        \
+      return builtin_symbol::symbol_name::num_operands == 1 &&               \
+             std::experimental::is_detected_v<HighOrderUnaryMethodRetT, T>;  \
     }                                                                        \
                                                                              \
     static adt::Result<ValueT> UnaryCall(const T& obj) {                     \
@@ -88,19 +119,53 @@ struct BuiltinMethodHelperImpl;
       }                                                                      \
     }                                                                        \
                                                                              \
+    static adt::Result<ValueT> HighOrderUnaryCall(                           \
+        InterpreterBase<ValueT>* interpreter, const T& obj) {                \
+      if constexpr (This::HasHighOrderUnaryMethod()) {                       \
+        return MethodClassImpl<ValueT, T>{}.symbol_name(interpreter, obj);   \
+      } else {                                                               \
+        return adt::errors::RuntimeError{"`" #symbol_name                    \
+                                         "` method not found."};             \
+      }                                                                      \
+    }                                                                        \
+                                                                             \
     template <typename ObjT>                                                 \
     using BinaryMethodRetT =                                                 \
         decltype(std::declval<MethodClassImpl<ValueT, ObjT>&>().symbol_name( \
             std::declval<const ObjT&>(), std::declval<const ValueT&>()));    \
+                                                                             \
+    template <typename ObjT>                                                 \
+    using HighOrderBinaryMethodRetT =                                        \
+        decltype(std::declval<MethodClassImpl<ValueT, ObjT>&>().symbol_name( \
+            std::declval<InterpreterBase<ValueT>*>(),                        \
+            std::declval<const ObjT&>(),                                     \
+            std::declval<const ValueT&>()));                                 \
                                                                              \
     static constexpr bool HasBinaryMethod() {                                \
       return builtin_symbol::symbol_name::num_operands == 2 &&               \
              std::experimental::is_detected_v<BinaryMethodRetT, T>;          \
     }                                                                        \
                                                                              \
+    static constexpr bool HasHighOrderBinaryMethod() {                       \
+      return builtin_symbol::symbol_name::num_operands == 2 &&               \
+             std::experimental::is_detected_v<HighOrderBinaryMethodRetT, T>; \
+    }                                                                        \
+                                                                             \
     static adt::Result<ValueT> BinaryCall(const T& obj, const ValueT& arg) { \
       if constexpr (This::HasBinaryMethod()) {                               \
         return MethodClassImpl<ValueT, T>{}.symbol_name(obj, arg);           \
+      } else {                                                               \
+        return adt::errors::RuntimeError{"`" #symbol_name                    \
+                                         "` method not found."};             \
+      }                                                                      \
+    }                                                                        \
+    static adt::Result<ValueT> HighOrderBinaryCall(                          \
+        InterpreterBase<ValueT>* interpreter,                                \
+        const T& obj,                                                        \
+        const ValueT& arg) {                                                 \
+      if constexpr (This::HasHighOrderBinaryMethod()) {                      \
+        return MethodClassImpl<ValueT, T>{}.symbol_name(                     \
+            interpreter, obj, arg);                                          \
       } else {                                                               \
         return adt::errors::RuntimeError{"`" #symbol_name                    \
                                          "` method not found."};             \
@@ -142,23 +207,31 @@ struct BuiltinMethodHelper {
 
   static constexpr bool HasUnaryMethod() { return Impl::HasUnaryMethod(); }
 
-  static constexpr BuiltinUnaryFuncT<ValueT> GetBuiltinUnaryMethod() {
+  static constexpr bool HasHighOrderUnaryMethod() {
+    return Impl::HasHighOrderUnaryMethod();
+  }
+
+  static constexpr BuiltinUnaryFunc<ValueT> GetBuiltinUnaryMethod() {
     return &This::MakeBuiltinUnaryFunc<&Impl::UnaryCall>;
   }
 
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+  static constexpr BuiltinUnaryFunc<ValueT> GetBuiltinHighOrderUnaryMethod() {
+    return &This::MakeBuiltinHighOrderUnaryFunc<&Impl::HighOrderUnaryCall>;
+  }
+
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
     static const MethodClassImpl<ValueT, T>
         detect_specialization_of_method_class_impl;
     (void)detect_specialization_of_method_class_impl;
-    if constexpr (BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::
-                      HasUnaryMethod()) {
-      return &This::MakeBuiltinUnaryFunc<
-          &BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::UnaryCall>;
+    if constexpr (HasUnaryMethod()) {
+      return GetBuiltinUnaryMethod();
+    } else if constexpr (HasHighOrderUnaryMethod()) {
+      return GetBuiltinHighOrderUnaryMethod();
     } else if constexpr (HasDefaultUnaryMethod()) {
       return MethodClassImpl<ValueT,
                              T>::template GetBuiltinUnaryFunc<BuiltinSymbol>();
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 
@@ -171,19 +244,19 @@ struct BuiltinMethodHelper {
     return std::experimental::is_detected_v<UnaryMethodRetT, T>;
   }
 
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     static const MethodClassImpl<ValueT, T>
         detect_specialization_of_method_class_impl;
     (void)detect_specialization_of_method_class_impl;
-    if constexpr (BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::
-                      HasBinaryMethod()) {
-      return &This::MakeBuiltinBinaryFunc<
-          &BuiltinMethodHelperImpl<ValueT, T, BuiltinSymbol>::BinaryCall>;
+    if constexpr (Impl::HasBinaryMethod()) {
+      return &This::MakeBuiltinBinaryFunc<&Impl::BinaryCall>;
+    } else if constexpr (Impl::HasHighOrderBinaryMethod()) {
+      return &This::MakeBuiltinHighOrderBinaryFunc<&Impl::HighOrderBinaryCall>;
     } else if constexpr (HasDefaultBinaryMethod()) {
       return MethodClassImpl<ValueT,
                              T>::template GetBuiltinBinaryFunc<BuiltinSymbol>();
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 
@@ -203,11 +276,29 @@ struct BuiltinMethodHelper {
     return ret;
   }
 
+  template <adt::Result<ValueT> (*UnaryFunc)(InterpreterBase<ValueT>*,
+                                             const T&)>
+  static adt::Result<ValueT> MakeBuiltinHighOrderUnaryFunc(
+      InterpreterBase<ValueT>* interpreter, const ValueT& obj_val) {
+    ADT_LET_CONST_REF(obj, Alternative<ValueT, T>::TryGet(obj_val));
+    const auto& ret = UnaryFunc(interpreter, obj);
+    return ret;
+  }
+
   template <adt::Result<ValueT> (*BinaryFunc)(const T&, const ValueT&)>
   static adt::Result<ValueT> MakeBuiltinBinaryFunc(const ValueT& obj_val,
                                                    const ValueT& arg) {
     ADT_LET_CONST_REF(obj, Alternative<ValueT, T>::TryGet(obj_val));
     return BinaryFunc(obj, arg);
+  }
+  template <adt::Result<ValueT> (*BinaryFunc)(
+      InterpreterBase<ValueT>*, const T&, const ValueT&)>
+  static adt::Result<ValueT> MakeBuiltinHighOrderBinaryFunc(
+      InterpreterBase<ValueT>* interpreter,
+      const ValueT& obj_val,
+      const ValueT& arg) {
+    ADT_LET_CONST_REF(obj, Alternative<ValueT, T>::TryGet(obj_val));
+    return BinaryFunc(interpreter, obj, arg);
   }
 };
 
@@ -217,18 +308,20 @@ template <typename ValueT>
 struct MethodClass {
   using This = MethodClass;
 
-  static BuiltinUnaryFuncT<ValueT> Hash(const ValueT& val) {
+  static BuiltinUnaryFunc<ValueT> Hash(const ValueT& val) {
     using S = builtin_symbol::Hash;
-    return val.Match([](const auto& impl) -> BuiltinUnaryFuncT<ValueT> {
+    return val.Match([](const auto& impl) -> BuiltinUnaryFunc<ValueT> {
       using T = std::decay_t<decltype(impl)>;
       if constexpr (IsType<T>()) {
         return impl.Match([](const auto& type_impl)
-                              -> BuiltinUnaryFuncT<ValueT> {
+                              -> BuiltinUnaryFunc<ValueT> {
           using TT = std::decay_t<decltype(type_impl)>;
           using Helper = detail::
               BuiltinMethodHelper<ValueT, TT, S, detail::IndirectAlternative>;
           if constexpr (Helper::HasUnaryMethod()) {
             return Helper::GetBuiltinUnaryMethod();
+          } else if constexpr (Helper::HasHighOrderUnaryMethod()) {
+            return Helper::GetBuiltinHighOrderUnaryMethod();
           } else {
             return &This::TypeDefaultHash<TT>;
           }
@@ -238,6 +331,8 @@ struct MethodClass {
             BuiltinMethodHelper<ValueT, T, S, detail::DirectAlternative>;
         if constexpr (Helper::HasUnaryMethod()) {
           return Helper::GetBuiltinUnaryMethod();
+        } else if constexpr (Helper::HasHighOrderUnaryMethod()) {
+          return Helper::GetBuiltinHighOrderUnaryMethod();
         } else {
           return &This::InstanceDefaultHash<T>;
         }
@@ -261,18 +356,20 @@ struct MethodClass {
     return reinterpret_cast<int64_t>(ptr);
   }
 
-  static BuiltinUnaryFuncT<ValueT> ToString(const ValueT& val) {
+  static BuiltinUnaryFunc<ValueT> ToString(const ValueT& val) {
     using S = builtin_symbol::ToString;
-    return val.Match([](const auto& impl) -> BuiltinUnaryFuncT<ValueT> {
+    return val.Match([](const auto& impl) -> BuiltinUnaryFunc<ValueT> {
       using T = std::decay_t<decltype(impl)>;
       if constexpr (IsType<T>()) {
         return impl.Match([](const auto& type_impl)
-                              -> BuiltinUnaryFuncT<ValueT> {
+                              -> BuiltinUnaryFunc<ValueT> {
           using TT = std::decay_t<decltype(type_impl)>;
           using Helper = detail::
               BuiltinMethodHelper<ValueT, TT, S, detail::IndirectAlternative>;
           if constexpr (Helper::HasUnaryMethod()) {
             return Helper::GetBuiltinUnaryMethod();
+          } else if constexpr (Helper::HasHighOrderUnaryMethod()) {
+            return Helper::GetBuiltinHighOrderUnaryMethod();
           } else {
             return &This::TypeDefaultToString<TT>;
           }
@@ -282,6 +379,8 @@ struct MethodClass {
             BuiltinMethodHelper<ValueT, T, S, detail::DirectAlternative>;
         if constexpr (Helper::HasUnaryMethod()) {
           return Helper::GetBuiltinUnaryMethod();
+        } else if constexpr (Helper::HasHighOrderUnaryMethod()) {
+          return Helper::GetBuiltinHighOrderUnaryMethod();
         } else {
           return &This::InstanceDefaultToString<T>;
         }
@@ -308,15 +407,13 @@ struct MethodClass {
   }
 
   template <typename BultinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc(
-      const ValueT& val) {
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc(const ValueT& val) {
     using S = BultinUnarySymbol;
-    return val.Match([](const auto& impl)
-                         -> std::optional<BuiltinUnaryFuncT<ValueT>> {
+    return val.Match([](const auto& impl) -> BuiltinUnaryFunc<ValueT> {
       using T = std::decay_t<decltype(impl)>;
       if constexpr (IsType<T>()) {
         return impl.Match([](const auto& type_impl)
-                              -> std::optional<BuiltinUnaryFuncT<ValueT>> {
+                              -> BuiltinUnaryFunc<ValueT> {
           using TT = std::decay_t<decltype(type_impl)>;
           using Helper = detail::
               BuiltinMethodHelper<ValueT, TT, S, detail::IndirectAlternative>;
@@ -331,15 +428,13 @@ struct MethodClass {
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc(
-      const ValueT& val) {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc(const ValueT& val) {
     using S = BultinBinarySymbol;
-    return val.Match([](const auto& impl)
-                         -> std::optional<BuiltinBinaryFuncT<ValueT>> {
+    return val.Match([](const auto& impl) -> BuiltinBinaryFunc<ValueT> {
       using T = std::decay_t<decltype(impl)>;
       if constexpr (IsType<T>()) {
         return impl.Match([](const auto& type_impl)
-                              -> std::optional<BuiltinBinaryFuncT<ValueT>> {
+                              -> BuiltinBinaryFunc<ValueT> {
           using TT = std::decay_t<decltype(type_impl)>;
           using Helper = detail::
               BuiltinMethodHelper<ValueT, TT, S, detail::IndirectAlternative>;

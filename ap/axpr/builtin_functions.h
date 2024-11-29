@@ -140,7 +140,9 @@ Result<Val> BuiltinHalt(const Val&, const std::vector<Val>& args) {
 }
 
 template <typename ValueT>
-adt::Result<ValueT> Print(const ValueT&, const std::vector<ValueT>& args) {
+adt::Result<ValueT> Print(InterpreterBase<ValueT>* interpreter,
+                          const ValueT&,
+                          const std::vector<ValueT>& args) {
   std::ostringstream ss;
   int i = 0;
   for (const auto& obj : args) {
@@ -148,13 +150,33 @@ adt::Result<ValueT> Print(const ValueT&, const std::vector<ValueT>& args) {
       ss << " ";
     }
     const auto& func = MethodClass<ValueT>::ToString(obj);
-    ADT_LET_CONST_REF(str_val, func(obj));
-    ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
-        << adt::errors::TypeError{
-               std::string() + "'" + axpr::GetTypeName(obj) +
-               ".__builtin_ToString__ should return a 'str' but '" +
-               axpr::GetTypeName(str_val) + "' were returned."};
-    ss << str;
+    using Ok = adt::Result<adt::Ok>;
+    ADT_RETURN_IF_ERR(func.Match(
+        [&](const adt::Nothing&) -> Ok {
+          return adt::errors::TypeError{std::string() + GetTypeName(obj) +
+                                        " class has no ToString method"};
+        },
+        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+          ADT_LET_CONST_REF(str_val, unary_func(obj));
+          ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
+              << adt::errors::TypeError{
+                     std::string() + "'" + axpr::GetTypeName(obj) +
+                     ".__builtin_ToString__ should return a 'str' but '" +
+                     axpr::GetTypeName(str_val) + "' were returned."};
+          ss << str;
+          return adt::Ok{};
+        },
+        [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
+                                              const ValueT&)) -> Ok {
+          ADT_LET_CONST_REF(str_val, unary_func(interpreter, obj));
+          ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
+              << adt::errors::TypeError{
+                     std::string() + "'" + axpr::GetTypeName(obj) +
+                     ".__builtin_ToString__ should return a 'str' but '" +
+                     axpr::GetTypeName(str_val) + "' were returned."};
+          ss << str;
+          return adt::Ok{};
+        }));
   }
   LOG(ERROR) << "Print\n" << ss.str();
   return adt::Nothing{};

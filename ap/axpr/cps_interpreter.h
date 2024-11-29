@@ -46,6 +46,8 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
   CpsInterpreter(const CpsInterpreter&) = delete;
   CpsInterpreter(CpsInterpreter&&) = delete;
 
+  using Ok = adt::Result<adt::Ok>;
+
   const std::shared_ptr<Env>& builtin_env() const { return builtin_env_; }
 
   Result<ValueT> Interpret(const Lambda<CoreExpr>& lambda,
@@ -92,28 +94,26 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
   }
 
  protected:
-  Result<adt::Ok> InterpretComposedCallUntilHalt(
-      ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretComposedCallUntilHalt(ComposedCallImpl<ValueT>* composed_call) {
     while (!IsHalt(composed_call->inner_func)) {
       ADT_RETURN_IF_ERR(InterpretComposedCall(composed_call));
     }
     return adt::Ok{};
   }
 
-  Result<adt::Ok> InterpretComposedCall(
-      ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretComposedCall(ComposedCallImpl<ValueT>* composed_call) {
     using TypeT = typename TypeTrait<ValueT>::TypeT;
     return composed_call->inner_func.Match(
-        [&](const TypeT& type) -> Result<adt::Ok> {
+        [&](const TypeT& type) -> Ok {
           return InterpretConstruct(type, composed_call);
         },
-        [&](const BuiltinFuncType<ValueT>& func) -> Result<adt::Ok> {
+        [&](const BuiltinFuncType<ValueT>& func) -> Ok {
           return InterpretBuiltinFuncCall(func, composed_call);
         },
-        [&](const BuiltinHighOrderFuncType<ValueT>& func) -> Result<adt::Ok> {
+        [&](const BuiltinHighOrderFuncType<ValueT>& func) -> Ok {
           return InterpretBuiltinHighOrderFuncCall(func, composed_call);
         },
-        [&](const Method<ValueT>& method) -> Result<adt::Ok> {
+        [&](const Method<ValueT>& method) -> Ok {
           return method->func.Match(
               [&](const BuiltinFuncType<ValueT>& func) {
                 return InterpretBuiltinMethodCall(
@@ -127,35 +127,49 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
                 return InterpretMethodCall(method, composed_call);
               });
         },
-        [&](const Closure<ValueT>& closure) -> Result<adt::Ok> {
+        [&](const Closure<ValueT>& closure) -> Ok {
           return InterpretClosureCall(composed_call->outter_func,
                                       closure,
                                       composed_call->args,
                                       composed_call);
         },
-        [&](const Continuation<ValueT>& continuation) -> Result<adt::Ok> {
+        [&](const Continuation<ValueT>& continuation) -> Ok {
           return InterpretContinuation(
               &BuiltinHalt<ValueT>, continuation, composed_call);
         },
-        [&](const Function<SerializableValue>& function) -> Result<adt::Ok> {
+        [&](const Function<SerializableValue>& function) -> Ok {
           ADT_LET_CONST_REF(closure, ConvertFunctionToClosure(function));
           return InterpretClosureCall(composed_call->outter_func,
                                       closure,
                                       composed_call->args,
                                       composed_call);
         },
-        [&](const builtin_symbol::Symbol& symbol) -> Result<adt::Ok> {
+        [&](const builtin_symbol::Symbol& symbol) -> Ok {
           return InterpretBuiltinSymbolCall(symbol, composed_call);
         },
-        [&](const auto&) -> Result<adt::Ok> {
-          const auto& opt_func =
+        [&](const auto&) -> Ok {
+          const auto& call_func =
               MethodClass<ValueT>::template GetBuiltinUnaryFunc<
                   builtin_symbol::Call>(composed_call->inner_func);
-          ADT_CHECK(opt_func.has_value()) << TypeError{
-              std::string("'") + axpr::GetTypeName(composed_call->inner_func) +
-              "' object is not callable"};
-          ADT_LET_CONST_REF(func, opt_func.value()(composed_call->inner_func));
-          composed_call->inner_func = func;
+          ADT_RETURN_IF_ERR(call_func.Match(
+              [&](const adt::Nothing&) -> Ok {
+                return adt::errors::TypeError{
+                    std::string("'") +
+                    axpr::GetTypeName(composed_call->inner_func) +
+                    "' object is not callable"};
+              },
+              [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+                ADT_LET_CONST_REF(func, unary_func(composed_call->inner_func));
+                composed_call->inner_func = func;
+                return adt::Ok{};
+              },
+              [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
+                                                    const ValueT&)) -> Ok {
+                ADT_LET_CONST_REF(func,
+                                  unary_func(this, composed_call->inner_func));
+                composed_call->inner_func = func;
+                return adt::Ok{};
+              }));
           return adt::Ok{};
         });
   }
@@ -222,28 +236,27 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
         });
   }
 
-  Result<adt::Ok> InterpretBuiltinSymbolCall(
-      const builtin_symbol::Symbol& symbol,
-      ComposedCallImpl<ValueT>* ret_composed_call) {
+  Ok InterpretBuiltinSymbolCall(const builtin_symbol::Symbol& symbol,
+                                ComposedCallImpl<ValueT>* ret_composed_call) {
     return symbol.Match(
-        [&](const builtin_symbol::If&) -> Result<adt::Ok> {
+        [&](const builtin_symbol::If&) -> Ok {
           ret_composed_call->inner_func = &CpsBuiltinIf<ValueT>;
           return adt::Ok{};
         },
-        [&](const builtin_symbol::Apply&) -> Result<adt::Ok> {
+        [&](const builtin_symbol::Apply&) -> Ok {
           ret_composed_call->inner_func = &CpsBuiltinApply<ValueT>;
           return adt::Ok{};
         },
-        [&](const builtin_symbol::Id&) -> Result<adt::Ok> {
+        [&](const builtin_symbol::Id&) -> Ok {
           ret_composed_call->inner_func = &BuiltinIdentity<ValueT>;
           return adt::Ok{};
         },
-        [&](const builtin_symbol::List&) -> Result<adt::Ok> {
+        [&](const builtin_symbol::List&) -> Ok {
           ret_composed_call->inner_func = &BuiltinList<ValueT>;
           return adt::Ok{};
         },
-        [&](const builtin_symbol::Op& op) -> Result<adt::Ok> {
-          return op.Match([&](auto impl) -> Result<adt::Ok> {
+        [&](const builtin_symbol::Op& op) -> Ok {
+          return op.Match([&](auto impl) -> Ok {
             using BuiltinSymbol = decltype(impl);
             if constexpr (BuiltinSymbol::num_operands == 1) {
               return this
@@ -262,81 +275,121 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
   }
 
   template <typename BuiltinSymbol>
-  Result<adt::Ok> InterpretBuiltinUnarySymbolCall(
+  Ok InterpretBuiltinUnarySymbolCall(
       ComposedCallImpl<ValueT>* ret_composed_call) {
     ADT_CHECK(ret_composed_call->args.size() == 1) << TypeError{
         std::string() + "'" + BuiltinSymbol::Name() +
         "' takes 1 argument. but " +
         std::to_string(ret_composed_call->args.size()) + " were given."};
     const auto& operand = ret_composed_call->args.at(0);
-    const auto& opt_func =
+    std::optional<ValueT> opt_ret;
+    const auto& func =
         MethodClass<ValueT>::template GetBuiltinUnaryFunc<BuiltinSymbol>(
             operand);
-    ADT_CHECK(opt_func.has_value())
-        << TypeError{std::string() + "unsupported operand type for " +
-                     GetBuiltinSymbolDebugString<BuiltinSymbol>() + ": '" +
-                     axpr::GetTypeName(operand) + "'"};
-    ADT_LET_CONST_REF(ret, opt_func.value()(operand));
-    ret_composed_call->args = {ret};
+    ADT_RETURN_IF_ERR(func.Match(
+        [&](const adt::Nothing&) -> Ok {
+          return TypeError{std::string() + "unsupported operand type for " +
+                           GetBuiltinSymbolDebugString<BuiltinSymbol>() +
+                           ": '" + axpr::GetTypeName(operand) + "'"};
+        },
+        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+          ADT_LET_CONST_REF(ret, unary_func(operand));
+          opt_ret = ret;
+          return adt::Ok{};
+        },
+        [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
+                                              const ValueT&)) -> Ok {
+          ADT_LET_CONST_REF(ret, unary_func(this, operand));
+          opt_ret = ret;
+          return adt::Ok{};
+        }));
+    ADT_CHECK(opt_ret.has_value());
+    ret_composed_call->args = {opt_ret.value()};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
     ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
     return adt::Ok{};
   }
 
   template <typename TypeT>
-  Result<adt::Ok> InterpretConstruct(
-      const TypeT& type, ComposedCallImpl<ValueT>* ret_composed_call) {
-    const auto& opt_func =
+  Ok InterpretConstruct(const TypeT& type,
+                        ComposedCallImpl<ValueT>* ret_composed_call) {
+    const auto& func =
         MethodClass<ValueT>::template GetBuiltinUnaryFunc<builtin_symbol::Call>(
             ValueT{type});
-    ADT_CHECK(opt_func.has_value()) << TypeError{
-        std::string() + "no constructor for type '" + type.Name() + "'"};
-    ADT_LET_CONST_REF(constructor, opt_func.value()(ValueT{type}));
-    ret_composed_call->inner_func = constructor;
+    ADT_RETURN_IF_ERR(func.Match(
+        [&](const adt::Nothing&) -> Ok {
+          return adt::errors::TypeError{
+              std::string() + "no constructor for type '" + type.Name() + "'"};
+        },
+        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+          ADT_LET_CONST_REF(constructor, unary_func(ValueT{type}));
+          ret_composed_call->inner_func = constructor;
+          return adt::Ok{};
+        },
+        [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
+                                              const ValueT&)) -> Ok {
+          ADT_LET_CONST_REF(constructor, unary_func(this, ValueT{type}));
+          ret_composed_call->inner_func = constructor;
+          return adt::Ok{};
+        }));
     return adt::Ok{};
   }
 
   template <typename BuiltinSymbol>
-  Result<adt::Ok> InterpretBuiltinBinarySymbolCall(
+  Ok InterpretBuiltinBinarySymbolCall(
       ComposedCallImpl<ValueT>* ret_composed_call) {
     ADT_CHECK(ret_composed_call->args.size() == 2) << TypeError{
         std::string() + "'" + BuiltinSymbol::Name() +
         "' takes 2 argument. but " +
         std::to_string(ret_composed_call->args.size()) + " were given."};
     const auto& lhs = ret_composed_call->args.at(0);
-    const auto& opt_func =
+    const auto& func =
         MethodClass<ValueT>::template GetBuiltinBinaryFunc<BuiltinSymbol>(lhs);
-    ADT_CHECK(opt_func.has_value())
-        << TypeError{std::string() + "unsupported operand type for " +
-                     GetBuiltinSymbolDebugString<BuiltinSymbol>() + ": '" +
-                     axpr::GetTypeName(lhs) + "'"};
-    const auto& rhs = ret_composed_call->args.at(1);
-    ADT_LET_CONST_REF(ret, opt_func.value()(lhs, rhs));
-    ret_composed_call->args = {ret};
+    std::optional<ValueT> opt_ret;
+    ADT_RETURN_IF_ERR(func.Match(
+        [&](const adt::Nothing&) -> Ok {
+          return TypeError{std::string() + "unsupported operand type for " +
+                           GetBuiltinSymbolDebugString<BuiltinSymbol>() +
+                           ": '" + axpr::GetTypeName(lhs) + "'"};
+        },
+        [&](adt::Result<ValueT> (*binary_func)(const ValueT&,
+                                               const ValueT&)) -> Ok {
+          const auto& rhs = ret_composed_call->args.at(1);
+          ADT_LET_CONST_REF(ret, binary_func(lhs, rhs));
+          opt_ret = ret;
+          return adt::Ok{};
+        },
+        [&](adt::Result<ValueT> (*binary_func)(
+            InterpreterBase<ValueT>*, const ValueT&, const ValueT&)) -> Ok {
+          const auto& rhs = ret_composed_call->args.at(1);
+          ADT_LET_CONST_REF(ret, binary_func(this, lhs, rhs));
+          opt_ret = ret;
+          return adt::Ok{};
+        }));
+    ADT_CHECK(opt_ret.has_value());
+    ret_composed_call->args = {opt_ret.value()};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
     ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
     return adt::Ok{};
   }
 
-  Result<adt::Ok> InterpretClosureCall(
-      const ValueT& continuation,
-      const Closure<ValueT>& closure,
-      const std::vector<ValueT>& args,
-      ComposedCallImpl<ValueT>* ret_composed_call) {
+  Ok InterpretClosureCall(const ValueT& continuation,
+                          const Closure<ValueT>& closure,
+                          const std::vector<ValueT>& args,
+                          ComposedCallImpl<ValueT>* ret_composed_call) {
     const auto& new_env = MakeCallEnvironment(closure->environment);
     ADT_RETURN_IF_ERR(new_env->Set(kBuiltinReturn(), continuation));
     return InterpretLambdaCall(
         new_env, continuation, closure->lambda, args, ret_composed_call);
   }
 
-  Result<adt::Ok> InterpretLambdaCall(
-      const std::shared_ptr<Env>& env,
-      const ValueT& outter_func,
-      const Lambda<CoreExpr>& lambda,
-      const std::vector<ValueT>& args,
-      ComposedCallImpl<ValueT>* ret_composed_call) override {
+  Ok InterpretLambdaCall(const std::shared_ptr<Env>& env,
+                         const ValueT& outter_func,
+                         const Lambda<CoreExpr>& lambda,
+                         const std::vector<ValueT>& args,
+                         ComposedCallImpl<ValueT>* ret_composed_call) override {
     auto PassPackedArgs = [&](const std::optional<ValueT>& self,
-                              const ValueT& packed) -> adt::Result<adt::Ok> {
+                              const ValueT& packed) -> Ok {
       ADT_LET_CONST_REF(packed_args,
                         packed.template TryGet<PackedArgs<ValueT>>());
       const auto& [pos_args, kwargs] = *packed_args;
@@ -419,10 +472,9 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
         env, outter_func, lambda->body, ret_composed_call);
   }
 
-  Result<adt::Ok> InterpretContinuation(
-      const ValueT& outter_func,
-      const Continuation<ValueT>& continuation,
-      ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretContinuation(const ValueT& outter_func,
+                           const Continuation<ValueT>& continuation,
+                           ComposedCallImpl<ValueT>* composed_call) {
     const auto& env = continuation->environment;
     const auto& lambda = continuation->lambda;
     if (lambda->args.size() > 0) {
@@ -436,26 +488,25 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     return InterpretLambdaBody(env, outter_func, lambda->body, composed_call);
   }
 
-  Result<adt::Ok> InterpretLambdaBody(
-      const std::shared_ptr<Env>& env,
-      const ValueT& outter_func,
-      const CoreExpr& lambda_body,
-      ComposedCallImpl<ValueT>* ret_composed_call) {
+  Ok InterpretLambdaBody(const std::shared_ptr<Env>& env,
+                         const ValueT& outter_func,
+                         const CoreExpr& lambda_body,
+                         ComposedCallImpl<ValueT>* ret_composed_call) {
     return lambda_body.Match(
-        [&](const Atomic<CoreExpr>& atomic) -> Result<adt::Ok> {
+        [&](const Atomic<CoreExpr>& atomic) -> Ok {
           ADT_LET_CONST_REF(val, InterpretAtomic(env, atomic));
           ret_composed_call->inner_func = outter_func;
           ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
           ret_composed_call->args = {val};
           return adt::Ok{};
         },
-        [&](const ComposedCallAtomic<CoreExpr>& core_expr) -> Result<adt::Ok> {
+        [&](const ComposedCallAtomic<CoreExpr>& core_expr) -> Ok {
           return InterpretLambdaBodyComposedCallAtomic(
               env, core_expr, ret_composed_call);
         });
   }
 
-  Result<adt::Ok> InterpretLambdaBodyComposedCallAtomic(
+  Ok InterpretLambdaBodyComposedCallAtomic(
       const std::shared_ptr<Env>& env,
       const ComposedCallAtomic<CoreExpr>& core_expr,
       ComposedCallImpl<ValueT>* ret_composed_call) {
@@ -476,24 +527,22 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     return adt::Ok{};
   }
 
-  Result<adt::Ok> InterpretBuiltinFuncCall(
-      const BuiltinFuncType<ValueT>& func,
-      ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretBuiltinFuncCall(const BuiltinFuncType<ValueT>& func,
+                              ComposedCallImpl<ValueT>* composed_call) {
     return InterpretBuiltinMethodCall(
         func, ValueT{adt::Nothing{}}, composed_call);
   }
 
-  Result<adt::Ok> InterpretBuiltinHighOrderFuncCall(
+  Ok InterpretBuiltinHighOrderFuncCall(
       const BuiltinHighOrderFuncType<ValueT>& func,
       ComposedCallImpl<ValueT>* composed_call) {
     return InterpretBuiltinHighOrderMethodCall(
         func, ValueT{adt::Nothing{}}, composed_call);
   }
 
-  Result<adt::Ok> InterpretBuiltinMethodCall(
-      const BuiltinFuncType<ValueT>& func,
-      const ValueT& obj,
-      ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretBuiltinMethodCall(const BuiltinFuncType<ValueT>& func,
+                                const ValueT& obj,
+                                ComposedCallImpl<ValueT>* composed_call) {
     ADT_LET_CONST_REF(inner_ret, func(obj, composed_call->args));
     composed_call->inner_func = composed_call->outter_func;
     composed_call->outter_func = &BuiltinHalt<ValueT>;
@@ -501,7 +550,7 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     return adt::Ok{};
   }
 
-  Result<adt::Ok> InterpretBuiltinHighOrderMethodCall(
+  Ok InterpretBuiltinHighOrderMethodCall(
       const BuiltinHighOrderFuncType<ValueT>& func,
       const ValueT& obj,
       ComposedCallImpl<ValueT>* composed_call) {
@@ -512,8 +561,8 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     return adt::Ok{};
   }
 
-  Result<adt::Ok> InterpretMethodCall(const Method<ValueT>& method,
-                                      ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretMethodCall(const Method<ValueT>& method,
+                         ComposedCallImpl<ValueT>* composed_call) {
     std::vector<ValueT> new_args;
     new_args.reserve(composed_call->args.size() + 1);
     new_args.emplace_back(method->obj);

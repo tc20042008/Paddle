@@ -31,7 +31,8 @@ struct MethodClassImpl<ValueT, OrderedDict<ValueT>> {
     return static_cast<int64_t>(self->items().size());
   }
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  adt::Result<ValueT> ToString(axpr::InterpreterBase<ValueT>* interpreter,
+                               const Self& self) {
     std::ostringstream ss;
     ss << "OrderedDict([";
     int i = 0;
@@ -39,8 +40,8 @@ struct MethodClassImpl<ValueT, OrderedDict<ValueT>> {
       if (i++ > 0) {
         ss << ", ";
       }
-      ADT_LET_CONST_REF(key_str, axpr::ToString(k));
-      ADT_LET_CONST_REF(value_str, axpr::ToString(v));
+      ADT_LET_CONST_REF(key_str, axpr::ToString(interpreter, k));
+      ADT_LET_CONST_REF(value_str, axpr::ToString(interpreter, v));
       ss << "[" << key_str << ", " << value_str << "]";
     }
     ss << "])";
@@ -58,9 +59,11 @@ struct MethodClassImpl<ValueT, OrderedDict<ValueT>> {
     return hash_value;
   }
 
-  adt::Result<ValueT> GetItem(const Self& self, const ValueT& key) {
+  adt::Result<ValueT> GetItem(axpr::InterpreterBase<ValueT>* interpreter,
+                              const Self& self,
+                              const ValueT& key) {
     ADT_LET_CONST_REF(val, self->At(key))
-        << adt::errors::KeyError{axpr::ToDebugString(key)};
+        << adt::errors::KeyError{axpr::ToDebugString(interpreter, key)};
     return val;
   }
 

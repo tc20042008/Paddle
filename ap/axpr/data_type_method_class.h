@@ -37,12 +37,12 @@ struct DataTypeMethodClass {
   }
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
+    return adt::Nothing{};
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     if constexpr (std::is_same_v<BultinBinarySymbol, builtin_symbol::EQ>) {
       return &This::EQ;
     } else if constexpr (std::is_same_v<BultinBinarySymbol,  // NOLINT

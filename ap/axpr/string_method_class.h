@@ -100,14 +100,14 @@ struct StringMethodClass {
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<Val>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<Val> GetBuiltinBinaryFunc() {
     if constexpr (ConvertBuiltinSymbolToArithmetic<
                       BultinBinarySymbol>::convertable) {
       using ArithmeticOp = typename ConvertBuiltinSymbolToArithmetic<
           BultinBinarySymbol>::arithmetic_op_type;
       return &This::template BinaryFunc<ArithmeticOp>;
     } else {
-      return std::nullopt;
+      return adt::Nothing{};
     }
   }
 

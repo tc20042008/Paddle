@@ -25,13 +25,13 @@ struct MethodMethodClass {
   using Self = MethodMethodClass;
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
+    return adt::Nothing{};
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
-    return std::nullopt;
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
+    return adt::Nothing{};
   }
 };
 
@@ -40,12 +40,12 @@ struct MethodClassImpl<ValueT, Method<ValueT>> {
   using method_class = MethodMethodClass<ValueT>;
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };

@@ -30,38 +30,80 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
     return static_cast<int64_t>(self->size());
   }
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  adt::Result<ValueT> ToString(axpr::InterpreterBase<ValueT>* interpreter,
+                               const Self& self) {
     std::ostringstream ss;
     ss << "[";
     int i = 0;
+    using Ok = adt::Result<adt::Ok>;
     for (const auto& elt : *self) {
       if (i++ > 0) {
         ss << ", ";
       }
       const auto& func = MethodClass<ValueT>::ToString(elt);
-      ADT_LET_CONST_REF(str_val, func(elt));
-      ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
-          << adt::errors::TypeError{
-                 std::string() + "'" + axpr::GetTypeName(elt) +
-                 ".__builtin_ToString__ should return a 'str' but '" +
-                 axpr::GetTypeName(str_val) + "' were returned."};
-      ss << str;
+      ADT_RETURN_IF_ERR(func.Match(
+          [&](const adt::Nothing&) -> Ok {
+            return adt::errors::TypeError{GetTypeName(elt) +
+                                          " class has no __str__ method"};
+          },
+          [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+            ADT_LET_CONST_REF(str_val, unary_func(elt));
+            ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
+                << adt::errors::TypeError{
+                       std::string() + "'" + axpr::GetTypeName(elt) +
+                       ".__str__ should return a 'str' but '" +
+                       axpr::GetTypeName(str_val) + "' were returned."};
+            ss << str;
+            return adt::Ok{};
+          },
+          [&](adt::Result<ValueT> (*unary_func)(axpr::InterpreterBase<ValueT>*,
+                                                const ValueT&)) -> Ok {
+            ADT_LET_CONST_REF(str_val, unary_func(interpreter, elt));
+            ADT_LET_CONST_REF(str, str_val.template TryGet<std::string>())
+                << adt::errors::TypeError{
+                       std::string() + "'" + axpr::GetTypeName(elt) +
+                       ".__str__ should return a 'str' but '" +
+                       axpr::GetTypeName(str_val) + "' were returned."};
+            ss << str;
+            return adt::Ok{};
+          }));
     }
     ss << "]";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  adt::Result<ValueT> Hash(axpr::InterpreterBase<ValueT>* interpreter,
+                           const Self& self) {
     int64_t hash_value = 0;
+    using Ok = adt::Result<adt::Ok>;
     for (const auto& elt : *self) {
       const auto& func = MethodClass<ValueT>::Hash(elt);
-      ADT_LET_CONST_REF(elt_hash_val, func(elt));
-      ADT_LET_CONST_REF(elt_hash, elt_hash_val.template TryGet<int64_t>())
-          << adt::errors::TypeError{
-                 std::string() + "'" + axpr::GetTypeName(elt) +
-                 ".__builtin_hash__ should return a 'int' but '" +
-                 axpr::GetTypeName(elt_hash_val) + "' were returned."};
-      hash_value = adt::hash_combine(hash_value, elt_hash);
+      ADT_RETURN_IF_ERR(func.Match(
+          [&](const adt::Nothing&) -> Ok {
+            return adt::errors::TypeError{std::string() + GetTypeName(elt) +
+                                          " class has no __hash__ method"};
+          },
+          [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+            ADT_LET_CONST_REF(elt_hash_val, unary_func(elt));
+            ADT_LET_CONST_REF(elt_hash, elt_hash_val.template TryGet<int64_t>())
+                << adt::errors::TypeError{
+                       std::string() + "'" + axpr::GetTypeName(elt) +
+                       ".__hash__ should return a 'int' but '" +
+                       axpr::GetTypeName(elt_hash_val) + "' were returned."};
+            hash_value = adt::hash_combine(hash_value, elt_hash);
+            return adt::Ok{};
+          },
+          [&](adt::Result<ValueT> (*unary_func)(axpr::InterpreterBase<ValueT>*,
+                                                const ValueT&)) -> Ok {
+            ADT_LET_CONST_REF(elt_hash_val, unary_func(interpreter, elt));
+            ADT_LET_CONST_REF(elt_hash, elt_hash_val.template TryGet<int64_t>())
+                << adt::errors::TypeError{
+                       std::string() + "'" + axpr::GetTypeName(elt) +
+                       ".__hash__ should return a 'int' but '" +
+                       axpr::GetTypeName(elt_hash_val) + "' were returned."};
+            hash_value = adt::hash_combine(hash_value, elt_hash);
+            return adt::Ok{};
+          }));
     }
     return hash_value;
   }

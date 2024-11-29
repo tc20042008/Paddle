@@ -28,9 +28,9 @@
 
 namespace ap::code_gen {
 
-using ap::axpr::BuiltinBinaryFuncT;
+using ap::axpr::BuiltinBinaryFunc;
 using ap::axpr::BuiltinFuncType;
-using ap::axpr::BuiltinUnaryFuncT;
+using ap::axpr::BuiltinUnaryFunc;
 using ap::axpr::CppDataType;
 using ap::axpr::CppPointerType;
 using ap::axpr::DataType;

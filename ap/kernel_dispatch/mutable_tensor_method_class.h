@@ -20,9 +20,9 @@
 
 namespace ap::kernel_dispatch {
 
-using ap::axpr::BuiltinBinaryFuncT;
+using ap::axpr::BuiltinBinaryFunc;
 using ap::axpr::BuiltinFuncType;
-using ap::axpr::BuiltinUnaryFuncT;
+using ap::axpr::BuiltinUnaryFunc;
 using ap::axpr::CppDataType;
 using ap::axpr::CppPointerType;
 using ap::axpr::DataType;
@@ -87,17 +87,17 @@ struct MutableTensorMethodClass {
   using Self = MutableTensorMethodClass;
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
-    return std::nullopt;
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
+    return adt::Nothing{};
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     if constexpr (std::is_same_v<BultinBinarySymbol,
                                  ap::axpr::builtin_symbol::GetAttr>) {
       return &Self::GetAttr;
     }
-    return std::nullopt;
+    return adt::Nothing{};
   }
 
   static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
@@ -117,12 +117,12 @@ struct MethodClassImpl<ValueT, ap::kernel_dispatch::MutableTensor<ValueT>> {
   using method_class = ap::kernel_dispatch::MutableTensorMethodClass<ValueT>;
 
   template <typename BuiltinUnarySymbol>
-  static std::optional<BuiltinUnaryFuncT<ValueT>> GetBuiltinUnaryFunc() {
+  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
     return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
   }
 
   template <typename BultinBinarySymbol>
-  static std::optional<BuiltinBinaryFuncT<ValueT>> GetBuiltinBinaryFunc() {
+  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
     return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
   }
 };

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/axpr/builtin_class_instance.h"
+#include "ap/axpr/builtin_func_type.h"
 #include "ap/axpr/builtin_high_order_func_type.h"
 #include "ap/axpr/class_attrs_helper.h"
 #include "ap/axpr/core_expr.h"
@@ -56,13 +57,16 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
                                              const std::string& attr_name) {
     const auto& class_attrs = self->type.class_attrs;
     const auto& opt_func =
-        ClassAttrsHelper<ValueT>{}.OptGet(class_attrs, attr_name);
+        ClassAttrsHelper<ValueT, ValueT>{}.OptGet(class_attrs, attr_name);
     ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
         std::string() + "type object '" + class_attrs->class_name +
         "' has no attribute '" + attr_name + "'"};
     using RetT = adt::Result<ValueT>;
     return opt_func.value().Match(
-        [&](const Function<SerializableValue>& f) -> RetT {
+        [&](const BuiltinFuncType<ValueT>& f) -> RetT {
+          return Method<ValueT>{self, f};
+        },
+        [&](const BuiltinHighOrderFuncType<ValueT>& f) -> RetT {
           return Method<ValueT>{self, f};
         },
         [&](const auto&) -> RetT { return opt_func.value(); });
@@ -71,7 +75,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
   adt::Result<ValueT> SetAttr(const Self& self, const ValueT& attr_name_val) {
     const auto& class_attrs = self->type.class_attrs;
     const auto& opt_func =
-        ClassAttrsHelper<ValueT>{}.OptGet(class_attrs, "__setattr__");
+        ClassAttrsHelper<ValueT, ValueT>{}.OptGet(class_attrs, "__setattr__");
     ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
         std::string() + "type object '" + class_attrs->class_name +
         "' has no attribute '__setattr__'"};
@@ -88,11 +92,11 @@ struct MethodClassImpl<ValueT, TypeImpl<BuiltinClassInstance<ValueT>>> {
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
-    ADT_LET_CONST_REF(attr, self.class_attrs->attrs->Get(attr_name))
+    ADT_LET_CONST_REF(attr_val, self.class_attrs->attrs->Get(attr_name))
         << adt::errors::AttributeError{
                std::string() + "type object '" + self.class_attrs->class_name +
                "' has no attribute '" + attr_name + "'"};
-    return attr.template CastTo<ValueT>();
+    return attr_val;
   }
 
   adt::Result<ValueT> Call(const Self& self) {
@@ -123,7 +127,7 @@ struct MethodClassImpl<ValueT, TypeImpl<BuiltinClassInstance<ValueT>>> {
     TypeImpl<BuiltinClassInstance<ValueT>> type(class_attrs);
     BuiltinClassInstance<ValueT> instance{type, std::nullopt};
     const auto& init_func =
-        ClassAttrsHelper<ValueT>{}.OptGet(class_attrs, "__init__");
+        ClassAttrsHelper<ValueT, ValueT>{}.OptGet(class_attrs, "__init__");
     ADT_CHECK(init_func.has_value())
         << adt::errors::TypeError{std::string() + class_attrs->class_name +
                                   " class has no __init__ function"};

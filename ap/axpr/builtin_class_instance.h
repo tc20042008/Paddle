@@ -30,10 +30,10 @@ struct BuiltinClassInstance;
 template <typename ValueT>
 struct TypeImpl<BuiltinClassInstance<ValueT>> {
   explicit TypeImpl<BuiltinClassInstance<ValueT>>(
-      const ClassAttrs<SerializableValue>& class_attr_val)
+      const ClassAttrs<ValueT>& class_attr_val)
       : class_attrs(class_attr_val) {}
 
-  ClassAttrs<SerializableValue> class_attrs;
+  ClassAttrs<ValueT> class_attrs;
 
   const std::string& Name() const { return class_attrs->Name(); }
 

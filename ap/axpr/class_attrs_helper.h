@@ -20,21 +20,24 @@
 
 namespace ap::axpr {
 
-template <typename ValueT>
+template <typename ValueT, typename ItemValueT>
 struct ClassAttrsHelper {
-  std::optional<ValueT> OptGet(const ClassAttrs<SerializableValue>& class_attrs,
+  std::optional<ValueT> OptGet(const ClassAttrs<ItemValueT>& class_attrs,
                                const std::string& attr_name) {
     return OptGet(class_attrs.shared_ptr(), attr_name);
   }
 
  private:
   std::optional<ValueT> OptGet(
-      const std::shared_ptr<ClassAttrsImpl<SerializableValue>>&
-          class_attrs_impl,
+      const std::shared_ptr<ClassAttrsImpl<ItemValueT>>& class_attrs_impl,
       const std::string& attr_name) {
     const auto& opt_val = class_attrs_impl->attrs->OptGet(attr_name);
     if (opt_val.has_value()) {
-      return opt_val.value().template CastTo<ValueT>();
+      if constexpr (std::is_same_v<ValueT, ItemValueT>) {
+        return opt_val.value();
+      } else {
+        return opt_val.value().template CastTo<ValueT>();
+      }
     }
     for (const auto& base : *class_attrs_impl->superclasses) {
       if (const auto val_in_base = OptGet(base, attr_name)) {

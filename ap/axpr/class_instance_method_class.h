@@ -58,8 +58,8 @@ struct MethodClassImpl<ValueT, ClassInstance<ValueT>> {
       return instance_attrs->Get(attr_name);
     }
     const auto& class_attrs = self->type.class_attrs;
-    const auto& opt_func =
-        ClassAttrsHelper<ValueT>{}.OptGet(class_attrs, attr_name);
+    const auto& opt_func = ClassAttrsHelper<ValueT, SerializableValue>{}.OptGet(
+        class_attrs, attr_name);
     ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
         std::string() + "type object '" + class_attrs->class_name +
         "' has no attribute '" + attr_name + "'"};
@@ -137,7 +137,8 @@ struct MethodClassImpl<ValueT, TypeImpl<ClassInstance<ValueT>>> {
       return ClassInstance<ValueT>{type, instance_attrs};
     }();
     const auto& init_func =
-        ClassAttrsHelper<ValueT>{}.OptGet(class_attrs, "__init__");
+        ClassAttrsHelper<ValueT, SerializableValue>{}.OptGet(class_attrs,
+                                                             "__init__");
     if (init_func.has_value()) {
       Method<ValueT> f{instance, init_func.value()};
       ADT_RETURN_IF_ERR(interpreter->InterpretCall(f, args));

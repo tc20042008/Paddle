@@ -27,10 +27,6 @@ namespace ap::kernel_dispatch {
 
 template <typename ValueT>
 using ValueImpl = axpr::ValueBase<ValueT,
-                                  axpr::DataType,
-                                  axpr::DataValue,
-                                  axpr::PointerType,
-                                  axpr::PointerValue,
                                   ConstTensor<ValueT>,
                                   MutableTensor<ValueT>,
                                   DispatchCtx<ValueT>>;
@@ -40,11 +36,7 @@ struct Value : public ValueImpl<Value> {
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 
   static axpr::AttrMap<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value,
-                                        axpr::DataType,
-                                        axpr::DataValue,
-                                        axpr::PointerType,
-                                        axpr::PointerValue>();
+    return axpr::GetObjectTypeName2Type<Value>();
   }
 };
 

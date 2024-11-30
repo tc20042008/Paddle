@@ -20,7 +20,6 @@
 #include "ap/axpr/const_std_vector_ptr_method_class.h"
 #include "ap/axpr/cps_interpreter.h"
 #include "ap/axpr/data_type.h"
-#include "ap/axpr/data_type_method_class.h"
 #include "ap/axpr/std_vector_ptr.h"
 #include "ap/axpr/std_vector_ptr_method_class.h"
 #include "ap/axpr/value.h"
@@ -36,7 +35,6 @@ namespace ap::paddle {
 
 template <typename ValueT>
 using ValueImpl = axpr::ValueBase<ValueT,
-                                  axpr::DataType,
                                   paddle::DDim,
                                   ConstMetaTensorPtr,
                                   MetaTensorPtr,

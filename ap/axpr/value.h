@@ -56,6 +56,10 @@ using ValueBase = std::variant<Type<Nothing,
                                     int64_t,
                                     double,
                                     std::string,
+                                    DataType,
+                                    DataValue,
+                                    PointerType,
+                                    PointerValue,
                                     adt::List<ValueT>,
                                     adt::List<SerializableValue>,
                                     MutableList<ValueT>,
@@ -79,6 +83,10 @@ using ValueBase = std::variant<Type<Nothing,
                                int64_t,
                                double,
                                std::string,
+                               DataType,
+                               DataValue,
+                               PointerType,
+                               PointerValue,
                                adt::List<ValueT>,
                                adt::List<SerializableValue>,
                                MutableList<ValueT>,
@@ -103,7 +111,11 @@ struct Value : public ValueBase<Value> {
   DEFINE_ADT_VARIANT_METHODS(ValueBase<Value>);
 
   static axpr::AttrMap<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value>();
+    return axpr::GetObjectTypeName2Type<Value,
+                                        DataType,
+                                        DataValue,
+                                        PointerType,
+                                        PointerValue>();
   }
 };
 

@@ -37,8 +37,6 @@ namespace adt = ::cinn::adt;
 
 template <typename ValueT, typename BirNode>
 using ValueImpl = ap::axpr::ValueBase<ValueT,
-                                      axpr::DataType,
-                                      axpr::PointerType,
                                       index_expr::Slice,
                                       index_expr::IndexExpr,
                                       index_expr::IndexTupleExpr,
@@ -65,8 +63,6 @@ struct Value : public ValueImpl<Value<BirNode>, BirNode> {
 
   static axpr::AttrMap<Value<BirNode>> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<Value<BirNode>,
-                                        axpr::DataType,
-                                        axpr::PointerType,
                                         typename BirNode::dim_expr_type,
                                         index_expr::Slice,
                                         index_expr::IndexExpr,

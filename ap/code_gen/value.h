@@ -23,7 +23,6 @@
 #include "ap/code_gen/out_tensor_data_ptr_kernel_arg_id.h"
 #include "ap/code_module/adt.h"
 #include "ap/code_module/data_type.h"
-#include "ap/code_module/func_declare.h"
 #include "ap/code_module/module.h"
 #include "ap/code_module/source_code.h"
 #include "ap/index_expr/index_expr.h"
@@ -55,8 +54,6 @@ using ValueImpl = ap::axpr::ValueBase<ValueT,
                                       ir_match::OpMatchCtx<BirNode>,
                                       ir_match::TensorMatchCtx<BirNode>,
                                       CodeGenCtx<BirNode>,
-                                      code_module::FuncDeclare,
-                                      code_module::Module,
                                       CodeGenResult<ValueT>>;
 
 // compile time value
@@ -74,8 +71,6 @@ struct Value : public ValueImpl<Value<BirNode>, BirNode> {
                                         index_expr::Slice,
                                         index_expr::IndexExpr,
                                         index_expr::IndexTupleExpr,
-                                        code_module::FuncDeclare,
-                                        code_module::Module,
                                         CodeGenResult<Value<BirNode>>>();
   }
 };

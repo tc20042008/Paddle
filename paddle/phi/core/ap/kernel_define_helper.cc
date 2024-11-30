@@ -37,7 +37,8 @@ adt::Result<Module> KernelDefineHelper::InterpretKernelDefineLambda(
   ap::axpr::CpsInterpreter<Val> cps_interpreter(
       ap::code_module::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {}));
-  ADT_LET_CONST_REF(m, interpret_ret.TryGet<Module>());
+  ADT_LET_CONST_REF(
+      m, ap::axpr::TryGetBuiltinClassInstance<Module>(interpret_ret));
   return m;
 }
 

@@ -27,19 +27,16 @@ namespace ap::code_module {
 namespace adt = ::cinn::adt;
 
 template <typename ValueT>
-using ValueImpl = ap::axpr::
-    ValueBase<ValueT, axpr::DataType, axpr::PointerType, FuncDeclare, Module>;
+using ValueImpl =
+    ap::axpr::ValueBase<ValueT, axpr::DataType, axpr::PointerType>;
 
 struct Value : public ValueImpl<Value> {
   using ValueImpl<Value>::ValueImpl;
   DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
 
   static axpr::AttrMap<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value,
-                                        axpr::DataType,
-                                        axpr::PointerType,
-                                        FuncDeclare,
-                                        Module>();
+    return axpr::
+        GetObjectTypeName2Type<Value, axpr::DataType, axpr::PointerType>();
   }
 };
 

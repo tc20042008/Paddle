@@ -22,24 +22,11 @@
 namespace ap::code_module {
 
 template <typename ValueT>
-struct ModuleMethodClass {
-  using This = ModuleMethodClass;
-  using Self = Module;
-};
-
-template <typename ValueT>
 struct TypeImplModuleMethodClass {
   using This = TypeImplModuleMethodClass;
   using Self = axpr::TypeImpl<Module>;
 
-  adt::Result<ValueT> Call(const Self&) { return &This::Construct; }
-
-  static adt::Result<ValueT> Construct(const ValueT&,
-                                       const std::vector<ValueT>& args) {
-    return This{}.Make(args);
-  }
-
-  adt::Result<ValueT> Make(const std::vector<ValueT>& args) {
+  static adt::Result<Module> Make(const std::vector<ValueT>& args) {
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string("the constructor of 'Module' takes 2 arguments. but ") +
         std::to_string(args.size()) + "were given."};
@@ -51,39 +38,40 @@ struct TypeImplModuleMethodClass {
     adt::List<FuncDeclare> func_declares;
     func_declares->reserve(list->size());
     for (const auto& elt : *list) {
-      ADT_LET_CONST_REF(func_declare, axpr::TryGetImpl<FuncDeclare>(elt))
+      ADT_LET_CONST_REF(func_declare,
+                        axpr::TryGetBuiltinClassInstance<FuncDeclare>(elt))
           << adt::errors::TypeError{
                  std::string() +
                  "the argument 1 of constructor of 'Module' should be a "
                  "'FuncDeclare' object or a list of 'FuncDeclare' object."};
       func_declares->emplace_back(func_declare);
     }
-    ADT_LET_CONST_REF(
-        source_code_instance,
-        args.at(1).template TryGet<axpr::BuiltinClassInstance<ValueT>>())
+    ADT_LET_CONST_REF(source_code,
+                      axpr::TryGetBuiltinClassInstance<SourceCode>(args.at(1)))
         << adt::errors::TypeError{
                std::string() +
                "the argument 2 of Module() should be a 'SourceCode' (not " +
                axpr::GetTypeName(args.at(1)) + ") object"};
-    ADT_LET_CONST_REF(source_code,
-                      source_code_instance->template TryGet<SourceCode>())
-        << adt::errors::TypeError{std::string() +
-                                  "the argument 1 of constructor of 'Module' "
-                                  "should be a 'SourceCode' object."};
     return Module{func_declares, source_code};
   }
 };
 
+template <typename ValueT>
+adt::Result<ValueT> InitModule(const ValueT& self_val,
+                               const std::vector<ValueT>& args) {
+  ADT_LET_CONST_REF(
+      instance, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
+  ADT_LET_CONST_REF(m, TypeImplModuleMethodClass<ValueT>::Make(args));
+  instance.shared_ptr()->instance = m;
+  return adt::Nothing{};
+}
+
+template <typename ValueT>
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeModuleClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+      "Module",
+      [&](const auto& DoEach) { DoEach("__init__", &InitModule<ValueT>); }));
+  return cls;
+}
 }  // namespace ap::code_module
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::code_module::Module>
-    : public code_module::ModuleMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::code_module::Module>>
-    : public code_module::TypeImplModuleMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

@@ -76,15 +76,3 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeSourceCodeClass() {
 }
 
 }  // namespace ap::code_module
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::code_module::SourceCode>
-    : public code_module::SourceCodeMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::code_module::SourceCode>>
-    : public code_module::TypeImplSourceCodeMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

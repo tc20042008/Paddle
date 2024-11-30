@@ -17,5 +17,3 @@
 #include "ap/axpr/data_type_method_class.h"
 #include "ap/axpr/pointer_type_method_class.h"
 #include "ap/axpr/value_method_class.h"
-#include "ap/code_module/func_declare_method_class.h"
-#include "ap/code_module/module_method_class.h"

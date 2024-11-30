@@ -65,7 +65,7 @@ struct MethodClassImpl<ValueT, TypeImpl<Type<Ts...>>> {
       for (const auto& superclass_val : *superclass_vals) {
         ADT_LET_CONST_REF(
             type_impl,
-            CastToTypeImpl<TypeImpl<ClassInstance<ValueT>>>(superclass_val));
+            TryGetTypeImpl<TypeImpl<ClassInstance<ValueT>>>(superclass_val));
         superclasses->emplace_back(type_impl.class_attrs.shared_ptr());
       }
     }

@@ -35,14 +35,3 @@ struct ModuleImpl {
 DEFINE_ADT_RC(Module, ModuleImpl);
 
 }  // namespace ap::code_module
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<ap::code_module::Module> : public std::monostate {
-  using value_type = ap::code_module::Module;
-
-  const char* Name() const { return "Module"; }
-};
-
-}  // namespace ap::axpr

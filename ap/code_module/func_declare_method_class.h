@@ -20,21 +20,11 @@
 namespace ap::code_module {
 
 template <typename ValueT>
-struct FuncDeclareMethodClass {};
-
-template <typename ValueT>
 struct TypeImplFuncDeclareMethodClass {
   using This = TypeImplFuncDeclareMethodClass;
   using Self = axpr::TypeImpl<FuncDeclare>;
 
-  adt::Result<ValueT> Call(const Self&) { return &This::Construct; }
-
-  static adt::Result<ValueT> Construct(const ValueT&,
-                                       const std::vector<ValueT>& args) {
-    return This{}.Make(args);
-  }
-
-  adt::Result<ValueT> Make(const std::vector<ValueT>& args) {
+  static adt::Result<FuncDeclare> Make(const std::vector<ValueT>& args) {
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string("the constructor of FuncDeclare takes 2 arguments but ") +
         std::to_string(args.size()) + "were given."};
@@ -46,7 +36,7 @@ struct TypeImplFuncDeclareMethodClass {
     return FuncDeclare{func_id, arg_types};
   }
 
-  Result<adt::List<ArgType>> GetArgTypes(const ValueT& val) {
+  static Result<adt::List<ArgType>> GetArgTypes(const ValueT& val) {
     ADT_LET_CONST_REF(list, axpr::TryGetImpl<adt::List<ValueT>>(val))
         << adt::errors::TypeError{std::string() +
                                   "the argument 2 of construct of FuncDeclare "
@@ -66,16 +56,25 @@ struct TypeImplFuncDeclareMethodClass {
   }
 };
 
+template <typename ValueT>
+adt::Result<ValueT> InitFuncDeclare(const ValueT& self_val,
+                                    const std::vector<ValueT>& args) {
+  ADT_LET_CONST_REF(
+      instance, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
+  ADT_LET_CONST_REF(func_declare,
+                    TypeImplFuncDeclareMethodClass<ValueT>::Make(args));
+  instance.shared_ptr()->instance = func_declare;
+  return adt::Nothing{};
+}
+
+template <typename ValueT>
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeFuncDeclareClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("FuncDeclare", [&](const auto& DoEach) {
+        DoEach("__init__", &InitFuncDeclare<ValueT>);
+      }));
+  return cls;
+}
+
 }  // namespace ap::code_module
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::code_module::FuncDeclare>
-    : public code_module::FuncDeclareMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::code_module::FuncDeclare>>
-    : public code_module::TypeImplFuncDeclareMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

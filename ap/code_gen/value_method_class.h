@@ -20,8 +20,6 @@
 #include "ap/code_gen/dim_expr_kernel_arg_id_method_class.h"
 #include "ap/code_gen/in_tensor_data_ptr_kernel_arg_id_method_class.h"
 #include "ap/code_gen/out_tensor_data_ptr_kernel_arg_id_method_class.h"
-#include "ap/code_module/func_declare_method_class.h"
-#include "ap/code_module/module_method_class.h"
 #include "ap/index_expr/index_expr_method_class.h"
 #include "ap/index_expr/index_tuple_expr_method_class.h"
 #include "ap/index_expr/slice_method_class.h"

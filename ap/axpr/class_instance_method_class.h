@@ -121,7 +121,7 @@ struct MethodClassImpl<ValueT, TypeImpl<ClassInstance<ValueT>>> {
       axpr::InterpreterBase<ValueT>* interpreter,
       const ValueT& self_val,
       const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::CastToTypeImpl<Self>(self_val));
+    ADT_LET_CONST_REF(self, axpr::TryGetTypeImpl<Self>(self_val));
     return This{}.Construct(interpreter, self, args);
   }
 

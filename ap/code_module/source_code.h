@@ -31,14 +31,3 @@ struct SourceCodeImpl {
 DEFINE_ADT_RC(SourceCode, SourceCodeImpl);
 
 }  // namespace ap::code_module
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<ap::code_module::SourceCode> : public std::monostate {
-  using value_type = ap::code_module::SourceCode;
-
-  const char* Name() const { return "SourceCode"; }
-};
-
-}  // namespace ap::axpr

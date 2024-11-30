@@ -40,7 +40,13 @@ struct TypeImplCodeGenResultMethodClass {
   adt::Result<ValueT> Make(const std::vector<ValueT>& packed_args_val) {
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_val);
     const auto& [args, kwargs] = *packed_args;
-    ADT_LET_CONST_REF(m, kwargs->template TryGet<code_module::Module>("module"))
+    ADT_LET_CONST_REF(module_val, kwargs->Get("module"))
+        << adt::errors::TypeError{
+               std::string() +
+               "the constructor of 'CodeGenResult' missing keyword argument "
+               "'module' of type 'Module'."};
+    ADT_LET_CONST_REF(
+        m, axpr::TryGetBuiltinClassInstance<code_module::Module>(module_val))
         << adt::errors::TypeError{
                std::string() +
                "the constructor of 'CodeGenResult' missing keyword argument "

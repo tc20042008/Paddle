@@ -44,7 +44,7 @@ adt::Result<ValueT> RegisterDrrPass(const ValueT&,
   const auto& cls_val = args.at(2);
   ADT_LET_CONST_REF(
       type_impl,
-      axpr::CastToTypeImpl<axpr::TypeImpl<axpr::ClassInstance<ValueT>>>(
+      axpr::TryGetTypeImpl<axpr::TypeImpl<axpr::ClassInstance<ValueT>>>(
           cls_val))
       << adt::errors::TypeError{std::string() +
                                 "argument 3 of 'Registry.pass_name()' should "

@@ -16,14 +16,26 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/builtin_frame_util.h"
+#include "ap/code_module/func_declare_method_class.h"
+#include "ap/code_module/module_method_class.h"
 #include "ap/code_module/source_code_method_class.h"
 
 namespace ap::code_gen {
 
 template <typename ValueT, typename DoEachT>
 void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
-  const auto& source_code_class = code_module::MakeSourceCodeClass<ValueT>();
-  DoEach(source_code_class.Name(), ValueT{source_code_class});
+  {
+    const auto& cls = code_module::MakeSourceCodeClass<ValueT>();
+    DoEach(cls.Name(), ValueT{cls});
+  }
+  {
+    const auto& cls = code_module::MakeFuncDeclareClass<ValueT>();
+    DoEach(cls.Name(), ValueT{cls});
+  }
+  {
+    const auto& cls = code_module::MakeModuleClass<ValueT>();
+    DoEach(cls.Name(), ValueT{cls});
+  }
 }
 
 template <typename ValueT>

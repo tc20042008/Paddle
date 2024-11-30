@@ -34,14 +34,3 @@ struct FuncDeclareImpl {
 DEFINE_ADT_RC(FuncDeclare, FuncDeclareImpl);
 
 }  // namespace ap::code_module
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<ap::code_module::FuncDeclare> : public std::monostate {
-  using value_type = ap::code_module::FuncDeclare;
-
-  const char* Name() const { return "FuncDeclare"; }
-};
-
-}  // namespace ap::axpr

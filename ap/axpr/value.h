@@ -128,10 +128,18 @@ adt::Result<typename TypeTrait<ValueT>::TypeT> CastToType(const ValueT& value) {
 }
 
 template <typename TypeImplT, typename ValueT>
-adt::Result<TypeImplT> CastToTypeImpl(const ValueT& value) {
+adt::Result<TypeImplT> TryGetTypeImpl(const ValueT& value) {
   ADT_LET_CONST_REF(type, CastToType(value));
   ADT_LET_CONST_REF(type_impl, type.template TryGet<TypeImplT>());
   return type_impl;
+}
+
+template <typename T, typename ValueT>
+adt::Result<T> TryGetBuiltinClassInstance(const ValueT& val) {
+  ADT_LET_CONST_REF(instance,
+                    val.template TryGet<BuiltinClassInstance<ValueT>>());
+  ADT_LET_CONST_REF(ret, instance->template TryGet<T>());
+  return ret;
 }
 
 }  // namespace ap::axpr

@@ -90,9 +90,9 @@ struct ConstTensorMethodClass {
     ADT_CHECK(args.size() == 1);
     const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(
-        obj, axpr::TryGetBuiltinClassInstance<ConstTensor<Val>>(obj_val));
+        obj, axpr::TryGetBuiltinClassInstance<ConstTensor<ValueT>>(obj_val));
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
-    return detail::TensorGetAttr<Val>(obj, attr_name);
+    return detail::TensorGetAttr<ValueT>(obj, attr_name);
   }
 };
 

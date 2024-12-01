@@ -164,7 +164,7 @@ struct DispatchCtxMethodClass {
     if (attr_name == "kernel_dispatch_const_data") {
       return self->kernel_dispatch_const_data;
     }
-    return detail::DispatchCtxGetAttr<Val>(self, attr_name);
+    return detail::DispatchCtxGetAttr<ValueT>(self, attr_name);
   }
 
   static adt::Result<ValueT> StaticGetInputIndexByName(
@@ -232,7 +232,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
         DoEach("get_input_index_by_name", &Methods::StaticGetInputIndexByName);
         DoEach("get_output_index_by_name",
                &Methods::StaticGetOutputIndexByName);
-        DoEach("launch_cuda", &detail::LaunchCuda<Val>);
+        DoEach("launch_cuda", &detail::LaunchCuda<ValueT>);
       }));
   return cls;
 }

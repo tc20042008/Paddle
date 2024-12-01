@@ -15,9 +15,13 @@
 #pragma once
 
 #include "ap/axpr/attr_map.h"
+#include "ap/axpr/data_type.h"
+#include "ap/axpr/data_value.h"
 #include "ap/axpr/mutable_list.h"
 #include "ap/axpr/ordered_dict.h"
 #include "ap/axpr/packed_args.h"
+#include "ap/axpr/pointer_type.h"
+#include "ap/axpr/pointer_value.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
@@ -54,6 +58,10 @@ AttrMap<ValueT> GetObjectTypeName2Type() {
                                  int64_t,
                                  double,
                                  std::string,
+                                 DataType,
+                                 DataValue,
+                                 PointerType,
+                                 PointerValue,
                                  MutableList<ValueT>,
                                  OrderedDict<ValueT>,
                                  PackedArgs<ValueT>,

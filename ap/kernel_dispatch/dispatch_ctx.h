@@ -44,15 +44,3 @@ template <typename ValueT>
 DEFINE_ADT_RC(DispatchCtx, DispatchCtxImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct TypeImpl<ap::kernel_dispatch::DispatchCtx<ValueT>>
-    : public std::monostate {
-  using value_type = ap::kernel_dispatch::DispatchCtx<ValueT>;
-
-  const char* Name() const { return "DispatchCtx"; }
-};
-
-}  // namespace ap::axpr

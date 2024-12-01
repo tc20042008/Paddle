@@ -28,7 +28,6 @@ using ap::axpr::CppDataType;
 using ap::axpr::CppPointerType;
 using ap::axpr::DataType;
 using ap::axpr::DataValue;
-using ap::axpr::Method;
 using ap::axpr::MethodClass;
 using ap::axpr::PointerType;
 using ap::axpr::PointerValue;
@@ -101,38 +100,20 @@ Result<adt::List<ArgValue>> GetKernelArgs(const Val& args) {
 }
 
 template <typename Val>
-Result<Val> LaunchCuda(const Val& self, const std::vector<Val>& args) {
-  if (args.size() != 4) {
-    return TypeError{
-        std::string() +
-        "DispatchCtx.launch_cuda take 6 arguments (including self) but " +
-        std::to_string(args.size()) + " were given."};
-  }
-  const Result<DispatchCtx<Val>>& ctx =
-      self.template TryGet<DispatchCtx<Val>>();
-  ADT_RETURN_IF_ERR(ctx);
-  const Result<std::string>& func_name =
-      args.at(0).template TryGet<std::string>();
-  ADT_RETURN_IF_ERR(func_name);
-  const Result<int64_t>& num_blocks = args.at(1).template TryGet<int64_t>();
-  ADT_RETURN_IF_ERR(num_blocks);
-  const Result<int64_t>& num_threads = args.at(2).template TryGet<int64_t>();
-  ADT_RETURN_IF_ERR(num_threads);
-  const Result<adt::List<ArgValue>>& kernel_args = GetKernelArgs(args.at(3));
-  ADT_RETURN_IF_ERR(kernel_args);
-  const Result<adt::Ok>& ret =
-      ctx.GetOkValue()->raw_ctx->LaunchCudaKernel(func_name.GetOkValue(),
-                                                  num_blocks.GetOkValue(),
-                                                  num_threads.GetOkValue(),
-                                                  kernel_args.GetOkValue());
-  ADT_RETURN_IF_ERR(ret);
+Result<Val> LaunchCuda(const Val& self_val, const std::vector<Val>& args) {
+  ADT_CHECK(args.size() == 4) << TypeError{
+      std::string() +
+      "DispatchCtx.launch_cuda take 6 arguments (including self) but " +
+      std::to_string(args.size()) + " were given."};
+  ADT_LET_CONST_REF(
+      ctx, axpr::TryGetBuiltinClassInstance<DispatchCtx<Val>>(self_val));
+  ADT_LET_CONST_REF(func_name, args.at(0).template TryGet<std::string>());
+  ADT_LET_CONST_REF(num_blocks, args.at(1).template TryGet<int64_t>());
+  ADT_LET_CONST_REF(num_threads, args.at(2).template TryGet<int64_t>());
+  ADT_LET_CONST_REF(kernel_args, GetKernelArgs(args.at(3)));
+  ADT_RETURN_IF_ERR(ctx->raw_ctx->LaunchCudaKernel(
+      func_name, num_blocks, num_threads, kernel_args));
   return adt::Nothing{};
-}
-
-template <typename Val>
-Result<Val> DispatchCtxLaunchCuda(const DispatchCtx<Val>& ctx,
-                                  const std::string&) {
-  return ap::axpr::Method<Val>{ctx, BuiltinFuncType<Val>{&LaunchCuda}};
 }
 
 template <typename Val, BuiltinFuncType<Val> BuiltinFunc>
@@ -158,7 +139,6 @@ Result<Val> DispatchCtxGetAttr(const DispatchCtx<Val>& ctx,
        &DispatchCtxType<Val, ap::axpr::DataValue>},
       {"inputs", &DispatchCtxGetInputs<Val>},
       {"outputs", &DispatchCtxGetOutputs<Val>},
-      {"launch_cuda", &MakeDispatchCtxMethod<Val, &LaunchCuda<Val>>},
   };
   const auto& iter = map.find(name);
   if (iter == map.end()) {
@@ -175,23 +155,21 @@ struct DispatchCtxMethodClass {
   using This = DispatchCtxMethodClass;
   using Self = DispatchCtx<ValueT>;
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, axpr::TryGetBuiltinClassInstance<Self>(self_val));
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "kernel_dispatch_const_data") {
       return self->kernel_dispatch_const_data;
-    }
-    if (attr_name == "get_input_index_by_name") {
-      return axpr::Method<ValueT>{self, &This::StaticGetInputIndexByName};
-    }
-    if (attr_name == "get_output_index_by_name") {
-      return axpr::Method<ValueT>{self, &This::StaticGetOutputIndexByName};
     }
     return detail::DispatchCtxGetAttr<Val>(self, attr_name);
   }
 
   static adt::Result<ValueT> StaticGetInputIndexByName(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_LET_CONST_REF(self, axpr::TryGetBuiltinClassInstance<Self>(self_val));
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() +
         "'DispatchCtx.get_input_index_by_name' takes 1 argument but " +
@@ -218,7 +196,7 @@ struct DispatchCtxMethodClass {
 
   static adt::Result<ValueT> StaticGetOutputIndexByName(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_LET_CONST_REF(self, axpr::TryGetBuiltinClassInstance<Self>(self_val));
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() +
         "'DispatchCtx.get_output_index_by_name' takes 1 argument but " +
@@ -244,17 +222,19 @@ struct DispatchCtxMethodClass {
   }
 };
 
+template <typename ValueT>
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using Methods = DispatchCtxMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("DispatchCtx", [&](const auto& DoEach) {
+        DoEach("__getattr__", &Methods::GetAttr);
+        DoEach("get_input_index_by_name", &Methods::StaticGetInputIndexByName);
+        DoEach("get_output_index_by_name",
+               &Methods::StaticGetOutputIndexByName);
+        DoEach("launch_cuda", &detail::LaunchCuda<Val>);
+      }));
+  return cls;
+}
+
 }  // namespace ap::kernel_dispatch
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::kernel_dispatch::DispatchCtx<ValueT>>
-    : public ap::kernel_dispatch::DispatchCtxMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT,
-                       TypeImpl<ap::kernel_dispatch::DispatchCtx<ValueT>>>
-    : public EmptyMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

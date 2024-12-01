@@ -22,6 +22,7 @@
 
 #include "ap/axpr/anf_expr_util.h"
 #include "ap/kernel_dispatch/ap_cuda_jit_util.h"
+#include "ap/kernel_dispatch/builtin_frame_util.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/phi/core/ap/kernel_define_helper.h"
@@ -220,7 +221,10 @@ adt::Result<adt::List<Val>> MakeConstTensors(
                            const phi::DenseTensor* x) -> Ok {
     ConstTensorData tensor_data{x};
     adt::List<Val> dims{MakeTensorDims(*x)};
-    (*list)->emplace_back(ConstTensor<Val>{tensor_data, dims});
+    ConstTensor<Val> const_tensor{tensor_data, dims};
+    axpr::BuiltinClassInstance<Val> instance{GetConstTensorClass<Val>(),
+                                             const_tensor};
+    (*list)->emplace_back(instance);
     return adt::Ok{};
   };
   auto DoEachIdx = [&](std::size_t i) -> Ok {
@@ -261,7 +265,10 @@ adt::Result<adt::List<Val>> MakeMutableTensors(
   auto CollectTensor = [&](adt::List<Val>* list, phi::DenseTensor* x) -> Ok {
     MutableTensorData tensor_data{x};
     adt::List<Val> dims{MakeTensorDims(*x)};
-    (*list)->emplace_back(MutableTensor<Val>{tensor_data, dims});
+    MutableTensor<Val> mutable_tensor{tensor_data, dims};
+    axpr::BuiltinClassInstance<Val> instance{GetMutableTensorClass<Val>(),
+                                             mutable_tensor};
+    (*list)->emplace_back(instance);
     return adt::Ok{};
   };
   auto DoEachIdx = [&](std::size_t i) -> Ok {

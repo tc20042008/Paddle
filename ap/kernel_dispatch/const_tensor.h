@@ -71,15 +71,3 @@ template <typename ValueT>
 DEFINE_ADT_RC(ConstTensor, ConstTensorImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct TypeImpl<ap::kernel_dispatch::ConstTensor<ValueT>>
-    : public std::monostate {
-  using value_type = ap::kernel_dispatch::ConstTensor<ValueT>;
-
-  const char* Name() const { return "ConstTensor"; }
-};
-
-}  // namespace ap::axpr

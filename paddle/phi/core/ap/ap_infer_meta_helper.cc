@@ -24,6 +24,7 @@
 #include "ap/axpr/std_vector_ptr_method_class.h"
 #include "ap/axpr/value.h"
 #include "ap/axpr/value_method_class.h"
+#include "ap/paddle/builtin_frame_util.h"
 #include "ap/paddle/const_meta_tensor_ptr.h"
 #include "ap/paddle/const_meta_tensor_ptr_method_class.h"
 #include "ap/paddle/ddim.h"
@@ -64,7 +65,7 @@ adt::Result<adt::Ok> InferMetaByLambda(
     const std::vector<const MetaTensor*>* inputs,
     std::vector<MetaTensor*>* outputs) {
   ap::axpr::CpsInterpreter<ap::paddle::Value> interpreter(
-      ap::axpr::MakeBuiltinFrameAttrMap<ap::paddle::Value>());
+      ap::paddle::MakeBuiltinFrameAttrMap<ap::paddle::Value>());
   ADT_RETURN_IF_ERR(interpreter.Interpret(lambda, {inputs, outputs}));
   return adt::Ok{};
 }

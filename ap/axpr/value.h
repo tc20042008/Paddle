@@ -111,11 +111,7 @@ struct Value : public ValueBase<Value> {
   DEFINE_ADT_VARIANT_METHODS(ValueBase<Value>);
 
   static axpr::AttrMap<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value,
-                                        DataType,
-                                        DataValue,
-                                        PointerType,
-                                        PointerValue>();
+    return axpr::GetObjectTypeName2Type<Value>();
   }
 };
 

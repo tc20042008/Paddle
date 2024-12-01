@@ -14,6 +14,28 @@
 
 #pragma once
 
+#include "ap/adt/adt.h"
+#include "ap/axpr/builtin_frame_util.h"
 #include "ap/kernel_dispatch/const_tensor_method_class.h"
 #include "ap/kernel_dispatch/dispatch_ctx_method_class.h"
 #include "ap/kernel_dispatch/mutable_tensor_method_class.h"
+
+namespace ap::kernel_dispatch {
+
+template <typename ValueT, typename DoEachT>
+void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
+  // Do Nothing.
+}
+
+template <typename ValueT>
+axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
+  axpr::AttrMap<ValueT> attr_map;
+  auto Insert = [&](const std::string& k, const ValueT& v) {
+    attr_map->Set(k, v);
+  };
+  axpr::VisitEachBuiltinFrameAttr<ValueT>(Insert);
+  VisitEachBuiltinFrameAttr<ValueT>(Insert);
+  return attr_map;
+}
+
+}  // namespace ap::kernel_dispatch

@@ -66,15 +66,3 @@ template <typename ValueT>
 DEFINE_ADT_RC(MutableTensor, MutableTensorImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct TypeImpl<ap::kernel_dispatch::MutableTensor<ValueT>>
-    : public std::monostate {
-  using value_type = ap::kernel_dispatch::MutableTensor<ValueT>;
-
-  const char* Name() const { return "MutableTensor"; }
-};
-
-}  // namespace ap::axpr

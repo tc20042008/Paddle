@@ -29,46 +29,83 @@ struct MethodClassImpl<ValueT, ClassInstance<ValueT>> {
   using Self = ClassInstance<ValueT>;
   using This = MethodClassImpl<ValueT, Self>;
 
-  adt::Result<ValueT> Hash(const Self& self) {
-    return adt::errors::TypeError{
-        "objects are not hashable even __hash__ provided"};
+  adt::Result<ValueT> Hash(InterpreterBase<ValueT>* interpreter,
+                           const Self& self) {
+    const auto& opt_func = GetClassAttr(self, "__hash__");
+    if (!opt_func.has_value()) {
+      return reinterpret_cast<int64_t>(self.shared_ptr().get());
+    }
+    std::vector<ValueT> args{self};
+    ADT_LET_CONST_REF(hash_value,
+                      interpreter->InterpretCall(opt_func.value(), args));
+    ADT_CHECK(hash_value.template Has<int64_t>())
+        << adt::errors::TypeError{"__hash__ method should return an integer"};
+    return hash_value;
   }
 
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
-    ADT_LET_CONST_REF(ptr, self->instance_attrs.Get());
-    ss << "<" << self->type.class_attrs->class_name << " object at " << ptr
-       << ">";
-    return ss.str();
+  adt::Result<ValueT> ToString(InterpreterBase<ValueT>* interpreter,
+                               const Self& self) {
+    const auto& opt_func = GetClassAttr(self, "__str__");
+    if (!opt_func.has_value()) {
+      std::ostringstream ss;
+      const auto* ptr = self.shared_ptr().get();
+      ss << "<" << self->type.class_attrs->class_name << " object at " << ptr
+         << ">";
+      return ss.str();
+    }
+    std::vector<ValueT> args{self};
+    ADT_LET_CONST_REF(str, interpreter->InterpretCall(opt_func.value(), args));
+    ADT_CHECK(str.template Has<std::string>())
+        << adt::errors::TypeError{"__str__ method should return a str"};
+    return str;
   }
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  adt::Result<ValueT> GetAttr(InterpreterBase<ValueT>* interpreter,
+                              const Self& self,
+                              const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
-    return GetInstanceOrClassAttr(self, attr_name);
-  }
-
-  adt::Result<ValueT> Call(const Self& self) {
-    return GetInstanceOrClassAttr(self, "__call__");
-  }
-
-  adt::Result<ValueT> GetInstanceOrClassAttr(const Self& self,
-                                             const std::string& attr_name) {
     ADT_LET_CONST_REF(instance_attrs, self->instance_attrs.Get());
     if (instance_attrs->Has(attr_name)) {
       return instance_attrs->Get(attr_name);
     }
+    const auto& opt_func = GetClassAttr(self, attr_name);
+    ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
+        std::string() + "type object '" + self->type.class_attrs->class_name +
+        "' has no attribute '" + attr_name + "'"};
+    if (opt_func.has_value()) {
+      return opt_func.value();
+    }
+    const auto& opt_getter = GetClassAttr(self, "__getattr__");
+    ADT_CHECK(opt_getter.has_value()) << adt::errors::AttributeError{
+        std::string() + "type object '" + self->type.class_attrs->class_name +
+        "' has no attribute '__getattr__'"};
+    std::vector<ValueT> args{attr_name_val};
+    ADT_LET_CONST_REF(ret,
+                      interpreter->InterpretCall(opt_getter.value(), args));
+    return ret;
+  }
+
+  adt::Result<ValueT> Call(const Self& self) {
+    const auto& opt_func = GetClassAttr(self, "__call__");
+    ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
+        std::string() + "type object '" + self->type.class_attrs->class_name +
+        "' has no attribute '__call__'"};
+    return opt_func.value();
+  }
+
+  std::optional<ValueT> GetClassAttr(const Self& self,
+                                     const std::string& attr_name) {
     const auto& class_attrs = self->type.class_attrs;
     const auto& opt_func = ClassAttrsHelper<ValueT, SerializableValue>{}.OptGet(
         class_attrs, attr_name);
-    ADT_CHECK(opt_func.has_value()) << adt::errors::AttributeError{
-        std::string() + "type object '" + class_attrs->class_name +
-        "' has no attribute '" + attr_name + "'"};
-    using RetT = adt::Result<ValueT>;
+    if (!opt_func.has_value()) {
+      return std::nullopt;
+    }
     return opt_func.value().Match(
-        [&](const Function<SerializableValue>& f) -> RetT {
+        [&](const Function<SerializableValue>& f) -> ValueT {
           return Method<ValueT>{self, f};
         },
-        [&](const auto&) -> RetT { return opt_func.value(); });
+        [&](const auto&) -> ValueT { return opt_func.value(); });
   }
 
   adt::Result<ValueT> SetAttr(const Self& self, const ValueT& attr_name_val) {

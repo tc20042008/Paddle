@@ -86,50 +86,25 @@ template <typename ValueT>
 struct MutableTensorMethodClass {
   using Self = MutableTensorMethodClass;
 
-  template <typename BuiltinUnarySymbol>
-  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
-    return adt::Nothing{};
-  }
-
-  template <typename BultinBinarySymbol>
-  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
-    if constexpr (std::is_same_v<BultinBinarySymbol,
-                                 ap::axpr::builtin_symbol::GetAttr>) {
-      return &Self::GetAttr;
-    }
-    return adt::Nothing{};
-  }
-
   static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
-                                     const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(obj, obj_val.template TryGet<MutableTensor<Val>>());
+                                     const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
+    ADT_LET_CONST_REF(
+        obj, axpr::TryGetBuiltinClassInstance<MutableTensor<Val>>(obj_val));
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     return detail::TensorGetAttr<Val>(obj, attr_name);
   }
 };
 
+template <typename ValueT>
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetMutableTensorClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("MutableTensor", [&](const auto& DoEach) {
+        DoEach("__getattr__", &MutableTensorMethodClass<ValueT>::GetAttr);
+      }));
+  return cls;
+}
+
 }  // namespace ap::kernel_dispatch
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::kernel_dispatch::MutableTensor<ValueT>> {
-  using method_class = ap::kernel_dispatch::MutableTensorMethodClass<ValueT>;
-
-  template <typename BuiltinUnarySymbol>
-  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
-    return method_class::template GetBuiltinUnaryFunc<BuiltinUnarySymbol>();
-  }
-
-  template <typename BultinBinarySymbol>
-  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
-    return method_class::template GetBuiltinBinaryFunc<BultinBinarySymbol>();
-  }
-};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT,
-                       TypeImpl<ap::kernel_dispatch::MutableTensor<ValueT>>>
-    : public EmptyMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

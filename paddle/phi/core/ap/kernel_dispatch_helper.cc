@@ -14,8 +14,9 @@
 
 #include "paddle/phi/core/ap/kernel_dispatch_helper.h"
 #include "ap/axpr/cps_interpreter.h"
+#include "ap/kernel_dispatch/builtin_frame_util.h"
+#include "ap/kernel_dispatch/dispatch_ctx_method_class.h"
 #include "ap/kernel_dispatch/value.h"
-#include "ap/kernel_dispatch/value_method_class.h"
 
 namespace phi {
 
@@ -31,17 +32,19 @@ using DispatchCtx = ap::kernel_dispatch::DispatchCtx<Val>;
 adt::Result<Val> KernelDispatchHelper::InterpretCtxMaker(
     const Lambda& ctx_maker_lambda) {
   ap::axpr::CpsInterpreter<Val> cps_interpreter(
-      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
+      ap::kernel_dispatch::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(ctx, cps_interpreter.Interpret(ctx_maker_lambda, {}));
   return ctx;
 }
 
 adt::Result<adt::Ok> KernelDispatchHelper::InterpretKernelDispatcher(
     const Lambda& kernel_dispatch_lambda, const DispatchCtx& dispatch_ctx) {
+  const auto& cls = ap::kernel_dispatch::GetDispatchCtxClass<Val>();
+  ap::axpr::BuiltinClassInstance<Val> instance{cls, dispatch_ctx};
   ap::axpr::CpsInterpreter<Val> cps_interpreter(
-      ap::axpr::MakeBuiltinFrameAttrMap<Val>());
+      ap::kernel_dispatch::MakeBuiltinFrameAttrMap<Val>());
   ADT_RETURN_IF_ERR(
-      cps_interpreter.Interpret(kernel_dispatch_lambda, {dispatch_ctx}));
+      cps_interpreter.Interpret(kernel_dispatch_lambda, {instance}));
   return adt::Ok{};
 }
 

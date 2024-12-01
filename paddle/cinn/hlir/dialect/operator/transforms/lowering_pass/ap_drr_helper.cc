@@ -16,6 +16,7 @@
 #include "ap/axpr/anf_expr_util.h"
 #include "ap/axpr/cps_interpreter.h"
 #include "ap/axpr/lambda_expr_builder.h"
+#include "ap/drr/builtin_frame_util.h"
 #include "ap/drr/drr_graph_descriptor.h"
 #include "ap/drr/drr_node_descriptor.h"
 #include "ap/drr/value.h"
@@ -36,7 +37,7 @@ using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
   ap::axpr::CpsInterpreter<DrrValue> interpreter(
-      ap::axpr::MakeBuiltinFrameAttrMap<DrrValue>());
+      ap::drr::MakeBuiltinFrameAttrMap<DrrValue>());
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
       << adt::errors::TypeError{
@@ -58,7 +59,7 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
     return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
   }());
   ap::axpr::CpsInterpreter<DrrValue> interpreter(
-      ap::axpr::MakeBuiltinFrameAttrMap<DrrValue>());
+      ap::drr::MakeBuiltinFrameAttrMap<DrrValue>());
   DrrValue cls{
       ap::axpr::TypeImpl<ap::axpr::ClassInstance<DrrValue>>(item->cls)};
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls}));

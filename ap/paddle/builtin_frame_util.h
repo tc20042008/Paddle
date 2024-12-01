@@ -13,20 +13,21 @@
 // limitations under the License.
 
 #pragma once
+
 #include "ap/adt/adt.h"
-#include "ap/axpr/builtin_serializable_attr_map.h"
-#include "ap/axpr/value.h"
-#include "ap/code_module/data_type.h"
-#include "ap/kernel_dispatch/arg_value.h"
-#include "ap/kernel_dispatch/const_tensor.h"
-#include "ap/kernel_dispatch/dispatch_ctx.h"
-#include "ap/kernel_dispatch/mutable_tensor.h"
-#include "ap/kernel_dispatch/typed_buffer.h"
+#include "ap/axpr/attr_map.h"
+#include "ap/axpr/builtin_frame_util.h"
 
-namespace ap::kernel_dispatch {
+namespace ap::paddle {
 
-using axpr::Value;
+template <typename ValueT>
+ap::axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
+  ap::axpr::AttrMap<ValueT> attr_map;
+  auto Insert = [&](const std::string& k, const ValueT& v) {
+    attr_map->Set(k, v);
+  };
+  ap::axpr::VisitEachBuiltinFrameAttr<ValueT>(Insert);
+  return attr_map;
+}
 
-using Val = Value;
-
-}  // namespace ap::kernel_dispatch
+}  // namespace ap::paddle

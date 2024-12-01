@@ -77,12 +77,26 @@ struct Rc {
     using ::cinn::adt::Rc<__VA_ARGS__>::Rc;                 \
   };
 
-#define DEFINE_ADT_VARIANT_METHODS(...)                  \
-  DEFINE_ADT_VARIANT_METHODS_WHITOUT_TRYGET(__VA_ARGS__) \
-  template <typename __ADT_T>                            \
-  ::cinn::adt::Result<__ADT_T> TryGet() const {          \
-    ADT_CHECK(this->template Has<__ADT_T>());            \
-    return this->template Get<__ADT_T>();                \
+#define DEFINE_ADT_VARIANT_METHODS(...)                                \
+  DEFINE_ADT_VARIANT_METHODS_WHITOUT_TRYGET(__VA_ARGS__)               \
+  template <typename __AlternativeT, int start_idx = 0>                \
+  static constexpr bool IsMyAlternative() {                            \
+    if constexpr (start_idx >= std::variant_size_v<__VA_ARGS__>) {     \
+      return false;                                                    \
+    } else {                                                           \
+      using AlternativeT =                                             \
+          typename std::variant_alternative_t<start_idx, __VA_ARGS__>; \
+      if constexpr (std::is_same_v<AlternativeT, __AlternativeT>) {    \
+        return true;                                                   \
+      } else {                                                         \
+        return IsMyAlternative<__AlternativeT, start_idx + 1>();       \
+      }                                                                \
+    }                                                                  \
+  }                                                                    \
+  template <typename __ADT_T>                                          \
+  ::cinn::adt::Result<__ADT_T> TryGet() const {                        \
+    ADT_CHECK(this->template Has<__ADT_T>());                          \
+    return this->template Get<__ADT_T>();                              \
   }
 
 #define DEFINE_ADT_VARIANT_METHODS_WHITOUT_TRYGET(...)                 \

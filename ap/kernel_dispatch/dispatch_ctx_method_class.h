@@ -105,8 +105,7 @@ Result<Val> LaunchCuda(const Val& self_val, const std::vector<Val>& args) {
       std::string() +
       "DispatchCtx.launch_cuda take 6 arguments (including self) but " +
       std::to_string(args.size()) + " were given."};
-  ADT_LET_CONST_REF(
-      ctx, axpr::TryGetBuiltinClassInstance<DispatchCtx<Val>>(self_val));
+  ADT_LET_CONST_REF(ctx, axpr::Get<DispatchCtx<Val>>(self_val));
   ADT_LET_CONST_REF(func_name, args.at(0).template TryGet<std::string>());
   ADT_LET_CONST_REF(num_blocks, args.at(1).template TryGet<int64_t>());
   ADT_LET_CONST_REF(num_threads, args.at(2).template TryGet<int64_t>());
@@ -157,7 +156,7 @@ struct DispatchCtxMethodClass {
 
   static adt::Result<ValueT> GetAttr(const ValueT& self_val,
                                      const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetBuiltinClassInstance<Self>(self_val));
+    ADT_LET_CONST_REF(self, axpr::Get<Self>(self_val));
     ADT_CHECK(args.size() == 1);
     const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
@@ -169,7 +168,7 @@ struct DispatchCtxMethodClass {
 
   static adt::Result<ValueT> StaticGetInputIndexByName(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetBuiltinClassInstance<Self>(self_val));
+    ADT_LET_CONST_REF(self, axpr::Get<Self>(self_val));
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() +
         "'DispatchCtx.get_input_index_by_name' takes 1 argument but " +
@@ -196,7 +195,7 @@ struct DispatchCtxMethodClass {
 
   static adt::Result<ValueT> StaticGetOutputIndexByName(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetBuiltinClassInstance<Self>(self_val));
+    ADT_LET_CONST_REF(self, axpr::Get<Self>(self_val));
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() +
         "'DispatchCtx.get_output_index_by_name' takes 1 argument but " +

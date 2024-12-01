@@ -105,16 +105,6 @@ using ValueBase = std::variant<Type<Nothing,
                                BuiltinFuncType<ValueT>,
                                BuiltinHighOrderFuncType<ValueT>,
                                Ts...>;
-
-struct Value : public ValueBase<Value> {
-  using ValueBase<Value>::ValueBase;
-  DEFINE_ADT_VARIANT_METHODS(ValueBase<Value>);
-
-  static axpr::AttrMap<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value>();
-  }
-};
-
 template <typename ValueT>
 ValueT GetType(const ValueT& value) {
   return value.Match(
@@ -149,5 +139,31 @@ adt::Result<T> TryGetBuiltinClassInstance(const ValueT& val) {
   ADT_LET_CONST_REF(ret, instance->template TryGet<T>());
   return ret;
 }
+
+template <typename T, typename ValueT>
+adt::Result<T> Get(const ValueT& val) {
+  using TypeT = typename TypeTrait<ValueT>::TypeT;
+  if constexpr (ValueT::template IsMyAlternative<T>()) {
+    return val.template TryGet<T>();
+  } else if constexpr (TypeT::template IsMyAlternative<T>()) {
+    return TryGetTypeImpl<T>(val);
+  } else {
+    return TryGetBuiltinClassInstance<T>(val);
+  }
+}
+
+struct Value : public ValueBase<Value> {
+  using ValueBase<Value>::ValueBase;
+  DEFINE_ADT_VARIANT_METHODS(ValueBase<Value>);
+
+  static axpr::AttrMap<Value> GetExportedTypes() {
+    return axpr::GetObjectTypeName2Type<Value>();
+  }
+
+  template <typename T>
+  adt::Result<T> CastTo() const {
+    return axpr::Get<T>(*this);
+  }
+};
 
 }  // namespace ap::axpr

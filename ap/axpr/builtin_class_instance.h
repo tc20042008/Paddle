@@ -35,6 +35,8 @@ struct TypeImpl<BuiltinClassInstance<ValueT>> {
 
   ClassAttrs<ValueT> class_attrs;
 
+  ValueT New(const std::any& any) const;
+
   const std::string& Name() const { return class_attrs->Name(); }
 
   bool operator==(const TypeImpl<BuiltinClassInstance<ValueT>>& other) const {
@@ -65,6 +67,11 @@ struct BuiltinClassInstanceImpl {
 
 template <typename ValueT>
 DEFINE_ADT_RC(BuiltinClassInstance, BuiltinClassInstanceImpl<ValueT>);
+
+template <typename ValueT>
+ValueT TypeImpl<BuiltinClassInstance<ValueT>>::New(const std::any& any) const {
+  return BuiltinClassInstance<ValueT>{*this, any};
+}
 
 template <typename ValueT, typename VisitorT>
 TypeImpl<BuiltinClassInstance<ValueT>> MakeBuiltinClass(

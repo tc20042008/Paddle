@@ -38,16 +38,14 @@ struct TypeImplModuleMethodClass {
     adt::List<FuncDeclare> func_declares;
     func_declares->reserve(list->size());
     for (const auto& elt : *list) {
-      ADT_LET_CONST_REF(func_declare,
-                        axpr::TryGetBuiltinClassInstance<FuncDeclare>(elt))
+      ADT_LET_CONST_REF(func_declare, axpr::Get<FuncDeclare>(elt))
           << adt::errors::TypeError{
                  std::string() +
                  "the argument 1 of constructor of 'Module' should be a "
                  "'FuncDeclare' object or a list of 'FuncDeclare' object."};
       func_declares->emplace_back(func_declare);
     }
-    ADT_LET_CONST_REF(source_code,
-                      axpr::TryGetBuiltinClassInstance<SourceCode>(args.at(1)))
+    ADT_LET_CONST_REF(source_code, axpr::Get<SourceCode>(args.at(1)))
         << adt::errors::TypeError{
                std::string() +
                "the argument 2 of Module() should be a 'SourceCode' (not " +

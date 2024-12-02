@@ -35,37 +35,6 @@ namespace ap::code_gen {
 
 namespace adt = ::cinn::adt;
 
-template <typename ValueT, typename BirNode>
-using ValueImpl = ap::axpr::ValueBase<ValueT,
-                                      typename BirNode::native_op_type,
-                                      typename BirNode::packed_op_type,
-                                      typename BirNode::ref_op_type,
-                                      typename BirNode::native_value_type,
-                                      typename BirNode::ref_value_type,
-                                      DimExprKernelArgId<BirNode>,
-                                      InTensorDataPtrKernelArgId<BirNode>,
-                                      OutTensorDataPtrKernelArgId<BirNode>,
-                                      ir_match::OpMatchCtx<BirNode>,
-                                      ir_match::TensorMatchCtx<BirNode>,
-                                      CodeGenCtx<BirNode>,
-                                      CodeGenResult<ValueT>>;
-
-// compile time value
-template <typename BirNode>
-struct Value : public ValueImpl<Value<BirNode>, BirNode> {
-  using ValueImpl<Value<BirNode>, BirNode>::ValueImpl;
-  using ir_node_type = BirNode;
-  DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value<BirNode>, BirNode>);
-
-  static axpr::AttrMap<Value<BirNode>> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value<BirNode>,
-                                        CodeGenResult<Value<BirNode>>>();
-  }
-
-  template <typename T>
-  adt::Result<T> CastTo() const {
-    return axpr::Get<T>(*this);
-  }
-};
+using axpr::Value;
 
 }  // namespace ap::code_gen

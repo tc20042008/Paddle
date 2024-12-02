@@ -17,6 +17,7 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/builtin_frame_util.h"
 #include "ap/axpr/dim_expr_method_class.h"
+#include "ap/code_gen/code_gen_result_method_class.h"
 #include "ap/code_module/func_declare_method_class.h"
 #include "ap/code_module/module_method_class.h"
 #include "ap/code_module/source_code_method_class.h"
@@ -35,6 +36,7 @@ void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
   DoEach(index_expr::GetSliceClass<ValueT>());
   DoEach(index_expr::GetIndexExprClass<ValueT>());
   DoEach(index_expr::GetIndexTupleExprClass<ValueT>());
+  DoEach(GetCodeGenResultClass<ValueT>());
 }
 
 template <typename ValueT>

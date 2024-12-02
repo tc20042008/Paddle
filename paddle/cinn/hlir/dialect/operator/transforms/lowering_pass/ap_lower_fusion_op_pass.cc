@@ -76,7 +76,7 @@ using DrrIrOpImpl = std::variant<DrrNativeIrOp, DrrPackedIrOp>;
 using IrMatchCtx = ap::ir_match::IrMatchCtx<PirNode>;
 
 using ap::axpr::AnfExpr;
-using CGValue = ap::code_gen::Value<PirNode>;
+using CGValue = ap::code_gen::Value;
 using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
 using CodeGenResult = ap::code_gen::CodeGenResult<CGValue>;
 using ap::code_module::Module;

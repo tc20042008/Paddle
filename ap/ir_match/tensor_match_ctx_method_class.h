@@ -25,9 +25,13 @@ struct TensorMatchCtxMethodClass {
   using This = TensorMatchCtxMethodClass;
   using Self = ir_match::TensorMatchCtx<BirNode>;
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    ADT_LET_CONST_REF(ir_tensor, GetIrTensorByName(self, attr_name));
+    ADT_LET_CONST_REF(ir_tensor, This{}.GetIrTensorByName(self, attr_name));
     if (ir_tensor.has_value()) {
       return ir_tensor.value();
     }
@@ -96,10 +100,14 @@ struct TensorMatchCtxMethodClass {
   adt::Result<ValueT> CastFromBirValue(const BirNode& bir_value_node) {
     return bir_value_node.Match(
         [&](const IrNativeIrValue& impl) -> adt::Result<ValueT> {
-          return ValueT{impl};
+          axpr::BuiltinClassInstance<ValueT> instance{
+              impl.template GetBuiltinClass<ValueT>(), impl};
+          return ValueT{instance};
         },
         [&](const IrRefIrValue& impl) -> adt::Result<ValueT> {
-          return ValueT{impl};
+          axpr::BuiltinClassInstance<ValueT> instance{
+              impl.template GetBuiltinClass<ValueT>(), impl};
+          return ValueT{instance};
         },
         [&](const auto&) -> adt::Result<ValueT> {
           return adt::errors::RuntimeError{
@@ -109,15 +117,16 @@ struct TensorMatchCtxMethodClass {
   }
 };
 
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetTensorMatchCtxClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = TensorMatchCtxMethodClass<ValueT, BirNode>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("TensorMatchCtx", [&](const auto& Define) {
+        Define("__getattr__", &ImplMethods::GetAttr);
+      }));
+  return cls;
+}
+
 }  // namespace ap::ir_match
-
-namespace ap::axpr {
-
-template <typename ValueT, typename BirNode>
-struct MethodClassImpl<ValueT, ir_match::TensorMatchCtx<BirNode>>
-    : public ir_match::TensorMatchCtxMethodClass<ValueT, BirNode> {};
-
-template <typename ValueT, typename BirNode>
-struct MethodClassImpl<ValueT, TypeImpl<ir_match::TensorMatchCtx<BirNode>>> {};
-
-}  // namespace ap::axpr

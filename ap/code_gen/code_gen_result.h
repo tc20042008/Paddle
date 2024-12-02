@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/builtin_serializable_attr_map.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/type.h"
@@ -36,15 +37,8 @@ struct CodeGenResultImpl {
 template <typename ValueT>
 DEFINE_ADT_RC(CodeGenResult, CodeGenResultImpl<ValueT>);
 
-}  // namespace ap::code_gen
-
-namespace ap::axpr {
-
 template <typename ValueT>
-struct TypeImpl<code_gen::CodeGenResult<ValueT>> : public std::monostate {
-  using value_type = code_gen::CodeGenResult<ValueT>;
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetCodeGenResultClass();
 
-  const char* Name() const { return "CodeGenResult"; }
-};
-
-}  // namespace ap::axpr
+}  // namespace ap::code_gen

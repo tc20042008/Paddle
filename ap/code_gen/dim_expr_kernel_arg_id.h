@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/function.h"
 #include "ap/axpr/serializable_value.h"
 #include "ap/axpr/type.h"
@@ -46,15 +47,8 @@ struct DimExprKernelArgIdImpl {
 template <typename BirNode>
 DEFINE_ADT_RC(DimExprKernelArgId, DimExprKernelArgIdImpl<BirNode>);
 
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetDimExprKernelArgIdClass();
+
 }  // namespace ap::code_gen
-
-namespace ap::axpr {
-
-template <typename BirNode>
-struct TypeImpl<code_gen::DimExprKernelArgId<BirNode>> : public std::monostate {
-  using std::monostate::monostate;
-
-  const char* Name() const { return "DimExprKernelArgId"; }
-};
-
-}  // namespace ap::axpr

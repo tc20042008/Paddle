@@ -14,6 +14,7 @@
 
 #pragma once
 #include "ap/axpr/attr_map.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/core_expr.h"
 #include "ap/axpr/type.h"
 #include "ap/code_gen/arg_source_ctx.h"
@@ -44,15 +45,7 @@ struct CodeGenCtxImpl {
 template <typename BirNode>
 DEFINE_ADT_RC(CodeGenCtx, CodeGenCtxImpl<BirNode>);
 
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetCodeGenCtxClass();
+
 }  // namespace ap::code_gen
-
-namespace ap::axpr {
-
-template <typename BirNode>
-struct TypeImpl<ap::code_gen::CodeGenCtx<BirNode>> : public std::monostate {
-  using value_type = ap::code_gen::CodeGenCtx<BirNode>;
-
-  const char* Name() const { return "CodeGenCtx"; }
-};
-
-}  // namespace ap::axpr

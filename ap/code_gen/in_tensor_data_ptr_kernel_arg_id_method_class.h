@@ -25,10 +25,14 @@ struct InTensorDataPtrKernelArgIdMethodClass {
   using This = InTensorDataPtrKernelArgIdMethodClass;
   using Self = InTensorDataPtrKernelArgId<BirNode>;
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, attr_name_val.template CastTo<std::string>());
     if (attr_name == "type") {
-      return GetArgType(self);
+      return This{}.GetArgType(self);
     }
     if (attr_name == "runtime_getter") {
       ADT_CHECK(self->runtime_getter.has_value())
@@ -48,26 +52,16 @@ struct InTensorDataPtrKernelArgIdMethodClass {
   }
 };
 
-template <typename ValueT, typename BirNode /* background ir node */>
-struct TypeImplInTensorDataPtrKernelArgIdMethodClass {
-  using This = TypeImplInTensorDataPtrKernelArgIdMethodClass;
-  using Self = axpr::TypeImpl<InTensorDataPtrKernelArgId<BirNode>>;
-};
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetInTensorDataPtrKernelArgIdClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = InTensorDataPtrKernelArgIdMethodClass<ValueT, BirNode>;
+  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+      "InTensorDataPtrKernelArgId", [&](const auto& Define) {
+        Define("__getattr__", &ImplMethods::GetAttr);
+      }));
+  return cls;
+}
 
 }  // namespace ap::code_gen
-
-namespace ap::axpr {
-
-template <typename ValueT, typename BirNode /* background ir node */>
-struct MethodClassImpl<ValueT, code_gen::InTensorDataPtrKernelArgId<BirNode>>
-    : public code_gen::InTensorDataPtrKernelArgIdMethodClass<ValueT, BirNode> {
-};
-
-template <typename ValueT, typename BirNode /* background ir node */>
-struct MethodClassImpl<ValueT,
-                       TypeImpl<code_gen::InTensorDataPtrKernelArgId<BirNode>>>
-    : public code_gen::TypeImplInTensorDataPtrKernelArgIdMethodClass<ValueT,
-                                                                     BirNode> {
-};
-
-}  // namespace ap::axpr

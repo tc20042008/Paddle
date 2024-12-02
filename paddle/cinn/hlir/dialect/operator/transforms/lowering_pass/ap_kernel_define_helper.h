@@ -27,7 +27,7 @@ struct ApKernelDefineHelper {
   using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
   using Module = ap::code_module::Module;
   using PirNode = ap::paddle::PirNode;
-  using CGValue = ap::code_gen::Value<PirNode>;
+  using CGValue = ap::code_gen::Value;
   using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
   using CodeGenResult = ap::code_gen::CodeGenResult<CGValue>;
 

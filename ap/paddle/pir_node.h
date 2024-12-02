@@ -16,6 +16,7 @@
 
 #include <functional>
 #include "ap/adt/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/data_type.h"
 #include "ap/axpr/data_type_util.h"
 #include "ap/axpr/type.h"
@@ -31,8 +32,34 @@
 
 namespace ap::paddle {
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetNativeIrValueClass();
+
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetPackedIrValueClass();
+
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrValueClass();
+
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetNativeIrOpClass();
+
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetPackedIrOpClass();
+
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrOpClass();
+
 struct NativeIrValue {
   pir::Value value;
+
+  template <typename ValueT>
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+  GetBuiltinClass() {
+    return GetNativeIrValueClass<ValueT>();
+  }
 
   std::size_t GetHashValue() const { return std::hash<pir::Value>()(value); }
 
@@ -92,6 +119,12 @@ struct PackedIrValue {
   cinn::dialect::FusionOp fusion_op;
   bool is_output;
 
+  template <typename ValueT>
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+  GetBuiltinClass() {
+    return GetPackedIrValueClass<ValueT>();
+  }
+
   std::size_t GetHashValue() const {
     return std::hash<pir::Operation*>()(
                static_cast<pir::Operation*>(fusion_op)) ^
@@ -147,6 +180,12 @@ struct PackedIrOpOperand {
 struct NativeIrOp {
   pir::Operation* op;
 
+  template <typename ValueT>
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+  GetBuiltinClass() {
+    return GetNativeIrOpClass<ValueT>();
+  }
+
   std::size_t GetHashValue() const { return std::hash<pir::Operation*>()(op); }
 
   bool operator==(const NativeIrOp& other) const {
@@ -160,6 +199,12 @@ struct NativeIrOp {
 
 struct PackedIrOp {
   cinn::dialect::FusionOp fusion_op;
+
+  template <typename ValueT>
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+  GetBuiltinClass() {
+    return GetPackedIrOpClass<ValueT>();
+  }
 
   std::size_t GetHashValue() const {
     return std::hash<pir::Operation*>()(
@@ -234,6 +279,12 @@ using RefNodeInfo = ir_match::RefNodeInfo<NativeIrValue, NativeIrOpOperand>;
 struct RefIrValue {
   RefNodeInfo ref_node_info;
 
+  template <typename ValueT>
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+  GetBuiltinClass() {
+    return GetRefIrValueClass<ValueT>();
+  }
+
   std::size_t GetHashValue() const {
     return std::hash<RefNodeInfo>()(ref_node_info);
   }
@@ -267,6 +318,12 @@ struct RefIrOpOperand {
 
 struct RefIrOp {
   RefNodeInfo ref_node_info;
+
+  template <typename ValueT>
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+  GetBuiltinClass() {
+    return GetRefIrOpClass<ValueT>();
+  }
 
   std::size_t GetHashValue() const {
     return std::hash<RefNodeInfo>()(ref_node_info);
@@ -353,49 +410,3 @@ struct hash<ap::paddle::PirNode> {
 };
 
 }  // namespace std
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<ap::paddle::NativeIrValue> : public std::monostate {
-  using value_type = ap::paddle::NativeIrValue;
-
-  const char* Name() const { return "NativeIrValue"; }
-};
-
-template <>
-struct TypeImpl<ap::paddle::PackedIrValue> : public std::monostate {
-  using value_type = ap::paddle::PackedIrValue;
-
-  const char* Name() const { return "PackedIrValue"; }
-};
-
-template <>
-struct TypeImpl<ap::paddle::RefIrValue> : public std::monostate {
-  using value_type = ap::paddle::RefIrValue;
-
-  const char* Name() const { return "RefIrValue"; }
-};
-
-template <>
-struct TypeImpl<ap::paddle::NativeIrOp> : public std::monostate {
-  using value_type = ap::paddle::NativeIrOp;
-
-  const char* Name() const { return "NativeIrOp"; }
-};
-
-template <>
-struct TypeImpl<ap::paddle::PackedIrOp> : public std::monostate {
-  using value_type = ap::paddle::PackedIrOp;
-
-  const char* Name() const { return "PackedIrOp"; }
-};
-
-template <>
-struct TypeImpl<ap::paddle::RefIrOp> : public std::monostate {
-  using value_type = ap::paddle::RefIrOp;
-
-  const char* Name() const { return "RefIrOp"; }
-};
-
-}  // namespace ap::axpr

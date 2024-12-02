@@ -18,9 +18,12 @@
 #include "ap/axpr/packed_args.h"
 #include "ap/code_gen/arg_source_helper.h"
 #include "ap/code_gen/cuda_code_gen_util.h"
+#include "ap/code_gen/dim_expr_kernel_arg_id_method_class.h"
+#include "ap/code_gen/in_tensor_data_ptr_kernel_arg_id_method_class.h"
 #include "ap/code_gen/ir_op.h"
 #include "ap/code_gen/kernel_arg_id_helper.h"
 #include "ap/code_gen/op_code_gen_ctx.h"
+#include "ap/code_gen/out_tensor_data_ptr_kernel_arg_id_method_class.h"
 #include "ap/code_module/module.h"
 #include "ap/index_expr/index_tuple_expr.h"
 #include "ap/ir_match/native_or_ref_ir_value.h"
@@ -41,28 +44,6 @@ template <typename ValueT, typename BirNode>
 struct CodeGenCtxMethodClass {
   using This = CodeGenCtxMethodClass;
   using Self = CodeGenCtx<BirNode>;
-
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "make_fusion_op_code_gen_class") {
-      return axpr::Method<ValueT>{self, &This::StaticMakeFusionOpCodeGenClass};
-    }
-    if (attr_name == "dim_expr_kernel_arg_id") {
-      return axpr::Method<ValueT>{self,
-                                  &This::StaticMakeAndCheckDimExprKernelArgId};
-    }
-    if (attr_name == "in_tensor_data_ptr_kernel_arg_id") {
-      return axpr::Method<ValueT>{
-          self, &This::StaticMakeAndCheckInTensorDataPtrKernelArgId};
-    }
-    if (attr_name == "out_tensor_data_ptr_kernel_arg_id") {
-      return axpr::Method<ValueT>{
-          self, &This::StaticMakeAndCheckOutTensorDataPtrKernelArgId};
-    }
-    return adt::errors::AttributeError{
-        std::string("'CodeGenCtx' object has no attribute '") + attr_name +
-        "' "};
-  }
 
   static adt::Result<ValueT> StaticMakeAndCheckOutTensorDataPtrKernelArgId(
       const ValueT& self_val, const std::vector<ValueT>& args) {
@@ -89,7 +70,11 @@ struct CodeGenCtxMethodClass {
     ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
     ADT_LET_CONST_REF(runtime_getter,
                       helper.MakeRuntimeKerneArgGetter(uninitialized));
-    return OutTensorDataPtrKernelArgId<BirNode>{ir_value, runtime_getter};
+    OutTensorDataPtrKernelArgId<BirNode> kernel_arg_id{ir_value,
+                                                       runtime_getter};
+    axpr::BuiltinClassInstance<ValueT> instance{
+        GetOutTensorDataPtrKernelArgIdClass<ValueT, BirNode>(), kernel_arg_id};
+    return instance;
   }
 
   adt::Result<adt::Ok> CheckOutTensorDataPtrRuntimeAvailable(
@@ -129,7 +114,10 @@ struct CodeGenCtxMethodClass {
     ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
     ADT_LET_CONST_REF(runtime_getter,
                       helper.MakeRuntimeKerneArgGetter(uninitialized));
-    return InTensorDataPtrKernelArgId<BirNode>{ir_value, runtime_getter};
+    InTensorDataPtrKernelArgId<BirNode> kernel_arg_id{ir_value, runtime_getter};
+    axpr::BuiltinClassInstance<ValueT> instance{
+        GetInTensorDataPtrKernelArgIdClass<ValueT, BirNode>(), kernel_arg_id};
+    return instance;
   }
 
   adt::Result<adt::Ok> CheckInTensorDataPtrRuntimeAvailable(
@@ -145,22 +133,24 @@ struct CodeGenCtxMethodClass {
   }
 
   adt::Result<BirNode> CastToBirValue(const ValueT& val) {
-    using RetT = adt::Result<BirNode>;
-    return val.Match(
-        [&](const typename BirNode::native_value_type& impl) -> RetT {
-          return impl;
-        },
-        [&](const typename BirNode::ref_value_type& impl) -> RetT {
-          return impl;
-        },
-        [&](const auto& impl) -> RetT {
-          using T = std::decay_t<decltype(impl)>;
-          return adt::errors::NotImplementedError{
-              std::string() +
-              "CastToBirValue() failed. only 'NativeIrValue' and 'RefIrValue' "
-              "argument is expected, but '" +
-              typeid(T).name() + "' found."};
-        });
+    ADT_LET_CONST_REF(
+        instance, val.template CastTo<axpr::BuiltinClassInstance<ValueT>>());
+    if (instance->template Has<typename BirNode::native_value_type>()) {
+      ADT_LET_CONST_REF(
+          ret,
+          instance->template TryGet<typename BirNode::native_value_type>());
+      return ret;
+    }
+    if (instance->template Has<typename BirNode::ref_value_type>()) {
+      ADT_LET_CONST_REF(
+          ret, instance->template TryGet<typename BirNode::ref_value_type>());
+      return ret;
+    }
+    return adt::errors::NotImplementedError{
+        std::string() +
+        "CastToBirValue() failed. only 'NativeIrValue' and 'RefIrValue' "
+        "argument is expected, but '" +
+        axpr::GetTypeName(val) + "' found."};
   }
 
   static adt::Result<ValueT> StaticMakeAndCheckDimExprKernelArgId(
@@ -184,7 +174,10 @@ struct CodeGenCtxMethodClass {
     ArgSourceHelper<BirNode> helper{self->arg_source_ctx};
     ADT_LET_CONST_REF(runtime_getter,
                       helper.MakeRuntimeKerneArgGetter(uninitialized));
-    return DimExprKernelArgId<BirNode>{dim_expr, runtime_getter};
+    DimExprKernelArgId<BirNode> kernel_arg_id{dim_expr, runtime_getter};
+    axpr::BuiltinClassInstance<ValueT> instance{
+        GetDimExprKernelArgIdClass<ValueT, BirNode>(), kernel_arg_id};
+    return instance;
   }
 
   adt::Result<adt::Ok> CheckDimExprRuntimeAvailable(
@@ -199,7 +192,7 @@ struct CodeGenCtxMethodClass {
 
   static adt::Result<ValueT> StaticMakeFusionOpCodeGenClass(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return This{}.MakeFusionOpCodeGenClass(self, args);
   }
 
@@ -210,14 +203,14 @@ struct CodeGenCtxMethodClass {
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_vec);
     const auto& [args, kwargs] = *packed_args;
     ADT_CHECK(args->size() == 1) << adt::errors::TypeError{
-        "'CodeGenCtx.conver_fusion_op_to_function' takes 1 positional "
+        "'CodeGenCtx.make_fusion_op_code_gen_class' takes 1 positional "
         "arguments but " +
         std::to_string(args->size()) + " were given."};
     ADT_LET_CONST_REF(ir_op, IrOp<BirNode>::CastFrom(args->at(0)))
         << adt::errors::TypeError{
                std::string() +
                "the positional argument 1 of "
-               "'CodeGenCtx.conver_fusion_op_to_function' should "
+               "'CodeGenCtx.make_fusion_op_code_gen_class' should "
                "be able to cast to a NativeIrOp, PackedIrOp or RefIrOp."};
     ADT_LET_CONST_REF(input_index_loop_anchor_flags_lst,
                       kwargs->template Get<adt::List<ValueT>>(
@@ -276,16 +269,22 @@ struct CodeGenCtxMethodClass {
   }
 };
 
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetCodeGenCtxClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = CodeGenCtxMethodClass<ValueT, BirNode>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("CodeGenCtx", [&](const auto& Define) {
+        Define("make_fusion_op_code_gen_class",
+               &ImplMethods::StaticMakeFusionOpCodeGenClass);
+        Define("dim_expr_kernel_arg_id",
+               &ImplMethods::StaticMakeAndCheckDimExprKernelArgId);
+        Define("in_tensor_data_ptr_kernel_arg_id",
+               &ImplMethods::StaticMakeAndCheckInTensorDataPtrKernelArgId);
+        Define("out_tensor_data_ptr_kernel_arg_id",
+               &ImplMethods::StaticMakeAndCheckOutTensorDataPtrKernelArgId);
+      }));
+  return cls;
+}
+
 }  // namespace ap::code_gen
-
-namespace ap::axpr {
-
-template <typename ValueT, typename BirNode>
-struct MethodClassImpl<ValueT, ap::code_gen::CodeGenCtx<BirNode>>
-    : public ap::code_gen::CodeGenCtxMethodClass<ValueT, BirNode> {};
-
-template <typename ValueT, typename BirNode>
-struct MethodClassImpl<ValueT, TypeImpl<ap::code_gen::CodeGenCtx<BirNode>>>
-    : public EmptyMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

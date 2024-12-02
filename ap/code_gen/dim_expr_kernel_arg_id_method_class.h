@@ -26,13 +26,17 @@ struct DimExprKernelArgIdMethodClass {
   using This = DimExprKernelArgIdMethodClass;
   using Self = DimExprKernelArgId<BirNode>;
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "value") {
       return self->template CastData<ValueT>();
     }
     if (attr_name == "type") {
-      return GetArgType(self);
+      return This{}.GetArgType(self);
     }
     if (attr_name == "runtime_getter") {
       ADT_CHECK(self->runtime_getter.has_value())
@@ -51,23 +55,16 @@ struct DimExprKernelArgIdMethodClass {
   }
 };
 
-template <typename ValueT, typename BirNode /* background ir node */>
-struct TypeImplDimExprKernelArgIdMethodClass {
-  using This = TypeImplDimExprKernelArgIdMethodClass;
-  using Self = axpr::TypeImpl<DimExprKernelArgId<BirNode>>;
-};
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetDimExprKernelArgIdClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = DimExprKernelArgIdMethodClass<ValueT, BirNode>;
+  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+      "DimExprKernelArgId", [&](const auto& Define) {
+        Define("__getattr__", &ImplMethods::GetAttr);
+      }));
+  return cls;
+}
 
 }  // namespace ap::code_gen
-
-namespace ap::axpr {
-
-template <typename ValueT, typename BirNode /* background ir node */>
-struct MethodClassImpl<ValueT, code_gen::DimExprKernelArgId<BirNode>>
-    : public code_gen::DimExprKernelArgIdMethodClass<ValueT, BirNode> {};
-
-template <typename ValueT, typename BirNode /* background ir node */>
-struct MethodClassImpl<ValueT, TypeImpl<code_gen::DimExprKernelArgId<BirNode>>>
-    : public code_gen::TypeImplDimExprKernelArgIdMethodClass<ValueT, BirNode> {
-};
-
-}  // namespace ap::axpr

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 
 namespace ap::code_gen {
 
@@ -30,19 +31,24 @@ struct IrOp : public IrOpImpl<BirNode> {
 
   template <typename ValueT>
   static adt::Result<IrOp> CastFrom(const ValueT& val) {
-    return val.Match(
-        [](const typename BirNode::native_op_type& impl) -> adt::Result<IrOp> {
-          return impl;
-        },
-        [](const typename BirNode::packed_op_type& impl) -> adt::Result<IrOp> {
-          return impl;
-        },
-        [](const typename BirNode::ref_op_type& impl) -> adt::Result<IrOp> {
-          return impl;
-        },
-        [](const auto&) -> adt::Result<IrOp> {
-          return adt::errors::ValueError{"IrOp::CastFrom failed."};
-        });
+    ADT_LET_CONST_REF(
+        instance, val.template CastTo<axpr::BuiltinClassInstance<ValueT>>());
+    if (instance->template Has<typename BirNode::native_op_type>()) {
+      ADT_LET_CONST_REF(
+          ret, instance->template TryGet<typename BirNode::native_op_type>());
+      return ret;
+    }
+    if (instance->template Has<typename BirNode::packed_op_type>()) {
+      ADT_LET_CONST_REF(
+          ret, instance->template TryGet<typename BirNode::packed_op_type>());
+      return ret;
+    }
+    if (instance->template Has<typename BirNode::ref_op_type>()) {
+      ADT_LET_CONST_REF(
+          ret, instance->template TryGet<typename BirNode::ref_op_type>());
+      return ret;
+    }
+    return adt::errors::ValueError{"IrOp::CastFrom failed."};
   }
 };
 

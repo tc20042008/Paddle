@@ -29,7 +29,7 @@ namespace {
 using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
 using Module = ap::code_module::Module;
 using PirNode = ap::paddle::PirNode;
-using Val = ap::code_gen::Value<PirNode>;
+using Val = ap::code_gen::Value;
 using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
 using CodeGenResult = ap::code_gen::CodeGenResult<Val>;
 
@@ -37,18 +37,26 @@ using CodeGenResult = ap::code_gen::CodeGenResult<Val>;
 
 adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
     const Function& lambda, const CodeGenCtx& code_gen_ctx) {
+  ap::axpr::BuiltinClassInstance<CGValue> code_gen_ctx_instance{
+      ap::code_gen::GetCodeGenCtxClass<CGValue, PirNode>(), code_gen_ctx};
   ap::axpr::CpsInterpreter<Val> interpreter(
       ap::code_gen::MakeBuiltinFrameAttrMap<Val>());
   ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
   const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();
   ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};
+  ap::axpr::BuiltinClassInstance<CGValue> op_match_ctx_instance{
+      ap::ir_match::GetOpMatchCtxClass<CGValue, PirNode>(), op_match_ctx};
   ap::ir_match::TensorMatchCtx<PirNode> tensor_match_ctx{
       ir_match_ctx.shared_ptr()};
-  ADT_LET_CONST_REF(
-      result,
-      interpreter.Interpret(lambda,
-                            {code_gen_ctx, op_match_ctx, tensor_match_ctx}));
-  ADT_LET_CONST_REF(m, result.template TryGet<CodeGenResult>());
+  ap::axpr::BuiltinClassInstance<CGValue> tensor_match_ctx_instance{
+      ap::ir_match::GetTensorMatchCtxClass<CGValue, PirNode>(),
+      tensor_match_ctx};
+  ADT_LET_CONST_REF(result,
+                    interpreter.Interpret(lambda,
+                                          {code_gen_ctx_instance,
+                                           op_match_ctx_instance,
+                                           tensor_match_ctx_instance}));
+  ADT_LET_CONST_REF(m, result.template CastTo<CodeGenResult>());
   return m;
 }
 

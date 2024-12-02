@@ -51,13 +51,19 @@ struct BuiltinClassInstanceImpl {
   std::any instance;
 
   template <typename T>
+  bool Has() const {
+    return this->instance.type() == typeid(T);
+  }
+
+  template <typename T>
   adt::Result<T> TryGet() const {
-    try {
+    if (this->template Has<T>()) {
       return std::any_cast<T>(this->instance);
-    } catch (const std::bad_any_cast& e) {
-      return adt::errors::TypeError{std::string() + type.Name() +
-                                    " class cast to " + typeid(T).name() +
-                                    "failed."};
+    } else {
+      return adt::errors::TypeError{
+          std::string() + "casting from " + type.Name() +
+          " class (cpp class name: " + instance.type().name() + ") to " +
+          typeid(T).name() + " failed."};
     }
   }
 

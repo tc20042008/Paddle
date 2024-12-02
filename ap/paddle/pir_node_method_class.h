@@ -24,23 +24,31 @@ struct NativeIrValueMethodClass {
   using This = NativeIrValueMethodClass;
   using Self = NativeIrValue;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const auto* ptr = self.value.impl();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<NativeIrValue object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return static_cast<int64_t>(std::hash<Self>()(self));
   }
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "dtype") {
-      return GetDataType(self);
+      return This{}.GetDataType(self);
     } else if (attr_name == "shape") {
-      return GetShape(self);
+      return This{}.GetShape(self);
     }
     return adt::errors::TypeError{std::string() +
                                   "NativeIrValue instance has no attribute '" +
@@ -66,46 +74,85 @@ struct NativeIrValueMethodClass {
 };
 
 template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetNativeIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = NativeIrValueMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("NativeIrValue", [&](const auto& Define) {
+        Define("__getattr__", &ImplMethods::GetAttr);
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
+      }));
+  return cls;
+}
+
+template <typename ValueT>
 struct PackedIrValueMethodClass {
   using This = PackedIrValueMethodClass;
   using Self = PackedIrValue;
 
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const pir::Operation* ptr = self.fusion_op;
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    std::ostringstream ss;
+    ss << "<PackedIrValue object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const pir::Operation* ptr = self.fusion_op;
     return reinterpret_cast<int64_t>(ptr);
   }
 };
 
 template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetPackedIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = PackedIrValueMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("PackedIrValue", [&](const auto& Define) {
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
+      }));
+  return cls;
+}
+
+template <typename ValueT>
 struct RefIrValueMethodClass {
   using This = RefIrValueMethodClass;
   using Self = RefIrValue;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const auto* ptr = self.ref_node_info.__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<RefIrValue object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(Self self) {
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return reinterpret_cast<int64_t>(
         self.ref_node_info.__adt_rc_shared_ptr_raw_ptr());
   }
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "dtype") {
-      return GetDataType(self);
+      return This{}.GetDataType(self);
     } else if (attr_name == "shape") {
-      return GetShape(self);
+      return This{}.GetShape(self);
     }
     return adt::errors::TypeError{std::string() +
                                   "NativeIrValue instance has no attribute '" +
@@ -133,97 +180,118 @@ struct RefIrValueMethodClass {
 };
 
 template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = RefIrValueMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("RefIrValue", [&](const auto& Define) {
+        Define("__getattr__", &ImplMethods::GetAttr);
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
+      }));
+  return cls;
+}
+
+template <typename ValueT>
 struct NativeIrOpMethodClass {
   using This = NativeIrOpMethodClass;
   using Self = NativeIrOp;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const auto* ptr = self.op;
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<NativeIrOp object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(Self self) {
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const pir::Operation* ptr = self.op;
     return reinterpret_cast<int64_t>(ptr);
   }
 };
 
 template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetNativeIrOpClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = NativeIrOpMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("NativeIrOp", [&](const auto& Define) {
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
+      }));
+  return cls;
+}
+
+template <typename ValueT>
 struct PackedIrOpMethodClass {
   using This = PackedIrOpMethodClass;
   using Self = PackedIrOp;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const pir::Operation* ptr = self.fusion_op;
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<PackedIrOp object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(Self self) {
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const pir::Operation* ptr = self.fusion_op;
     return reinterpret_cast<int64_t>(ptr);
   }
 };
 
 template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetPackedIrOpClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = PackedIrOpMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("PackedIrOp", [&](const auto& Define) {
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
+      }));
+  return cls;
+}
+
+template <typename ValueT>
 struct RefIrOpMethodClass {
   using This = RefIrOpMethodClass;
   using Self = RefIrOp;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const auto* ptr = self.ref_node_info.__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<RefIrOp object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(Self self) {
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return reinterpret_cast<int64_t>(
         self.ref_node_info.__adt_rc_shared_ptr_raw_ptr());
   }
 };
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrOpClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = RefIrOpMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("RefIrOp", [&](const auto& Define) {
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
+      }));
+  return cls;
+}
+
 }  // namespace ap::paddle
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::paddle::NativeIrValue>
-    : public paddle::NativeIrValueMethodClass<ValueT> {};
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::NativeIrValue>> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::paddle::PackedIrValue>
-    : public paddle::PackedIrValueMethodClass<ValueT> {};
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::PackedIrValue>> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::paddle::RefIrValue>
-    : public paddle::RefIrValueMethodClass<ValueT> {};
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::RefIrValue>> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::paddle::NativeIrOp>
-    : public paddle::NativeIrOpMethodClass<ValueT> {};
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::NativeIrOp>> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::paddle::PackedIrOp>
-    : public paddle::PackedIrOpMethodClass<ValueT> {};
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::PackedIrOp>> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::paddle::RefIrOp>
-    : public paddle::RefIrOpMethodClass<ValueT> {};
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::paddle::RefIrOp>> {};
-
-}  // namespace ap::axpr

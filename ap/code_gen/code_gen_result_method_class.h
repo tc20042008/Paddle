@@ -20,24 +20,19 @@
 namespace ap::code_gen {
 
 template <typename ValueT>
-struct CodeGenResultMethodClass {
-  using This = CodeGenResultMethodClass;
-  using Self = CodeGenResult<ValueT>;
-};
-
-template <typename ValueT>
 struct TypeImplCodeGenResultMethodClass {
   using This = TypeImplCodeGenResultMethodClass;
   using Self = axpr::TypeImpl<CodeGenResult<ValueT>>;
 
-  adt::Result<ValueT> Call(const Self&) { return &This::Construct; }
-
-  static adt::Result<ValueT> Construct(const ValueT&,
+  static adt::Result<ValueT> Construct(const ValueT& self_val,
                                        const std::vector<ValueT>& args) {
-    return This{}.Make(args);
+    return This{}.Make(self_val, args);
   }
 
-  adt::Result<ValueT> Make(const std::vector<ValueT>& packed_args_val) {
+  adt::Result<ValueT> Make(const ValueT& self_val,
+                           const std::vector<ValueT>& packed_args_val) {
+    ADT_LET_CONST_REF(
+        self, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_val);
     const auto& [args, kwargs] = *packed_args;
     ADT_LET_CONST_REF(module_val, kwargs->Get("module"))
@@ -75,21 +70,22 @@ struct TypeImplCodeGenResultMethodClass {
       kernel_dispatch_const_data = axpr::AttrMap<axpr::SerializableValue>{};
     }
     ADT_CHECK(kernel_dispatch_const_data.has_value());
-    return CodeGenResult<ValueT>{
+    self.shared_ptr()->instance = CodeGenResult<ValueT>{
         m, kernel_dispatch_func, kernel_dispatch_const_data.value()};
+    return adt::Nothing{};
   }
 };
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetCodeGenResultClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using TypeImplMethods = TypeImplCodeGenResultMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("CodeGenResult", [&](const auto& Define) {
+        Define("__init__", &TypeImplMethods::Construct);
+      }));
+  return cls;
+}
+
 }  // namespace ap::code_gen
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, ap::code_gen::CodeGenResult<ValueT>>
-    : public code_gen::CodeGenResultMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<ap::code_gen::CodeGenResult<ValueT>>>
-    : public code_gen::TypeImplCodeGenResultMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

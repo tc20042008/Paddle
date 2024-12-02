@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/type.h"
 
 namespace ap::ir_match {
@@ -34,14 +35,8 @@ struct TensorMatchCtxImpl {
 template <typename BirNode>
 DEFINE_ADT_RC(TensorMatchCtx, TensorMatchCtxImpl<BirNode>);
 
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetTensorMatchCtxClass();
+
 }  // namespace ap::ir_match
-
-namespace ap::axpr {
-
-template <typename BirNode>
-struct TypeImpl<ir_match::TensorMatchCtx<BirNode>> : public std::monostate {
-  using std::monostate::monostate;
-  const char* Name() const { return "TensorMatchCtx"; }
-};
-
-}  // namespace ap::axpr

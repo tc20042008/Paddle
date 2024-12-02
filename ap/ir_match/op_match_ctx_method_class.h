@@ -26,9 +26,13 @@ struct OpMatchCtxMethodClass {
   using This = OpMatchCtxMethodClass;
   using Self = ir_match::OpMatchCtx<BirNode>;
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
     ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    ADT_LET_CONST_REF(ir_op, GetIrOpByName(self, attr_name));
+    ADT_LET_CONST_REF(ir_op, This{}.GetIrOpByName(self, attr_name));
     if (ir_op.has_value()) {
       return ir_op.value();
     }
@@ -82,13 +86,19 @@ struct OpMatchCtxMethodClass {
         ir_op,
         ir_node.Match(
             [&](const IrNativeIrOp& impl) -> adt::Result<ValueT> {
-              return ValueT{impl};
+              axpr::BuiltinClassInstance<ValueT> instance{
+                  impl.template GetBuiltinClass<ValueT>(), impl};
+              return ValueT{instance};
             },
             [&](const IrPackedIrOp& impl) -> adt::Result<ValueT> {
-              return ValueT{impl};
+              axpr::BuiltinClassInstance<ValueT> instance{
+                  impl.template GetBuiltinClass<ValueT>(), impl};
+              return ValueT{instance};
             },
             [&](const IrRefIrOp& impl) -> adt::Result<ValueT> {
-              return ValueT{impl};
+              axpr::BuiltinClassInstance<ValueT> instance{
+                  impl.template GetBuiltinClass<ValueT>(), impl};
+              return ValueT{instance};
             },
             [&](const auto&) -> adt::Result<ValueT> {
               return adt::errors::RuntimeError{
@@ -99,15 +109,15 @@ struct OpMatchCtxMethodClass {
   }
 };
 
+template <typename ValueT, typename BirNode>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetOpMatchCtxClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = OpMatchCtxMethodClass<ValueT, BirNode>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("OpMatchCtx", [&](const auto& Define) {
+        Define("__getattr__", &ImplMethods::GetAttr);
+      }));
+  return cls;
+}
+
 }  // namespace ap::ir_match
-
-namespace ap::axpr {
-
-template <typename ValueT, typename BirNode>
-struct MethodClassImpl<ValueT, ir_match::OpMatchCtx<BirNode>>
-    : public ir_match::OpMatchCtxMethodClass<ValueT, BirNode> {};
-
-template <typename ValueT, typename BirNode>
-struct MethodClassImpl<ValueT, TypeImpl<ir_match::OpMatchCtx<BirNode>>> {};
-
-}  // namespace ap::axpr

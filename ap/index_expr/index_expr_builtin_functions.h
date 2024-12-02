@@ -77,13 +77,18 @@ inline Maybe<T> TryGetConcretIndexExprValue(const Val& val) {
 }
 
 template <typename Val>
-inline Maybe<symbol::DimExpr> TryGetDimExpr(const Val& val) {
-  return val.Match(
-      [](int64_t c) -> Maybe<symbol::DimExpr> { return symbol::DimExpr{c}; },
-      [](const symbol::DimExpr& dim_expr) -> Maybe<symbol::DimExpr> {
-        return dim_expr;
-      },
-      [&](const auto&) -> Maybe<symbol::DimExpr> { return adt::Nothing{}; });
+inline adt::Result<symbol::DimExpr> TryGetDimExpr(const Val& val) {
+  using RetT = adt::Result<symbol::DimExpr>;
+  return val.Match([](int64_t c) -> RetT { return symbol::DimExpr{c}; },
+                   [](const axpr::BuiltinClassInstance<Val>& instance) -> RetT {
+                     return instance->template TryGet<symbol::DimExpr>();
+                   },
+                   [&](const auto&) -> RetT {
+                     return adt::errors::TypeError{
+                         "TryGetDimExpr() failed. argument 1 should an int or "
+                         "DimExpr (not " +
+                         axpr::GetTypeName(val) + ")"};
+                   });
 }
 
 template <typename Val>
@@ -107,23 +112,21 @@ Result<Val> MakePtrGetItem(const Val&, const std::vector<Val>& args) {
   }
   const auto& opt_arg1 =
       TryGetConcretIndexExprValue<IndexTupleExpr>(args.at(1));
-  const auto& opt_dim_expr = TryGetDimExpr(args.at(2));
-  return std::visit(
-      ::common::Overloaded{
-          [&](const std::string& ptr_var_name,
-              const IndexTupleExpr& indexes_expr,
-              const symbol::DimExpr& dim_expr) -> Result<Val> {
-            return PtrGetItem{ptr_var_name,
+  ADT_LET_CONST_REF(dim_expr, TryGetDimExpr(args.at(2)));
+  return std::visit(::common::Overloaded{
+                        [&](const std::string& ptr_var_name,
+                            const IndexTupleExpr& indexes_expr) -> Result<Val> {
+                          return PtrGetItem{
+                              ptr_var_name,
                               std::make_shared<IndexTupleExpr>(indexes_expr),
                               dim_expr};
-          },
-          [&](const auto&, const auto&, const auto&) -> Result<Val> {
-            return adt::errors::InvalidArgumentError{
-                "wrong argument type for PtrGetItem"};
-          }},
-      args.at(0).variant(),
-      opt_arg1.variant(),
-      opt_dim_expr.variant());
+                        },
+                        [&](const auto&, const auto&) -> Result<Val> {
+                          return adt::errors::InvalidArgumentError{
+                              "wrong argument type for PtrGetItem"};
+                        }},
+                    args.at(0).variant(),
+                    opt_arg1.variant());
 }
 
 namespace detail {
@@ -143,20 +146,19 @@ Result<Val> MakeIndexExprBroadcastMask(const Val&,
         std::string("IndexExprBroadcastMask takes 2 arguments but ") +
         std::to_string(args.size()) + "were given."};
   }
-  const auto& opt_arg0 = TryGetDimExpr(args.at(0));
+  ADT_LET_CONST_REF(dim_expr, TryGetDimExpr(args.at(0)));
   const auto& opt_arg1 = TryGetConcretIndexExprValue<IndexExpr>(args.at(1));
   ValidIndexExprBuilder builder{};
   const auto& pattern_match = ::common::Overloaded{
-      [&](const symbol::DimExpr& dim_expr,
-          const IndexExpr& index_expr) -> Result<Val> {
+      [&](const IndexExpr& index_expr) -> Result<Val> {
         return detail::ConvertResult<Val>(
             builder.BroadcastMask(dim_expr, index_expr));
       },
-      [&](const auto&, const auto&) -> Result<Val> {
+      [&](const auto&) -> Result<Val> {
         return adt::errors::InvalidArgumentError{
             "wrong argument type for IndexExprBroadcastMask"};
       }};
-  return std::visit(pattern_match, opt_arg0.variant(), opt_arg1.variant());
+  return std::visit(pattern_match, opt_arg1.variant());
 }
 
 template <typename Val>
@@ -165,23 +167,10 @@ Result<Val> MakeSlice(const Val&, const std::vector<Val>& args) {
     return adt::errors::TypeError{std::string("Slice takes 3 arguments but ") +
                                   std::to_string(args.size()) + "were given."};
   }
-  const auto& opt_start = TryGetDimExpr(args.at(0));
-  const auto& opt_stop = TryGetDimExpr(args.at(1));
-  const auto& opt_step = TryGetDimExpr(args.at(1));
-  const auto& pattern_match = ::common::Overloaded{
-      [](const symbol::DimExpr& start,
-         const symbol::DimExpr& stop,
-         const symbol::DimExpr& step) -> Result<Val> {
-        return Val{Slice{start, stop, step}};
-      },
-      [](const auto&, const auto&, const auto&) -> Result<Val> {
-        return adt::errors::InvalidArgumentError{
-            "wrong argument type for Slice"};
-      }};
-  return std::visit(pattern_match,
-                    opt_start.variant(),
-                    opt_stop.variant(),
-                    opt_step.variant());
+  ADT_LET_CONST_REF(start, TryGetDimExpr(args.at(0)));
+  ADT_LET_CONST_REF(stop, TryGetDimExpr(args.at(1)));
+  ADT_LET_CONST_REF(step, TryGetDimExpr(args.at(1)));
+  return Val{Slice{start, stop, step}};
 }
 
 template <typename Val>
@@ -192,24 +181,20 @@ Result<Val> MakeIndexExprSlice(const Val&, const std::vector<Val>& args) {
         std::to_string(args.size()) + "were given."};
   }
   const auto& opt_slice = TryGetConcretIndexExprValue<Slice>(args.at(0));
-  const auto& opt_range = TryGetDimExpr(args.at(1));
+  ADT_LET_CONST_REF(range, TryGetDimExpr(args.at(1)));
   const auto& opt_index_expr =
       TryGetConcretIndexExprValue<IndexExpr>(args.at(2));
   const auto& pattern_match = ::common::Overloaded{
-      [](const Slice& slice,
-         const symbol::DimExpr& range,
-         const IndexExpr& expr) -> Result<Val> {
+      [](const Slice& slice, const IndexExpr& expr) -> Result<Val> {
         ValidIndexExprBuilder builder{};
         return detail::ConvertResult<Val>(builder.Slice(slice, range, expr));
       },
-      [](const auto&, const auto&, const auto&) -> Result<Val> {
+      [](const auto&, const auto&) -> Result<Val> {
         return adt::errors::InvalidArgumentError{
             "wrong argument type for IndexExprSlice"};
       }};
-  return std::visit(pattern_match,
-                    opt_slice.variant(),
-                    opt_range.variant(),
-                    opt_index_expr.variant());
+  return std::visit(
+      pattern_match, opt_slice.variant(), opt_index_expr.variant());
 }
 
 template <typename Val>
@@ -220,24 +205,21 @@ Result<Val> MakeIndexExprAffine(const Val&, const std::vector<Val>& args) {
         std::to_string(args.size()) + "were given."};
   }
   const auto& opt_slice = TryGetConcretIndexExprValue<Slice>(args.at(0));
-  const auto& opt_range = TryGetDimExpr(args.at(1));
+  ADT_LET_CONST_REF(range, TryGetDimExpr(args.at(1)));
   const auto& opt_index_expr =
       TryGetConcretIndexExprValue<IndexExpr>(args.at(2));
   return std::visit(
       ::common::Overloaded{
-          [](const Slice& slice,
-             const symbol::DimExpr& range,
-             const IndexExpr& index_expr) -> Result<Val> {
+          [](const Slice& slice, const IndexExpr& index_expr) -> Result<Val> {
             ValidIndexExprBuilder builder{};
             return detail::ConvertResult<Val>(
                 builder.Affine(slice, range, index_expr));
           },
-          [](const auto&, const auto&, const auto&) -> Result<Val> {
+          [](const auto&, const auto&) -> Result<Val> {
             return adt::errors::InvalidArgumentError{
                 "wrong argument type for IndexExprAffine"};
           }},
       opt_slice.variant(),
-      opt_range.variant(),
       opt_index_expr.variant());
 }
 
@@ -278,23 +260,17 @@ inline Maybe<adt::List<int64_t>> TryGetInt64List(const Val& val) {
 }
 
 template <typename Val>
-inline Maybe<adt::List<symbol::DimExpr>> TryGetDimExprList(const Val& val) {
-  return val.Match(
-      [](const adt::List<Val>& l) -> Maybe<adt::List<symbol::DimExpr>> {
-        adt::List<symbol::DimExpr> ret;
-        ret->reserve(l->size());
-        for (const auto& elt : *l) {
-          const auto& opt_int = TryGetDimExpr(elt);
-          if (!opt_int.template Has<symbol::DimExpr>()) {
-            return adt::Nothing{};
-          }
-          ret->push_back(opt_int.template Get<symbol::DimExpr>());
-        }
-        return ret;
-      },
-      [](const auto&) -> Maybe<adt::List<symbol::DimExpr>> {
-        return adt::Nothing{};
-      });
+inline adt::Result<adt::List<symbol::DimExpr>> TryGetDimExprList(
+    const Val& val) {
+  using RetT = adt::Result<adt::List<symbol::DimExpr>>;
+  ADT_LET_CONST_REF(l, val.template CastTo<adt::List<Val>>());
+  adt::List<symbol::DimExpr> ret;
+  ret->reserve(l->size());
+  for (const auto& elt : *l) {
+    ADT_LET_CONST_REF(int_val, TryGetDimExpr(elt));
+    ret->push_back(int_val);
+  }
+  return ret;
 }
 
 template <typename Val>
@@ -331,21 +307,19 @@ Result<Val> MakeIndexTupleExprReshape(const Val&,
         std::string("IndexTupleExprReshape takes 2 arguments but ") +
         std::to_string(args.size()) + "were given."};
   }
-  const auto& opt_shape = TryGetDimExprList(args.at(0));
+  ADT_LET_CONST_REF(shape, TryGetDimExprList(args.at(0)));
   const auto& opt_expr =
       TryGetConcretIndexExprValue<IndexTupleExpr>(args.at(1));
   ValidIndexExprBuilder builder{};
   return std::visit(
       ::common::Overloaded{
-          [&](const adt::List<symbol::DimExpr>& shape,
-              const IndexTupleExpr& expr) -> Result<Val> {
+          [&](const IndexTupleExpr& expr) -> Result<Val> {
             return detail::ConvertResult<Val>(builder.Reshape(shape, expr));
           },
-          [](const auto&, const auto&) -> Result<Val> {
+          [](const auto&) -> Result<Val> {
             return adt::errors::InvalidArgumentError{
                 "wrong argument type for IndexTupleExprReshape"};
           }},
-      opt_shape.variant(),
       opt_expr.variant());
 }
 

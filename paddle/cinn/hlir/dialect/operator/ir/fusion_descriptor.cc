@@ -362,7 +362,9 @@ ap::index_expr::Val MakeTensorShapeFromVec(
   adt::List<Val> dim_exprs;
   dim_exprs->reserve(vec.size());
   for (const auto& dim_expr : vec) {
-    dim_exprs->emplace_back(Val{dim_expr});
+    axpr::BuiltinClassInstance<Val> instance{axpr::GetDimExprClass<Val>(),
+                                             dim_expr};
+    dim_exprs->emplace_back(Val{instance});
   }
   return dim_exprs;
 }

@@ -38,13 +38,13 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
       return reinterpret_cast<int64_t>(self.shared_ptr().get());
     }
     using RetT = adt::Result<ValueT>;
+    static std::vector<ValueT> empty_args{};
     return opt_func.value().Match(
-        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> RetT {
-          return unary_func(self);
+        [&](BuiltinFuncType<ValueT> unary_func) -> RetT {
+          return unary_func(self, empty_args);
         },
-        [&](adt::Result<ValueT> (*unary_func)(
-            InterpreterBase<ValueT> * interpreter, const ValueT&)) -> RetT {
-          return unary_func(interpreter, self);
+        [&](BuiltinHighOrderFuncType<ValueT> unary_func) -> RetT {
+          return unary_func(interpreter, self, empty_args);
         },
         [&](const auto&) -> RetT {
           return adt::errors::TypeError{
@@ -65,13 +65,13 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
       return ss.str();
     }
     using RetT = adt::Result<ValueT>;
+    static std::vector<ValueT> empty_args{};
     return opt_func.value().Match(
-        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> RetT {
-          return unary_func(self);
+        [&](BuiltinFuncType<ValueT> unary_func) -> RetT {
+          return unary_func(self, empty_args);
         },
-        [&](adt::Result<ValueT> (*unary_func)(
-            InterpreterBase<ValueT> * interpreter, const ValueT&)) -> RetT {
-          return unary_func(interpreter, self);
+        [&](BuiltinHighOrderFuncType<ValueT> unary_func) -> RetT {
+          return unary_func(interpreter, self, empty_args);
         },
         [&](const auto&) -> RetT {
           return adt::errors::TypeError{

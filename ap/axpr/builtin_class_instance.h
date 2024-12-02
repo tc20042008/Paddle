@@ -17,6 +17,7 @@
 #include <any>
 #include <unordered_map>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_func_type.h"
 #include "ap/axpr/class_attrs.h"
 #include "ap/axpr/error.h"
 #include "ap/axpr/serializable_value.h"
@@ -78,8 +79,9 @@ TypeImpl<BuiltinClassInstance<ValueT>> MakeBuiltinClass(
     const std::string& class_name, const VisitorT& Visitor) {
   using TypeImplT = TypeImpl<BuiltinClassInstance<ValueT>>;
   AttrMap<ValueT> attr_map;
-  Visitor(
-      [&](const auto& name, const auto& func) { attr_map->Set(name, func); });
+  Visitor([&](const auto& name, const axpr::BuiltinFunction<ValueT>& func) {
+    attr_map->Set(name, func.template CastTo<ValueT>());
+  });
   adt::List<std::shared_ptr<ClassAttrsImpl<ValueT>>> empty_superclasses{};
   ClassAttrs<ValueT> class_attrs{class_name, empty_superclasses, attr_map};
   return TypeImplT(class_attrs);

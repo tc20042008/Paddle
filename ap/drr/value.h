@@ -73,6 +73,11 @@ struct Value : public ValueImpl<Value> {
   static axpr::AttrMap<Value> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<Value, DrrCtx<Value, Node<Value>>>();
   }
+
+  template <typename T>
+  adt::Result<T> CastTo() const {
+    return axpr::Get<T>(*this);
+  }
 };
 
 using Val = Value;

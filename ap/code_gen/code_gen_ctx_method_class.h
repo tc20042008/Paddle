@@ -66,7 +66,7 @@ struct CodeGenCtxMethodClass {
 
   static adt::Result<ValueT> StaticMakeAndCheckOutTensorDataPtrKernelArgId(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return This{}.MakeAndCheckOutTensorDataPtrKernelArgId(self, args);
   }
 
@@ -106,7 +106,7 @@ struct CodeGenCtxMethodClass {
 
   static adt::Result<ValueT> StaticMakeAndCheckInTensorDataPtrKernelArgId(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return This{}.MakeAndCheckInTensorDataPtrKernelArgId(self, args);
   }
 
@@ -165,7 +165,7 @@ struct CodeGenCtxMethodClass {
 
   static adt::Result<ValueT> StaticMakeAndCheckDimExprKernelArgId(
       const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return This{}.MakeAndCheckDimExprKernelArgId(self, args);
   }
 
@@ -174,7 +174,7 @@ struct CodeGenCtxMethodClass {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "dim_expr_kernel_arg_id() takes 1 arguments but " +
         std::to_string(args.size()) + " were given."};
-    ADT_LET_CONST_REF(dim_expr, args.at(0).template TryGet<symbol::DimExpr>())
+    ADT_LET_CONST_REF(dim_expr, args.at(0).template CastTo<symbol::DimExpr>())
         << adt::errors::TypeError{std::string() +
                                   "the argument 1 of dim_expr_kernel_arg_id() "
                                   "should be 'DimExpr' (not '" +
@@ -232,7 +232,7 @@ struct CodeGenCtxMethodClass {
       input_index_loop_anchor_flags->reserve(
           input_index_loop_anchor_flags_lst->size());
       for (const auto& elt : *input_index_loop_anchor_flags_lst) {
-        ADT_LET_CONST_REF(mask, elt.template TryGet<bool>())
+        ADT_LET_CONST_REF(mask, elt.template CastTo<bool>())
             << adt::errors::TypeError{
                    std::string() +
                    "'CodeGenCtx.input_index_loop_anchor_flags' requires bool "
@@ -255,7 +255,7 @@ struct CodeGenCtxMethodClass {
       output_index_loop_anchor_flags->reserve(
           output_index_loop_anchor_flags_lst->size());
       for (const auto& elt : *output_index_loop_anchor_flags_lst) {
-        ADT_LET_CONST_REF(mask, elt.template TryGet<bool>())
+        ADT_LET_CONST_REF(mask, elt.template CastTo<bool>())
             << adt::errors::TypeError{
                    std::string() +
                    "'CodeGenCtx.output_index_loop_anchor_flags' requires bool "

@@ -16,6 +16,7 @@
 
 #include <vector>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/type.h"
 #include "ap/index_expr/slice.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
@@ -164,15 +165,7 @@ struct IndexExpr : public IndexExprBase<IndexExpr> {
   }
 };
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetIndexExprClass();
+
 }  // namespace ap::index_expr
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<index_expr::IndexExpr> : public std::monostate {
-  using value_type = index_expr::IndexExpr;
-
-  const char* Name() const { return "IndexExpr"; }
-};
-
-}  // namespace ap::axpr

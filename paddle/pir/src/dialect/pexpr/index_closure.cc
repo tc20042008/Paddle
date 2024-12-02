@@ -37,15 +37,17 @@ adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::operator()(
 
 adt::Result<OpIndexTupleExprSignature> OrderedOneofIndexClosureImpl::CallLambda(
     const Lambda<CoreExpr>& lambda, const IndexTupleExpr& indexes_expr) const {
-  const std::vector<ap::index_expr::Val> args{closure_data.ctx,
-                                              closure_data.inputs_meta,
-                                              closure_data.outputs_meta,
-                                              closure_data.in_vars,
-                                              Val{indexes_expr}};
+  axpr::BuiltinClassInstance<Val> instance{GetIndexTupleExprClass<Val>(),
+                                           indexes_expr};
+  const std::vector<Val> args{closure_data.ctx,
+                              closure_data.inputs_meta,
+                              closure_data.outputs_meta,
+                              closure_data.in_vars,
+                              Val{instance}};
   const auto& opt_ret = (*this->interpreter)(lambda, args);
   ADT_RETURN_IF_ERR(opt_ret);
   const auto& ret = opt_ret.GetOkValue();
-  return ret.template TryGet<OpIndexTupleExprSignature>();
+  return ret.template CastTo<OpIndexTupleExprSignature>();
 }
 
 namespace {

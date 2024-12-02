@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "ap/axpr/dim_expr_method_class.h"
 #include "ap/paddle/pir_node.h"
 
 namespace ap::paddle {
@@ -51,7 +52,9 @@ struct NativeIrValueMethodClass {
     adt::List<ValueT> lst;
     lst->reserve(shape_ptr->size());
     for (const auto& dim_expr : *shape_ptr) {
-      lst->emplace_back(dim_expr);
+      axpr::BuiltinClassInstance<ValueT> instance{
+          axpr::GetDimExprClass<ValueT>(), dim_expr};
+      lst->emplace_back(instance);
     }
     return lst;
   }
@@ -115,7 +118,9 @@ struct RefIrValueMethodClass {
     adt::List<ValueT> lst;
     lst->reserve(shape_ptr->size());
     for (const auto& dim_expr : *shape_ptr) {
-      lst->emplace_back(dim_expr);
+      axpr::BuiltinClassInstance<ValueT> instance{
+          axpr::GetDimExprClass<ValueT>(), dim_expr};
+      lst->emplace_back(instance);
     }
     return lst;
   }

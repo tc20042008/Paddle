@@ -25,25 +25,10 @@ struct IndexTupleExprMethodClass {
   using This = IndexTupleExprMethodClass;
   using Self = IndexTupleExpr;
 
-  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
-  adt::Result<ValueT> Hash(const Self& self) {
-    return adt::errors::NotImplementedError{};
-  }
-
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "reshape") {
-      return axpr::Method<ValueT>{self, &MakeIndexTupleExprReshape<ValueT>};
-    }
-    if (attr_name == "permute") {
-      return axpr::Method<ValueT>{self, &MakeIndexTupleExprPermute<ValueT>};
-    }
-    if (attr_name == "transform") {
-      return axpr::Method<ValueT>{self, &MakeIndexTupleExprTransform<ValueT>};
-    }
-    return adt::errors::TypeError{std::string() +
-                                  "'IndexTupleExpr' object has no attribute '" +
-                                  attr_name + "'."};
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    return self.ToString();
   }
 };
 
@@ -51,16 +36,6 @@ template <typename ValueT>
 struct TypeImplIndexTupleExprMethodClass {
   using This = TypeImplIndexTupleExprMethodClass;
   using Self = axpr::TypeImpl<IndexTupleExpr>;
-
-  adt::Result<ValueT> GetAttr(const Self&, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
-    if (attr_name == "Domain") {
-      return &This::StaticConstructIndexTupleExprDomain;
-    }
-    return adt::errors::AttributeError{
-        std::string() + "'IndexTupleExpr' has no static attribute '" +
-        attr_name + "'."};
-  }
 
   static adt::Result<ValueT> StaticConstructIndexTupleExprDomain(
       const ValueT&, const std::vector<ValueT>& args) {
@@ -85,31 +60,30 @@ struct TypeImplIndexTupleExprMethodClass {
                                     "should a list of DimExpr."};
       dim_exprs->emplace_back(dim_expr);
     }
-    return IndexTupleExpr{IndexTupleExprDomain{dim_exprs}};
+    IndexTupleExpr index_tuple_expr{IndexTupleExprDomain{dim_exprs}};
+    axpr::BuiltinClassInstance<ValueT> instance{
+        GetIndexTupleExprClass<ValueT>(), index_tuple_expr};
+    return instance;
   }
 
   adt::Result<symbol::DimExpr> CastToDimExpr(const ValueT& val) {
-    const auto& opt_dim_expr = TryGetDimExpr(val);
-    return opt_dim_expr.Match(
-        [](const symbol::DimExpr& dim_expr) -> adt::Result<symbol::DimExpr> {
-          return dim_expr;
-        },
-        [](const adt::Nothing&) -> adt::Result<symbol::DimExpr> {
-          return adt::errors::ValueError{"CastToDimExpr failed."};
-        });
+    ADT_LET_CONST_REF(dim_expr, TryGetDimExpr(val));
+    return dim_expr;
   }
 };
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetIndexTupleExprClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using TypeImplMethods = TypeImplIndexTupleExprMethodClass<ValueT>;
+  using ImplMethods = IndexTupleExprMethodClass<ValueT>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("IndexTupleExpr", [&](const auto& Define) {
+        Define("Domain", &TypeImplMethods::StaticConstructIndexTupleExprDomain);
+        Define("__str__", &ImplMethods::ToString);
+      }));
+  return cls;
+}
+
 }  // namespace ap::index_expr
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, index_expr::IndexTupleExpr>
-    : public index_expr::IndexTupleExprMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<index_expr::IndexTupleExpr>>
-    : public index_expr::TypeImplIndexTupleExprMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

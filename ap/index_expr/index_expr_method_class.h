@@ -25,38 +25,21 @@ struct IndexExprMethodClass {
   using This = IndexExprMethodClass;
   using Self = IndexExpr;
 
-  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
-
-  adt::Result<ValueT> Hash(const Self& self) {
-    return adt::errors::NotImplementedError{};
-  }
-
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(attr_name_val));
-    if (attr_name == "slice") {
-      return axpr::Method<ValueT>{self, &MakeIndexExprSlice<ValueT>};
-    }
-    if (attr_name == "affine") {
-      return axpr::Method<ValueT>{self, &MakeIndexExprAffine<ValueT>};
-    }
-    if (attr_name == "disjoint_union") {
-      return axpr::Method<ValueT>{self, &MakeDisjointUnion<ValueT>};
-    }
-    return adt::errors::TypeError{std::string() +
-                                  "'IndexExpr' object has no attribute '" +
-                                  attr_name + "'."};
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    return self.ToString();
   }
 };
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetIndexExprClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("IndexExpr", [&](const auto& Define) {
+        Define("__str__", &IndexExprMethodClass<ValueT>::ToString);
+      }));
+  return cls;
+}
+
 }  // namespace ap::index_expr
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, index_expr::IndexExpr>
-    : public index_expr::IndexExprMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<index_expr::IndexExpr>> {};
-
-}  // namespace ap::axpr

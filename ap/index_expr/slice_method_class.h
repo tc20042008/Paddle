@@ -24,28 +24,21 @@ struct SliceMethodClass {
   using This = SliceMethodClass;
   using Self = Slice;
 
-  adt::Result<ValueT> ToString(const Self& self) { return self->ToString(); }
-  adt::Result<ValueT> Hash(const Self& self) {
-    return adt::errors::NotImplementedError{};
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    return self->ToString();
   }
 };
 
 template <typename ValueT>
-struct TypeImplSliceMethodClass {
-  using This = TypeImplSliceMethodClass;
-  using Self = axpr::TypeImpl<Slice>;
-};
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetSliceClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("Slice", [&](const auto& Define) {
+        Define("__str__", &SliceMethodClass<ValueT>::ToString);
+      }));
+  return cls;
+}
 
 }  // namespace ap::index_expr
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, index_expr::Slice>
-    : public index_expr::SliceMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<index_expr::Slice>>
-    : public index_expr::TypeImplSliceMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

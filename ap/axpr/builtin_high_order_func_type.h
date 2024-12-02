@@ -14,25 +14,4 @@
 
 #pragma once
 
-#include "ap/axpr/adt.h"
-#include "ap/axpr/core_expr.h"
-#include "ap/axpr/error.h"
-#include "ap/axpr/interpreter_base.h"
-#include "ap/axpr/type.h"
-
-namespace ap::axpr {
-
-template <typename ValueT>
-using BuiltinHighOrderFuncType =
-    Result<ValueT> (*)(InterpreterBase<ValueT>* interpreter,
-                       const ValueT& obj,
-                       const std::vector<ValueT>& args);
-
-template <typename ValueT>
-struct TypeImpl<BuiltinHighOrderFuncType<ValueT>> : public std::monostate {
-  using value_type = BuiltinHighOrderFuncType<ValueT>;
-
-  const char* Name() const { return "builtin_high_order_function"; }
-};
-
-}  // namespace ap::axpr
+#include "ap/axpr/builtin_func_type.h"

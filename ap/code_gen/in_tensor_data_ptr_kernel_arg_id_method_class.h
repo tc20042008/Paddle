@@ -26,7 +26,7 @@ struct InTensorDataPtrKernelArgIdMethodClass {
   using Self = InTensorDataPtrKernelArgId<BirNode>;
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template CastTo<std::string>());
     if (attr_name == "type") {
       return GetArgType(self);
     }

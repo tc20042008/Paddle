@@ -33,7 +33,9 @@ struct DimExprKernelArgIdImpl {
 
   template <typename ValueT>
   adt::Result<ValueT> CastData() const {
-    return ValueT{this->dim_expr};
+    axpr::BuiltinClassInstance<ValueT> instance{axpr::GetDimExprClass<ValueT>(),
+                                                this->dim_expr};
+    return ValueT{instance};
   }
 
   std::size_t GetHashValue() const {

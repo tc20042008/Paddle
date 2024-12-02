@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/type.h"
 #include "ap/index_expr/index_expr.h"
 #include "ap/index_expr/index_tuple_expr.h"
@@ -28,26 +29,16 @@ using OpIndexTupleExprSignature = OpSignature<IndexTupleExpr>;
 
 namespace ap::axpr {
 
-template <>
-struct TypeImpl<index_expr::InIndexTupleExprSignature> : public std::monostate {
-  using value_type = index_expr::InIndexTupleExprSignature;
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetInIndexTupleExprSignatureClass();
 
-  const char* Name() const { return "InIndexTupleExprSignature"; }
-};
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetOutIndexTupleExprSignatureClass();
 
-template <>
-struct TypeImpl<index_expr::OutIndexTupleExprSignature>
-    : public std::monostate {
-  using value_type = index_expr::OutIndexTupleExprSignature;
-
-  const char* Name() const { return "OutIndexTupleExprSignature"; }
-};
-
-template <>
-struct TypeImpl<index_expr::OpIndexTupleExprSignature> : public std::monostate {
-  using value_type = index_expr::OpIndexTupleExprSignature;
-
-  const char* Name() const { return "OpIndexTupleExprSignature"; }
-};
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetOpIndexTupleExprSignatureClass();
 
 }  // namespace ap::axpr

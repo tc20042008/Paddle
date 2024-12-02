@@ -25,34 +25,8 @@
 
 namespace ap::index_expr {
 
-template <typename ValueT>
-using ValueImpl = axpr::ValueBase<ValueT,
-                                  symbol::DimExpr,
-                                  Slice,
-                                  IndexExpr,
-                                  IndexTupleExpr,
-                                  InIndexTupleExprSignature,
-                                  OutIndexTupleExprSignature,
-                                  OpIndexTupleExprSignature>;
-
-struct Value : public ValueImpl<Value> {
-  using ValueImpl<Value>::ValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
-
-  static axpr::AttrMap<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value,
-                                        symbol::DimExpr,
-                                        Slice,
-                                        IndexExpr,
-                                        IndexTupleExpr,
-                                        InIndexTupleExprSignature,
-                                        OutIndexTupleExprSignature,
-                                        OpIndexTupleExprSignature>();
-  }
-};
+using axpr::Value;
 
 using Val = Value;
-
-using Env = axpr::Environment<Val>;
 
 }  // namespace ap::index_expr

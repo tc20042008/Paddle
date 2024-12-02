@@ -16,6 +16,7 @@
 
 #include <vector>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/type.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
@@ -40,15 +41,7 @@ struct SliceImpl {
 
 DEFINE_ADT_RC(Slice, const SliceImpl);
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetSliceClass();
+
 }  // namespace ap::index_expr
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<index_expr::Slice> : public std::monostate {
-  using value_type = index_expr::Slice;
-
-  const char* Name() const { return "Slice"; }
-};
-
-}  // namespace ap::axpr

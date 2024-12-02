@@ -17,16 +17,27 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/attr_map.h"
 #include "ap/axpr/builtin_frame_util.h"
+#include "ap/index_expr/value_method_class.h"
 
 namespace ap::index_expr {
 
+template <typename ValueT, typename DoEachT>
+void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
+  DoEach(axpr::GetDimExprClass<ValueT>());
+  DoEach(GetSliceClass<ValueT>());
+  DoEach(GetIndexExprClass<ValueT>());
+  DoEach(GetInIndexTupleExprSignatureClass<ValueT>());
+  DoEach(GetOutIndexTupleExprSignatureClass<ValueT>());
+  DoEach(GetOpIndexTupleExprSignatureClass<ValueT>());
+}
+
 template <typename ValueT>
-AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
-  AttrMap<ValueT> attr_map;
-  auto Insert = [&](const std::string& k, const ValueT& v) {
-    attr_map->Set(k, v);
-  };
-  VisitEachBuiltinFrameAttr<ValueT>(Insert);
+ap::axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
+  ap::axpr::AttrMap<ValueT> attr_map;
+  ap::axpr::VisitEachBuiltinFrameAttr<ValueT>(
+      [&](const std::string& k, const ValueT& v) { attr_map->Set(k, v); });
+  VisitEachBuiltinFrameClass(
+      [&](const auto& cls) { attr_map->Set(cls.Name(), cls); });
   return attr_map;
 }
 

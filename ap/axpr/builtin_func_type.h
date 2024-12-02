@@ -16,6 +16,7 @@
 
 #include "ap/axpr/adt.h"
 #include "ap/axpr/error.h"
+#include "ap/axpr/interpreter_base.h"
 #include "ap/axpr/type.h"
 
 namespace ap::axpr {
@@ -40,6 +41,34 @@ struct TypeImpl<BuiltinFuncType<ValueT>> : public std::monostate {
   using value_type = BuiltinFuncType<ValueT>;
 
   const char* Name() const { return "builtin_function"; }
+};
+
+template <typename ValueT>
+using BuiltinHighOrderFuncType =
+    Result<ValueT> (*)(InterpreterBase<ValueT>* interpreter,
+                       const ValueT& obj,
+                       const std::vector<ValueT>& args);
+
+template <typename ValueT>
+struct TypeImpl<BuiltinHighOrderFuncType<ValueT>> : public std::monostate {
+  using value_type = BuiltinHighOrderFuncType<ValueT>;
+
+  const char* Name() const { return "builtin_high_order_function"; }
+};
+
+template <typename ValueT>
+using BuiltinFunctionImpl =
+    std::variant<BuiltinFuncType<ValueT>, BuiltinHighOrderFuncType<ValueT>>;
+
+template <typename ValueT>
+struct BuiltinFunction : public BuiltinFunctionImpl<ValueT> {
+  using BuiltinFunctionImpl<ValueT>::BuiltinFunctionImpl;
+  DEFINE_ADT_VARIANT_METHODS(BuiltinFunctionImpl<ValueT>);
+
+  template <typename T>
+  T CastTo() const {
+    return Match([](const auto& impl) -> T { return impl; });
+  }
 };
 
 }  // namespace ap::axpr

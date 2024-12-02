@@ -16,6 +16,7 @@
 
 #include <vector>
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/type.h"
 #include "ap/index_expr/index_expr.h"
 #include "ap/index_expr/slice.h"
@@ -189,15 +190,8 @@ inline std::string IndexTupleExprToString(
   return indexes_expr->ToString();
 }
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetIndexTupleExprClass();
+
 }  // namespace ap::index_expr
-
-namespace ap::axpr {
-
-template <>
-struct TypeImpl<index_expr::IndexTupleExpr> : public std::monostate {
-  using value_type = index_expr::IndexTupleExpr;
-
-  const char* Name() const { return "IndexTupleExpr"; }
-};
-
-}  // namespace ap::axpr

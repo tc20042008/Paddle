@@ -23,58 +23,69 @@ template <typename ValueT>
 struct InIndexTupleExprSignatureMethodClass {
   using Self = index_expr::InIndexTupleExprSignature;
 
-  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
-  adt::Result<ValueT> Hash(const Self& self) {
-    return adt::errors::NotImplementedError{};
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    return self->ToString();
   }
 };
+
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetInIndexTupleExprSignatureClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+      "InIndexTupleExprSignature", [&](const auto& Define) {
+        Define("__str__",
+               &InIndexTupleExprSignatureMethodClass<ValueT>::ToString);
+      }));
+  return cls;
+}
 
 template <typename ValueT>
 struct OutIndexTupleExprSignatureMethodClass {
   using Self = index_expr::OutIndexTupleExprSignature;
 
-  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
-  adt::Result<ValueT> Hash(const Self& self) {
-    return adt::errors::NotImplementedError{};
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    return self->ToString();
   }
 };
+
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetOutIndexTupleExprSignatureClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+      "OutIndexTupleExprSignature", [&](const auto& Define) {
+        Define("__str__",
+               &OutIndexTupleExprSignatureMethodClass<ValueT>::ToString);
+      }));
+  return cls;
+}
 
 template <typename ValueT>
 struct OpIndexTupleExprSignatureMethodClass {
   using Self = index_expr::OpIndexTupleExprSignature;
 
-  adt::Result<ValueT> ToString(const Self& self) { return self.ToString(); }
-  adt::Result<ValueT> Hash(const Self& self) {
-    return adt::errors::NotImplementedError{};
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    return self->ToString();
   }
 };
 
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+GetOpIndexTupleExprSignatureClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+      "OpIndexTupleExprSignature", [&](const auto& Define) {
+        Define("__str__",
+               &OpIndexTupleExprSignatureMethodClass<ValueT>::ToString);
+      }));
+  return cls;
+}
+
 }  // namespace ap::index_expr
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, index_expr::InIndexTupleExprSignature>
-    : public index_expr::InIndexTupleExprSignatureMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<index_expr::InIndexTupleExprSignature>>
-    : public EmptyMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, index_expr::OutIndexTupleExprSignature>
-    : public index_expr::OutIndexTupleExprSignatureMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<index_expr::OutIndexTupleExprSignature>>
-    : public EmptyMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, index_expr::OpIndexTupleExprSignature>
-    : public index_expr::OpIndexTupleExprSignatureMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<index_expr::OpIndexTupleExprSignature>>
-    : public EmptyMethodClass<ValueT> {};
-
-}  // namespace ap::axpr

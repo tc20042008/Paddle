@@ -24,22 +24,29 @@ struct DimExprMethodClass {
   using This = DimExprMethodClass;
   using Self = symbol::DimExpr;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return symbol::ToString(self);
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>&) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     int64_t hash_value = std::hash<Self>()(self);
     return hash_value;
   }
 };
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, symbol::DimExpr>
-    : public DimExprMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<symbol::DimExpr>>
-    : public EmptyMethodClass<ValueT> {};
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetDimExprClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<ValueT>("DimExpr", [&](const auto& Define) {
+        Define("__str__", &DimExprMethodClass<ValueT>::ToString);
+        Define("__hash__", &DimExprMethodClass<ValueT>::Hash);
+      }));
+  return cls;
+}
 
 }  // namespace ap::axpr

@@ -16,36 +16,34 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/builtin_frame_util.h"
+#include "ap/axpr/dim_expr_method_class.h"
 #include "ap/code_module/func_declare_method_class.h"
 #include "ap/code_module/module_method_class.h"
 #include "ap/code_module/source_code_method_class.h"
+#include "ap/index_expr/index_expr_method_class.h"
+#include "ap/index_expr/index_tuple_expr_method_class.h"
+#include "ap/index_expr/slice_method_class.h"
 
 namespace ap::code_gen {
 
 template <typename ValueT, typename DoEachT>
-void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
-  {
-    const auto& cls = code_module::MakeSourceCodeClass<ValueT>();
-    DoEach(cls.Name(), ValueT{cls});
-  }
-  {
-    const auto& cls = code_module::MakeFuncDeclareClass<ValueT>();
-    DoEach(cls.Name(), ValueT{cls});
-  }
-  {
-    const auto& cls = code_module::MakeModuleClass<ValueT>();
-    DoEach(cls.Name(), ValueT{cls});
-  }
+void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
+  DoEach(code_module::MakeSourceCodeClass<ValueT>());
+  DoEach(code_module::MakeFuncDeclareClass<ValueT>());
+  DoEach(code_module::MakeModuleClass<ValueT>());
+  DoEach(axpr::GetDimExprClass<ValueT>());
+  DoEach(index_expr::GetSliceClass<ValueT>());
+  DoEach(index_expr::GetIndexExprClass<ValueT>());
+  DoEach(index_expr::GetIndexTupleExprClass<ValueT>());
 }
 
 template <typename ValueT>
 axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
   axpr::AttrMap<ValueT> attr_map;
-  auto Insert = [&](const std::string& k, const ValueT& v) {
-    attr_map->Set(k, v);
-  };
-  axpr::VisitEachBuiltinFrameAttr<ValueT>(Insert);
-  VisitEachBuiltinFrameAttr<ValueT>(Insert);
+  axpr::VisitEachBuiltinFrameAttr<ValueT>(
+      [&](const std::string& k, const ValueT& v) { attr_map->Set(k, v); });
+  VisitEachBuiltinFrameClass<ValueT>(
+      [&](const auto& cls) { attr_map->Set(cls.Name(), cls); });
   return attr_map;
 }
 

@@ -15,17 +15,14 @@
 #pragma once
 
 #include "ap/axpr/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
 #include "ap/axpr/error.h"
 #include "ap/axpr/type.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace ap::axpr {
 
-template <>
-struct TypeImpl<symbol::DimExpr> : public std::monostate {
-  using value_type = symbol::DimExpr;
-
-  const char* Name() const { return "DimExpr"; }
-};
+template <typename ValueT>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetDimExprClass();
 
 }  // namespace ap::axpr

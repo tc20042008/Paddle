@@ -93,6 +93,20 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
     return ret;
   }
 
+  adt::Result<ValueT> GetItem(InterpreterBase<ValueT>* interpreter,
+                              const Self& self,
+                              const ValueT& idx_val) {
+    const auto& opt_getitem = GetClassAttr(self, "__getitem__");
+    const auto& class_attrs = self->type.class_attrs;
+    ADT_CHECK(opt_getitem.has_value())
+        << adt::errors::AttributeError{std::string() + class_attrs->class_name +
+                                       " class has no attribute '__getitem__'"};
+    std::vector<ValueT> args{idx_val};
+    ADT_LET_CONST_REF(ret,
+                      interpreter->InterpretCall(opt_getitem.value(), args));
+    return ret;
+  }
+
   adt::Result<ValueT> Call(const Self& self) {
     const auto& opt_func = GetClassAttr(self, "__call__");
     const auto& class_attrs = self->type.class_attrs;
@@ -136,6 +150,15 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
     ADT_CHECK(opt_func.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
                                        " class has no attribute '__setattr__'"};
+    return opt_func.value();
+  }
+
+  adt::Result<ValueT> SetItem(const Self& self, const ValueT& idx_val) {
+    const auto& class_attrs = self->type.class_attrs;
+    const auto& opt_func = GetClassAttr(self, "__setitem__");
+    ADT_CHECK(opt_func.has_value())
+        << adt::errors::AttributeError{std::string() + class_attrs->class_name +
+                                       " class has no attribute '__setitem__'"};
     return opt_func.value();
   }
 };

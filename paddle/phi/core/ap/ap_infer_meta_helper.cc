@@ -14,44 +14,21 @@
 
 #include "paddle/phi/core/ap/ap_infer_meta_helper.h"
 #include <mutex>
-#include "ap/include/adt/adt.h"
-#include "ap/include/axpr/anf_expr_util.h"
-#include "ap/include/axpr/const_std_vector_ptr.h"
-#include "ap/include/axpr/const_std_vector_ptr_method_class.h"
-#include "ap/include/axpr/cps_interpreter.h"
-#include "ap/include/axpr/data_type.h"
-#include "ap/include/axpr/std_vector_ptr.h"
-#include "ap/include/axpr/std_vector_ptr_method_class.h"
-#include "ap/include/axpr/value.h"
-#include "ap/include/axpr/value_method_class.h"
-#include "ap/include/paddle/builtin_frame_util.h"
-#include "ap/include/paddle/const_meta_tensor_ptr.h"
-#include "ap/include/paddle/const_meta_tensor_ptr_method_class.h"
-#include "ap/include/paddle/ddim.h"
-#include "ap/include/paddle/ddim_method_class.h"
-#include "ap/include/paddle/meta_tensor_ptr.h"
-#include "ap/include/paddle/meta_tensor_ptr_method_class.h"
-
-namespace ap::paddle {
-
-template <typename ValueT>
-using ValueImpl = axpr::ValueBase<ValueT,
-                                  paddle::DDim,
-                                  ConstMetaTensorPtr,
-                                  MetaTensorPtr,
-                                  const std::vector<ConstMetaTensorPtr>*,
-                                  std::vector<MetaTensorPtr>*>;
-
-struct Value : public ValueImpl<Value> {
-  using ValueImpl<Value>::ValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(ValueImpl<Value>);
-
-  static axpr::AttrMap<Value> GetExportedTypes() {
-    return axpr::GetObjectTypeName2Type<Value, axpr::DataType>();
-  }
-};
-
-}  // namespace ap::paddle
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/anf_expr_util.h"
+#include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/axpr/data_type.h"
+#include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/axpr/value_method_class.h"
+#include "paddle/ap/include/paddle/builtin_frame_util.h"
+#include "paddle/ap/include/paddle/const_meta_tensor_ptr.h"
+#include "paddle/ap/include/paddle/const_meta_tensor_ptr_method_class.h"
+#include "paddle/ap/include/paddle/const_std_vector_const_meta_tensor_ptr_ptr_method_class.h"
+#include "paddle/ap/include/paddle/ddim.h"
+#include "paddle/ap/include/paddle/ddim_method_class.h"
+#include "paddle/ap/include/paddle/meta_tensor_ptr.h"
+#include "paddle/ap/include/paddle/meta_tensor_ptr_method_class.h"
+#include "paddle/ap/include/paddle/std_vector_meta_tensor_ptr_ptr_method_class.h"
 
 namespace phi {
 
@@ -64,9 +41,12 @@ adt::Result<adt::Ok> InferMetaByLambda(
     const Lambda& lambda,
     const std::vector<const MetaTensor*>* inputs,
     std::vector<MetaTensor*>* outputs) {
-  ap::axpr::CpsInterpreter<ap::paddle::Value> interpreter(
-      ap::paddle::MakeBuiltinFrameAttrMap<ap::paddle::Value>());
-  ADT_RETURN_IF_ERR(interpreter.Interpret(lambda, {inputs, outputs}));
+  ap::axpr::CpsInterpreter<ap::axpr::Value> interpreter(
+      ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>());
+  ADT_RETURN_IF_ERR(interpreter.Interpret(
+      lambda,
+      {ap::paddle::GetConstStdVectorConstMetaTensorPtrPtrClass().New(inputs),
+       ap::paddle::GetStdVectorMetaTensorPtrPtrClass().New(outputs)}));
   return adt::Ok{};
 }
 

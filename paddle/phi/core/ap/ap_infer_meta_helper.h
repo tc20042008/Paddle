@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "ap/include/adt/adt.h"
-#include "ap/include/axpr/core_expr.h"
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/core_expr.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {

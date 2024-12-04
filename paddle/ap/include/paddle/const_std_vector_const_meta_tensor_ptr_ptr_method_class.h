@@ -14,24 +14,22 @@
 
 #pragma once
 
-#include "paddle/ap/include/axpr/builtin_class_instance.h"
-#include "paddle/ap/include/axpr/data_type_util.h"
-#include "paddle/ap/include/axpr/method_class.h"
-#include "paddle/ap/include/paddle/const_meta_tensor_ptr.h"
-#include "paddle/ap/include/paddle/ddim_method_class.h"
+#include "paddle/ap/include/axpr/adt.h"
+#include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/paddle/const_meta_tensor_ptr_method_class.h"
 
 namespace ap::paddle {
 
-struct ConstMetaTensorPtrMethodClass {
-  using This = ConstMetaTensorPtrMethodClass;
-  using Self = ConstMetaTensorPtr;
+struct ConstStdVectorConstMetaTensorPtrPtrMethodClass {
+  using This = ConstStdVectorConstMetaTensorPtrPtrMethodClass;
+  using Self = const std::vector<ConstMetaTensorPtr>*;
 
   static adt::Result<axpr::Value> ToString(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
-    const auto* ptr = self;
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    const void* ptr = self;
+    ss << "<ConstStdVectorConstMetaTensorPtrPtr object at " << ptr << ">";
     return ss.str();
   }
 
@@ -41,42 +39,39 @@ struct ConstMetaTensorPtrMethodClass {
     return reinterpret_cast<int64_t>(self);
   }
 
-  static adt::Result<axpr::Value> GetAttr(
+  static adt::Result<axpr::Value> GetItem(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
-    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 1);
-    const auto& attr_name_val = args.at(0);
-    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
-    if (attr_name == "dtype") {
-      return This{}.GetDtype(self);
+    const auto& idx_val = args.at(0);
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_LET_CONST_REF(idx, idx_val.template CastTo<int64_t>())
+        << adt::errors::TypeError{std::string() +
+                                  "vector indices must be integers, not " +
+                                  axpr::GetTypeName(idx_val)};
+    int64_t index = idx;
+    if (index < 0) {
+      index += self->size();
     }
-    if (attr_name == "dims") {
-      return This{}.GetDims(self);
+    if (index >= 0 && index < self->size()) {
+      return CastItem(self->at(index));
     }
-    return adt::errors::AttributeError{
-        std::string() + "'ConstMetaTensorPtr' object has no attribute '" +
-        attr_name + "'."};
+    return adt::errors::IndexError{"vector index out of range"};
   }
 
-  adt::Result<axpr::Value> GetDims(const Self& self) {
-    return GetDDimClass().New(self->dims());
-  }
-
-  adt::Result<axpr::Value> GetDtype(const Self& self) {
-    ADT_LET_CONST_REF(dtype, axpr::GetDataTypeFromPhiDataType(self->dtype()));
-    return dtype;
+  static adt::Result<axpr::Value> CastItem(const ConstMetaTensorPtr& elem) {
+    return GetConstMetaTensorPtrClass().New(elem);
   }
 };
 
 inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-GetConstMetaTensorPtrClass() {
+GetConstStdVectorConstMetaTensorPtrPtrClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
-  using Impl = ConstMetaTensorPtrMethodClass;
+  using Impl = ConstStdVectorConstMetaTensorPtrPtrMethodClass;
   static ClassT cls(axpr::MakeBuiltinClass<axpr::Value>(
-      "ConstMetaTensorPtr", [&](const auto& Define) {
+      "ConstStdVectorConstMetaTensorPtrPtr", [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
-        Define("__getattr__", &Impl::GetAttr);
+        Define("__getitem__", &Impl::GetItem);
       }));
   return cls;
 }

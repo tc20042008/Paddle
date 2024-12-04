@@ -15,102 +15,116 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/data_type_util.h"
-#include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/paddle/ddim.h"
+#include "paddle/ap/include/paddle/ddim_method_class.h"
 #include "paddle/ap/include/paddle/meta_tensor_ptr.h"
 
 namespace ap::paddle {
 
-template <typename ValueT>
 struct MetaTensorPtrMethodClass {
   using This = MetaTensorPtrMethodClass;
   using Self = MetaTensorPtr;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const auto* ptr = self;
     ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(Self func) {
-    return reinterpret_cast<int64_t>(func);
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    return reinterpret_cast<int64_t>(self);
   }
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+  static adt::Result<axpr::Value> GetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    const auto& attr_name_val = args.at(0);
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template CastTo<std::string>());
     if (attr_name == "dtype") {
-      return GetDtype(self);
+      return This{}.GetDtype(self);
     }
     if (attr_name == "dims") {
-      return GetDims(self);
+      return This{}.GetDims(self);
     }
     return adt::errors::AttributeError{
         std::string() + "'MetaTensorPtr' object has no attribute '" +
         attr_name + "'."};
   }
 
-  adt::Result<ValueT> GetDims(const Self& self) { return self->dims(); }
+  adt::Result<axpr::Value> GetDims(const Self& self) {
+    return GetDDimClass().New(self->dims());
+  }
 
-  adt::Result<ValueT> GetDtype(const Self& self) {
+  adt::Result<axpr::Value> GetDtype(const Self& self) {
     ADT_LET_CONST_REF(dtype, axpr::GetDataTypeFromPhiDataType(self->dtype()));
     return dtype;
   }
 
-  adt::Result<ValueT> SetAttr(const Self& self, const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+  static adt::Result<axpr::Value> SetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 2);
+    const auto& attr_name_val = args.at(0);
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template CastTo<std::string>());
     if (attr_name == "dtype") {
-      return axpr::Method<ValueT>{self, &This::StaticSetDtype};
+      return StaticSetDtype(self_val, args);
     }
     if (attr_name == "dims") {
-      return axpr::Method<ValueT>{self, &This::StaticSetDims};
+      return StaticSetDims(self_val, args);
     }
     return adt::errors::AttributeError{
         std::string() + "'MetaTensorPtr' object has no attribute '" +
         attr_name + "'."};
   }
 
-  static adt::Result<ValueT> StaticSetDtype(const ValueT& self_val,
-                                            const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+  static adt::Result<axpr::Value> StaticSetDtype(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 2);
-    ADT_LET_CONST_REF(data_type, args.at(1).template TryGet<axpr::DataType>());
+    ADT_LET_CONST_REF(data_type, args.at(1).template CastTo<axpr::DataType>());
     ADT_LET_CONST_REF(dtype, GetPhiDataTypeFromDataType(data_type));
     self->set_dtype(dtype);
     return adt::Nothing{};
   }
 
-  static adt::Result<ValueT> StaticSetDims(const ValueT& self_val,
-                                           const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, self_val.template TryGet<Self>());
+  static adt::Result<axpr::Value> StaticSetDims(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 2);
     return This{}.SetDims(self, args.at(1));
   }
 
-  adt::Result<ValueT> SetDims(const Self& self, const ValueT& dims_val) {
+  adt::Result<axpr::Value> SetDims(const Self& self,
+                                   const axpr::Value& dims_val) {
     return dims_val.Match(
-        [&](const DDim& ddims) -> adt::Result<ValueT> {
+        [&](const DDim& ddims) -> adt::Result<axpr::Value> {
           return SetDimsByDDim(self, ddims);
         },
-        [&](const adt::List<ValueT>& list) -> adt::Result<ValueT> {
+        [&](const adt::List<axpr::Value>& list) -> adt::Result<axpr::Value> {
           return SetDimsByIntList(self, list);
         },
-        [&](const auto&) -> adt::Result<ValueT> {
+        [&](const auto&) -> adt::Result<axpr::Value> {
           return adt::errors::TypeError{"only DDim or list of int supported."};
         });
   }
 
-  adt::Result<ValueT> SetDimsByDDim(const Self& self, const DDim& ddims) {
+  adt::Result<axpr::Value> SetDimsByDDim(const Self& self, const DDim& ddims) {
     self->set_dims(ddims);
     return adt::Nothing{};
   }
 
-  adt::Result<ValueT> SetDimsByIntList(const Self& self,
-                                       const adt::List<ValueT>& list) {
+  adt::Result<axpr::Value> SetDimsByIntList(
+      const Self& self, const adt::List<axpr::Value>& list) {
     std::vector<int64_t> dims{};
     dims.reserve(list->size());
     for (const auto& dim_val : *list) {
-      ADT_LET_CONST_REF(dim, dim_val.template TryGet<int64_t>());
+      ADT_LET_CONST_REF(dim, dim_val.template CastTo<int64_t>());
       dims.push_back(dim);
     }
     self->set_dims(::common::make_ddim(dims));
@@ -118,15 +132,18 @@ struct MetaTensorPtrMethodClass {
   }
 };
 
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetMetaTensorPtrClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = MetaTensorPtrMethodClass;
+  static ClassT cls(axpr::MakeBuiltinClass<axpr::Value>(
+      "MetaTensorPtr", [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+        Define("__getattr__", &Impl::GetAttr);
+        Define("__setattr__", &Impl::SetAttr);
+      }));
+  return cls;
+}
+
 }  // namespace ap::paddle
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, paddle::MetaTensorPtr>
-    : public paddle::MetaTensorPtrMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<paddle::MetaTensorPtr>> {};
-
-}  // namespace ap::axpr

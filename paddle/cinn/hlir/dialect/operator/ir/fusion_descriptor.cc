@@ -14,9 +14,9 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/fusion_descriptor.h"
 #include <functional>
-#include "ap/include/index_expr/index_expr_interpreter.h"
-#include "ap/include/index_expr/op_index_tuple_expr_signature.h"
-#include "ap/include/index_expr/valid_index_expr_builder.h"
+#include "paddle/ap/include/index_expr/index_expr_interpreter.h"
+#include "paddle/ap/include/index_expr/op_index_tuple_expr_signature.h"
+#include "paddle/ap/include/index_expr/valid_index_expr_builder.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/common/bfs_walker.h"

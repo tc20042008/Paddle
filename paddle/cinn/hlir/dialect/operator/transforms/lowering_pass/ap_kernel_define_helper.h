@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include "ap/include/adt/adt.h"
-#include "ap/include/code_gen/code_gen_ctx.h"
-#include "ap/include/code_gen/code_gen_result.h"
-#include "ap/include/code_gen/value.h"
-#include "ap/include/code_module/module.h"
-#include "ap/include/paddle/pir_node.h"
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/code_gen/code_gen_ctx.h"
+#include "paddle/ap/include/code_gen/code_gen_result.h"
+#include "paddle/ap/include/code_gen/value.h"
+#include "paddle/ap/include/code_module/module.h"
+#include "paddle/ap/include/paddle/pir_node.h"
 
 namespace cinn::dialect::ir {
 

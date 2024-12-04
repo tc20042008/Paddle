@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
-#include "ap/include/axpr/cps_interpreter.h"
-#include "ap/include/code_gen/builtin_frame_util.h"
-#include "ap/include/code_gen/value.h"
-#include "ap/include/code_gen/value_method_class.h"
-#include "ap/include/drr/drr_graph_descriptor.h"
-#include "ap/include/drr/drr_node_descriptor.h"
-#include "ap/include/paddle/op_cuda_code_gen_impl.h"
-#include "ap/include/paddle/pir_node_method_class.h"
+#include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/code_gen/builtin_frame_util.h"
+#include "paddle/ap/include/code_gen/value.h"
+#include "paddle/ap/include/code_gen/value_method_class.h"
+#include "paddle/ap/include/drr/drr_graph_descriptor.h"
+#include "paddle/ap/include/drr/drr_node_descriptor.h"
+#include "paddle/ap/include/paddle/op_cuda_code_gen_impl.h"
+#include "paddle/ap/include/paddle/pir_node_method_class.h"
 
 namespace cinn::dialect::ir {
 

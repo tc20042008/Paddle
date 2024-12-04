@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_drr_helper.h"
-#include "ap/include/axpr/anf_expr_util.h"
-#include "ap/include/axpr/cps_interpreter.h"
-#include "ap/include/axpr/lambda_expr_builder.h"
-#include "ap/include/drr/builtin_frame_util.h"
-#include "ap/include/drr/drr_graph_descriptor.h"
-#include "ap/include/drr/drr_node_descriptor.h"
-#include "ap/include/drr/value.h"
-#include "ap/include/drr/value_method_class.h"
+#include "paddle/ap/include/axpr/anf_expr_util.h"
+#include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/axpr/lambda_expr_builder.h"
+#include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/drr/builtin_frame_util.h"
+#include "paddle/ap/include/drr/drr_graph_descriptor.h"
+#include "paddle/ap/include/drr/drr_node_descriptor.h"
+#include "paddle/ap/include/drr/value.h"
+#include "paddle/ap/include/drr/value_method_class.h"
 
 namespace cinn::dialect::ir {
 

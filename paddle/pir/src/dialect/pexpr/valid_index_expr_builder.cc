@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/include/index_expr/valid_index_expr_builder.h"
-#include "ap/include/adt/adt.h"
-#include "ap/include/index_expr/index_expr.h"
-#include "ap/include/index_expr/index_expr_util.h"
-#include "ap/include/index_expr/index_tuple_expr.h"
-#include "ap/include/index_expr/slice.h"
+#include "paddle/ap/include/index_expr/valid_index_expr_builder.h"
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/index_expr/index_expr.h"
+#include "paddle/ap/include/index_expr/index_expr_util.h"
+#include "paddle/ap/include/index_expr/index_tuple_expr.h"
+#include "paddle/ap/include/index_expr/slice.h"
 
 namespace ap::index_expr {}  // namespace ap::index_expr

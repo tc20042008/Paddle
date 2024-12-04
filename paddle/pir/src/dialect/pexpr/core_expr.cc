@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/include/axpr/core_expr.h"
+#include "paddle/ap/include/axpr/core_expr.h"
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>
-#include "ap/include/axpr/core_expr_builder.h"
+#include "paddle/ap/include/axpr/core_expr_builder.h"
 
 namespace ap::axpr {
 

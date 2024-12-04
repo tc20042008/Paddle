@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "ap/include/adt/adt.h"
-#include "ap/include/drr/value.h"
-#include "ap/include/registry/drr_pass_registry_item.h"
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/drr/value.h"
+#include "paddle/ap/include/registry/drr_pass_registry_item.h"
 
 namespace cinn::dialect::ir {
 

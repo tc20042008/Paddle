@@ -15,17 +15,18 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/data_type_util.h"
-#include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/paddle/ddim.h"
 
 namespace ap::paddle {
 
-template <typename ValueT>
 struct DDimMethodClass {
   using This = DDimMethodClass;
   using Self = DDim;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     ss << "[";
     for (int i = 0; i < self.size(); ++i) {
@@ -38,7 +39,9 @@ struct DDimMethodClass {
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     int64_t hash_value = 0;
     for (int i = 0; i < self.size(); ++i) {
       hash_value = adt::hash_combine(hash_value, self.at(i));
@@ -46,10 +49,14 @@ struct DDimMethodClass {
     return hash_value;
   }
 
-  adt::Result<ValueT> GetItem(const Self& self, const ValueT& index_val) {
+  static adt::Result<axpr::Value> GetItem(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 1);
+    const auto& index_val = args.at(0);
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_LET_CONST_REF(index, index_val.template TryGet<int64_t>())
         << adt::errors::TypeError{std::string() +
-                                  "'DDim.__get_item__' takes integers, not " +
+                                  "'DDim.__getitem__()' takes integers, not " +
                                   axpr::GetTypeName(index_val) + "."};
     ADT_CHECK(index < self.size())
         << adt::errors::IndexError{"list index out of range"};
@@ -57,15 +64,17 @@ struct DDimMethodClass {
   }
 };
 
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetDDimClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = DDimMethodClass;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>("DDim", [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+        Define("__getitem__", &Impl::GetItem);
+      }));
+  return cls;
+}
+
 }  // namespace ap::paddle
-
-namespace ap::axpr {
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, paddle::DDim>
-    : public paddle::DDimMethodClass<ValueT> {};
-
-template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<paddle::DDim>> {};
-
-}  // namespace ap::axpr

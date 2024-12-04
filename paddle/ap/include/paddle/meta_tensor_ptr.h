@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/std_vector_ptr.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -32,11 +31,6 @@ struct TypeImpl<paddle::MetaTensorPtr> : public std::monostate {
   using std::monostate::monostate;
 
   const char* Name() const { return "MetaTensorPtr"; }
-};
-
-template <>
-struct GetVectorPtrNameHelper<paddle::MetaTensorPtr> {
-  static const char* Call() { return "std_vector_MetaTensorPtr_ptr"; }
 };
 
 }  // namespace ap::axpr

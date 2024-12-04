@@ -24,17 +24,10 @@ class Interpreter {
       : builtin_frame_attr_map_(builtin_frame_attr_map) {}
 
   adt::Result<axpr::Value> Interpret(const Lambda<CoreExpr>& lambda,
-                                     const std::vector<axpr::Value>& args) {
-    Function<SerializableValue> function{lambda, std::nullopt};
-    return Interpret(function, args);
-  }
-
+                                     const std::vector<axpr::Value>& args);
   adt::Result<axpr::Value> Interpret(
       const Function<SerializableValue>& function,
-      const std::vector<axpr::Value>& args) {
-    ADT_LET_CONST_REF(closure, ConvertFunctionToClosure(function));
-    return InterpretCall(closure, args);
-  }
+      const std::vector<axpr::Value>& args);
 
  private:
   axpr::AttrMap<axpr::Value> builtin_frame_attr_map_;

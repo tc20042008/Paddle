@@ -8,7 +8,8 @@ set(cinn_transforms_deps
     op_dialect_vjp
     cinn_runtime_dialect
     op_fusion
-    pir_compiler)
+    pir_compiler
+    axpr)
 
 cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
                 ${cinn_transforms_deps})

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "ap/axpr/type.h"
+#include "ap/drr/node.h"
 #include "ap/drr/packed_ir_value.h"
 #include "ap/drr/tags.h"
 #include "ap/drr/unbound_ir_value.h"
@@ -22,16 +23,13 @@
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 using SrcPtnValidOutIrValueImpl =
-    std::variant<UnboundIrValue<ValueT, NodeT>,
-                 UnboundPackedIrValue<ValueT, NodeT>>;
+    std::variant<UnboundIrValue<drr::Node>, UnboundPackedIrValue<drr::Node>>;
 
-template <typename ValueT, typename NodeT>
-struct SrcPtnValidOutIrValue : public SrcPtnValidOutIrValueImpl<ValueT, NodeT> {
-  using SrcPtnValidOutIrValueImpl<ValueT, NodeT>::SrcPtnValidOutIrValueImpl;
+struct SrcPtnValidOutIrValue : public SrcPtnValidOutIrValueImpl {
+  using SrcPtnValidOutIrValueImpl::SrcPtnValidOutIrValueImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(SrcPtnValidOutIrValueImpl<ValueT, NodeT>);
+  DEFINE_ADT_VARIANT_METHODS(SrcPtnValidOutIrValueImpl);
 
   const std::string& name() const {
     return Match([](const auto& ir_value) -> const std::string& {

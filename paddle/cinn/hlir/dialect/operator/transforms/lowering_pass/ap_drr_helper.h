@@ -23,9 +23,8 @@ namespace cinn::dialect::ir {
 struct ApDrrHelper {
   using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
 
-  using DrrValue = ap::drr::Value;
-  using DrrNode = ap::drr::Node<DrrValue>;
-  using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
+  using DrrNode = ap::drr::Node;
+  using DrrCtx = ap::drr::DrrCtx;
 
   adt::Result<DrrCtx> Interpret(const Function& lambda,
                                 const std::string& drr_pass_name);

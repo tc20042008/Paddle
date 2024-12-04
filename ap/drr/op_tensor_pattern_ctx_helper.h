@@ -19,21 +19,21 @@
 
 #include "ap/drr/ir_op.h"
 #include "ap/drr/ir_value.h"
+#include "ap/drr/node.h"
 #include "ap/drr/op_pattern_ctx.h"
 #include "ap/drr/tags.h"
 #include "ap/drr/tensor_pattern_ctx.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct OpTensorPatternCtxHelper {
-  using OpPtnCtx = OpPatternCtx<ValueT, NodeT>;
-  using TensorPtnCtx = TensorPatternCtx<ValueT, NodeT>;
+  using OpPtnCtx = OpPatternCtx;
+  using TensorPtnCtx = TensorPatternCtx;
 
-  adt::Result<ValueT> ConnectIrOpAndIrValue(
-      const NativeIrOp<ValueT, NodeT>& native_ir_op,
-      const adt::List<NativeIrValue<NodeT>>& inputs,
-      const adt::List<NativeIrValue<NodeT>>& outputs) {
+  adt::Result<axpr::Value> ConnectIrOpAndIrValue(
+      const NativeIrOp<drr::Node>& native_ir_op,
+      const adt::List<NativeIrValue<drr::Node>>& inputs,
+      const adt::List<NativeIrValue<drr::Node>>& outputs) {
     ADT_LET_CONST_REF(op_upstream_nodes, native_ir_op->node.UpstreamNodes());
     ADT_CHECK(op_upstream_nodes.size() == 0);
     ADT_LET_CONST_REF(op_downstream_nodes,
@@ -45,7 +45,7 @@ struct OpTensorPatternCtxHelper {
     const auto& node_arena = op_pattern_ctx->node_arena;
     for (int i = 0; i < inputs->size(); ++i) {
       const auto& native_ir_op_operand = node_arena->New([&](const auto& node) {
-        return NativeIrOpOperand<NodeT>{node, i};
+        return NativeIrOpOperand<drr::Node>{node, i};
       });
       ADT_RETURN_IF_ERR(
           inputs->at(i)->node.ConnectTo(native_ir_op_operand.node(),
@@ -61,7 +61,7 @@ struct OpTensorPatternCtxHelper {
                         outputs->at(i)->node.UpstreamNodes());
       ADT_CHECK(output_upstream_nodes.size() == 0);
       const auto& native_ir_op_result = node_arena->New([&](const auto& node) {
-        return NativeIrOpResult<NodeT>{node, i};
+        return NativeIrOpResult<drr::Node>{node, i};
       });
       ADT_RETURN_IF_ERR(
           native_ir_op->node.ConnectTo(native_ir_op_result.node(),
@@ -76,10 +76,10 @@ struct OpTensorPatternCtxHelper {
     return adt::Nothing{};
   }
 
-  adt::Result<ValueT> ConnectIrOpAndIrValue(
-      const PackedIrOp<ValueT, NodeT>& packed_ir_op,
-      const adt::List<IrValue<NodeT>>& inputs,
-      const adt::List<IrValue<NodeT>>& outputs) {
+  adt::Result<axpr::Value> ConnectIrOpAndIrValue(
+      const PackedIrOp<drr::Node>& packed_ir_op,
+      const adt::List<IrValue>& inputs,
+      const adt::List<IrValue>& outputs) {
     ADT_LET_CONST_REF(op_upstream_nodes, packed_ir_op->node.UpstreamNodes());
     ADT_CHECK(op_upstream_nodes.size() == 0);
     ADT_LET_CONST_REF(op_downstream_nodes,
@@ -91,7 +91,7 @@ struct OpTensorPatternCtxHelper {
     const auto& node_arena = op_pattern_ctx->node_arena;
     for (int i = 0; i < inputs->size(); ++i) {
       const auto& packed_ir_op_operand = node_arena->New([&](const auto& node) {
-        return PackedIrOpOperand<NodeT>{node, i};
+        return PackedIrOpOperand<drr::Node>{node, i};
       });
       ADT_RETURN_IF_ERR(
           inputs->at(i).node().ConnectTo(packed_ir_op_operand.node(),
@@ -107,7 +107,7 @@ struct OpTensorPatternCtxHelper {
                         outputs->at(i).node().UpstreamNodes());
       ADT_CHECK(output_upstream_nodes.size() == 0);
       const auto& packed_ir_op_result = node_arena->New([&](const auto& node) {
-        return PackedIrOpResult<NodeT>{node, i};
+        return PackedIrOpResult<drr::Node>{node, i};
       });
       ADT_RETURN_IF_ERR(
           packed_ir_op->node.ConnectTo(packed_ir_op_result.node(),
@@ -122,10 +122,10 @@ struct OpTensorPatternCtxHelper {
     return adt::Nothing{};
   }
 
-  adt::Result<ValueT> ConnectIrOpAndIrValue(
-      const OptPackedIrOp<ValueT, NodeT>& packed_ir_op,
-      const adt::List<IrValue<NodeT>>& inputs,
-      const adt::List<IrValue<NodeT>>& outputs) {
+  adt::Result<axpr::Value> ConnectIrOpAndIrValue(
+      const OptPackedIrOp<drr::Node>& packed_ir_op,
+      const adt::List<IrValue>& inputs,
+      const adt::List<IrValue>& outputs) {
     ADT_LET_CONST_REF(op_upstream_nodes, packed_ir_op->node.UpstreamNodes());
     ADT_CHECK(op_upstream_nodes.size() == 0);
     ADT_LET_CONST_REF(op_downstream_nodes,
@@ -137,7 +137,7 @@ struct OpTensorPatternCtxHelper {
     const auto& node_arena = op_pattern_ctx->node_arena;
     for (int i = 0; i < inputs->size(); ++i) {
       const auto& packed_ir_op_operand = node_arena->New([&](const auto& node) {
-        return OptPackedIrOpOperand<NodeT>{node, i};
+        return OptPackedIrOpOperand<drr::Node>{node, i};
       });
       ADT_RETURN_IF_ERR(
           inputs->at(i).node().ConnectTo(packed_ir_op_operand.node(),
@@ -153,7 +153,7 @@ struct OpTensorPatternCtxHelper {
                         outputs->at(i).node().UpstreamNodes());
       ADT_CHECK(output_upstream_nodes.size() == 0);
       const auto& packed_ir_op_result = node_arena->New([&](const auto& node) {
-        return OptPackedIrOpResult<NodeT>{node, i};
+        return OptPackedIrOpResult<drr::Node>{node, i};
       });
       ADT_RETURN_IF_ERR(
           packed_ir_op->node.ConnectTo(packed_ir_op_result.node(),
@@ -168,8 +168,8 @@ struct OpTensorPatternCtxHelper {
     return adt::Nothing{};
   }
 
-  adt::Result<IrOp<ValueT, NodeT>> GetIrOpByUid(const OpPtnCtx& self,
-                                                const std::string& name) {
+  adt::Result<IrOp> GetIrOpByUid(const OpPtnCtx& self,
+                                 const std::string& name) {
     const auto& iter = self->uid2ir_op.find(name);
     if (iter == self->uid2ir_op.end()) {
       return adt::errors::AttributeError{std::string() + "no op named '" +
@@ -186,7 +186,7 @@ struct OpTensorPatternCtxHelper {
   template <typename OpPtnCtxT>
   void SetIrOpByUid(const OpPtnCtxT& self,
                     const std::string& name,
-                    const IrOp<ValueT, NodeT>& ir_op) {
+                    const IrOp& ir_op) {
     self->uid2ir_op[name] = ir_op;
   }
 
@@ -196,8 +196,8 @@ struct OpTensorPatternCtxHelper {
   }
 
   template <typename TensorPtnCtxT>
-  adt::Result<IrValue<NodeT>> GetIrValueByUid(const TensorPtnCtxT& self,
-                                              const std::string& name) {
+  adt::Result<IrValue> GetIrValueByUid(const TensorPtnCtxT& self,
+                                       const std::string& name) {
     const auto& iter = self->uid2ir_value.find(name);
     if (iter == self->uid2ir_value.end()) {
       return adt::errors::AttributeError{std::string() + "no tensor named '" +
@@ -209,75 +209,76 @@ struct OpTensorPatternCtxHelper {
   template <typename TensorPtnCtxT>
   void SetIrValueByUid(const TensorPtnCtxT& self,
                        const std::string& name,
-                       const IrValue<NodeT>& ir_value) {
+                       const IrValue& ir_value) {
     self->uid2ir_value[name] = ir_value;
   }
 
-  adt::Result<NativeIrValue<NodeT>> CloneIrValueDataAndRegister(
-      const TensorPtnCtx& self, const NativeIrValue<NodeT>& native_ir_value) {
+  adt::Result<NativeIrValue<drr::Node>> CloneIrValueDataAndRegister(
+      const TensorPtnCtx& self,
+      const NativeIrValue<drr::Node>& native_ir_value) {
     const auto& cloned_node = self->node_arena->New([&](const auto& node) {
-      return NativeIrValue<NodeT>{node, native_ir_value->name};
+      return NativeIrValue<drr::Node>{node, native_ir_value->name};
     });
-    ADT_CHECK(cloned_node.template Has<NativeIrValue<NodeT>>());
-    const auto& cloned = cloned_node.template Get<NativeIrValue<NodeT>>();
+    ADT_CHECK(cloned_node.template Has<NativeIrValue<drr::Node>>());
+    const auto& cloned = cloned_node.template Get<NativeIrValue<drr::Node>>();
     SetIrValueByUid(self, native_ir_value->name, cloned);
     return cloned;
   }
 
-  adt::Result<PackedIrValue<NodeT>> CloneIrValueDataAndRegister(
-      const TensorPtnCtx& self, const PackedIrValue<NodeT>& packed_ir_value) {
+  adt::Result<PackedIrValue<drr::Node>> CloneIrValueDataAndRegister(
+      const TensorPtnCtx& self,
+      const PackedIrValue<drr::Node>& packed_ir_value) {
     const auto& cloned_node = self->node_arena->New([&](const auto& node) {
-      return PackedIrValue<NodeT>{node, packed_ir_value->name};
+      return PackedIrValue<drr::Node>{node, packed_ir_value->name};
     });
-    ADT_CHECK(cloned_node.template Has<PackedIrValue<NodeT>>());
-    const auto& cloned = cloned_node.template Get<PackedIrValue<NodeT>>();
+    ADT_CHECK(cloned_node.template Has<PackedIrValue<drr::Node>>());
+    const auto& cloned = cloned_node.template Get<PackedIrValue<drr::Node>>();
     SetIrValueByUid(self, packed_ir_value->name, cloned);
     return cloned;
   }
 
-  adt::Result<NativeIrOp<ValueT, NodeT>> GetNativeIrOpByUnboundNativeIrOp(
-      const UnboundNativeIrOp<ValueT, NodeT>& ir_op) {
+  adt::Result<NativeIrOp<drr::Node>> GetNativeIrOpByUnboundNativeIrOp(
+      const UnboundNativeIrOp<drr::Node>& ir_op) {
     ADT_LET_CONST_REF(op_pattern_ctx,
                       adt::WeakPtrLock(ir_op->op_declare->op_pattern_ctx));
     const auto& node = op_pattern_ctx->node_arena->New([&](const auto& node) {
-      return NativeIrOp<ValueT, NodeT>{node, ir_op->op_declare, ir_op->name};
+      return NativeIrOp<drr::Node>{node, ir_op->op_declare, ir_op->name};
     });
-    ADT_CHECK(node.template Has<NativeIrOp<ValueT, NodeT>>());
-    return node.template Get<NativeIrOp<ValueT, NodeT>>();
+    ADT_CHECK(node.template Has<NativeIrOp<drr::Node>>());
+    return node.template Get<NativeIrOp<drr::Node>>();
   }
 
-  adt::Result<PackedIrOp<ValueT, NodeT>> GetPackedIrOpByUnboundPackedIrOp(
-      const UnboundPackedIrOp<ValueT, NodeT>& ir_op) {
+  adt::Result<PackedIrOp<drr::Node>> GetPackedIrOpByUnboundPackedIrOp(
+      const UnboundPackedIrOp<drr::Node>& ir_op) {
     ADT_LET_CONST_REF(op_pattern_ctx,
                       adt::WeakPtrLock(ir_op->op_declare->op_pattern_ctx));
     const auto& node = op_pattern_ctx->node_arena->New([&](const auto& node) {
-      return PackedIrOp<ValueT, NodeT>{node, ir_op->op_declare, ir_op->name};
+      return PackedIrOp<drr::Node>{node, ir_op->op_declare, ir_op->name};
     });
-    ADT_CHECK(node.template Has<PackedIrOp<ValueT, NodeT>>());
-    return node.template Get<PackedIrOp<ValueT, NodeT>>();
+    ADT_CHECK(node.template Has<PackedIrOp<drr::Node>>());
+    return node.template Get<PackedIrOp<drr::Node>>();
   }
 
-  adt::Result<OptPackedIrOp<ValueT, NodeT>>
-  GetOptPackedIrOpByUnboundOptPackedIrOp(
-      const UnboundOptPackedIrOp<ValueT, NodeT>& ir_op) {
+  adt::Result<OptPackedIrOp<drr::Node>> GetOptPackedIrOpByUnboundOptPackedIrOp(
+      const UnboundOptPackedIrOp<drr::Node>& ir_op) {
     ADT_LET_CONST_REF(op_pattern_ctx,
                       adt::WeakPtrLock(ir_op->op_declare->op_pattern_ctx));
     const auto& node = op_pattern_ctx->node_arena->New([&](const auto& node) {
-      return OptPackedIrOp<ValueT, NodeT>{node, ir_op->op_declare, ir_op->name};
+      return OptPackedIrOp<drr::Node>{node, ir_op->op_declare, ir_op->name};
     });
-    return node.template TryGet<OptPackedIrOp<ValueT, NodeT>>();
+    return node.template TryGet<OptPackedIrOp<drr::Node>>();
   }
 
-  adt::Result<NativeIrValue<NodeT>> GetNativeIrValueByUnboundIrValue(
-      const UnboundIrValue<ValueT, NodeT>& ir_value) {
+  adt::Result<NativeIrValue<drr::Node>> GetNativeIrValueByUnboundIrValue(
+      const UnboundIrValue<drr::Node>& ir_value) {
     ADT_LET_CONST_REF(tensor_ctx,
                       adt::WeakPtrLock(ir_value->tensor_pattern_ctx));
     if (HasIrValueByUid(tensor_ctx, ir_value->name)) {
       ADT_LET_CONST_REF(ir_value, GetIrValueByUid(tensor_ctx, ir_value->name));
       const auto& opt_ret = ir_value.Match(
-          [](const NativeIrValue<NodeT>& impl)
-              -> adt::Result<NativeIrValue<NodeT>> { return impl; },
-          [&](const auto&) -> adt::Result<NativeIrValue<NodeT>> {
+          [](const NativeIrValue<drr::Node>& impl)
+              -> adt::Result<NativeIrValue<drr::Node>> { return impl; },
+          [&](const auto&) -> adt::Result<NativeIrValue<drr::Node>> {
             return adt::errors::RuntimeError{"only NativeIrValue supported."};
           });
       ADT_LET_CONST_REF(ret, opt_ret);
@@ -285,24 +286,24 @@ struct OpTensorPatternCtxHelper {
     }
     const auto& node_arena = tensor_ctx->node_arena;
     const auto& node = node_arena->New([&](const auto& node) {
-      return NativeIrValue<NodeT>{node, ir_value->name};
+      return NativeIrValue<drr::Node>{node, ir_value->name};
     });
-    ADT_CHECK(node.template Has<NativeIrValue<NodeT>>());
-    const auto& native_ir_value = node.template Get<NativeIrValue<NodeT>>();
+    ADT_CHECK(node.template Has<NativeIrValue<drr::Node>>());
+    const auto& native_ir_value = node.template Get<NativeIrValue<drr::Node>>();
     SetIrValueByUid(tensor_ctx, native_ir_value->name, native_ir_value);
     return native_ir_value;
   }
 
-  adt::Result<PackedIrValue<NodeT>> GetPackedIrValueByUnboundPackedIrValue(
-      const UnboundPackedIrValue<ValueT, NodeT>& ir_value) {
+  adt::Result<PackedIrValue<drr::Node>> GetPackedIrValueByUnboundPackedIrValue(
+      const UnboundPackedIrValue<drr::Node>& ir_value) {
     ADT_LET_CONST_REF(tensor_ctx,
                       adt::WeakPtrLock(ir_value->tensor_pattern_ctx));
     if (HasIrValueByUid(tensor_ctx, ir_value->name)) {
       ADT_LET_CONST_REF(ir_value, GetIrValueByUid(tensor_ctx, ir_value->name));
       const auto& opt_ret = ir_value.Match(
-          [](const PackedIrValue<NodeT>& impl)
-              -> adt::Result<PackedIrValue<NodeT>> { return impl; },
-          [&](const auto&) -> adt::Result<PackedIrValue<NodeT>> {
+          [](const PackedIrValue<drr::Node>& impl)
+              -> adt::Result<PackedIrValue<drr::Node>> { return impl; },
+          [&](const auto&) -> adt::Result<PackedIrValue<drr::Node>> {
             return adt::errors::RuntimeError{"only PackedIrValue supported."};
           });
       ADT_LET_CONST_REF(ret, opt_ret);
@@ -310,10 +311,10 @@ struct OpTensorPatternCtxHelper {
     }
     const auto& node_arena = tensor_ctx->node_arena;
     const auto& node = node_arena->New([&](const auto& node) {
-      return PackedIrValue<NodeT>{node, ir_value->name};
+      return PackedIrValue<drr::Node>{node, ir_value->name};
     });
-    ADT_CHECK(node.template Has<PackedIrValue<NodeT>>());
-    const auto& packed_ir_value = node.template Get<PackedIrValue<NodeT>>();
+    ADT_CHECK(node.template Has<PackedIrValue<drr::Node>>());
+    const auto& packed_ir_value = node.template Get<PackedIrValue<drr::Node>>();
     SetIrValueByUid(tensor_ctx, packed_ir_value->name, packed_ir_value);
     return packed_ir_value;
   }

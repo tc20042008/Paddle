@@ -16,15 +16,17 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/native_ir_op_declare.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 #include "ap/graph/node.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 struct UnboundNativeIrOpImpl {
-  NativeIrOpDeclare<ValueT, NodeT> op_declare;
+  NativeIrOpDeclare<NodeT> op_declare;
   std::string name;
 
   bool operator==(const UnboundNativeIrOpImpl& other) const {
@@ -32,25 +34,37 @@ struct UnboundNativeIrOpImpl {
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(UnboundNativeIrOp, UnboundNativeIrOpImpl<ValueT, NodeT>);
+template <typename NodeT>
+DEFINE_ADT_RC(UnboundNativeIrOp, UnboundNativeIrOpImpl<NodeT>);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnUnboundNativeIrOpClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tSrcPtn<drr::UnboundNativeIrOp<ValueT, NodeT>>>
+template <typename NodeT>
+struct Type<drr::tSrcPtn<drr::UnboundNativeIrOp<NodeT>>>
     : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "SrcPtnUnboundNativeIrOp"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetSrcPtnUnboundNativeIrOpClass();
+  }
 };
 
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tResPtn<drr::UnboundNativeIrOp<ValueT, NodeT>>>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnUnboundNativeIrOpClass();
+
+template <typename NodeT>
+struct Type<drr::tResPtn<drr::UnboundNativeIrOp<NodeT>>>
     : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResPtnUnboundNativeIrOp"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetResPtnUnboundNativeIrOpClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

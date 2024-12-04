@@ -41,7 +41,7 @@ struct TensorMatchCtxMethodClass {
   }
 
   using DrrValueT = drr::Value;
-  using DrrNodeT = drr::Node<DrrValueT>;
+  using DrrNodeT = drr::Node;
   using DrrNativeIrValue = drr::NativeIrValue<DrrNodeT>;
   using DrrPackedIrValue = drr::PackedIrValue<DrrNodeT>;
   using SmallGraphNodeT = graph::Node<DrrNodeT>;

@@ -16,34 +16,38 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/value.h"
+#include "ap/drr/type.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct TensorPatternCtxImpl;
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 struct UnboundPackedIrValueImpl {
   std::string name;
-  std::weak_ptr<TensorPatternCtxImpl<ValueT, NodeT>> tensor_pattern_ctx;
+  std::weak_ptr<TensorPatternCtxImpl> tensor_pattern_ctx;
   bool operator==(const UnboundPackedIrValueImpl& other) const {
     return this->name == other.name &&
            this->tensor_pattern_ctx.lock() == other.tensor_pattern_ctx.lock();
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(UnboundPackedIrValue, UnboundPackedIrValueImpl<ValueT, NodeT>);
+template <typename NodeT>
+DEFINE_ADT_RC(UnboundPackedIrValue, UnboundPackedIrValueImpl<NodeT>);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetUnboundPackedIrValueClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::UnboundPackedIrValue<ValueT, NodeT>>
-    : public std::monostate {
+template <typename NodeT>
+struct Type<drr::UnboundPackedIrValue<NodeT>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "UnboundPackedIrValue"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetUnboundPackedIrValueClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

@@ -17,16 +17,22 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/attr_map.h"
 #include "ap/axpr/builtin_frame_util.h"
+#include "ap/drr/drr_ctx_method_class.h"
+#include "ap/drr/drr_value.h"
 
 namespace ap::drr {
 
-template <typename ValueT>
-ap::axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
-  ap::axpr::AttrMap<ValueT> attr_map;
-  auto Insert = [&](const std::string& k, const ValueT& v) {
-    attr_map->Set(k, v);
-  };
-  ap::axpr::VisitEachBuiltinFrameAttr<ValueT>(Insert);
+template <typename DoEachT>
+void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
+  DoEach(drr::Type<DrrCtx>{}.GetClass());
+}
+
+ap::axpr::AttrMap<axpr::Value> MakeBuiltinFrameAttrMap() {
+  ap::axpr::AttrMap<axpr::Value> attr_map;
+  ap::axpr::VisitEachBuiltinFrameAttr<axpr::Value>(
+      [&](const std::string& k, const axpr::Value& v) { attr_map->Set(k, v); });
+  VisitEachBuiltinFrameClass(
+      [&](const auto& cls) { attr_map->Set(cls.Name(), cls); });
   return attr_map;
 }
 

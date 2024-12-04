@@ -33,10 +33,9 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
   adt::Result<ValueT> Hash(InterpreterBase<ValueT>* interpreter,
                            const Self& self) {
     const auto& opt_func = GetClassAttr(self, "__hash__");
-    if (!opt_func.has_value()) {
-      ADT_CHECK(self->instance.has_value());
-      return reinterpret_cast<int64_t>(self.shared_ptr().get());
-    }
+    ADT_CHECK(opt_func.has_value()) << adt::errors::TypeError{
+        std::string() + self->type.class_attrs->class_name +
+        ".__hash__() not implemented"};
     using RetT = adt::Result<ValueT>;
     static std::vector<ValueT> empty_args{};
     return opt_func.value().Match(
@@ -56,14 +55,9 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
   adt::Result<ValueT> ToString(InterpreterBase<ValueT>* interpreter,
                                const Self& self) {
     const auto& opt_func = GetClassAttr(self, "__str__");
-    if (!opt_func.has_value()) {
-      std::ostringstream ss;
-      ADT_CHECK(self->instance.has_value());
-      const auto* ptr = self.shared_ptr().get();
-      ss << "<" << self->type.class_attrs->class_name << " object at " << ptr
-         << ">";
-      return ss.str();
-    }
+    ADT_CHECK(opt_func.has_value()) << adt::errors::TypeError{
+        std::string() + self->type.class_attrs->class_name +
+        ".__str__() not implemented"};
     using RetT = adt::Result<ValueT>;
     static std::vector<ValueT> empty_args{};
     return opt_func.value().Match(
@@ -105,6 +99,15 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
     ADT_CHECK(opt_func.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
                                        " class has no attribute '__call__'"};
+    return opt_func.value();
+  }
+
+  adt::Result<ValueT> Starred(const Self& self) {
+    const auto& opt_func = GetClassAttr(self, "__starred__");
+    const auto& class_attrs = self->type.class_attrs;
+    ADT_CHECK(opt_func.has_value())
+        << adt::errors::AttributeError{std::string() + class_attrs->class_name +
+                                       " class has no attribute '__starred__'"};
     return opt_func.value();
   }
 

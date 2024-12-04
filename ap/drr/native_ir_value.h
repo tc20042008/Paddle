@@ -15,6 +15,8 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/value.h"
+#include "ap/drr/type.h"
 #include "ap/graph/node.h"
 #include "ap/graph/node_cstr.h"
 
@@ -37,22 +39,32 @@ struct NativeIrValueImpl {
 template <typename NodeT>
 DEFINE_ADT_RC(NativeIrValue, NativeIrValueImpl<NodeT>);
 
-}  // namespace ap::drr
-
-namespace ap::axpr {
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnNativeIrValueClass();
 
 template <typename NodeT>
-struct TypeImpl<drr::tSrcPtn<drr::NativeIrValue<NodeT>>>
-    : public std::monostate {
+struct Type<drr::tSrcPtn<drr::NativeIrValue<NodeT>>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "SrcPtnNativeIrValue"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetSrcPtnNativeIrValueClass();
+  }
 };
+
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnNativeIrValueClass();
 
 template <typename NodeT>
-struct TypeImpl<drr::tResPtn<drr::NativeIrValue<NodeT>>>
-    : public std::monostate {
+struct Type<drr::tResPtn<drr::NativeIrValue<NodeT>>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResPtnNativeIrValue"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetResPtnNativeIrValueClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

@@ -17,6 +17,7 @@
 #include <unordered_set>
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/drr_value.h"
 #include "ap/drr/native_ir_value.h"
 #include "ap/drr/op_tensor_pattern_ctx_helper.h"
 #include "ap/drr/tags.h"
@@ -25,51 +26,51 @@
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
-struct ResPtnUnboundNativeIrOp {
-  using This = ResPtnUnboundNativeIrOp;
-  using Self = tResPtn<UnboundNativeIrOp<ValueT, NodeT>>;
+struct ResPtnUnboundNativeIrOpMethodClass {
+  using This = ResPtnUnboundNativeIrOpMethodClass;
+  using Self = tResPtn<UnboundNativeIrOp<drr::Node>>;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
 
-  using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
+  using Helper = OpTensorPatternCtxHelper;
 
-  adt::Result<ValueT> Call(const Self& self) {
-    return axpr::Method<ValueT>(self, &This::StaticCall);
-  }
-
-  static adt::Result<ValueT> StaticCall(const ValueT& self_val,
-                                        const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+  static adt::Result<axpr::Value> StaticCall(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return This{}.Call(self, args);
   }
 
-  adt::Result<ValueT> Call(const Self& self, const std::vector<ValueT>& args) {
+  adt::Result<axpr::Value> Call(const Self& self,
+                                const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string() +
         "ResPtnUnboundNativeIrOp.__call__ takes 2 arguments. but " +
         std::to_string(args.size()) + " were given."};
     ADT_LET_CONST_REF(input_vals,
-                      axpr::TryGetImpl<adt::List<ValueT>>(args.at(0)))
+                      args.at(0).template CastTo<adt::List<axpr::Value>>())
         << adt::errors::TypeError{
                std::string() +
                "the first argument of ResPtnUnboundNativeIrOp.__call__ should "
                "be a list."};
-    adt::List<NativeIrValue<NodeT>> inputs;
+    adt::List<NativeIrValue<drr::Node>> inputs;
     inputs->reserve(input_vals->size());
     for (const auto& input_val : *input_vals) {
       ADT_LET_CONST_REF(
-          input, axpr::TryGetImpl<tResPtn<NativeIrValue<NodeT>>>(input_val))
+          input, input_val.template CastTo<tResPtn<NativeIrValue<drr::Node>>>())
           << adt::errors::TypeError{
                  std::string() +
                  "unsupported operand types for "
@@ -78,16 +79,17 @@ struct ResPtnUnboundNativeIrOp {
       inputs->emplace_back(input.value());
     }
     ADT_LET_CONST_REF(output_vals,
-                      axpr::TryGetImpl<adt::List<ValueT>>(args.at(1)))
+                      args.at(1).template CastTo<adt::List<axpr::Value>>())
         << adt::errors::TypeError{
                std::string() +
                "the second argument of ResPtnUnboundNativeIrOp.__call__ should "
                "be a list."};
-    adt::List<NativeIrValue<NodeT>> outputs;
+    adt::List<NativeIrValue<drr::Node>> outputs;
     outputs->reserve(output_vals->size());
     for (const auto& output_val : *output_vals) {
       ADT_LET_CONST_REF(
-          output, axpr::TryGetImpl<tResPtn<NativeIrValue<NodeT>>>(output_val))
+          output,
+          output_val.template CastTo<tResPtn<NativeIrValue<drr::Node>>>())
           << adt::errors::TypeError{
                  std::string() +
                  "unsupported operand types for "
@@ -103,8 +105,8 @@ struct ResPtnUnboundNativeIrOp {
   }
 
   adt::Result<adt::Ok> CheckNoRedundentTensorNames(
-      const adt::List<NativeIrValue<NodeT>>& inputs,
-      const adt::List<NativeIrValue<NodeT>>& outputs) {
+      const adt::List<NativeIrValue<drr::Node>>& inputs,
+      const adt::List<NativeIrValue<drr::Node>>& outputs) {
     std::unordered_set<std::string> existed_names;
     for (const auto& input : *inputs) {
       existed_names.insert(input->name);
@@ -118,18 +120,18 @@ struct ResPtnUnboundNativeIrOp {
   }
 };
 
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnUnboundNativeIrOpClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using TT = drr::Type<drr::tResPtn<drr::UnboundNativeIrOp<drr::Node>>>;
+  using Impl = ResPtnUnboundNativeIrOpMethodClass;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+        Define("__call__", &Impl::StaticCall);
+      }));
+  return cls;
+}
+
 }  // namespace ap::drr
-
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       drr::tResPtn<drr::UnboundNativeIrOp<ValueT, NodeT>>>
-    : public drr::ResPtnUnboundNativeIrOp<ValueT, NodeT> {};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tResPtn<drr::UnboundNativeIrOp<ValueT, NodeT>>>> {};
-
-}  // namespace ap::axpr

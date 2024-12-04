@@ -14,37 +14,42 @@
 
 #pragma once
 #include "ap/adt/adt.h"
+#include "ap/axpr/value.h"
+#include "ap/drr/node.h"
 #include "ap/drr/op_pattern_ctx.h"
 #include "ap/drr/source_pattern_ctx.h"
 #include "ap/drr/tensor_pattern_ctx.h"
+#include "ap/drr/type.h"
 #include "ap/graph/node_arena.h"
 #include "ap/graph/tags.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct ResultPatternCtxImpl {
-  std::shared_ptr<graph::NodeArena<NodeT>> node_arena;
-  OpPatternCtx<ValueT, NodeT> op_pattern_ctx;
-  TensorPatternCtx<ValueT, NodeT> tensor_pattern_ctx;
-  SourcePatternCtx<ValueT, NodeT> source_pattern_ctx;
+  std::shared_ptr<graph::NodeArena<drr::Node>> node_arena;
+  OpPatternCtx op_pattern_ctx;
+  TensorPatternCtx tensor_pattern_ctx;
+  SourcePatternCtx source_pattern_ctx;
 
   bool operator==(const ResultPatternCtxImpl& other) const {
     return this != &other;
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(ResultPatternCtx, ResultPatternCtxImpl<ValueT, NodeT>);
+DEFINE_ADT_RC(ResultPatternCtx, ResultPatternCtxImpl);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResultPatternCtxClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::ResultPatternCtx<ValueT, NodeT>> : public std::monostate {
+template <>
+struct Type<drr::ResultPatternCtx> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResultPatternCtx"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetResultPatternCtxClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

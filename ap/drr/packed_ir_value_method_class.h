@@ -16,109 +16,158 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/drr_value.h"
 #include "ap/drr/packed_ir_value.h"
 #include "ap/drr/tags.h"
 
-namespace ap::axpr {
+namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, drr::tSrcPtn<drr::PackedIrValue<NodeT>>> {
-  using Self = drr::tSrcPtn<drr::PackedIrValue<NodeT>>;
-  using This = MethodClassImpl<ValueT, Self>;
+struct SrcPtnPackedIrValueMethodClassImpl {
+  using Self = drr::tSrcPtn<drr::PackedIrValue<drr::Node>>;
+  using This = SrcPtnPackedIrValueMethodClassImpl;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
-    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    return reinterpret_cast<int64_t>(ptr);
-  }
-
-  adt::Result<ValueT> Starred(const Self& self) {
-    return axpr::Starred<ValueT>{adt::List<ValueT>{self}};
-  }
-};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       TypeImpl<drr::tSrcPtn<drr::PackedIrValue<NodeT>>>> {};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<NodeT>>>> {
-  using Self = drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<NodeT>>>;
-  using This = MethodClassImpl<ValueT, Self>;
-
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
-    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
-    return ss.str();
-  }
-
-  adt::Result<ValueT> Hash(const Self& self) {
-    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
-    return reinterpret_cast<int64_t>(ptr);
-  }
-};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<NodeT>>>>> {};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, drr::tResPtn<drr::PackedIrValue<NodeT>>> {
-  using Self = drr::tResPtn<drr::PackedIrValue<NodeT>>;
-  using This = MethodClassImpl<ValueT, Self>;
-
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
-    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
-    return ss.str();
-  }
-
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
 
-  adt::Result<ValueT> Starred(const Self& self) {
-    return axpr::Starred<ValueT>{adt::List<ValueT>{self}};
+  static adt::Result<axpr::Value> Starred(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    return axpr::Starred<axpr::Value>{adt::List<axpr::Value>{self_val}};
   }
 };
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       TypeImpl<drr::tResPtn<drr::PackedIrValue<NodeT>>>> {};
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnPackedIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = SrcPtnPackedIrValueMethodClassImpl;
+  using TT = drr::Type<drr::tSrcPtn<drr::PackedIrValue<drr::Node>>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+      }));
+  return cls;
+}
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       drr::tStarred<drr::tResPtn<drr::PackedIrValue<NodeT>>>> {
-  using Self = drr::tStarred<drr::tResPtn<drr::PackedIrValue<NodeT>>>;
-  using This = MethodClassImpl<ValueT, Self>;
+struct StarredSrcPtnPackedIrValueMethodClassImpl {
+  using Self = drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<axpr::Value>>>;
+  using This = StarredSrcPtnPackedIrValueMethodClassImpl;
 
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    std::ostringstream ss;
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
 };
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tStarred<drr::tResPtn<drr::PackedIrValue<NodeT>>>>> {};
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetStarredSrcPtnPackedIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = StarredSrcPtnPackedIrValueMethodClassImpl;
+  using TT =
+      drr::Type<drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<drr::Node>>>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+      }));
+  return cls;
+}
 
-}  // namespace ap::axpr
+struct ResPtnPackedIrValueMethodClassImpl {
+  using Self = drr::tResPtn<drr::PackedIrValue<drr::Node>>;
+  using This = ResPtnPackedIrValueMethodClassImpl;
+
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    std::ostringstream ss;
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
+
+  static adt::Result<axpr::Value> Starred(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    return axpr::Starred<axpr::Value>{adt::List<axpr::Value>{self_val}};
+  }
+};
+
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnPackedIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = ResPtnPackedIrValueMethodClassImpl;
+  using TT = drr::Type<drr::tResPtn<drr::PackedIrValue<drr::Node>>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+      }));
+  return cls;
+}
+
+struct StarredResPtnPackedIrValueMethodClassImpl {
+  using This = StarredResPtnPackedIrValueMethodClassImpl;
+  using Self = drr::tStarred<drr::tResPtn<drr::PackedIrValue<drr::Node>>>;
+
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    std::ostringstream ss;
+    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    const void* ptr = self.value().value().__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
+};
+
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetStarredResPtnPackedIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = StarredResPtnPackedIrValueMethodClassImpl;
+  using TT =
+      drr::Type<drr::tStarred<drr::tResPtn<drr::PackedIrValue<drr::Node>>>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+      }));
+  return cls;
+}
+
+}  // namespace ap::drr

@@ -26,7 +26,7 @@ namespace ap::ir_match {
 
 template <typename bg_node_t /*big graph node type*/>
 struct GraphMatchCtxImpl {
-  using DrrNode = drr::Node<drr::Value>;
+  using DrrNode = drr::Node;
   using DrrNativeIrValue = drr::NativeIrValue<DrrNode>;
   using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
   using sg_node_t = graph::Node<DrrNode>;

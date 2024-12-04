@@ -16,25 +16,26 @@
 #include "ap/adt/adt.h"
 #include "ap/axpr/function.h"
 #include "ap/axpr/serializable_value.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/result_pattern_ctx.h"
 #include "ap/drr/source_pattern_ctx.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct DrrCtxImpl {
   std::optional<std::string> pass_name;
-  std::optional<SourcePatternCtx<ValueT, NodeT>> source_pattern_ctx;
-  std::optional<ResultPatternCtx<ValueT, NodeT>> result_pattern_ctx;
+  std::optional<SourcePatternCtx> source_pattern_ctx;
+  std::optional<ResultPatternCtx> result_pattern_ctx;
   std::optional<axpr::Function<axpr::SerializableValue>> constraint_func;
 
-  adt::Result<SourcePatternCtx<ValueT, NodeT>> GetSourcePatternCtx() const {
+  adt::Result<SourcePatternCtx> GetSourcePatternCtx() const {
     ADT_CHECK(this->source_pattern_ctx.has_value());
     return this->source_pattern_ctx.value();
   }
 
-  adt::Result<ResultPatternCtx<ValueT, NodeT>> GetResultPatternCtx() const {
+  adt::Result<ResultPatternCtx> GetResultPatternCtx() const {
     ADT_CHECK(this->result_pattern_ctx.has_value());
     return this->result_pattern_ctx.value();
   }
@@ -42,17 +43,19 @@ struct DrrCtxImpl {
   bool operator==(const DrrCtxImpl& other) const { return this == &other; }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(DrrCtx, DrrCtxImpl<ValueT, NodeT>);
+DEFINE_ADT_RC(DrrCtx, DrrCtxImpl);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>& GetDrrCtxClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::DrrCtx<ValueT, NodeT>> : public std::monostate {
+template <>
+struct Type<drr::DrrCtx> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "DrrCtx"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetDrrCtxClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

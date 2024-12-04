@@ -21,15 +21,14 @@
 
 namespace ap::drr {
 
-template <typename ValueT>
 struct DrrNodeDescriptor {
-  using DrrNode = drr::Node<ValueT>;
+  using DrrNode = drr::Node;
 
   using DrrNativeIrValue = ap::drr::NativeIrValue<DrrNode>;
   using DrrPackedIrValue = ap::drr::PackedIrValue<DrrNode>;
-  using DrrNativeIrOp = ap::drr::NativeIrOp<ValueT, DrrNode>;
-  using DrrPackedIrOp = ap::drr::PackedIrOp<ValueT, DrrNode>;
-  using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<ValueT, DrrNode>;
+  using DrrNativeIrOp = ap::drr::NativeIrOp<DrrNode>;
+  using DrrPackedIrOp = ap::drr::PackedIrOp<DrrNode>;
+  using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<DrrNode>;
   using DrrNativeIrOpOperand = ap::drr::NativeIrOpOperand<DrrNode>;
   using DrrPackedIrOpOperand = ap::drr::PackedIrOpOperand<DrrNode>;
   using DrrOptPackedIrOpOperand = ap::drr::OptPackedIrOpOperand<DrrNode>;
@@ -116,8 +115,8 @@ struct DrrNodeDescriptor {
 
 namespace ap::graph {
 
-template <typename ValueT>
-struct NodeDescriptor<graph::Node<drr::Node<ValueT>>>
-    : public drr::DrrNodeDescriptor<ValueT> {};
+template <>
+struct NodeDescriptor<graph::Node<drr::Node>> : public drr::DrrNodeDescriptor {
+};
 
 }  // namespace ap::graph

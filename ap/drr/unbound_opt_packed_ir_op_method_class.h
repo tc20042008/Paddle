@@ -16,6 +16,8 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/drr_value.h"
+#include "ap/drr/drr_value_helper.h"
 #include "ap/drr/op_tensor_pattern_ctx_helper.h"
 #include "ap/drr/packed_ir_value.h"
 #include "ap/drr/src_ptn_valid_in_ir_value.h"
@@ -27,59 +29,63 @@
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct UnboundOptPackedIrOpMethodClass {
   using This = UnboundOptPackedIrOpMethodClass;
-  using Self = UnboundOptPackedIrOp<ValueT, NodeT>;
+  using Self = UnboundOptPackedIrOp<drr::Node>;
 
-  using DrrValue = drr::Value;
-  using DrrNode = drr::Node<DrrValue>;
+  using DrrNode = drr::Node;
   using DrrNativeIrValue = drr::NativeIrValue<DrrNode>;
   using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
 
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    std::ostringstream ss;
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
-
-  adt::Result<ValueT> Call(const Self& self) {
-    return axpr::Method<ValueT>(self, &This::StaticCall);
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
   }
 
-  static adt::Result<ValueT> StaticCall(const ValueT& self_val,
-                                        const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+  using Helper = OpTensorPatternCtxHelper;
+
+  static adt::Result<axpr::Value> StaticCall(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     return This{}.Call(self, args);
   }
 
-  adt::Result<ValueT> Call(const Self& self, const std::vector<ValueT>& args) {
+  adt::Result<axpr::Value> Call(const Self& self,
+                                const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string() +
         "UnboundOptPackedIrOp.__call__ takes 2 arguments. but " +
         std::to_string(args.size()) + " were given."};
     ADT_LET_CONST_REF(input_vals,
-                      axpr::TryGetImpl<adt::List<ValueT>>(args.at(0)))
+                      args.at(0).template CastTo<adt::List<axpr::Value>>())
         << adt::errors::TypeError{
                std::string() +
                "the first argument of UnboundOptPackedIrOp.__call__ should "
                "be a list."};
-    adt::List<SrcPtnValidInIrValue<ValueT, NodeT>> inputs;
+    adt::List<SrcPtnValidInIrValue> inputs;
     inputs->reserve(input_vals->size());
     for (const auto& input_val : *input_vals) {
       ADT_LET_CONST_REF(input, CastToSrcPtnValidInIrValue(input_val));
       inputs->emplace_back(input);
     }
     ADT_LET_CONST_REF(output_vals,
-                      axpr::TryGetImpl<adt::List<ValueT>>(args.at(1)))
+                      args.at(1).template CastTo<adt::List<axpr::Value>>())
         << adt::errors::TypeError{
                std::string() +
                "the second argument of UnboundOptPackedIrOp.__call__ should "
                "be a list."};
-    adt::List<SrcPtnValidOutIrValue<ValueT, NodeT>> outputs;
+    adt::List<SrcPtnValidOutIrValue> outputs;
     outputs->reserve(output_vals->size());
     for (const auto& output_val : *output_vals) {
       ADT_LET_CONST_REF(output, CastToSrcPtnValidOutIrValue(output_val));
@@ -137,7 +143,7 @@ struct UnboundOptPackedIrOpMethodClass {
 
   template <typename DrrNodeT>
   adt::Result<std::size_t> GetNumIrValues(
-      const adt::List<IrValue<NodeT>>& ir_values) const {
+      const adt::List<IrValue>& ir_values) const {
     std::size_t count = 0;
     for (const auto& ir_value : *ir_values) {
       count += ir_value.template Has<DrrNodeT>();
@@ -145,26 +151,25 @@ struct UnboundOptPackedIrOpMethodClass {
     return count;
   }
 
-  adt::Result<adt::List<IrValue<NodeT>>> ConvertInputs(
-      const adt::List<SrcPtnValidInIrValue<ValueT, NodeT>>& inputs) {
-    adt::List<IrValue<NodeT>> ret_inputs;
+  adt::Result<adt::List<IrValue>> ConvertInputs(
+      const adt::List<SrcPtnValidInIrValue>& inputs) {
+    adt::List<IrValue> ret_inputs;
     ret_inputs->reserve(inputs->size());
-    using IrVal = IrValue<NodeT>;
+    using IrVal = IrValue;
     for (const auto& input : *inputs) {
       const auto& opt_ret_input = input.Match(
-          [&](const NativeIrValue<NodeT>& ir_value) -> adt::Result<IrVal> {
+          [&](const NativeIrValue<drr::Node>& ir_value) -> adt::Result<IrVal> {
             return ir_value;
           },
-          [&](const PackedIrValue<NodeT>& ir_value) -> adt::Result<IrVal> {
+          [&](const PackedIrValue<drr::Node>& ir_value) -> adt::Result<IrVal> {
             return ir_value;
           },
-          [&](const UnboundIrValue<ValueT, NodeT>& ir_value)
-              -> adt::Result<IrVal> {
+          [&](const UnboundIrValue<drr::Node>& ir_value) -> adt::Result<IrVal> {
             ADT_LET_CONST_REF(
                 ret, Helper{}.GetNativeIrValueByUnboundIrValue(ir_value));
             return ret;
           },
-          [&](const UnboundPackedIrValue<ValueT, NodeT>& ir_value)
+          [&](const UnboundPackedIrValue<drr::Node>& ir_value)
               -> adt::Result<IrVal> {
             ADT_LET_CONST_REF(
                 ret, Helper{}.GetPackedIrValueByUnboundPackedIrValue(ir_value));
@@ -176,20 +181,19 @@ struct UnboundOptPackedIrOpMethodClass {
     return ret_inputs;
   }
 
-  adt::Result<adt::List<IrValue<NodeT>>> ConvertOutputs(
-      const adt::List<SrcPtnValidOutIrValue<ValueT, NodeT>>& outputs) {
-    adt::List<IrValue<NodeT>> ret_outputs;
-    using IrVal = IrValue<NodeT>;
+  adt::Result<adt::List<IrValue>> ConvertOutputs(
+      const adt::List<SrcPtnValidOutIrValue>& outputs) {
+    adt::List<IrValue> ret_outputs;
+    using IrVal = IrValue;
     ret_outputs->reserve(outputs->size());
     for (const auto& output : *outputs) {
       const auto& opt_ret_output = output.Match(
-          [&](const UnboundIrValue<ValueT, NodeT>& ir_value)
-              -> adt::Result<IrVal> {
+          [&](const UnboundIrValue<drr::Node>& ir_value) -> adt::Result<IrVal> {
             ADT_LET_CONST_REF(
                 ret, Helper{}.GetNativeIrValueByUnboundIrValue(ir_value));
             return ret;
           },
-          [&](const UnboundPackedIrValue<ValueT, NodeT>& ir_value)
+          [&](const UnboundPackedIrValue<drr::Node>& ir_value)
               -> adt::Result<IrVal> {
             ADT_LET_CONST_REF(
                 ret, Helper{}.GetPackedIrValueByUnboundPackedIrValue(ir_value));
@@ -202,8 +206,8 @@ struct UnboundOptPackedIrOpMethodClass {
   }
 
   adt::Result<adt::Ok> CheckNoRedundentTensorNames(
-      const adt::List<SrcPtnValidInIrValue<ValueT, NodeT>>& inputs,
-      const adt::List<SrcPtnValidOutIrValue<ValueT, NodeT>>& outputs) {
+      const adt::List<SrcPtnValidInIrValue>& inputs,
+      const adt::List<SrcPtnValidOutIrValue>& outputs) {
     std::unordered_set<std::string> existed_names;
     for (const auto& input : *inputs) {
       existed_names.insert(input.name());
@@ -216,26 +220,23 @@ struct UnboundOptPackedIrOpMethodClass {
     return adt::Ok{};
   }
 
-  adt::Result<SrcPtnValidInIrValue<ValueT, NodeT>> CastToSrcPtnValidInIrValue(
-      const ValueT& arg) {
-    return arg.Match(
-        [&](const tSrcPtn<NativeIrValue<NodeT>>& value)
-            -> adt::Result<SrcPtnValidInIrValue<ValueT, NodeT>> {
-          return SrcPtnValidInIrValue<ValueT, NodeT>{value.value()};
+  adt::Result<SrcPtnValidInIrValue> CastToSrcPtnValidInIrValue(
+      const axpr::Value& arg) {
+    DrrValueHelper helper{};
+    return helper.CastFromAxprValue(arg).DrrValueMatch(
+        [&](const tSrcPtn<NativeIrValue<drr::Node>>& value)
+            -> adt::Result<SrcPtnValidInIrValue> {
+          return SrcPtnValidInIrValue{value.value()};
         },
-        [&](const tSrcPtn<PackedIrValue<NodeT>>& value)
-            -> adt::Result<SrcPtnValidInIrValue<ValueT, NodeT>> {
-          return SrcPtnValidInIrValue<ValueT, NodeT>{value.value()};
+        [&](const tSrcPtn<PackedIrValue<drr::Node>>& value)
+            -> adt::Result<SrcPtnValidInIrValue> {
+          return SrcPtnValidInIrValue{value.value()};
         },
-        [&](const UnboundIrValue<ValueT, NodeT>& value)
-            -> adt::Result<SrcPtnValidInIrValue<ValueT, NodeT>> {
-          return value;
-        },
-        [&](const UnboundPackedIrValue<ValueT, NodeT>& value)
-            -> adt::Result<SrcPtnValidInIrValue<ValueT, NodeT>> {
-          return value;
-        },
-        [&](const auto&) -> adt::Result<SrcPtnValidInIrValue<ValueT, NodeT>> {
+        [&](const UnboundIrValue<drr::Node>& value)
+            -> adt::Result<SrcPtnValidInIrValue> { return value; },
+        [&](const UnboundPackedIrValue<drr::Node>& value)
+            -> adt::Result<SrcPtnValidInIrValue> { return value; },
+        [&](const auto&) -> adt::Result<SrcPtnValidInIrValue> {
           return adt::errors::TypeError{
               std::string() +
               "unsupported operand types for the first arugments of "
@@ -245,18 +246,15 @@ struct UnboundOptPackedIrOpMethodClass {
         });
   }
 
-  adt::Result<SrcPtnValidOutIrValue<ValueT, NodeT>> CastToSrcPtnValidOutIrValue(
-      const ValueT& arg) {
-    return arg.Match(
-        [&](const UnboundIrValue<ValueT, NodeT>& value)
-            -> adt::Result<SrcPtnValidOutIrValue<ValueT, NodeT>> {
-          return value;
-        },
-        [&](const UnboundPackedIrValue<ValueT, NodeT>& value)
-            -> adt::Result<SrcPtnValidOutIrValue<ValueT, NodeT>> {
-          return value;
-        },
-        [&](const auto&) -> adt::Result<SrcPtnValidOutIrValue<ValueT, NodeT>> {
+  adt::Result<SrcPtnValidOutIrValue> CastToSrcPtnValidOutIrValue(
+      const axpr::Value& arg) {
+    DrrValueHelper helper{};
+    return helper.CastFromAxprValue(arg).DrrValueMatch(
+        [&](const UnboundIrValue<drr::Node>& value)
+            -> adt::Result<SrcPtnValidOutIrValue> { return value; },
+        [&](const UnboundPackedIrValue<drr::Node>& value)
+            -> adt::Result<SrcPtnValidOutIrValue> { return value; },
+        [&](const auto&) -> adt::Result<SrcPtnValidOutIrValue> {
           return adt::errors::TypeError{
               std::string() +
               "unsupported operand types for the second arguments of "
@@ -267,16 +265,17 @@ struct UnboundOptPackedIrOpMethodClass {
   }
 };
 
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetUnboundOptPackedIrOpClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = UnboundOptPackedIrOpMethodClass;
+  using TT = drr::Type<UnboundOptPackedIrOp<drr::Node>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+      }));
+  return cls;
+}
+
 }  // namespace ap::drr
-
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, drr::UnboundOptPackedIrOp<ValueT, NodeT>>
-    : public drr::UnboundOptPackedIrOpMethodClass<ValueT, NodeT> {};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       TypeImpl<drr::UnboundOptPackedIrOp<ValueT, NodeT>>> {};
-
-}  // namespace ap::axpr

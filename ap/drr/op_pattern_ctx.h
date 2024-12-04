@@ -16,48 +16,58 @@
 
 #include <map>
 #include "ap/adt/adt.h"
+#include "ap/axpr/builtin_class_instance.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/ir_op.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 #include "ap/graph/node_arena.h"
 #include "ap/graph/tags.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct DrrCtxImpl;
 
-template <typename ValueT, typename NodeT>
 struct OpPatternCtxImpl {
-  std::shared_ptr<graph::NodeArena<NodeT>> node_arena;
-  mutable std::map<std::string, IrOp<ValueT, NodeT>> uid2ir_op;
-  std::weak_ptr<DrrCtxImpl<ValueT, NodeT>> drr_ctx;
+  std::shared_ptr<graph::NodeArena<drr::Node>> node_arena;
+  mutable std::map<std::string, IrOp> uid2ir_op;
+  std::weak_ptr<DrrCtxImpl> drr_ctx;
 
   bool operator==(const OpPatternCtxImpl& other) const {
     return this == &other;
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(OpPatternCtx, OpPatternCtxImpl<ValueT, NodeT>);
+DEFINE_ADT_RC(OpPatternCtx, OpPatternCtxImpl);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnOpPatternCtxClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tSrcPtn<drr::OpPatternCtx<ValueT, NodeT>>>
-    : public std::monostate {
-  using value_type = drr::tSrcPtn<drr::OpPatternCtx<ValueT, NodeT>>;
+template <>
+struct Type<drr::tSrcPtn<drr::OpPatternCtx>> : public std::monostate {
+  using value_type = drr::tSrcPtn<drr::OpPatternCtx>;
 
   const char* Name() const { return "SrcPtnOpPatternCtx"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetSrcPtnOpPatternCtxClass();
+  }
 };
 
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tResPtn<drr::OpPatternCtx<ValueT, NodeT>>>
-    : public std::monostate {
-  using value_type = drr::tResPtn<drr::OpPatternCtx<ValueT, NodeT>>;
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnOpPatternCtxClass();
+
+template <>
+struct Type<drr::tResPtn<drr::OpPatternCtx>> : public std::monostate {
+  using value_type = drr::tResPtn<drr::OpPatternCtx>;
 
   const char* Name() const { return "ResPtnOpPatternCtx"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetResPtnOpPatternCtxClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

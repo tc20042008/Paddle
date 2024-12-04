@@ -53,21 +53,21 @@ namespace {
 using ap::paddle::PirNode;
 
 using DrrValue = ap::drr::Value;
-using DrrNode = ap::drr::Node<DrrValue>;
+using DrrNode = ap::drr::Node;
 
-using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
+using DrrCtx = ap::drr::DrrCtx;
 
 using DrrNativeIrValue = ap::drr::NativeIrValue<DrrNode>;
 using DrrPackedIrValue = ap::drr::PackedIrValue<DrrNode>;
-using DrrIrValue = ap::drr::IrValue<DrrNode>;
+using DrrIrValue = ap::drr::IrValue;
 
-using DrrNativeIrOp = ap::drr::NativeIrOp<DrrValue, DrrNode>;
+using DrrNativeIrOp = ap::drr::NativeIrOp<DrrNode>;
 using DrrNativeIrOpOperand = ap::drr::NativeIrOpOperand<DrrNode>;
 using DrrNativeIrOpResult = ap::drr::NativeIrOpResult<DrrNode>;
-using DrrPackedIrOp = ap::drr::PackedIrOp<DrrValue, DrrNode>;
+using DrrPackedIrOp = ap::drr::PackedIrOp<DrrNode>;
 using DrrPackedIrOpOperand = ap::drr::PackedIrOpOperand<DrrNode>;
 using DrrPackedIrOpResult = ap::drr::PackedIrOpResult<DrrNode>;
-using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<DrrValue, DrrNode>;
+using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<DrrNode>;
 using DrrOptPackedIrOpOperand = ap::drr::OptPackedIrOpOperand<DrrNode>;
 using DrrOptPackedIrOpResult = ap::drr::OptPackedIrOpResult<DrrNode>;
 

@@ -348,7 +348,6 @@ struct MethodClass {
 
   template <typename T>
   static adt::Result<ValueT> InstanceDefaultHash(const ValueT& val) {
-    std::ostringstream ss;
     ADT_LET_CONST_REF(impl, val.template TryGet<T>());
     // please implement MethodClassImpl<ValueT, T>::Hash if T is not defined
     // by DEFINE_ADT_RC.

@@ -26,8 +26,8 @@ struct ArgSourceMaker {
   const code_gen::MatchedResultPatternHelper<BirNode>& matched_res_ptn_helper;
 
   using DrrValue = drr::Value;
-  using DrrNode = drr::Node<DrrValue>;
-  using DrrPackedIrOp = drr::PackedIrOp<DrrValue, DrrNode>;
+  using DrrNode = drr::Node;
+  using DrrPackedIrOp = drr::PackedIrOp<DrrNode>;
 
   adt::Result<ArgSourceCtx<BirNode>> MakeArgSourceCtx(
       const DrrPackedIrOp& res_ptn_ir_op) const {

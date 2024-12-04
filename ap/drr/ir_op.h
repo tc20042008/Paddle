@@ -16,6 +16,7 @@
 
 #include "ap/adt/adt.h"
 #include "ap/drr/native_ir_op.h"
+#include "ap/drr/node.h"
 #include "ap/drr/opt_packed_ir_op.h"
 #include "ap/drr/packed_ir_op.h"
 #include "ap/drr/unbound_native_ir_op.h"
@@ -24,18 +25,16 @@
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
-using IrOpImpl = std::variant<NativeIrOp<ValueT, NodeT>,
-                              PackedIrOp<ValueT, NodeT>,
-                              OptPackedIrOp<ValueT, NodeT>,
-                              UnboundNativeIrOp<ValueT, NodeT>,
-                              UnboundPackedIrOp<ValueT, NodeT>,
-                              UnboundOptPackedIrOp<ValueT, NodeT>>;
+using IrOpImpl = std::variant<NativeIrOp<drr::Node>,
+                              PackedIrOp<drr::Node>,
+                              OptPackedIrOp<drr::Node>,
+                              UnboundNativeIrOp<drr::Node>,
+                              UnboundPackedIrOp<drr::Node>,
+                              UnboundOptPackedIrOp<drr::Node>>;
 
-template <typename ValueT, typename NodeT>
-struct IrOp : public IrOpImpl<ValueT, NodeT> {
-  using IrOpImpl<ValueT, NodeT>::IrOpImpl;
-  DEFINE_ADT_VARIANT_METHODS(IrOpImpl<ValueT, NodeT>);
+struct IrOp : public IrOpImpl {
+  using IrOpImpl::IrOpImpl;
+  DEFINE_ADT_VARIANT_METHODS(IrOpImpl);
 };
 
 }  // namespace ap::drr

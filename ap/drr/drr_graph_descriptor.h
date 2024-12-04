@@ -22,17 +22,16 @@
 
 namespace ap::drr {
 
-template <typename ValueT>
 struct DefaultDrrGraphDescriptor {
-  using DrrNode = drr::Node<ValueT>;
+  using DrrNode = drr::Node;
   using DrrGraphNode = graph::Node<DrrNode>;
   using NodeT = DrrGraphNode;
 
   using DrrNativeIrValue = ap::drr::NativeIrValue<DrrNode>;
   using DrrPackedIrValue = ap::drr::PackedIrValue<DrrNode>;
-  using DrrNativeIrOp = ap::drr::NativeIrOp<ValueT, DrrNode>;
-  using DrrPackedIrOp = ap::drr::PackedIrOp<ValueT, DrrNode>;
-  using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<ValueT, DrrNode>;
+  using DrrNativeIrOp = ap::drr::NativeIrOp<DrrNode>;
+  using DrrPackedIrOp = ap::drr::PackedIrOp<DrrNode>;
+  using DrrOptPackedIrOp = ap::drr::OptPackedIrOp<DrrNode>;
   using DrrNativeIrOpOperand = ap::drr::NativeIrOpOperand<DrrNode>;
   using DrrPackedIrOpOperand = ap::drr::PackedIrOpOperand<DrrNode>;
   using DrrOptPackedIrOpOperand = ap::drr::OptPackedIrOpOperand<DrrNode>;
@@ -226,13 +225,12 @@ struct DefaultDrrGraphDescriptor {
   }
 };
 
-template <typename ValueT>
 struct AllOperandAndResultDrrGraphDescriptor {
-  using DrrNode = drr::Node<ValueT>;
+  using DrrNode = drr::Node;
   using DrrGraphNode = graph::Node<DrrNode>;
   using NodeT = DrrGraphNode;
 
-  DefaultDrrGraphDescriptor<ValueT> backend_graph;
+  DefaultDrrGraphDescriptor backend_graph;
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT& node,
@@ -325,13 +323,12 @@ struct AllOperandAndResultDrrGraphDescriptor {
   }
 };
 
-template <typename ValueT>
 struct NativeOperandAndResultDrrGraphDescriptor {
-  using DrrNode = drr::Node<ValueT>;
+  using DrrNode = drr::Node;
   using DrrGraphNode = graph::Node<DrrNode>;
   using NodeT = DrrGraphNode;
 
-  AllOperandAndResultDrrGraphDescriptor<ValueT> backend_graph;
+  AllOperandAndResultDrrGraphDescriptor backend_graph;
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT& node,
@@ -424,18 +421,18 @@ struct NativeOperandAndResultDrrGraphDescriptor {
 
 namespace ap::graph {
 
-template <typename ValueT>
-struct GraphDescriptor<graph::Node<drr::Node<ValueT>>, drr::topo_kind::Default>
-    : public drr::DefaultDrrGraphDescriptor<ValueT> {};
+template <>
+struct GraphDescriptor<graph::Node<drr::Node>, drr::topo_kind::Default>
+    : public drr::DefaultDrrGraphDescriptor {};
 
-template <typename ValueT>
-struct GraphDescriptor<graph::Node<drr::Node<ValueT>>,
+template <>
+struct GraphDescriptor<graph::Node<drr::Node>,
                        drr::topo_kind::AllOperandAndResult>
-    : public drr::AllOperandAndResultDrrGraphDescriptor<ValueT> {};
+    : public drr::AllOperandAndResultDrrGraphDescriptor {};
 
-template <typename ValueT>
-struct GraphDescriptor<graph::Node<drr::Node<ValueT>>,
+template <>
+struct GraphDescriptor<graph::Node<drr::Node>,
                        drr::topo_kind::NativeOperandAndResult>
-    : public drr::NativeOperandAndResultDrrGraphDescriptor<ValueT> {};
+    : public drr::NativeOperandAndResultDrrGraphDescriptor {};
 
 }  // namespace ap::graph

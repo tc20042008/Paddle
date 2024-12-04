@@ -15,17 +15,19 @@
 #pragma once
 
 #include "ap/adt/adt.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/native_ir_op_declare.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 #include "ap/graph/node.h"
 #include "ap/graph/node_cstr.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 struct NativeIrOpImpl {
   graph::Node<NodeT> node;
-  NativeIrOpDeclare<ValueT, NodeT> op_declare;
+  NativeIrOpDeclare<NodeT> op_declare;
   std::string name;
 
   bool operator==(const NativeIrOpImpl& other) const {
@@ -38,17 +40,21 @@ struct NativeIrOpImpl {
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(NativeIrOp, NativeIrOpImpl<ValueT, NodeT>);
+template <typename NodeT>
+DEFINE_ADT_RC(NativeIrOp, NativeIrOpImpl<NodeT>);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetNativeIrOpClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::NativeIrOp<ValueT, NodeT>> : public std::monostate {
+template <typename NodeT>
+struct Type<drr::NativeIrOp<NodeT>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "NativeIrOp"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetNativeIrOpClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

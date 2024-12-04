@@ -16,38 +16,48 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/drr_value.h"
+#include "ap/drr/drr_value_helper.h"
 #include "ap/drr/source_pattern_ctx.h"
 #include "ap/drr/tags.h"
 #include "ap/drr/tensor_pattern_ctx.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct ResPtnTensorPatternCtx {
   using This = ResPtnTensorPatternCtx;
-  using ObjT = drr::tResPtn<drr::TensorPatternCtx<ValueT, NodeT>>;
+  using ObjT = drr::tResPtn<drr::TensorPatternCtx>;
   using Self = ObjT;
-  using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
+  using Helper = OpTensorPatternCtxHelper;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& arg) {
-    ADT_LET_CONST_REF(tensor_name, axpr::TryGetImpl<std::string>(arg));
+  static adt::Result<axpr::Value> GetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 1);
+    const auto& arg = args.at(0);
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_LET_CONST_REF(tensor_name, arg.template CastTo<std::string>());
     const auto& opt_ir_value =
         Helper{}.GetIrValueByUid(self.value(), tensor_name);
     if (opt_ir_value.HasOkValue()) {
-      return opt_ir_value.GetOkValue().Match(
-          [](const auto& impl) -> ValueT { return ResPtn(impl); });
+      const auto& drr_value = opt_ir_value.GetOkValue().Match(
+          [](const auto& impl) -> DrrValue { return ResPtn(impl); });
+      return DrrValueHelper{}.CastToAxprValue(drr_value);
     }
     ADT_LET_CONST_REF(drr_ctx_ptr, adt::WeakPtrLock(self.value()->drr_ctx));
     const auto& src_tensor_ctx =
@@ -57,37 +67,39 @@ struct ResPtnTensorPatternCtx {
         << adt::errors::AttributeError{
                std::string() + "no source pattern binding tensor named '" +
                tensor_name + "' found."};
-    return src_ir_value.Match(
-        [&](const NativeIrValue<NodeT>& impl) -> adt::Result<ValueT> {
+    const auto& match_result = src_ir_value.Match(
+        [&](const NativeIrValue<drr::Node>& impl) -> adt::Result<DrrValue> {
           ADT_LET_CONST_REF(
               cloned, Helper{}.CloneIrValueDataAndRegister(self.value(), impl));
           return ResPtn(cloned);
         },
-        [&](const PackedIrValue<NodeT>& impl) -> adt::Result<ValueT> {
+        [&](const PackedIrValue<drr::Node>& impl) -> adt::Result<DrrValue> {
           ADT_LET_CONST_REF(
               cloned, Helper{}.CloneIrValueDataAndRegister(self.value(), impl));
           return ResPtn(cloned);
         },
-        [&](const auto&) -> adt::Result<ValueT> {
+        [&](const auto&) -> adt::Result<axpr::Value> {
           return adt::errors::AttributeError{
               std::string() + "no source pattern binding tensor named '" +
               tensor_name + "' found."};
         });
+    ADT_LET_CONST_REF(drr_value, match_result);
+    return DrrValueHelper{}.CastToAxprValue(drr_value);
   }
 };
 
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnTensorPatternCtxClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = drr::ResPtnTensorPatternCtx;
+  using TT = drr::Type<drr::tResPtn<drr::TensorPatternCtx>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+        Define("__getattr__", &Impl::GetAttr);
+      }));
+  return cls;
+}
+
 }  // namespace ap::drr
-
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       drr::tResPtn<drr::TensorPatternCtx<ValueT, NodeT>>>
-    : public drr::ResPtnTensorPatternCtx<ValueT, NodeT> {};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tResPtn<drr::TensorPatternCtx<ValueT, NodeT>>>> {};
-
-}  // namespace ap::axpr

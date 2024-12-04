@@ -17,6 +17,8 @@
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
 
+#include "ap/drr/drr_value.h"
+#include "ap/drr/drr_value_helper.h"
 #include "ap/drr/native_ir_op_declare.h"
 #include "ap/drr/op_pattern_ctx.h"
 #include "ap/drr/op_tensor_pattern_ctx_helper.h"
@@ -27,60 +29,61 @@
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct SrcPtnOpPatternCtxMethodClass {
   using This = SrcPtnOpPatternCtxMethodClass;
-  using ObjT = tSrcPtn<OpPatternCtx<ValueT, NodeT>>;
+  using ObjT = tSrcPtn<OpPatternCtx>;
   using Self = ObjT;
-  using Helper = OpTensorPatternCtxHelper<ValueT, NodeT>;
+  using Helper = OpTensorPatternCtxHelper;
 
-  adt::Result<ValueT> ToString(const Self& self) {
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     std::ostringstream ss;
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
 
-  adt::Result<ValueT> SetAttr(const Self& self, const ValueT& arg) {
-    ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(arg));
-    if (IsBasicAttrName(attr_name)) {
-      return adt::errors::AttributeError{"can't set attribute '" + attr_name +
-                                         "'"};
-    } else {
-      return axpr::Method<ValueT>{ValueT{self},
-                                  ValueT{&This::MakeAndRegisterUnboundIrOp}};
-    }
+  static adt::Result<axpr::Value> SetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 2);
+    const auto& arg = args.at(0);
+    ADT_LET_CONST_REF(attr_name, arg.template CastTo<std::string>());
+    ADT_CHECK(!IsBasicAttrName(attr_name)) << adt::errors::AttributeError{
+        "can't set attribute '" + attr_name + "'"};
+    return MakeAndRegisterUnboundIrOp(self_val, args);
   }
 
-  static adt::Result<ValueT> MakeAndRegisterUnboundIrOp(
-      const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+  static adt::Result<axpr::Value> MakeAndRegisterUnboundIrOp(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 2);
-    ADT_LET_CONST_REF(op_uid, axpr::TryGetImpl<std::string>(args.at(0)));
+    ADT_LET_CONST_REF(op_uid, args.at(0).template CastTo<std::string>());
     bool has_ir_op = Helper{}.HasIrOpByUid(self.value(), op_uid);
     ADT_CHECK(!has_ir_op) << adt::errors::TypeError{
         std::string() + "op name '" + op_uid +
         "' has been bound. please  bound to a new name."};
-    using IrOpT = IrOp<ValueT, NodeT>;
-    const auto& opt_ir_op = args.at(1).Match(
-        [&](const tSrcPtn<PackedIrOpDeclare<ValueT, NodeT>>& op)
-            -> adt::Result<IrOpT> {
-          return UnboundPackedIrOp<ValueT, NodeT>{op.value(), op_uid};
+    const auto& drr_value = DrrValueHelper{}.CastFromAxprValue(args.at(1));
+    const auto& opt_ir_op = drr_value.DrrValueMatch(
+        [&](const tSrcPtn<PackedIrOpDeclare<drr::Node>>& op)
+            -> adt::Result<IrOp> {
+          return UnboundPackedIrOp<drr::Node>{op.value(), op_uid};
         },
-        [&](const OptPackedIrOpDeclare<ValueT, NodeT>& op)
-            -> adt::Result<IrOpT> {
-          return UnboundOptPackedIrOp<ValueT, NodeT>{op, op_uid};
+        [&](const OptPackedIrOpDeclare<drr::Node>& op) -> adt::Result<IrOp> {
+          return UnboundOptPackedIrOp<drr::Node>{op, op_uid};
         },
-        [&](const tSrcPtn<NativeIrOpDeclare<ValueT, NodeT>>& op)
-            -> adt::Result<IrOpT> {
-          return UnboundNativeIrOp<ValueT, NodeT>{op.value(), op_uid};
+        [&](const tSrcPtn<NativeIrOpDeclare<drr::Node>>& op)
+            -> adt::Result<IrOp> {
+          return UnboundNativeIrOp<drr::Node>{op.value(), op_uid};
         },
-        [&](const auto&) -> adt::Result<IrOpT> {
+        [&](const auto&) -> adt::Result<IrOp> {
           return adt::errors::TypeError{
               std::string() +
               "only 'SrcPtnPackedIrOpDeclare' and 'SrcPtnNativeIrOpDeclare' "
@@ -92,118 +95,100 @@ struct SrcPtnOpPatternCtxMethodClass {
     return adt::Nothing{};
   }
 
-  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& arg) {
-    ADT_LET_CONST_REF(attr_name, axpr::TryGetImpl<std::string>(arg));
-    if (IsBasicAttrName(attr_name)) {
-      ADT_LET_CONST_REF(attr_getter, FindAttrGetter(attr_name));
-      return (this->*attr_getter)(self);
-    } else {
-      ADT_LET_CONST_REF(ir_op, Helper{}.GetIrOpByUid(self.value(), attr_name));
-      return ir_op.Match(
-          [](const NativeIrOp<ValueT, NodeT>& impl) -> ValueT { return impl; },
-          [](const PackedIrOp<ValueT, NodeT>& impl) -> ValueT { return impl; },
-          [](const OptPackedIrOp<ValueT, NodeT>& impl) -> ValueT {
-            return impl;
-          },
-          [](const UnboundOptPackedIrOp<ValueT, NodeT>& impl) -> ValueT {
-            return impl;
-          },
-          [](const UnboundNativeIrOp<ValueT, NodeT>& x) -> ValueT {
-            return SrcPtn(x);
-          },
-          [](const UnboundPackedIrOp<ValueT, NodeT>& x) -> ValueT {
-            return SrcPtn(x);
-          });
-    }
+  static adt::Result<axpr::Value> GetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 1);
+    const auto& arg = args.at(0);
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_LET_CONST_REF(attr_name, arg.template CastTo<std::string>());
+    ADT_CHECK(!IsBasicAttrName(attr_name)) << adt::errors::RuntimeError{
+        std::string() + "Dead code encounterred. attr_name: " + attr_name};
+    ADT_LET_CONST_REF(ir_op, Helper{}.GetIrOpByUid(self.value(), attr_name));
+    const auto& drr_value = ir_op.Match(
+        [](const NativeIrOp<drr::Node>& impl) -> DrrValue { return impl; },
+        [](const PackedIrOp<drr::Node>& impl) -> DrrValue { return impl; },
+        [](const OptPackedIrOp<drr::Node>& impl) -> DrrValue { return impl; },
+        [](const UnboundOptPackedIrOp<drr::Node>& impl) -> DrrValue {
+          return impl;
+        },
+        [](const UnboundNativeIrOp<drr::Node>& x) -> DrrValue {
+          return SrcPtn(x);
+        },
+        [](const UnboundPackedIrOp<drr::Node>& x) -> DrrValue {
+          return SrcPtn(x);
+        });
+    return DrrValueHelper{}.CastToAxprValue(drr_value);
   }
 
-  adt::Result<ValueT> ApTrivialFusionOp(const Self& self) {
-    return axpr::Method<ValueT>{self, &This::DeclareApTrivialFusionOp};
-  }
-
-  static adt::Result<ValueT> DeclareApTrivialFusionOp(
-      const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+  static adt::Result<axpr::Value> DeclareApTrivialFusionOp(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
         std::string() +
         "SrcPtnOpPatternCtx.ap_trivial_fusion_op takes 0 arguments. but " +
         std::to_string(args.size()) + " were given."};
-    PackedIrOpDeclare<ValueT, NodeT> op_declare{
+    PackedIrOpDeclare<drr::Node> op_declare{
         "ap_trivial_fusion_op", self.value().shared_ptr(), std::nullopt};
-    return SrcPtn(op_declare);
-  }
-  adt::Result<ValueT> OptionalApTrivialFusionOp(const Self& self) {
-    return axpr::Method<ValueT>{self, &This::DeclareOptionalApTrivialFusionOp};
+    return DrrValueHelper{}.CastToAxprValue(SrcPtn(op_declare));
   }
 
-  static adt::Result<ValueT> DeclareOptionalApTrivialFusionOp(
-      const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+  static adt::Result<axpr::Value> DeclareOptionalApTrivialFusionOp(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 0)
         << adt::errors::TypeError{std::string() +
                                   "SrcPtnOpPatternCtx.optional_ap_trivial_"
                                   "fusion_op takes 0 arguments. but " +
                                   std::to_string(args.size()) + " were given."};
-    OptPackedIrOpDeclare<ValueT, NodeT> op_declare{
+    OptPackedIrOpDeclare<drr::Node> op_declare{
         "ap_trivial_fusion_op", self.value().shared_ptr(), std::nullopt};
-    return op_declare;
+    return DrrValueHelper{}.CastToAxprValue(op_declare);
   }
 
-  adt::Result<ValueT> ApNativeOp(const Self& self) {
-    return axpr::Method<ValueT>{self, &This::DeclareNativeIrOp};
-  }
-
-  static adt::Result<ValueT> DeclareNativeIrOp(
-      const ValueT& self_val, const std::vector<ValueT>& args) {
-    ADT_LET_CONST_REF(self, axpr::TryGetImpl<Self>(self_val));
+  static adt::Result<axpr::Value> DeclareNativeIrOp(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() +
         "SrcPtnOpPatternCtx.ap_native_op takes 1 arguments. but " +
         std::to_string(args.size()) + " were given."};
-    ADT_LET_CONST_REF(op_name, axpr::TryGetImpl<std::string>(args.at(0)));
-    NativeIrOpDeclare<ValueT, NodeT> op_declare{op_name,
-                                                self.value().shared_ptr()};
-    return SrcPtn(op_declare);
+    ADT_LET_CONST_REF(op_name, args.at(0).template CastTo<std::string>());
+    NativeIrOpDeclare<drr::Node> op_declare{op_name, self.value().shared_ptr()};
+    return DrrValueHelper{}.CastToAxprValue(SrcPtn(op_declare));
   }
 
-  using AttrGetter = adt::Result<ValueT> (This::*)(const Self&);
-  adt::Result<AttrGetter> FindAttrGetter(const std::string& attr_name) {
-    const auto& attr_getters = AttrGetters();
-    const auto& iter = attr_getters.find(attr_name);
-    if (iter == attr_getters.end()) {
-      return adt::errors::AttributeError{
-          std::string() + "'" + axpr::TypeImpl<ObjT>{}.Name() +
-          "' object has no attribute '" + attr_name + "'"};
-    }
-    return iter->second;
-  }
-
-  bool IsBasicAttrName(const std::string& attr_name) {
+  static bool IsBasicAttrName(const std::string& attr_name) {
     const auto& attr_getters = AttrGetters();
     return attr_getters.count(attr_name) > 0;
   }
 
-  const std::map<std::string, AttrGetter>& AttrGetters() {
-    static const std::map<std::string, AttrGetter> map{
-        {"ap_trivial_fusion_op", &This::ApTrivialFusionOp},
-        {"optional_ap_trivial_fusion_op", &This::OptionalApTrivialFusionOp},
-        {"ap_native_op", &This::ApNativeOp},
+  static const std::set<std::string>& AttrGetters() {
+    static const std::set<std::string> set{
+        "ap_trivial_fusion_op",
+        "optional_ap_trivial_fusion_op",
+        "ap_native_op",
     };
-    return map;
+    return set;
   }
 };
 
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnOpPatternCtxClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = drr::SrcPtnOpPatternCtxMethodClass;
+  using TT = drr::Type<drr::tSrcPtn<drr::OpPatternCtx>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("ap_trivial_fusion_op", &Impl::DeclareApTrivialFusionOp);
+        Define("optional_ap_trivial_fusion_op",
+               &Impl::DeclareOptionalApTrivialFusionOp);
+        Define("ap_native_op", &Impl::DeclareNativeIrOp);
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+        Define("__getattr__", &Impl::GetAttr);
+        Define("__setattr__", &Impl::SetAttr);
+      }));
+  return cls;
+}
+
 }  // namespace ap::drr
-
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, drr::tSrcPtn<drr::OpPatternCtx<ValueT, NodeT>>>
-    : public drr::SrcPtnOpPatternCtxMethodClass<ValueT, NodeT> {};
-
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tSrcPtn<drr::OpPatternCtx<ValueT, NodeT>>>> {};
-
-}  // namespace ap::axpr

@@ -28,18 +28,17 @@ namespace {
 
 using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
 
-using DrrValue = ap::drr::Value;
-using DrrNode = ap::drr::Node<DrrValue>;
-using DrrCtx = ap::drr::DrrCtx<DrrValue, DrrNode>;
+using DrrNode = ap::drr::Node;
+using DrrCtx = ap::drr::DrrCtx;
 
 }  // namespace
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
-  ap::axpr::CpsInterpreter<DrrValue> interpreter(
-      ap::drr::MakeBuiltinFrameAttrMap<DrrValue>());
+  ap::axpr::CpsInterpreter<ap::axpr::Value> interpreter(
+      ap::drr::MakeBuiltinFrameAttrMap());
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
-  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
+  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
       << adt::errors::TypeError{
              std::string() +
              "drr function should return a 'DrrCtx' object but '" +
@@ -58,12 +57,12 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
     const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
     return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
   }());
-  ap::axpr::CpsInterpreter<DrrValue> interpreter(
-      ap::drr::MakeBuiltinFrameAttrMap<DrrValue>());
-  DrrValue cls{
-      ap::axpr::TypeImpl<ap::axpr::ClassInstance<DrrValue>>(item->cls)};
+  ap::axpr::CpsInterpreter<ap::axpr::Value> interpreter(
+      ap::drr::MakeBuiltinFrameAttrMap());
+  ap::axpr::Value cls{
+      ap::axpr::TypeImpl<ap::axpr::ClassInstance<ap::axpr::Value>>(item->cls)};
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls}));
-  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template TryGet<DrrCtx>())
+  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
       << adt::errors::TypeError{
              std::string() +
              "drr function should return a 'DrrCtx' object but '" +

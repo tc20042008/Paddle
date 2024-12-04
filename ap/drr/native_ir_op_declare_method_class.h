@@ -16,54 +16,76 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
+#include "ap/drr/drr_value.h"
 #include "ap/drr/native_ir_op_declare.h"
 #include "ap/drr/tags.h"
 
-namespace ap::axpr {
+namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       drr::tSrcPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>> {
-  using Self = drr::tSrcPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>;
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
+struct SrcPtnNativeIrOpDeclareMethodClassImpl {
+  using Self = drr::tSrcPtn<drr::NativeIrOpDeclare<drr::Node>>;
+
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    std::ostringstream ss;
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
 };
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tSrcPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>>> {};
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnNativeIrOpDeclareClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = SrcPtnNativeIrOpDeclareMethodClassImpl;
+  using TT = drr::Type<drr::tSrcPtn<drr::NativeIrOpDeclare<drr::Node>>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+      }));
+  return cls;
+}
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT,
-                       drr::tResPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>> {
-  using Self = drr::tResPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>;
+struct ResPtnNativeIrOpDeclareMethodClass {
+  using Self = drr::tResPtn<drr::NativeIrOpDeclare<drr::Node>>;
 
-  adt::Result<ValueT> ToString(const Self& self) {
-    std::ostringstream ss;
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
-    ss << "<" << axpr::TypeImpl<Self>{}.Name() << " object at " << ptr << ">";
+    std::ostringstream ss;
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     const void* ptr = self.value().__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
 };
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<
-    ValueT,
-    TypeImpl<drr::tResPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>>> {};
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnNativeIrOpDeclareClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = ResPtnNativeIrOpDeclareMethodClass;
+  using TT = drr::Type<drr::tResPtn<drr::NativeIrOpDeclare<drr::Node>>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+      }));
+  return cls;
+}
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

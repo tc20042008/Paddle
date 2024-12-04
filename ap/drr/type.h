@@ -13,15 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "ap/axpr/adt.h"
-#include "ap/axpr/value.h"
-#include "ap/drr/drr_ctx.h"
-#include "ap/drr/node.h"
 
 namespace ap::drr {
 
-using axpr::Value;
+template <typename T>
+struct Type;
 
-using Val = Value;
-
-}  // namespace ap::drr
+}

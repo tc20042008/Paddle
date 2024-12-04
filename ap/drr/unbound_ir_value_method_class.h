@@ -16,25 +16,58 @@
 
 #include "ap/axpr/method_class.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/value.h"
+#include "ap/drr/drr_value.h"
+#include "ap/drr/drr_value_helper.h"
 #include "ap/drr/tags.h"
 #include "ap/drr/unbound_ir_value.h"
 #include "ap/drr/unbound_packed_ir_value.h"
 
-namespace ap::axpr {
+namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, drr::UnboundIrValue<ValueT, NodeT>> {
-  using Self = drr::UnboundIrValue<ValueT, NodeT>;
-  using This = MethodClassImpl<ValueT, Self>;
+struct UnboundIrValueMethodClassImpl {
+  using This = UnboundIrValueMethodClassImpl;
+  using Self = UnboundIrValue<drr::Node>;
 
-  adt::Result<ValueT> Starred(const Self& self) {
-    ValueT packed_ir_value{drr::UnboundPackedIrValue<ValueT, NodeT>{
-        self->name, self->tensor_pattern_ctx}};
-    return axpr::Starred<ValueT>{adt::List<ValueT>{packed_ir_value}};
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
+    std::ostringstream ss;
+    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
+    return ss.str();
+  }
+
+  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
+    return reinterpret_cast<int64_t>(ptr);
+  }
+
+  static adt::Result<axpr::Value> Starred(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    UnboundPackedIrValue<drr::Node> packed_ir_value{self->name,
+                                                    self->tensor_pattern_ctx};
+    DrrValueHelper helper{};
+    axpr::Value starred{helper.CastToAxprValue(packed_ir_value)};
+    return axpr::Starred<axpr::Value>{adt::List<axpr::Value>{starred}};
   }
 };
 
-template <typename ValueT, typename NodeT>
-struct MethodClassImpl<ValueT, TypeImpl<drr::UnboundIrValue<ValueT, NodeT>>> {};
+inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetUnboundIrValueClass() {
+  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
+  using Impl = UnboundIrValueMethodClassImpl;
+  using TT = drr::Type<UnboundIrValue<drr::Node>>;
+  static ClassT cls(
+      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
+        Define("__starred__", &Impl::Starred);
+      }));
+  return cls;
+}
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

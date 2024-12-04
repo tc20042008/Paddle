@@ -26,23 +26,20 @@
 namespace ap::drr {
 
 struct ResultPatternHelper {
-  using DrrValue = drr::Value;
-  using DrrNode = drr::Node<DrrValue>;
+  using DrrNode = drr::Node;
   using DrrGraphNode = graph::Node<DrrNode>;
-
-  using DrrCtx = drr::DrrCtx<DrrValue, DrrNode>;
 
   using DrrNativeIrValue = drr::NativeIrValue<DrrNode>;
   using DrrPackedIrValue = drr::PackedIrValue<DrrNode>;
-  using DrrIrValue = drr::IrValue<DrrNode>;
+  using DrrIrValue = drr::IrValue;
 
-  using DrrNativeIrOp = drr::NativeIrOp<DrrValue, DrrNode>;
+  using DrrNativeIrOp = drr::NativeIrOp<DrrNode>;
   using DrrNativeIrOpOperand = drr::NativeIrOpOperand<DrrNode>;
   using DrrNativeIrOpResult = drr::NativeIrOpResult<DrrNode>;
-  using DrrPackedIrOp = drr::PackedIrOp<DrrValue, DrrNode>;
+  using DrrPackedIrOp = drr::PackedIrOp<DrrNode>;
   using DrrPackedIrOpOperand = drr::PackedIrOpOperand<DrrNode>;
   using DrrPackedIrOpResult = drr::PackedIrOpResult<DrrNode>;
-  using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrValue, DrrNode>;
+  using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrNode>;
   using DrrOptPackedIrOpOperand = drr::OptPackedIrOpOperand<DrrNode>;
   using DrrOptPackedIrOpResult = drr::OptPackedIrOpResult<DrrNode>;
 

@@ -48,10 +48,10 @@ struct OpCudaCodeGenImpl {
   using IrOp = code_gen::IrOp<BirNode>;
 
   using DrrValue = drr::Value;
-  using DrrNode = drr::Node<DrrValue>;
+  using DrrNode = drr::Node;
   using DrrGraphNode = graph::Node<DrrNode>;
-  using DrrPackedIrOp = drr::PackedIrOp<DrrValue, DrrNode>;
-  using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrValue, DrrNode>;
+  using DrrPackedIrOp = drr::PackedIrOp<DrrNode>;
+  using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrNode>;
   using DrrOptPackedIrOpOperand = drr::OptPackedIrOpOperand<DrrNode>;
   using DrrOptPackedIrOpResult = drr::OptPackedIrOpResult<DrrNode>;
 

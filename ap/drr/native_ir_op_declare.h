@@ -16,17 +16,18 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct OpPatternCtxImpl;
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 struct NativeIrOpDeclareImpl {
   std::string op_name;
-  std::weak_ptr<OpPatternCtxImpl<ValueT, NodeT>> op_pattern_ctx;
+  std::weak_ptr<OpPatternCtxImpl> op_pattern_ctx;
 
   bool operator==(const NativeIrOpDeclareImpl& other) const {
     return this->op_name == other.op_name &&
@@ -34,25 +35,37 @@ struct NativeIrOpDeclareImpl {
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(NativeIrOpDeclare, NativeIrOpDeclareImpl<ValueT, NodeT>);
+template <typename NodeT>
+DEFINE_ADT_RC(NativeIrOpDeclare, NativeIrOpDeclareImpl<NodeT>);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnNativeIrOpDeclareClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tSrcPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>>
+template <typename NodeT>
+struct Type<drr::tSrcPtn<drr::NativeIrOpDeclare<NodeT>>>
     : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "SrcPtnNativeIrOpDeclare"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetSrcPtnNativeIrOpDeclareClass();
+  }
 };
 
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tResPtn<drr::NativeIrOpDeclare<ValueT, NodeT>>>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnNativeIrOpDeclareClass();
+
+template <typename NodeT>
+struct Type<drr::tResPtn<drr::NativeIrOpDeclare<NodeT>>>
     : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResPtnNativeIrOpDeclare"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetResPtnNativeIrOpDeclareClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

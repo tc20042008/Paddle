@@ -27,8 +27,8 @@ namespace ap::ir_match {
 
 template <typename bg_node_t, typename BGTopoKind, typename SGTopoKind>
 struct GraphMatcher {
-  using DrrNode = drr::Node<drr::Value>;
-  using DrrNativeIrOp = drr::NativeIrOp<drr::Value, DrrNode>;
+  using DrrNode = drr::Node;
+  using DrrNativeIrOp = drr::NativeIrOp<DrrNode>;
   using sg_node_t = graph::Node<DrrNode>;
 
   TopoMatcher<bg_node_t, sg_node_t, BGTopoKind, SGTopoKind> topo_matcher_;

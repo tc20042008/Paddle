@@ -17,18 +17,19 @@
 #include <sstream>
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/packed_ir_op_declare_data.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct OpPatternCtxImpl;
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 struct OptPackedIrOpDeclareImpl {
   std::string op_name;
-  std::weak_ptr<OpPatternCtxImpl<ValueT, NodeT>> op_pattern_ctx;
+  std::weak_ptr<OpPatternCtxImpl> op_pattern_ctx;
   std::optional<std::shared_ptr<PackedIrOpDeclareData>> data;
 
   bool operator==(const OptPackedIrOpDeclareImpl& other) const {
@@ -58,18 +59,21 @@ struct OptPackedIrOpDeclareImpl {
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(OptPackedIrOpDeclare, OptPackedIrOpDeclareImpl<ValueT, NodeT>);
+template <typename NodeT>
+DEFINE_ADT_RC(OptPackedIrOpDeclare, OptPackedIrOpDeclareImpl<NodeT>);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetOptPackedIrOpDeclareClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::OptPackedIrOpDeclare<ValueT, NodeT>>
-    : public std::monostate {
+template <typename NodeT>
+struct Type<drr::OptPackedIrOpDeclare<NodeT>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "OptPackedIrOpDeclare"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetOptPackedIrOpDeclareClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

@@ -26,7 +26,7 @@ struct NativeIrOpResultImpl {
   std::size_t index;
 
   bool operator==(const NativeIrOpResultImpl& other) const {
-    return this->node == other.name && this->index == other.index;
+    return this->node == other.node && this->index == other.index;
   }
 
   graph::NativeIrOpResultCstr node_cstr() const {

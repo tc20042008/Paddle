@@ -16,41 +16,55 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/packed_ir_op_declare.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 #include "ap/graph/node.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 struct UnboundPackedIrOpImpl {
  public:
-  PackedIrOpDeclare<ValueT, NodeT> op_declare;
+  PackedIrOpDeclare<NodeT> op_declare;
   std::string name;
   bool operator==(const UnboundPackedIrOpImpl& other) const {
     return this->op_declare == other.op_declare && this->name == other.name;
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(UnboundPackedIrOp, UnboundPackedIrOpImpl<ValueT, NodeT>);
+template <typename NodeT>
+DEFINE_ADT_RC(UnboundPackedIrOp, UnboundPackedIrOpImpl<NodeT>);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnUnboundPackedIrOpClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tSrcPtn<drr::UnboundPackedIrOp<ValueT, NodeT>>>
+template <typename NodeT>
+struct Type<drr::tSrcPtn<drr::UnboundPackedIrOp<NodeT>>>
     : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "SrcPtnUnboundPackedIrOp"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetSrcPtnUnboundPackedIrOpClass();
+  }
 };
 
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tResPtn<drr::UnboundPackedIrOp<ValueT, NodeT>>>
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnUnboundPackedIrOpClass();
+
+template <typename NodeT>
+struct Type<drr::tResPtn<drr::UnboundPackedIrOp<NodeT>>>
     : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResPtnUnboundPackedIrOp"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetResPtnUnboundPackedIrOpClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

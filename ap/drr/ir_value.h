@@ -16,32 +16,31 @@
 
 #include "ap/adt/adt.h"
 #include "ap/drr/native_ir_value.h"
+#include "ap/drr/node.h"
 #include "ap/drr/packed_ir_value.h"
 
 namespace ap::drr {
 
-template <typename NodeT>
-using IrValueImpl = std::variant<NativeIrValue<NodeT>, PackedIrValue<NodeT>>;
+using IrValueImpl =
+    std::variant<NativeIrValue<drr::Node>, PackedIrValue<drr::Node>>;
 
-template <typename NodeT>
-struct IrValue : public IrValueImpl<NodeT> {
-  using IrValueImpl<NodeT>::IrValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(IrValueImpl<NodeT>);
+struct IrValue : public IrValueImpl {
+  using IrValueImpl::IrValueImpl;
+  DEFINE_ADT_VARIANT_METHODS(IrValueImpl);
 
-  const graph::Node<NodeT>& node() const {
-    return Match([](const auto& impl) -> const graph::Node<NodeT>& {
+  const graph::Node<drr::Node>& node() const {
+    return Match([](const auto& impl) -> const graph::Node<drr::Node>& {
       return impl->node;
     });
   }
 
-  template <typename ValueT>
-  static std::optional<IrValue> OptCastFrom(const ValueT& drr_node) {
+  static std::optional<IrValue> OptCastFrom(const drr::Node& drr_node) {
     using RetT = std::optional<IrValue>;
     return drr_node.Match(
-        [](const NativeIrValue<NodeT>& ir_value) -> RetT {
+        [](const NativeIrValue<drr::Node>& ir_value) -> RetT {
           return IrValue{ir_value};
         },
-        [](const PackedIrValue<NodeT>& ir_value) -> RetT {
+        [](const PackedIrValue<drr::Node>& ir_value) -> RetT {
           return IrValue{ir_value};
         },
         [](const auto&) -> RetT { return std::nullopt; });

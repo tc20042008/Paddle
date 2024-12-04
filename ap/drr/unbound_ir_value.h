@@ -16,16 +16,17 @@
 
 #include "ap/adt/adt.h"
 #include "ap/axpr/type.h"
+#include "ap/axpr/value.h"
+#include "ap/drr/type.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct TensorPatternCtxImpl;
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 struct UnboundIrValueImpl {
   std::string name;
-  std::weak_ptr<TensorPatternCtxImpl<ValueT, NodeT>> tensor_pattern_ctx;
+  std::weak_ptr<TensorPatternCtxImpl> tensor_pattern_ctx;
 
   bool operator==(const UnboundIrValueImpl& other) const {
     return this->name == other.name &&
@@ -33,17 +34,21 @@ struct UnboundIrValueImpl {
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(UnboundIrValue, UnboundIrValueImpl<ValueT, NodeT>);
+template <typename NodeT>
+DEFINE_ADT_RC(UnboundIrValue, UnboundIrValueImpl<NodeT>);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetUnboundIrValueClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::UnboundIrValue<ValueT, NodeT>> : public std::monostate {
+template <typename NodeT>
+struct Type<drr::UnboundIrValue<NodeT>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "UnboundIrValue"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetUnboundIrValueClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

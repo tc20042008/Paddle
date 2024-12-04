@@ -14,48 +14,58 @@
 
 #pragma once
 #include "ap/adt/adt.h"
+#include "ap/axpr/value.h"
 #include "ap/drr/ir_value.h"
+#include "ap/drr/node.h"
 #include "ap/drr/tags.h"
+#include "ap/drr/type.h"
 #include "ap/graph/node_arena.h"
 #include "ap/graph/tags.h"
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
 struct DrrCtxImpl;
 
-template <typename ValueT, typename NodeT>
 struct TensorPatternCtxImpl {
-  std::shared_ptr<graph::NodeArena<NodeT>> node_arena;
-  mutable std::map<std::string, IrValue<NodeT>> uid2ir_value;
-  std::weak_ptr<DrrCtxImpl<ValueT, NodeT>> drr_ctx;
+  std::shared_ptr<graph::NodeArena<drr::Node>> node_arena;
+  mutable std::map<std::string, IrValue> uid2ir_value;
+  std::weak_ptr<DrrCtxImpl> drr_ctx;
 
   bool operator==(const TensorPatternCtxImpl& other) const {
     return this == &other;
   }
 };
 
-template <typename ValueT, typename NodeT>
-DEFINE_ADT_RC(TensorPatternCtx, TensorPatternCtxImpl<ValueT, NodeT>);
+DEFINE_ADT_RC(TensorPatternCtx, TensorPatternCtxImpl);
 
-}  // namespace ap::drr
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetSrcPtnTensorPatternCtxClass();
 
-namespace ap::axpr {
-
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tSrcPtn<drr::TensorPatternCtx<ValueT, NodeT>>>
-    : public std::monostate {
-  using value_type = drr::tSrcPtn<drr::TensorPatternCtx<ValueT, NodeT>>;
+template <>
+struct Type<drr::tSrcPtn<drr::TensorPatternCtx>> : public std::monostate {
+  using value_type = drr::tSrcPtn<drr::TensorPatternCtx>;
 
   const char* Name() const { return "SrcPtnTensorPatternCtx"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetSrcPtnTensorPatternCtxClass();
+  }
 };
 
-template <typename ValueT, typename NodeT>
-struct TypeImpl<drr::tResPtn<drr::TensorPatternCtx<ValueT, NodeT>>>
-    : public std::monostate {
-  using value_type = drr::tResPtn<drr::TensorPatternCtx<ValueT, NodeT>>;
+const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+GetResPtnTensorPatternCtxClass();
+
+template <>
+struct Type<drr::tResPtn<drr::TensorPatternCtx>> : public std::monostate {
+  using value_type = drr::tResPtn<drr::TensorPatternCtx>;
 
   const char* Name() const { return "ResPtnTensorPatternCtx"; }
+
+  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+  GetClass() {
+    return GetResPtnTensorPatternCtxClass();
+  }
 };
 
-}  // namespace ap::axpr
+}  // namespace ap::drr

@@ -28,9 +28,9 @@ namespace ap::ir_match {
 
 template <typename BirNode>
 struct IrMatchCtxImpl {
-  using DrrNodeT = drr::Node<drr::Value>;
+  using DrrNodeT = drr::Node;
   using SmallGraphNodeT = graph::Node<DrrNodeT>;
-  drr::SourcePatternCtx<drr::Value, DrrNodeT> source_pattern_ctx;
+  drr::SourcePatternCtx source_pattern_ctx;
   GraphMatchCtx<BirNode> graph_match_ctx;
 };
 

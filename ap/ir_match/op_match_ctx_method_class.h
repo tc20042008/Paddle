@@ -40,12 +40,10 @@ struct OpMatchCtxMethodClass {
         std::string() + "'OpMatchCtx' has no attribute '" + attr_name + "'"};
   }
 
-  using DrrValueT = drr::Value;
-  using DrrNodeT = drr::Node<DrrValueT>;
-  using DrrNativeIrOp = drr::NativeIrOp<DrrValueT, DrrNodeT>;
-  using DrrPackedIrOp = drr::PackedIrOp<DrrValueT, DrrNodeT>;
-  using DrrOptPackedIrOp = drr::OptPackedIrOp<DrrValueT, DrrNodeT>;
-  using SmallGraphNodeT = graph::Node<DrrNodeT>;
+  using DrrNativeIrOp = drr::NativeIrOp<drr::Node>;
+  using DrrPackedIrOp = drr::PackedIrOp<drr::Node>;
+  using DrrOptPackedIrOp = drr::OptPackedIrOp<drr::Node>;
+  using SmallGraphNodeT = graph::Node<drr::Node>;
 
   using IrNativeIrOp = typename BirNode::native_op_type;
   using IrPackedIrOp = typename BirNode::packed_op_type;

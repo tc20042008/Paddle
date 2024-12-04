@@ -29,26 +29,25 @@
 
 namespace ap::drr {
 
-template <typename ValueT, typename NodeT>
+template <typename NodeT>
 using NodeImpl = std::variant<NativeIrValue<NodeT>,
-                              NativeIrOp<ValueT, NodeT>,
+                              NativeIrOp<NodeT>,
                               NativeIrOpOperand<NodeT>,
                               NativeIrOpResult<NodeT>,
                               PackedIrValue<NodeT>,
-                              PackedIrOp<ValueT, NodeT>,
+                              PackedIrOp<NodeT>,
                               PackedIrOpOperand<NodeT>,
                               PackedIrOpResult<NodeT>,
-                              OptPackedIrOp<ValueT, NodeT>,
+                              OptPackedIrOp<NodeT>,
                               OptPackedIrOpOperand<NodeT>,
                               OptPackedIrOpResult<NodeT>>;
 
-template <typename ValueT>
-struct Node : public NodeImpl<ValueT, Node<ValueT>> {
-  using NodeImpl<ValueT, Node<ValueT>>::NodeImpl;
-  DEFINE_ADT_VARIANT_METHODS(NodeImpl<ValueT, Node<ValueT>>);
+struct Node : public NodeImpl<Node> {
+  using NodeImpl<Node>::NodeImpl;
+  DEFINE_ADT_VARIANT_METHODS(NodeImpl<Node>);
 
-  const graph::Node<Node<ValueT>>& node() const {
-    return Match([](const auto& impl) -> const graph::Node<Node<ValueT>>& {
+  const graph::Node<Node>& node() const {
+    return Match([](const auto& impl) -> const graph::Node<Node>& {
       return impl->node;
     });
   }

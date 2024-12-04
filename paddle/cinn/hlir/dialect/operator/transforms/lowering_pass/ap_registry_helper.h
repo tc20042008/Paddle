@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
-#include "ap/registry/registry.h"
+#include "ap/include/adt/adt.h"
+#include "ap/include/registry/registry.h"
 
 namespace cinn::dialect::ir {
 

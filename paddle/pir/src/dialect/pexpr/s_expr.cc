@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/axpr/s_expr.h"
+#include "ap/include/axpr/s_expr.h"
 #include <iomanip>
 #include <sstream>
 #include <unordered_map>

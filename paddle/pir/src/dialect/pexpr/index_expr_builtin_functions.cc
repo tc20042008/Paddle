@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "ap/axpr/builtin_functions.h"
-#include "ap/index_expr/index_expr_util.h"
-#include "ap/index_expr/valid_index_expr_builder.h"
-#include "ap/index_expr/value.h"
-#include "ap/index_expr/value_method_class.h"
+#include "ap/include/axpr/builtin_functions.h"
+#include "ap/include/index_expr/index_expr_util.h"
+#include "ap/include/index_expr/valid_index_expr_builder.h"
+#include "ap/include/index_expr/value.h"
+#include "ap/include/index_expr/value_method_class.h"
 
 namespace ap::index_expr {}  // namespace ap::index_expr

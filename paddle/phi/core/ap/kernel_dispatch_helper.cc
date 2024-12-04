@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/core/ap/kernel_dispatch_helper.h"
-#include "ap/axpr/cps_interpreter.h"
-#include "ap/kernel_dispatch/builtin_frame_util.h"
-#include "ap/kernel_dispatch/dispatch_ctx_method_class.h"
-#include "ap/kernel_dispatch/value.h"
+#include "ap/include/axpr/cps_interpreter.h"
+#include "ap/include/kernel_dispatch/builtin_frame_util.h"
+#include "ap/include/kernel_dispatch/dispatch_ctx_method_class.h"
+#include "ap/include/kernel_dispatch/value.h"
 
 namespace phi {
 

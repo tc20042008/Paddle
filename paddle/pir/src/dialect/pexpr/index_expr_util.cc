@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/index_expr/index_expr_util.h"
-#include "ap/axpr/adt.h"
-#include "ap/index_expr/index_expr.h"
-#include "ap/index_expr/index_tuple_expr.h"
+#include "ap/include/index_expr/index_expr_util.h"
+#include "ap/include/axpr/adt.h"
+#include "ap/include/index_expr/index_expr.h"
+#include "ap/include/index_expr/index_tuple_expr.h"

@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
-#include "ap/code_module/module.h"
+#include "ap/include/adt/adt.h"
+#include "ap/include/code_module/module.h"
 
 namespace phi {
 

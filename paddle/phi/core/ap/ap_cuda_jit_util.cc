@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/kernel_dispatch/ap_cuda_jit_util.h"
+#include "ap/include/kernel_dispatch/ap_cuda_jit_util.h"
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"

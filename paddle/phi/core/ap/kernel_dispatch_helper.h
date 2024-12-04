@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "ap/adt/adt.h"
-#include "ap/kernel_dispatch/value.h"
+#include "ap/include/adt/adt.h"
+#include "ap/include/kernel_dispatch/value.h"
 
 namespace phi {
 

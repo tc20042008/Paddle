@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/kernel_dispatch/ap_unary_kernel.h"
+#include "ap/include/kernel_dispatch/ap_unary_kernel.h"
 
 #include <mutex>
 #include <unordered_map>
@@ -20,9 +20,9 @@
 #include "jitify.hpp"  // NOLINT
 #include "paddle/common/enforce.h"
 
-#include "ap/axpr/anf_expr_util.h"
-#include "ap/kernel_dispatch/ap_cuda_jit_util.h"
-#include "ap/kernel_dispatch/builtin_frame_util.h"
+#include "ap/include/axpr/anf_expr_util.h"
+#include "ap/include/kernel_dispatch/ap_cuda_jit_util.h"
+#include "ap/include/kernel_dispatch/builtin_frame_util.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/phi/core/ap/kernel_define_helper.h"

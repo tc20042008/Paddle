@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_registry_helper.h"
-#include "ap/registry/registry_mgr.h"
+#include "ap/include/registry/registry_mgr.h"
 
 namespace cinn::dialect::ir {
 

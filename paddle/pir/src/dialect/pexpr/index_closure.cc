@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/index_expr/index_closure.h"
-#include "ap/index_expr/op_index_tuple_expr_signature.h"
-#include "ap/index_expr/valid_index_expr_builder.h"
+#include "ap/include/index_expr/index_closure.h"
+#include "ap/include/index_expr/op_index_tuple_expr_signature.h"
+#include "ap/include/index_expr/valid_index_expr_builder.h"
 
 namespace ap::index_expr {
 

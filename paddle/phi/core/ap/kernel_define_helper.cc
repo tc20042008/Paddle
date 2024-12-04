@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/core/ap/kernel_define_helper.h"
-#include "ap/axpr/cps_interpreter.h"
-#include "ap/code_module/builtin_frame_util.h"
-#include "ap/code_module/value.h"
-#include "ap/code_module/value_method_class.h"
+#include "ap/include/axpr/cps_interpreter.h"
+#include "ap/include/code_module/builtin_frame_util.h"
+#include "ap/include/code_module/value.h"
+#include "ap/include/code_module/value_method_class.h"
 
 namespace phi {
 

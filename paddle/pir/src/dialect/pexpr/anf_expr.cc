@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ap/axpr/anf_expr.h"
-#include "ap/axpr/anf_expr_builder.h"
+#include "ap/include/axpr/anf_expr.h"
+#include "ap/include/axpr/anf_expr_builder.h"
 
 #include <glog/logging.h>
 #include <exception>

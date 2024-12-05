@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/ap/kernel_dispatch_helper.h"
+#include "paddle/ap/include/paddle/phi/kernel_dispatch_helper.h"
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/kernel_dispatch/builtin_frame_util.h"
 #include "paddle/ap/include/kernel_dispatch/dispatch_ctx_method_class.h"

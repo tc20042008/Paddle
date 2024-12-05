@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
+#include "paddle/ap/include/paddle/cinn/ap_kernel_define_helper.h"
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/code_gen/builtin_frame_util.h"
 #include "paddle/ap/include/code_gen/value.h"

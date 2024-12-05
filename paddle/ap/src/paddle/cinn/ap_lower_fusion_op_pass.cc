@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_lower_fusion_op_pass.h"
+#include "paddle/ap/include/paddle/cinn/ap_lower_fusion_op_pass.h"
 
 #include "paddle/ap/include/axpr/anf_expr_util.h"
 #include "paddle/ap/include/axpr/atomic.h"
@@ -32,6 +32,9 @@
 #include "paddle/ap/include/index_expr/valid_index_expr_builder.h"
 #include "paddle/ap/include/ir_match/graph_matcher.h"
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
+#include "paddle/ap/include/paddle/cinn/ap_drr_helper.h"
+#include "paddle/ap/include/paddle/cinn/ap_kernel_define_helper.h"
+#include "paddle/ap/include/paddle/cinn/ap_registry_helper.h"
 #include "paddle/ap/include/paddle/indexed_ir_graph_util.h"
 #include "paddle/ap/include/paddle/pir_graph_descriptor.h"
 #include "paddle/ap/include/paddle/pir_node.h"
@@ -39,9 +42,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_drr_helper.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_registry_helper.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"

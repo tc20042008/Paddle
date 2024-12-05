@@ -9,8 +9,7 @@ set(cinn_transforms_deps
     cinn_runtime_dialect
     op_fusion
     pir_compiler
-    axpr
-    index_expr)
+    ap_cinn)
 
 cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
                 ${cinn_transforms_deps})

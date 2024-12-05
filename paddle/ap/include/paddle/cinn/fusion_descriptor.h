@@ -18,7 +18,6 @@
 #include "paddle/ap/include/index_expr/index_closure.h"
 #include "paddle/ap/include/index_expr/index_expr.h"
 #include "paddle/ap/include/index_expr/op_index_tuple_expr_signature.h"
-#include "paddle/cinn/adt/adt.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/op_result.h"
 #include "paddle/pir/include/core/operation.h"

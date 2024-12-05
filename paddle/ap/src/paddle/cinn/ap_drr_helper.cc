@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_drr_helper.h"
+#include "paddle/ap/include/paddle/cinn/ap_drr_helper.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/lambda_expr_builder.h"

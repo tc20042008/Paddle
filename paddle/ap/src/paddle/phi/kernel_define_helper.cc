@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/ap/kernel_define_helper.h"
+#include "paddle/ap/include/paddle/phi/kernel_define_helper.h"
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/code_module/builtin_frame_util.h"
 #include "paddle/ap/include/code_module/value.h"

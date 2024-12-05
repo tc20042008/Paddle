@@ -51,7 +51,7 @@ set(PHI_DEPS
     cblas
     utf8proc
     common
-    axpr)
+    ap_phi)
 
 set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 

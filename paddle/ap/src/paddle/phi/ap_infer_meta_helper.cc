@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/ap/ap_infer_meta_helper.h"
+#include "paddle/ap/include/paddle/phi/ap_infer_meta_helper.h"
 #include <mutex>
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"

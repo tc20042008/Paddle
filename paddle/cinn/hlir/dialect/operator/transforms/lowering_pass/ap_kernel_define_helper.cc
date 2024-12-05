@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_kernel_define_helper.h"
-#include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/code_gen/builtin_frame_util.h"
 #include "paddle/ap/include/code_gen/value.h"
 #include "paddle/ap/include/code_gen/value_method_class.h"
@@ -39,7 +39,7 @@ adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
     const Function& lambda, const CodeGenCtx& code_gen_ctx) {
   ap::axpr::BuiltinClassInstance<CGValue> code_gen_ctx_instance{
       ap::code_gen::GetCodeGenCtxClass<CGValue, PirNode>(), code_gen_ctx};
-  ap::axpr::CpsInterpreter<Val> interpreter(
+  ap::axpr::Interpreter interpreter(
       ap::code_gen::MakeBuiltinFrameAttrMap<Val>());
   ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
   const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();

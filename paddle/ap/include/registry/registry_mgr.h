@@ -20,8 +20,8 @@
 #include <sstream>
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
-#include "paddle/ap/include/axpr/cps_interpreter.h"
 #include "paddle/ap/include/axpr/function.h"
+#include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/module_mgr.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/registry/builtin_frame_util.h"
@@ -60,7 +60,7 @@ struct RegistryMgr {
         std::make_shared<axpr::AttributeImpl<axpr::SerializableValue>>());
     std::vector<axpr::tVar<std::string>> args{};
     axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
-    axpr::CpsInterpreter<registry::Val> cps_expr_interpreter(
+    axpr::Interpreter cps_expr_interpreter(
         registry::MakeBuiltinFrameAttrMap<registry::Val>());
     ADT_RETURN_IF_ERR(cps_expr_interpreter.InterpretModule(frame, lambda));
     return adt::Ok{};

@@ -28,15 +28,15 @@ void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
     DoEach(k, v);
   }
   DoEach("import", &ModuleMgrHelper<ValueT>::ImportModule);
-  DoEach("print", &Print<ValueT>);
-  DoEach("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma<ValueT>);
-  DoEach("range", &MakeRange<ValueT>);
-  DoEach("map", &Map<ValueT>);
-  DoEach("filter", &Filter<ValueT>);
-  DoEach("reduce", &Reduce<ValueT>);
-  DoEach("zip", &Zip<ValueT>);
-  DoEach("max", &Max<ValueT>);
-  DoEach("min", &Min<ValueT>);
+  DoEach("print", &Print);
+  DoEach("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma);
+  DoEach("range", &MakeRange);
+  DoEach("map", &Map);
+  DoEach("filter", &Filter);
+  DoEach("reduce", &Reduce);
+  DoEach("zip", &Zip);
+  DoEach("max", &Max);
+  DoEach("min", &Min);
 }
 
 template <typename ValueT>

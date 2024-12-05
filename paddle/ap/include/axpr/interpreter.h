@@ -29,6 +29,10 @@ class Interpreter {
       const Function<SerializableValue>& function,
       const std::vector<axpr::Value>& args);
 
+  adt::Result<axpr::Value> InterpretModule(
+      const Frame<SerializableValue>& const_global_frame,
+      const Lambda<CoreExpr>& lambda);
+
  private:
   axpr::AttrMap<axpr::Value> builtin_frame_attr_map_;
 };

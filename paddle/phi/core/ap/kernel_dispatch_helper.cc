@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/ap/kernel_dispatch_helper.h"
-#include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/kernel_dispatch/builtin_frame_util.h"
 #include "paddle/ap/include/kernel_dispatch/dispatch_ctx_method_class.h"
 #include "paddle/ap/include/kernel_dispatch/value.h"
@@ -31,7 +31,7 @@ using DispatchCtx = ap::kernel_dispatch::DispatchCtx<Val>;
 
 adt::Result<Val> KernelDispatchHelper::InterpretCtxMaker(
     const Lambda& ctx_maker_lambda) {
-  ap::axpr::CpsInterpreter<Val> cps_interpreter(
+  ap::axpr::Interpreter cps_interpreter(
       ap::kernel_dispatch::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(ctx, cps_interpreter.Interpret(ctx_maker_lambda, {}));
   return ctx;
@@ -41,7 +41,7 @@ adt::Result<adt::Ok> KernelDispatchHelper::InterpretKernelDispatcher(
     const Lambda& kernel_dispatch_lambda, const DispatchCtx& dispatch_ctx) {
   const auto& cls = ap::kernel_dispatch::GetDispatchCtxClass<Val>();
   ap::axpr::BuiltinClassInstance<Val> instance{cls, dispatch_ctx};
-  ap::axpr::CpsInterpreter<Val> cps_interpreter(
+  ap::axpr::Interpreter cps_interpreter(
       ap::kernel_dispatch::MakeBuiltinFrameAttrMap<Val>());
   ADT_RETURN_IF_ERR(
       cps_interpreter.Interpret(kernel_dispatch_lambda, {instance}));

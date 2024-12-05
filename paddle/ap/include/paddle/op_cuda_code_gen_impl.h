@@ -16,7 +16,6 @@
 
 #include <sstream>
 #include "paddle/ap/include/axpr/anf_expr_util.h"
-#include "paddle/ap/include/axpr/cps_interpreter.h"
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/lambda_expr_builder.h"
 #include "paddle/ap/include/axpr/pointer_type_util.h"

@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/ap_drr_helper.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
-#include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/lambda_expr_builder.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/drr/builtin_frame_util.h"
@@ -36,8 +36,7 @@ using DrrCtx = ap::drr::DrrCtx;
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
-  ap::axpr::CpsInterpreter<ap::axpr::Value> interpreter(
-      ap::drr::MakeBuiltinFrameAttrMap());
+  ap::axpr::Interpreter interpreter(ap::drr::MakeBuiltinFrameAttrMap());
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
       << adt::errors::TypeError{
@@ -58,8 +57,7 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
     const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
     return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
   }());
-  ap::axpr::CpsInterpreter<ap::axpr::Value> interpreter(
-      ap::drr::MakeBuiltinFrameAttrMap());
+  ap::axpr::Interpreter interpreter(ap::drr::MakeBuiltinFrameAttrMap());
   ap::axpr::Value cls{
       ap::axpr::TypeImpl<ap::axpr::ClassInstance<ap::axpr::Value>>(item->cls)};
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls}));

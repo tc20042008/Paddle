@@ -19,15 +19,22 @@ namespace ap::axpr {
 
 adt::Result<axpr::Value> Interpreter::Interpret(
     const Lambda<CoreExpr>& lambda, const std::vector<axpr::Value>& args) {
-  CpsInterpreter<axpr::Value> cps_interpreter{builtin_frame_attr_map_};
+  CpsInterpreter cps_interpreter{builtin_frame_attr_map_};
   return cps_interpreter.Interpret(lambda, args);
 }
 
 adt::Result<axpr::Value> Interpreter::Interpret(
     const Function<SerializableValue>& function,
     const std::vector<axpr::Value>& args) {
-  CpsInterpreter<axpr::Value> cps_interpreter{builtin_frame_attr_map_};
+  CpsInterpreter cps_interpreter{builtin_frame_attr_map_};
   return cps_interpreter.Interpret(function, args);
+}
+
+adt::Result<axpr::Value> Interpreter::InterpretModule(
+    const Frame<SerializableValue>& const_global_frame,
+    const Lambda<CoreExpr>& lambda) {
+  CpsInterpreter cps_interpreter{builtin_frame_attr_map_};
+  return cps_interpreter.InterpretModule(const_global_frame, lambda);
 }
 
 }  // namespace ap::axpr

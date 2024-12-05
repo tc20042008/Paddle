@@ -16,8 +16,8 @@
 #include <mutex>
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
-#include "paddle/ap/include/axpr/cps_interpreter.h"
 #include "paddle/ap/include/axpr/data_type.h"
+#include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/axpr/value_method_class.h"
 #include "paddle/ap/include/paddle/builtin_frame_util.h"
@@ -41,7 +41,7 @@ adt::Result<adt::Ok> InferMetaByLambda(
     const Lambda& lambda,
     const std::vector<const MetaTensor*>* inputs,
     std::vector<MetaTensor*>* outputs) {
-  ap::axpr::CpsInterpreter<ap::axpr::Value> interpreter(
+  ap::axpr::Interpreter interpreter(
       ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>());
   ADT_RETURN_IF_ERR(interpreter.Interpret(
       lambda,

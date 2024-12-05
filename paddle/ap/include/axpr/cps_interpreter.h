@@ -35,12 +35,11 @@
 
 namespace ap::axpr {
 
-template <typename ValueT>
-class CpsInterpreter : public InterpreterBase<ValueT> {
+class CpsInterpreter : public InterpreterBase<axpr::Value> {
  public:
   using This = CpsInterpreter;
-  using Env = Environment<ValueT>;
-  explicit CpsInterpreter(const AttrMap<ValueT>& builtin_frame_attr_map)
+  using Env = Environment<axpr::Value>;
+  explicit CpsInterpreter(const AttrMap<axpr::Value>& builtin_frame_attr_map)
       : builtin_env_(GetBuiltinEnvironment(builtin_frame_attr_map)),
         circlable_ref_list_(std::make_shared<memory::CirclableRefList>()) {}
   CpsInterpreter(const CpsInterpreter&) = delete;
@@ -50,21 +49,21 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
 
   const std::shared_ptr<Env>& builtin_env() const { return builtin_env_; }
 
-  Result<ValueT> Interpret(const Lambda<CoreExpr>& lambda,
-                           const std::vector<ValueT>& args) {
+  Result<axpr::Value> Interpret(const Lambda<CoreExpr>& lambda,
+                                const std::vector<axpr::Value>& args) {
     Function<SerializableValue> function{lambda, std::nullopt};
     return Interpret(function, args);
   }
 
-  Result<ValueT> Interpret(const Function<SerializableValue>& function,
-                           const std::vector<ValueT>& args) {
+  Result<axpr::Value> Interpret(const Function<SerializableValue>& function,
+                                const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(closure, ConvertFunctionToClosure(function));
     return InterpretCall(closure, args);
   }
 
-  Result<ValueT> InterpretCall(const ValueT& func,
-                               const std::vector<ValueT>& args) override {
-    ComposedCallImpl<ValueT> composed_call{&BuiltinHalt<ValueT>, func, args};
+  Result<axpr::Value> InterpretCall(
+      const axpr::Value& func, const std::vector<axpr::Value>& args) override {
+    ComposedCallImpl<axpr::Value> composed_call{&BuiltinHalt, func, args};
     ADT_RETURN_IF_ERR(InterpretComposedCallUntilHalt(&composed_call));
     ADT_CHECK(IsHalt(composed_call.inner_func))
         << RuntimeError{"CpsInterpreter does not halt."};
@@ -74,52 +73,53 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     return composed_call.args.at(0);
   }
 
-  Result<ValueT> InterpretModule(
+  Result<axpr::Value> InterpretModule(
       const Frame<SerializableValue>& const_global_frame,
       const Lambda<CoreExpr>& lambda) override {
-    std::optional<std::shared_ptr<Environment<ValueT>>> env;
+    std::optional<std::shared_ptr<Environment<axpr::Value>>> env;
     {
-      auto tmp_frame_object = std::make_shared<AttributeImpl<ValueT>>();
+      auto tmp_frame_object = std::make_shared<AttributeImpl<axpr::Value>>();
       auto tmp_frame =
-          Frame<ValueT>::Make(circlable_ref_list_, tmp_frame_object);
+          Frame<axpr::Value>::Make(circlable_ref_list_, tmp_frame_object);
       const auto& mut_global_env = MakeMutableGlobalEnvironment(
           builtin_env(), const_global_frame, tmp_frame);
       env = mut_global_env;
     }
     ADT_CHECK(lambda->args.empty());
-    ADT_RETURN_IF_ERR(env.value()->Set(kBuiltinReturn(), &BuiltinHalt<ValueT>));
-    Continuation<ValueT> continuation{lambda, env.value()};
+    ADT_RETURN_IF_ERR(env.value()->Set(kBuiltinReturn(), &BuiltinHalt));
+    Continuation<axpr::Value> continuation{lambda, env.value()};
     const auto& ret = InterpretCall(continuation, {});
     return ret;
   }
 
  protected:
-  Ok InterpretComposedCallUntilHalt(ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretComposedCallUntilHalt(
+      ComposedCallImpl<axpr::Value>* composed_call) {
     while (!IsHalt(composed_call->inner_func)) {
       ADT_RETURN_IF_ERR(InterpretComposedCall(composed_call));
     }
     return adt::Ok{};
   }
 
-  Ok InterpretComposedCall(ComposedCallImpl<ValueT>* composed_call) {
-    using TypeT = typename TypeTrait<ValueT>::TypeT;
+  Ok InterpretComposedCall(ComposedCallImpl<axpr::Value>* composed_call) {
+    using TypeT = typename TypeTrait<axpr::Value>::TypeT;
     return composed_call->inner_func.Match(
         [&](const TypeT& type) -> Ok {
           return InterpretConstruct(type, composed_call);
         },
-        [&](const BuiltinFuncType<ValueT>& func) -> Ok {
+        [&](const BuiltinFuncType<axpr::Value>& func) -> Ok {
           return InterpretBuiltinFuncCall(func, composed_call);
         },
-        [&](const BuiltinHighOrderFuncType<ValueT>& func) -> Ok {
+        [&](const BuiltinHighOrderFuncType<axpr::Value>& func) -> Ok {
           return InterpretBuiltinHighOrderFuncCall(func, composed_call);
         },
-        [&](const Method<ValueT>& method) -> Ok {
+        [&](const Method<axpr::Value>& method) -> Ok {
           return method->func.Match(
-              [&](const BuiltinFuncType<ValueT>& func) {
+              [&](const BuiltinFuncType<axpr::Value>& func) {
                 return InterpretBuiltinMethodCall(
                     func, method->obj, composed_call);
               },
-              [&](const BuiltinHighOrderFuncType<ValueT>& func) {
+              [&](const BuiltinHighOrderFuncType<axpr::Value>& func) {
                 return InterpretBuiltinHighOrderMethodCall(
                     func, method->obj, composed_call);
               },
@@ -127,15 +127,15 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
                 return InterpretMethodCall(method, composed_call);
               });
         },
-        [&](const Closure<ValueT>& closure) -> Ok {
+        [&](const Closure<axpr::Value>& closure) -> Ok {
           return InterpretClosureCall(composed_call->outter_func,
                                       closure,
                                       composed_call->args,
                                       composed_call);
         },
-        [&](const Continuation<ValueT>& continuation) -> Ok {
+        [&](const Continuation<axpr::Value>& continuation) -> Ok {
           return InterpretContinuation(
-              &BuiltinHalt<ValueT>, continuation, composed_call);
+              &BuiltinHalt, continuation, composed_call);
         },
         [&](const Function<SerializableValue>& function) -> Ok {
           ADT_LET_CONST_REF(closure, ConvertFunctionToClosure(function));
@@ -149,7 +149,7 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
         },
         [&](const auto&) -> Ok {
           const auto& call_func =
-              MethodClass<ValueT>::template GetBuiltinUnaryFunc<
+              MethodClass<axpr::Value>::template GetBuiltinUnaryFunc<
                   builtin_symbol::Call>(composed_call->inner_func);
           ADT_RETURN_IF_ERR(call_func.Match(
               [&](const adt::Nothing&) -> Ok {
@@ -158,13 +158,14 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
                     axpr::GetTypeName(composed_call->inner_func) +
                     "' object is not callable"};
               },
-              [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+              [&](adt::Result<axpr::Value> (*unary_func)(
+                  const axpr::Value&)) -> Ok {
                 ADT_LET_CONST_REF(func, unary_func(composed_call->inner_func));
                 composed_call->inner_func = func;
                 return adt::Ok{};
               },
-              [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
-                                                    const ValueT&)) -> Ok {
+              [&](adt::Result<axpr::Value> (*unary_func)(
+                  InterpreterBase<axpr::Value>*, const axpr::Value&)) -> Ok {
                 ADT_LET_CONST_REF(func,
                                   unary_func(this, composed_call->inner_func));
                 composed_call->inner_func = func;
@@ -174,85 +175,86 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
         });
   }
 
-  bool IsHalt(const ValueT& func) {
+  bool IsHalt(const axpr::Value& func) {
     return func.Match(
-        [&](BuiltinFuncType<ValueT> f) { return f == &BuiltinHalt<ValueT>; },
+        [&](BuiltinFuncType<axpr::Value> f) { return f == &BuiltinHalt; },
         [&](const auto&) { return false; });
   }
 
-  Result<ValueT> InterpretAtomic(const std::shared_ptr<Env>& env,
-                                 const Atomic<CoreExpr>& atomic) {
+  Result<axpr::Value> InterpretAtomic(const std::shared_ptr<Env>& env,
+                                      const Atomic<CoreExpr>& atomic) {
     return atomic.Match(
-        [&](const Lambda<CoreExpr>& lambda) -> Result<ValueT> {
+        [&](const Lambda<CoreExpr>& lambda) -> Result<axpr::Value> {
           if (const auto& const_global_frame = env->GetConstGlobalFrame()) {
             return Function<SerializableValue>{lambda,
                                                const_global_frame.value()};
           } else {
-            return Closure<ValueT>{lambda, env};
+            return Closure<axpr::Value>{lambda, env};
           }
         },
-        [&](const Symbol& symbol) -> Result<ValueT> {
+        [&](const Symbol& symbol) -> Result<axpr::Value> {
           return symbol.Match(
-              [&](const tVar<std::string>& var) -> Result<ValueT> {
+              [&](const tVar<std::string>& var) -> Result<axpr::Value> {
                 ADT_LET_CONST_REF(val, env->Get(var.value()))
                     << adt::errors::NameError{std::string("var '") +
                                               var.value() +
                                               "' is not defined."};
                 return val;
               },
-              [&](const builtin_symbol::Symbol& symbol) -> Result<ValueT> {
+              [&](const builtin_symbol::Symbol& symbol) -> Result<axpr::Value> {
                 return symbol;
               });
         },
-        [&](adt::Nothing) -> Result<ValueT> { return adt::Nothing{}; },
-        [&](bool c) -> Result<ValueT> { return c; },
-        [&](int64_t c) -> Result<ValueT> { return c; },
-        [&](double c) -> Result<ValueT> { return c; },
-        [&](const std::string& val) -> Result<ValueT> { return val; });
+        [&](adt::Nothing) -> Result<axpr::Value> { return adt::Nothing{}; },
+        [&](bool c) -> Result<axpr::Value> { return c; },
+        [&](int64_t c) -> Result<axpr::Value> { return c; },
+        [&](double c) -> Result<axpr::Value> { return c; },
+        [&](const std::string& val) -> Result<axpr::Value> { return val; });
   }
 
-  Result<ValueT> InterpretAtomicAsContinuation(const std::shared_ptr<Env>& env,
-                                               const Atomic<CoreExpr>& atomic) {
+  Result<axpr::Value> InterpretAtomicAsContinuation(
+      const std::shared_ptr<Env>& env, const Atomic<CoreExpr>& atomic) {
     return atomic.Match(
-        [&](const Lambda<CoreExpr>& lambda) -> Result<ValueT> {
-          return Continuation<ValueT>{lambda, env};
+        [&](const Lambda<CoreExpr>& lambda) -> Result<axpr::Value> {
+          return Continuation<axpr::Value>{lambda, env};
         },
-        [&](const Symbol& symbol) -> Result<ValueT> {
+        [&](const Symbol& symbol) -> Result<axpr::Value> {
           return symbol.Match(
-              [&](const tVar<std::string>& var) -> Result<ValueT> {
+              [&](const tVar<std::string>& var) -> Result<axpr::Value> {
                 ADT_CHECK(var.value() == kBuiltinReturn());
                 ADT_LET_CONST_REF(val, env->Get(var.value()))
                     << adt::errors::NotImplementedError{
                            "no return continuation found."};
                 return val;
               },
-              [&](const auto&) -> Result<ValueT> {
+              [&](const auto&) -> Result<axpr::Value> {
                 return adt::errors::NotImplementedError{
                     "Invalid continuation."};
               });
         },
-        [&](const auto&) -> Result<ValueT> {
+        [&](const auto&) -> Result<axpr::Value> {
           return adt::errors::NotImplementedError{"Invalid continuation."};
         });
   }
 
-  Ok InterpretBuiltinSymbolCall(const builtin_symbol::Symbol& symbol,
-                                ComposedCallImpl<ValueT>* ret_composed_call) {
+  Ok InterpretBuiltinSymbolCall(
+      const builtin_symbol::Symbol& symbol,
+      ComposedCallImpl<axpr::Value>* ret_composed_call) {
     return symbol.Match(
         [&](const builtin_symbol::If&) -> Ok {
-          ret_composed_call->inner_func = &CpsBuiltinIf<ValueT>;
+          ret_composed_call->inner_func = &CpsBuiltinIf;
           return adt::Ok{};
         },
         [&](const builtin_symbol::Apply&) -> Ok {
-          ret_composed_call->inner_func = &CpsBuiltinApply<ValueT>;
+          ret_composed_call->inner_func = &CpsBuiltinApply;
           return adt::Ok{};
         },
         [&](const builtin_symbol::Id&) -> Ok {
-          ret_composed_call->inner_func = &BuiltinIdentity<ValueT>;
+          ret_composed_call->inner_func = &BuiltinIdentity;
           return adt::Ok{};
         },
         [&](const builtin_symbol::List&) -> Ok {
-          ret_composed_call->inner_func = &BuiltinList<ValueT>;
+          ret_composed_call->inner_func = &BuiltinList;
           return adt::Ok{};
         },
         [&](const builtin_symbol::Op& op) -> Ok {
@@ -276,15 +278,15 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
 
   template <typename BuiltinSymbol>
   Ok InterpretBuiltinUnarySymbolCall(
-      ComposedCallImpl<ValueT>* ret_composed_call) {
+      ComposedCallImpl<axpr::Value>* ret_composed_call) {
     ADT_CHECK(ret_composed_call->args.size() == 1) << TypeError{
         std::string() + "'" + BuiltinSymbol::Name() +
         "' takes 1 argument. but " +
         std::to_string(ret_composed_call->args.size()) + " were given."};
     const auto& operand = ret_composed_call->args.at(0);
-    std::optional<ValueT> opt_ret;
+    std::optional<axpr::Value> opt_ret;
     const auto& func =
-        MethodClass<ValueT>::template GetBuiltinUnaryFunc<BuiltinSymbol>(
+        MethodClass<axpr::Value>::template GetBuiltinUnaryFunc<BuiltinSymbol>(
             operand);
     ADT_RETURN_IF_ERR(func.Match(
         [&](const adt::Nothing&) -> Ok {
@@ -292,13 +294,13 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
                            GetBuiltinSymbolDebugString<BuiltinSymbol>() +
                            ": '" + axpr::GetTypeName(operand) + "'"};
         },
-        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
+        [&](adt::Result<axpr::Value> (*unary_func)(const axpr::Value&)) -> Ok {
           ADT_LET_CONST_REF(ret, unary_func(operand));
           opt_ret = ret;
           return adt::Ok{};
         },
-        [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
-                                              const ValueT&)) -> Ok {
+        [&](adt::Result<axpr::Value> (*unary_func)(
+            InterpreterBase<axpr::Value>*, const axpr::Value&)) -> Ok {
           ADT_LET_CONST_REF(ret, unary_func(this, operand));
           opt_ret = ret;
           return adt::Ok{};
@@ -306,29 +308,28 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     ADT_CHECK(opt_ret.has_value());
     ret_composed_call->args = {opt_ret.value()};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
-    ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
+    ret_composed_call->outter_func = &BuiltinHalt;
     return adt::Ok{};
   }
 
   template <typename TypeT>
   Ok InterpretConstruct(const TypeT& type,
-                        ComposedCallImpl<ValueT>* ret_composed_call) {
-    const auto& func =
-        MethodClass<ValueT>::template GetBuiltinUnaryFunc<builtin_symbol::Call>(
-            ValueT{type});
+                        ComposedCallImpl<axpr::Value>* ret_composed_call) {
+    const auto& func = MethodClass<axpr::Value>::template GetBuiltinUnaryFunc<
+        builtin_symbol::Call>(axpr::Value{type});
     ADT_RETURN_IF_ERR(func.Match(
         [&](const adt::Nothing&) -> Ok {
           return adt::errors::TypeError{
               std::string() + "no constructor for type '" + type.Name() + "'"};
         },
-        [&](adt::Result<ValueT> (*unary_func)(const ValueT&)) -> Ok {
-          ADT_LET_CONST_REF(constructor, unary_func(ValueT{type}));
+        [&](adt::Result<axpr::Value> (*unary_func)(const axpr::Value&)) -> Ok {
+          ADT_LET_CONST_REF(constructor, unary_func(axpr::Value{type}));
           ret_composed_call->inner_func = constructor;
           return adt::Ok{};
         },
-        [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
-                                              const ValueT&)) -> Ok {
-          ADT_LET_CONST_REF(constructor, unary_func(this, ValueT{type}));
+        [&](adt::Result<axpr::Value> (*unary_func)(
+            InterpreterBase<axpr::Value>*, const axpr::Value&)) -> Ok {
+          ADT_LET_CONST_REF(constructor, unary_func(this, axpr::Value{type}));
           ret_composed_call->inner_func = constructor;
           return adt::Ok{};
         }));
@@ -337,30 +338,33 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
 
   template <typename BuiltinSymbol>
   Ok InterpretBuiltinBinarySymbolCall(
-      ComposedCallImpl<ValueT>* ret_composed_call) {
+      ComposedCallImpl<axpr::Value>* ret_composed_call) {
     ADT_CHECK(ret_composed_call->args.size() == 2) << TypeError{
         std::string() + "'" + BuiltinSymbol::Name() +
         "' takes 2 argument. but " +
         std::to_string(ret_composed_call->args.size()) + " were given."};
     const auto& lhs = ret_composed_call->args.at(0);
     const auto& func =
-        MethodClass<ValueT>::template GetBuiltinBinaryFunc<BuiltinSymbol>(lhs);
-    std::optional<ValueT> opt_ret;
+        MethodClass<axpr::Value>::template GetBuiltinBinaryFunc<BuiltinSymbol>(
+            lhs);
+    std::optional<axpr::Value> opt_ret;
     ADT_RETURN_IF_ERR(func.Match(
         [&](const adt::Nothing&) -> Ok {
           return TypeError{std::string() + "unsupported operand type for " +
                            GetBuiltinSymbolDebugString<BuiltinSymbol>() +
                            ": '" + axpr::GetTypeName(lhs) + "'"};
         },
-        [&](adt::Result<ValueT> (*binary_func)(const ValueT&,
-                                               const ValueT&)) -> Ok {
+        [&](adt::Result<axpr::Value> (*binary_func)(const axpr::Value&,
+                                                    const axpr::Value&)) -> Ok {
           const auto& rhs = ret_composed_call->args.at(1);
           ADT_LET_CONST_REF(ret, binary_func(lhs, rhs));
           opt_ret = ret;
           return adt::Ok{};
         },
-        [&](adt::Result<ValueT> (*binary_func)(
-            InterpreterBase<ValueT>*, const ValueT&, const ValueT&)) -> Ok {
+        [&](adt::Result<axpr::Value> (*binary_func)(
+            InterpreterBase<axpr::Value>*,
+            const axpr::Value&,
+            const axpr::Value&)) -> Ok {
           const auto& rhs = ret_composed_call->args.at(1);
           ADT_LET_CONST_REF(ret, binary_func(this, lhs, rhs));
           opt_ret = ret;
@@ -369,29 +373,30 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     ADT_CHECK(opt_ret.has_value());
     ret_composed_call->args = {opt_ret.value()};
     ret_composed_call->inner_func = ret_composed_call->outter_func;
-    ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
+    ret_composed_call->outter_func = &BuiltinHalt;
     return adt::Ok{};
   }
 
-  Ok InterpretClosureCall(const ValueT& continuation,
-                          const Closure<ValueT>& closure,
-                          const std::vector<ValueT>& args,
-                          ComposedCallImpl<ValueT>* ret_composed_call) {
+  Ok InterpretClosureCall(const axpr::Value& continuation,
+                          const Closure<axpr::Value>& closure,
+                          const std::vector<axpr::Value>& args,
+                          ComposedCallImpl<axpr::Value>* ret_composed_call) {
     const auto& new_env = MakeCallEnvironment(closure->environment);
     ADT_RETURN_IF_ERR(new_env->Set(kBuiltinReturn(), continuation));
     return InterpretLambdaCall(
         new_env, continuation, closure->lambda, args, ret_composed_call);
   }
 
-  Ok InterpretLambdaCall(const std::shared_ptr<Env>& env,
-                         const ValueT& outter_func,
-                         const Lambda<CoreExpr>& lambda,
-                         const std::vector<ValueT>& args,
-                         ComposedCallImpl<ValueT>* ret_composed_call) override {
-    auto PassPackedArgs = [&](const std::optional<ValueT>& self,
-                              const ValueT& packed) -> Ok {
+  Ok InterpretLambdaCall(
+      const std::shared_ptr<Env>& env,
+      const axpr::Value& outter_func,
+      const Lambda<CoreExpr>& lambda,
+      const std::vector<axpr::Value>& args,
+      ComposedCallImpl<axpr::Value>* ret_composed_call) override {
+    auto PassPackedArgs = [&](const std::optional<axpr::Value>& self,
+                              const axpr::Value& packed) -> Ok {
       ADT_LET_CONST_REF(packed_args,
-                        packed.template TryGet<PackedArgs<ValueT>>());
+                        packed.template TryGet<PackedArgs<axpr::Value>>());
       const auto& [pos_args, kwargs] = *packed_args;
       int lambda_arg_idx = (self.has_value() ? 1 : 0);
       ADT_CHECK(lambda_arg_idx + pos_args->size() <= lambda->args.size())
@@ -433,11 +438,12 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
       }
       return adt::Ok{};
     };
-    if (args.size() == 1 && args.at(0).template Has<PackedArgs<ValueT>>()) {
+    if (args.size() == 1 &&
+        args.at(0).template Has<PackedArgs<axpr::Value>>()) {
       ADT_RETURN_IF_ERR(
           PassPackedArgs(/*self=*/std::nullopt, /*packed=*/args.at(0)));
     } else if (args.size() == 2 &&
-               args.at(1).template Has<PackedArgs<ValueT>>()) {
+               args.at(1).template Has<PackedArgs<axpr::Value>>()) {
       ADT_RETURN_IF_ERR(
           PassPackedArgs(/*self=*/args.at(0), /*packed=*/args.at(1)));
     } else {
@@ -472,9 +478,9 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
         env, outter_func, lambda->body, ret_composed_call);
   }
 
-  Ok InterpretContinuation(const ValueT& outter_func,
-                           const Continuation<ValueT>& continuation,
-                           ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretContinuation(const axpr::Value& outter_func,
+                           const Continuation<axpr::Value>& continuation,
+                           ComposedCallImpl<axpr::Value>* composed_call) {
     const auto& env = continuation->environment;
     const auto& lambda = continuation->lambda;
     if (lambda->args.size() > 0) {
@@ -489,14 +495,14 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
   }
 
   Ok InterpretLambdaBody(const std::shared_ptr<Env>& env,
-                         const ValueT& outter_func,
+                         const axpr::Value& outter_func,
                          const CoreExpr& lambda_body,
-                         ComposedCallImpl<ValueT>* ret_composed_call) {
+                         ComposedCallImpl<axpr::Value>* ret_composed_call) {
     return lambda_body.Match(
         [&](const Atomic<CoreExpr>& atomic) -> Ok {
           ADT_LET_CONST_REF(val, InterpretAtomic(env, atomic));
           ret_composed_call->inner_func = outter_func;
-          ret_composed_call->outter_func = &BuiltinHalt<ValueT>;
+          ret_composed_call->outter_func = &BuiltinHalt;
           ret_composed_call->args = {val};
           return adt::Ok{};
         },
@@ -509,13 +515,13 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
   Ok InterpretLambdaBodyComposedCallAtomic(
       const std::shared_ptr<Env>& env,
       const ComposedCallAtomic<CoreExpr>& core_expr,
-      ComposedCallImpl<ValueT>* ret_composed_call) {
+      ComposedCallImpl<axpr::Value>* ret_composed_call) {
     ADT_LET_CONST_REF(
         continuation,
         InterpretAtomicAsContinuation(env, core_expr->outter_func));
     ADT_LET_CONST_REF(new_inner_func,
                       InterpretAtomic(env, core_expr->inner_func));
-    std::vector<ValueT> args;
+    std::vector<axpr::Value> args;
     args.reserve(core_expr->args.size());
     for (const auto& arg_expr : core_expr->args) {
       ADT_LET_CONST_REF(arg, InterpretAtomic(env, arg_expr));
@@ -527,43 +533,43 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
     return adt::Ok{};
   }
 
-  Ok InterpretBuiltinFuncCall(const BuiltinFuncType<ValueT>& func,
-                              ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretBuiltinFuncCall(const BuiltinFuncType<axpr::Value>& func,
+                              ComposedCallImpl<axpr::Value>* composed_call) {
     return InterpretBuiltinMethodCall(
-        func, ValueT{adt::Nothing{}}, composed_call);
+        func, axpr::Value{adt::Nothing{}}, composed_call);
   }
 
   Ok InterpretBuiltinHighOrderFuncCall(
-      const BuiltinHighOrderFuncType<ValueT>& func,
-      ComposedCallImpl<ValueT>* composed_call) {
+      const BuiltinHighOrderFuncType<axpr::Value>& func,
+      ComposedCallImpl<axpr::Value>* composed_call) {
     return InterpretBuiltinHighOrderMethodCall(
-        func, ValueT{adt::Nothing{}}, composed_call);
+        func, axpr::Value{adt::Nothing{}}, composed_call);
   }
 
-  Ok InterpretBuiltinMethodCall(const BuiltinFuncType<ValueT>& func,
-                                const ValueT& obj,
-                                ComposedCallImpl<ValueT>* composed_call) {
+  Ok InterpretBuiltinMethodCall(const BuiltinFuncType<axpr::Value>& func,
+                                const axpr::Value& obj,
+                                ComposedCallImpl<axpr::Value>* composed_call) {
     ADT_LET_CONST_REF(inner_ret, func(obj, composed_call->args));
     composed_call->inner_func = composed_call->outter_func;
-    composed_call->outter_func = &BuiltinHalt<ValueT>;
+    composed_call->outter_func = &BuiltinHalt;
     composed_call->args = {inner_ret};
     return adt::Ok{};
   }
 
   Ok InterpretBuiltinHighOrderMethodCall(
-      const BuiltinHighOrderFuncType<ValueT>& func,
-      const ValueT& obj,
-      ComposedCallImpl<ValueT>* composed_call) {
+      const BuiltinHighOrderFuncType<axpr::Value>& func,
+      const axpr::Value& obj,
+      ComposedCallImpl<axpr::Value>* composed_call) {
     ADT_LET_CONST_REF(inner_ret, func(this, obj, composed_call->args));
     composed_call->inner_func = composed_call->outter_func;
-    composed_call->outter_func = &BuiltinHalt<ValueT>;
+    composed_call->outter_func = &BuiltinHalt;
     composed_call->args = {inner_ret};
     return adt::Ok{};
   }
 
-  Ok InterpretMethodCall(const Method<ValueT>& method,
-                         ComposedCallImpl<ValueT>* composed_call) {
-    std::vector<ValueT> new_args;
+  Ok InterpretMethodCall(const Method<axpr::Value>& method,
+                         ComposedCallImpl<axpr::Value>* composed_call) {
+    std::vector<axpr::Value> new_args;
     new_args.reserve(composed_call->args.size() + 1);
     new_args.emplace_back(method->obj);
     for (const auto& arg : composed_call->args) {
@@ -583,42 +589,44 @@ class CpsInterpreter : public InterpreterBase<ValueT> {
   std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list_;
 
  private:
-  Result<Closure<ValueT>> ConvertFunctionToClosure(
+  Result<Closure<axpr::Value>> ConvertFunctionToClosure(
       const Function<SerializableValue>& function) {
     const auto& global_frame = function->global_frame;
     if (global_frame.has_value()) {
       const auto& const_env =
           MakeConstGlobalEnvironment(builtin_env(), global_frame.value());
-      return Closure<ValueT>{function->lambda, const_env};
+      return Closure<axpr::Value>{function->lambda, const_env};
     } else {
-      return Closure<ValueT>{function->lambda, builtin_env()};
+      return Closure<axpr::Value>{function->lambda, builtin_env()};
     }
   }
 
-  static std::shared_ptr<Environment<ValueT>> GetBuiltinEnvironment(
-      const AttrMap<ValueT>& builtin_frame_attr_map) {
-    return std::make_shared<BuiltinEnvironment<ValueT>>(builtin_frame_attr_map);
+  static std::shared_ptr<Environment<axpr::Value>> GetBuiltinEnvironment(
+      const AttrMap<axpr::Value>& builtin_frame_attr_map) {
+    return std::make_shared<BuiltinEnvironment<axpr::Value>>(
+        builtin_frame_attr_map);
   }
 
-  static std::shared_ptr<Environment<ValueT>> MakeConstGlobalEnvironment(
-      const std::shared_ptr<Environment<ValueT>>& parent,
+  static std::shared_ptr<Environment<axpr::Value>> MakeConstGlobalEnvironment(
+      const std::shared_ptr<Environment<axpr::Value>>& parent,
       const Frame<SerializableValue>& frame) {
-    return std::make_shared<ConstGlobalEnvironment<ValueT>>(parent, frame);
+    return std::make_shared<ConstGlobalEnvironment<axpr::Value>>(parent, frame);
   }
 
-  static std::shared_ptr<Environment<ValueT>> MakeMutableGlobalEnvironment(
-      const std::shared_ptr<Environment<ValueT>>& parent,
+  static std::shared_ptr<Environment<axpr::Value>> MakeMutableGlobalEnvironment(
+      const std::shared_ptr<Environment<axpr::Value>>& parent,
       const Frame<SerializableValue>& const_frame,
-      const Frame<ValueT>& temp_frame) {
-    return std::make_shared<MutableGlobalEnvironment<ValueT>>(
+      const Frame<axpr::Value>& temp_frame) {
+    return std::make_shared<MutableGlobalEnvironment<axpr::Value>>(
         parent, const_frame, temp_frame);
   }
 
-  std::shared_ptr<Environment<ValueT>> MakeCallEnvironment(
-      const std::shared_ptr<Environment<ValueT>>& parent) {
-    auto builtin_obj = std::make_shared<AttributeImpl<ValueT>>();
-    const auto& frame = Frame<ValueT>::Make(circlable_ref_list_, builtin_obj);
-    return std::make_shared<CallEnvironment<ValueT>>(parent, frame);
+  std::shared_ptr<Environment<axpr::Value>> MakeCallEnvironment(
+      const std::shared_ptr<Environment<axpr::Value>>& parent) {
+    auto builtin_obj = std::make_shared<AttributeImpl<axpr::Value>>();
+    const auto& frame =
+        Frame<axpr::Value>::Make(circlable_ref_list_, builtin_obj);
+    return std::make_shared<CallEnvironment<axpr::Value>>(parent, frame);
   }
 };
 

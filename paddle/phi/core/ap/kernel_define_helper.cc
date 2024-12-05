@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/ap/kernel_define_helper.h"
-#include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/code_module/builtin_frame_util.h"
 #include "paddle/ap/include/code_module/value.h"
 #include "paddle/ap/include/code_module/value_method_class.h"
@@ -34,7 +34,7 @@ using Val = ap::code_module::Value;
 
 adt::Result<Module> KernelDefineHelper::InterpretKernelDefineLambda(
     const Lambda& lambda) {
-  ap::axpr::CpsInterpreter<Val> cps_interpreter(
+  ap::axpr::Interpreter cps_interpreter(
       ap::code_module::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(m, ap::axpr::Get<Module>(interpret_ret));

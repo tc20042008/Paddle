@@ -35,6 +35,6 @@ struct OptPackedIrOpResultImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(OptPackedIrOpResult, OptPackedIrOpResultImpl<NodeT>);
+ADT_DEFINE_RC(OptPackedIrOpResult, OptPackedIrOpResultImpl<NodeT>);
 
 }  // namespace ap::drr

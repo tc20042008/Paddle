@@ -47,14 +47,14 @@ struct PureElementwiseIndexedIrGraphImpl {
   }
 };
 
-DEFINE_ADT_RC(PureElementwiseIndexedIrGraph, PureElementwiseIndexedIrGraphImpl);
+ADT_DEFINE_RC(PureElementwiseIndexedIrGraph, PureElementwiseIndexedIrGraphImpl);
 
 using IndexedIrGraphImpl = std::variant<PureElementwiseIndexedIrGraph>;
 
 struct IndexedIrGraph : public IndexedIrGraphImpl {
   using IndexedIrGraphImpl::IndexedIrGraphImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(IndexedIrGraphImpl);
+  ADT_DEFINE_VARIANT_METHODS(IndexedIrGraphImpl);
 };
 
 }  // namespace ap::paddle

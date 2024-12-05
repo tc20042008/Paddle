@@ -43,7 +43,7 @@ struct DrrCtxImpl {
   bool operator==(const DrrCtxImpl& other) const { return this == &other; }
 };
 
-DEFINE_ADT_RC(DrrCtx, DrrCtxImpl);
+ADT_DEFINE_RC(DrrCtx, DrrCtxImpl);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>& GetDrrCtxClass();
 

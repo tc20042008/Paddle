@@ -18,9 +18,9 @@
 #include <functional>
 #include <queue>
 #include <unordered_set>
-#include "paddle/cinn/adt/adt.h"
+#include "paddle/ap/include/adt/adt.h"
 
-namespace cinn::adt {
+namespace ap::adt {
 
 // Topological order visitor
 template <typename NodeType>
@@ -87,4 +87,4 @@ class TopoWalker final {
   NodesVisitorType VisitNextNodes;
 };
 
-}  // namespace cinn::adt
+}  // namespace ap::adt

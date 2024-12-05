@@ -62,7 +62,7 @@ struct DispatchRawCtxImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(DispatchRawCtx, DispatchRawCtxImpl<ValueT>);
+ADT_DEFINE_RC(DispatchRawCtx, DispatchRawCtxImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch
 

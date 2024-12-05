@@ -23,7 +23,7 @@ using BoolIntDoubleImpl = std::variant<bool, int64_t, double>;
 struct BoolIntDouble : public BoolIntDoubleImpl {
   using BoolIntDoubleImpl::BoolIntDoubleImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(BoolIntDoubleImpl);
+  ADT_DEFINE_VARIANT_METHODS(BoolIntDoubleImpl);
 
   template <typename ValueT>
   static adt::Result<BoolIntDouble> CastFrom(const ValueT& value) {

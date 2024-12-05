@@ -38,7 +38,7 @@ struct PackedIrValueImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(PackedIrValue, PackedIrValueImpl<NodeT>);
+ADT_DEFINE_RC(PackedIrValue, PackedIrValueImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSrcPtnPackedIrValueClass();

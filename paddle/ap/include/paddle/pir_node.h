@@ -367,7 +367,7 @@ using PirNodeImpl = std::variant<NativeIrValue,
 
 struct PirNode : public PirNodeImpl {
   using PirNodeImpl::PirNodeImpl;
-  DEFINE_ADT_VARIANT_METHODS(PirNodeImpl);
+  ADT_DEFINE_VARIANT_METHODS(PirNodeImpl);
 
   using dim_expr_type = ::symbol::DimExpr;
   using native_op_type = NativeIrOp;

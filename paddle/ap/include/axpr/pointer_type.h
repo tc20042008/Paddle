@@ -64,7 +64,7 @@ using PointerTypeImpl = std::variant<
 
 struct PointerType : public PointerTypeImpl {
   using PointerTypeImpl::PointerTypeImpl;
-  DEFINE_ADT_VARIANT_METHODS(PointerTypeImpl);
+  ADT_DEFINE_VARIANT_METHODS(PointerTypeImpl);
 
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });

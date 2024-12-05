@@ -26,7 +26,7 @@ using IrValueImpl =
 
 struct IrValue : public IrValueImpl {
   using IrValueImpl::IrValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(IrValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(IrValueImpl);
 
   const graph::Node<drr::Node>& node() const {
     return Match([](const auto& impl) -> const graph::Node<drr::Node>& {

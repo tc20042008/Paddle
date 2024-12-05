@@ -34,7 +34,7 @@ struct ContinuationImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(Continuation, ContinuationImpl<ValueT>);
+ADT_DEFINE_RC(Continuation, ContinuationImpl<ValueT>);
 
 template <typename ValueT>
 struct TypeImpl<Continuation<ValueT>> : public std::monostate {

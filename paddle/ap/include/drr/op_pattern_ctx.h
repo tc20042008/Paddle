@@ -38,7 +38,7 @@ struct OpPatternCtxImpl {
   }
 };
 
-DEFINE_ADT_RC(OpPatternCtx, OpPatternCtxImpl);
+ADT_DEFINE_RC(OpPatternCtx, OpPatternCtxImpl);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSrcPtnOpPatternCtxClass();

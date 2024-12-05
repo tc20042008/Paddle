@@ -34,7 +34,7 @@ using ArgTypeImpl = std::variant<DataType, PointerType>;
 
 struct ArgType : public ArgTypeImpl {
   using ArgTypeImpl::ArgTypeImpl;
-  DEFINE_ADT_VARIANT_METHODS(ArgTypeImpl);
+  ADT_DEFINE_VARIANT_METHODS(ArgTypeImpl);
 
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });

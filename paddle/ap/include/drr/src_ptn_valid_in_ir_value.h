@@ -31,7 +31,7 @@ using SrcPtnValidInIrValueImpl = std::variant<PackedIrValue<drr::Node>,
 struct SrcPtnValidInIrValue : public SrcPtnValidInIrValueImpl {
   using SrcPtnValidInIrValueImpl::SrcPtnValidInIrValueImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(SrcPtnValidInIrValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(SrcPtnValidInIrValueImpl);
 
   const std::string& name() const {
     return Match([](const auto& ir_value) -> const std::string& {

@@ -36,7 +36,7 @@ struct ResultPatternCtxImpl {
   }
 };
 
-DEFINE_ADT_RC(ResultPatternCtx, ResultPatternCtxImpl);
+ADT_DEFINE_RC(ResultPatternCtx, ResultPatternCtxImpl);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetResultPatternCtxClass();

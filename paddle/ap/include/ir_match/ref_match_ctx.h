@@ -41,6 +41,6 @@ struct RefMatchCtxImpl {
 };
 
 template <typename IrValueT, typename IrOperandT>
-DEFINE_ADT_RC(RefMatchCtx, RefMatchCtxImpl<IrValueT, IrOperandT>);
+ADT_DEFINE_RC(RefMatchCtx, RefMatchCtxImpl<IrValueT, IrOperandT>);
 
 }  // namespace ap::ir_match

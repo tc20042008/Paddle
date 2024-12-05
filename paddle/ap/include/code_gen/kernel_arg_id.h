@@ -30,7 +30,7 @@ template <typename BirNode>
 struct KernelArgId : public KernelArgIdImpl<BirNode> {
   using KernelArgIdImpl<BirNode>::KernelArgIdImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(KernelArgIdImpl<BirNode>);
+  ADT_DEFINE_VARIANT_METHODS(KernelArgIdImpl<BirNode>);
 
   template <typename ValueT>
   ValueT CastTo() const {

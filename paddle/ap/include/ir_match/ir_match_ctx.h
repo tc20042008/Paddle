@@ -35,7 +35,7 @@ struct IrMatchCtxImpl {
 };
 
 template <typename BirNode>
-DEFINE_ADT_RC(IrMatchCtx, IrMatchCtxImpl<BirNode>);
+ADT_DEFINE_RC(IrMatchCtx, IrMatchCtxImpl<BirNode>);
 
 }  // namespace ap::ir_match
 

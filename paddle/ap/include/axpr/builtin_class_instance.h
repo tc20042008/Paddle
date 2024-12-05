@@ -73,7 +73,7 @@ struct BuiltinClassInstanceImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(BuiltinClassInstance, BuiltinClassInstanceImpl<ValueT>);
+ADT_DEFINE_RC(BuiltinClassInstance, BuiltinClassInstanceImpl<ValueT>);
 
 template <typename ValueT>
 ValueT TypeImpl<BuiltinClassInstance<ValueT>>::New(const std::any& any) const {

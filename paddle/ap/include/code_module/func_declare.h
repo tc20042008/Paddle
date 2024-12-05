@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/code_module/adt.h"
 #include "paddle/ap/include/code_module/arg_type.h"
 #include "paddle/ap/include/code_module/data_type.h"
-#include "paddle/cinn/adt/adt.h"
 
 namespace ap::code_module {
 
@@ -31,6 +31,6 @@ struct FuncDeclareImpl {
     return other.func_id == this->func_id && other.arg_types == this->arg_types;
   }
 };
-DEFINE_ADT_RC(FuncDeclare, FuncDeclareImpl);
+ADT_DEFINE_RC(FuncDeclare, FuncDeclareImpl);
 
 }  // namespace ap::code_module

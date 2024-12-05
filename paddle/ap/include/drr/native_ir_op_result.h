@@ -35,6 +35,6 @@ struct NativeIrOpResultImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(NativeIrOpResult, NativeIrOpResultImpl<NodeT>);
+ADT_DEFINE_RC(NativeIrOpResult, NativeIrOpResultImpl<NodeT>);
 
 }  // namespace ap::drr

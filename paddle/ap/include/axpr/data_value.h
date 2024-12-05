@@ -27,7 +27,7 @@ using DataValueImpl = std::variant<
 
 struct DataValue : public DataValueImpl {
   using DataValueImpl::DataValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(DataValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(DataValueImpl);
 
   DataType GetType() const {
     return Match(

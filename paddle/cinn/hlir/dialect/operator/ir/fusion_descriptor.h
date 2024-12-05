@@ -26,7 +26,7 @@
 
 namespace ap::paddle {
 
-namespace adt = ::cinn::adt;
+namespace adt = ::ap::adt;
 
 }
 
@@ -83,7 +83,7 @@ using OpArgImpl = std::variant<OpInArg, OpOutArg>;
 
 struct OpArg : public OpArgImpl {
   using OpArgImpl::OpArgImpl;
-  DEFINE_ADT_VARIANT_METHODS(OpArgImpl);
+  ADT_DEFINE_VARIANT_METHODS(OpArgImpl);
 
   size_t GetHashValue() const {
     size_t hash_value = Match([&](const auto& impl) {
@@ -117,13 +117,13 @@ struct OpArgToImpl {
 };
 
 template <typename T>
-DEFINE_ADT_RC(OpArgTo, OpArgToImpl<T>);
+ADT_DEFINE_RC(OpArgTo, OpArgToImpl<T>);
 
 using OpOrArgImpl = std::variant<OpInArg, OpOutArg, pir::Operation*>;
 
 struct OpOrArg : public OpOrArgImpl {
   using OpOrArgImpl::OpOrArgImpl;
-  DEFINE_ADT_VARIANT_METHODS(OpOrArgImpl);
+  ADT_DEFINE_VARIANT_METHODS(OpOrArgImpl);
 
   size_t GetHashValue() const {
     return Match([](const auto& impl) {
@@ -148,7 +148,7 @@ struct Op2Anchor2IndexesExprSignatureImpl {
 
   bool IsReachable(const OpOrArg& src, const OpOrArg& dst) const;
 };
-DEFINE_ADT_RC(Op2Anchor2IndexesExprSignature,
+ADT_DEFINE_RC(Op2Anchor2IndexesExprSignature,
               Op2Anchor2IndexesExprSignatureImpl);
 
 struct TrivialFusionDescriptorImpl {
@@ -162,13 +162,13 @@ struct TrivialFusionDescriptorImpl {
            this->yield_op_arg2custom_index_lambda;
   }
 };
-DEFINE_ADT_RC(TrivialFusionDescriptor, const TrivialFusionDescriptorImpl);
+ADT_DEFINE_RC(TrivialFusionDescriptor, const TrivialFusionDescriptorImpl);
 
 using FusionDescriptorImpl = std::variant<TrivialFusionDescriptor>;
 
 struct FusionDescriptor : public FusionDescriptorImpl {
   using FusionDescriptorImpl::FusionDescriptorImpl;
-  DEFINE_ADT_VARIANT_METHODS(FusionDescriptorImpl);
+  ADT_DEFINE_VARIANT_METHODS(FusionDescriptorImpl);
 };
 
 adt::Result<FusionDescriptor> GetFusionDescriptor(

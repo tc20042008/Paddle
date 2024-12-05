@@ -30,7 +30,7 @@ namespace ap::kernel_dispatch {
 using MutableTensorDataImpl = std::variant<phi::DenseTensor*, TypedBuffer>;
 struct MutableTensorData : public MutableTensorDataImpl {
   using MutableTensorDataImpl::MutableTensorDataImpl;
-  DEFINE_ADT_VARIANT_METHODS(MutableTensorDataImpl);
+  ADT_DEFINE_VARIANT_METHODS(MutableTensorDataImpl);
 
   template <typename T>
   T* data() const {
@@ -63,6 +63,6 @@ struct MutableTensorImpl {
   }
 };
 template <typename ValueT>
-DEFINE_ADT_RC(MutableTensor, MutableTensorImpl<ValueT>);
+ADT_DEFINE_RC(MutableTensor, MutableTensorImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch

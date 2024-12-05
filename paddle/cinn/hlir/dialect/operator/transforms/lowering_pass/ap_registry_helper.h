@@ -20,7 +20,7 @@
 namespace cinn::dialect::ir {
 
 struct ApRegistryHelper {
-  adt::Result<ap::registry::Registry> SingltonRegistry();
+  ap::adt::Result<ap::registry::Registry> SingltonRegistry();
 };
 
 }  // namespace cinn::dialect::ir

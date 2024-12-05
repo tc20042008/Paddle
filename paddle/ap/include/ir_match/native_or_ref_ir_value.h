@@ -25,7 +25,7 @@ using NativeOrRefIrValueImpl = std::variant<typename BirNode::native_value_type,
 template <typename BirNode>
 struct NativeOrRefIrValue : public NativeOrRefIrValueImpl<BirNode> {
   using NativeOrRefIrValueImpl<BirNode>::NativeOrRefIrValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(NativeOrRefIrValueImpl<BirNode>);
+  ADT_DEFINE_VARIANT_METHODS(NativeOrRefIrValueImpl<BirNode>);
 
   template <typename ValueT>
   static adt::Result<NativeOrRefIrValue> CastFrom(const ValueT& val) {

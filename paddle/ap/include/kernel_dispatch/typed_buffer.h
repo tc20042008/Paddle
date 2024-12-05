@@ -35,6 +35,6 @@ struct TypedBufferImpl {
            other.size == this->size;
   }
 };
-DEFINE_ADT_RC(TypedBuffer, TypedBufferImpl);
+ADT_DEFINE_RC(TypedBuffer, TypedBufferImpl);
 
 }  // namespace ap::kernel_dispatch

@@ -30,7 +30,7 @@ struct StarredImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(Starred, const StarredImpl<ValueT>);
+ADT_DEFINE_RC(Starred, const StarredImpl<ValueT>);
 
 template <typename ValueT>
 struct TypeImpl<Starred<ValueT>> : public std::monostate {

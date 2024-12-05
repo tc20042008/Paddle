@@ -49,7 +49,7 @@ struct ClassInstance;
 struct SerializableValue : public SerializableValueImpl<SerializableValue> {
   using SerializableValueImpl<SerializableValue>::SerializableValueImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(SerializableValueImpl<SerializableValue>);
+  ADT_DEFINE_VARIANT_METHODS(SerializableValueImpl<SerializableValue>);
 
   template <typename ValueT>
   ValueT CastTo() const {

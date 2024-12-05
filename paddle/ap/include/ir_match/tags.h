@@ -16,6 +16,6 @@
 
 namespace ap::ir_match {
 
-DEFINE_ADT_TAG(tIsUpstream);
+ADT_DEFINE_TAG(tIsUpstream);
 
 }

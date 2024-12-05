@@ -39,6 +39,6 @@ struct OpCodeGenCtxImpl {
 };
 
 template <typename BirNode>
-DEFINE_ADT_RC(OpCodeGenCtx, OpCodeGenCtxImpl<BirNode>);
+ADT_DEFINE_RC(OpCodeGenCtx, OpCodeGenCtxImpl<BirNode>);
 
 }  // namespace ap::code_gen

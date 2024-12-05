@@ -40,7 +40,7 @@ struct FunctionImpl {
 };
 
 template <typename SerializableValueT>
-DEFINE_ADT_RC(Function, FunctionImpl<SerializableValueT>);
+ADT_DEFINE_RC(Function, FunctionImpl<SerializableValueT>);
 
 template <typename SerializableValueT>
 struct TypeImpl<Function<SerializableValueT>> : public std::monostate {

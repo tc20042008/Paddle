@@ -34,7 +34,7 @@ using IrOpImpl = std::variant<NativeIrOp<drr::Node>,
 
 struct IrOp : public IrOpImpl {
   using IrOpImpl::IrOpImpl;
-  DEFINE_ADT_VARIANT_METHODS(IrOpImpl);
+  ADT_DEFINE_VARIANT_METHODS(IrOpImpl);
 };
 
 }  // namespace ap::drr

@@ -154,7 +154,7 @@ adt::Result<T> Get(const ValueT& val) {
 
 struct Value : public ValueBase<Value> {
   using ValueBase<Value>::ValueBase;
-  DEFINE_ADT_VARIANT_METHODS(ValueBase<Value>);
+  ADT_DEFINE_VARIANT_METHODS(ValueBase<Value>);
 
   static axpr::AttrMap<Value> GetExportedTypes() {
     return axpr::GetObjectTypeName2Type<Value>();

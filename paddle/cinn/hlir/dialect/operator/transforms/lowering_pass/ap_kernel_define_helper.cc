@@ -24,6 +24,8 @@
 
 namespace cinn::dialect::ir {
 
+namespace adt = ap::adt;
+
 namespace {
 
 using Function = ap::axpr::Function<ap::axpr::SerializableValue>;

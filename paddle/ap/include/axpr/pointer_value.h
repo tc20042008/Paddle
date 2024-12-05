@@ -30,7 +30,7 @@ using PointerValueImpl = std::variant<
 
 struct PointerValue : public PointerValueImpl {
   using PointerValueImpl::PointerValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(PointerValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(PointerValueImpl);
 
   PointerType GetType() const {
     return Match([](auto impl) -> PointerType {

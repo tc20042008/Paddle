@@ -27,7 +27,7 @@ using ap::registry::RegistrySingleton;
 
 }  // namespace
 
-adt::Result<Registry> ApRegistryHelper::SingltonRegistry() {
+ap::adt::Result<Registry> ApRegistryHelper::SingltonRegistry() {
   ADT_RETURN_IF_ERR(RegistryMgr::Singleton()->LoadAllOnce());
   ADT_LET_CONST_REF(registry, RegistrySingleton::Singleton());
   return registry;

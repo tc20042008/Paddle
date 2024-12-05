@@ -44,7 +44,7 @@ using NodeImpl = std::variant<NativeIrValue<NodeT>,
 
 struct Node : public NodeImpl<Node> {
   using NodeImpl<Node>::NodeImpl;
-  DEFINE_ADT_VARIANT_METHODS(NodeImpl<Node>);
+  ADT_DEFINE_VARIANT_METHODS(NodeImpl<Node>);
 
   const graph::Node<Node>& node() const {
     return Match([](const auto& impl) -> const graph::Node<Node>& {

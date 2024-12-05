@@ -33,7 +33,7 @@ struct TensorMatchCtxImpl {
 };
 
 template <typename BirNode>
-DEFINE_ADT_RC(TensorMatchCtx, TensorMatchCtxImpl<BirNode>);
+ADT_DEFINE_RC(TensorMatchCtx, TensorMatchCtxImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>
 const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&

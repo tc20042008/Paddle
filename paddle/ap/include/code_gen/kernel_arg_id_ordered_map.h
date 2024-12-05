@@ -42,7 +42,7 @@ struct KernelArgIdOrderedMapImpl {
 };
 
 template <typename ValueT, typename BirNode>
-DEFINE_ADT_RC(KernelArgIdOrderedMap,
+ADT_DEFINE_RC(KernelArgIdOrderedMap,
               KernelArgIdOrderedMapImpl<ValueT, BirNode>);
 
 }  // namespace ap::code_gen

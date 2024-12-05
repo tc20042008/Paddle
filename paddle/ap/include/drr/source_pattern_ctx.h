@@ -33,7 +33,7 @@ struct SourcePatternCtxImpl {
   }
 };
 
-DEFINE_ADT_RC(SourcePatternCtx, SourcePatternCtxImpl);
+ADT_DEFINE_RC(SourcePatternCtx, SourcePatternCtxImpl);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSourcePatternCtxClass();

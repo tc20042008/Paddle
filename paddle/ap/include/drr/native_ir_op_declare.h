@@ -36,7 +36,7 @@ struct NativeIrOpDeclareImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(NativeIrOpDeclare, NativeIrOpDeclareImpl<NodeT>);
+ADT_DEFINE_RC(NativeIrOpDeclare, NativeIrOpDeclareImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSrcPtnNativeIrOpDeclareClass();

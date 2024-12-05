@@ -31,7 +31,7 @@ struct MethodImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(Method, const MethodImpl<ValueT>);
+ADT_DEFINE_RC(Method, const MethodImpl<ValueT>);
 
 template <typename ValueT>
 struct TypeImpl<Method<ValueT>> : public std::monostate {

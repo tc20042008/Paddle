@@ -109,7 +109,7 @@ class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
   Module module_;
   std::shared_ptr<ap::paddle::CUDAModule> cuda_module_;
 };
-DEFINE_ADT_RC(ApUnaryCudaModule, ApUnaryCudaModuleImpl);
+ADT_DEFINE_RC(ApUnaryCudaModule, ApUnaryCudaModuleImpl);
 
 adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
     const Module& m) {

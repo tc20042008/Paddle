@@ -27,7 +27,7 @@ using SymbolImpl = std::variant<tVar<std::string>, builtin_symbol::Symbol>;
 
 struct Symbol : public SymbolImpl {
   using SymbolImpl::SymbolImpl;
-  DEFINE_ADT_VARIANT_METHODS(SymbolImpl);
+  ADT_DEFINE_VARIANT_METHODS(SymbolImpl);
 
   std::size_t GetHashValue() const {
     std::size_t hash_value = Match(
@@ -70,7 +70,7 @@ struct ComposedCallImpl {
 };
 
 template <typename T>
-DEFINE_ADT_RC(ComposedCall, const ComposedCallImpl<T>);
+ADT_DEFINE_RC(ComposedCall, const ComposedCallImpl<T>);
 
 template <typename Expr>
 using ComposedCallAtomic = ComposedCall<Atomic<Expr>>;
@@ -82,7 +82,7 @@ using CoreExprBase =
 
 struct CoreExpr : public CoreExprBase {
   using CoreExprBase::CoreExprBase;
-  DEFINE_ADT_VARIANT_METHODS(CoreExprBase);
+  ADT_DEFINE_VARIANT_METHODS(CoreExprBase);
 
   std::string ToSExpression() const;
 };

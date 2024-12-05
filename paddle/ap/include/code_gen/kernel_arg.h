@@ -31,6 +31,6 @@ struct KernelArgImpl {
   }
 };
 
-DEFINE_ADT_RC(KernelArg, KernelArgImpl);
+ADT_DEFINE_RC(KernelArg, KernelArgImpl);
 
 }  // namespace ap::code_gen

@@ -58,7 +58,7 @@ struct OpCudaCodeGenImpl {
       std::variant<DrrPackedIrOp, DrrOptPackedIrOp>;
   struct DrrTrivialFusionIrOp : public DrrTrivialFusionIrOpImpl {
     using DrrTrivialFusionIrOpImpl::DrrTrivialFusionIrOpImpl;
-    DEFINE_ADT_VARIANT_METHODS(DrrTrivialFusionIrOpImpl);
+    ADT_DEFINE_VARIANT_METHODS(DrrTrivialFusionIrOpImpl);
 
     DrrGraphNode node() const {
       return Match([](const auto& impl) { return impl->node; });

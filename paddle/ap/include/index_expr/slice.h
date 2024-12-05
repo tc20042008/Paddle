@@ -39,7 +39,7 @@ struct SliceImpl {
   }
 };
 
-DEFINE_ADT_RC(Slice, const SliceImpl);
+ADT_DEFINE_RC(Slice, const SliceImpl);
 
 template <typename ValueT>
 const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetSliceClass();

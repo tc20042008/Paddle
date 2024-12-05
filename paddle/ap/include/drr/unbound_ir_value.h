@@ -35,7 +35,7 @@ struct UnboundIrValueImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(UnboundIrValue, UnboundIrValueImpl<NodeT>);
+ADT_DEFINE_RC(UnboundIrValue, UnboundIrValueImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetUnboundIrValueClass();

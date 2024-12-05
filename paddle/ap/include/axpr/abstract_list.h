@@ -31,7 +31,7 @@ template <typename ValueT>
 struct AbstractList : public AbstractListImpl<ValueT> {
   using AbstractListImpl<ValueT>::AbstractListImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(AbstractListImpl<ValueT>);
+  ADT_DEFINE_VARIANT_METHODS(AbstractListImpl<ValueT>);
 
   static adt::Result<AbstractList<ValueT>> CastFrom(const ValueT& value) {
     using RetT = adt::Result<AbstractList<ValueT>>;

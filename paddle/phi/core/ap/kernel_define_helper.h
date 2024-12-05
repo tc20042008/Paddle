@@ -19,6 +19,8 @@
 
 namespace phi {
 
+namespace adt = ap::adt;
+
 struct KernelDefineHelper {
   using CoreExpr = ap::axpr::CoreExpr;
   using Lambda = ap::axpr::Lambda<CoreExpr>;

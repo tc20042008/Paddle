@@ -30,7 +30,7 @@ namespace ap::kernel_dispatch {
 using ConstTensorDataImpl = std::variant<const phi::DenseTensor*, TypedBuffer>;
 struct ConstTensorData : public ConstTensorDataImpl {
   using ConstTensorDataImpl::ConstTensorDataImpl;
-  DEFINE_ADT_VARIANT_METHODS(ConstTensorDataImpl);
+  ADT_DEFINE_VARIANT_METHODS(ConstTensorDataImpl);
 
   template <typename T>
   const T* data() const {
@@ -68,6 +68,6 @@ struct ConstTensorImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(ConstTensor, ConstTensorImpl<ValueT>);
+ADT_DEFINE_RC(ConstTensor, ConstTensorImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch

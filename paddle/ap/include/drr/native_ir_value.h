@@ -37,7 +37,7 @@ struct NativeIrValueImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(NativeIrValue, NativeIrValueImpl<NodeT>);
+ADT_DEFINE_RC(NativeIrValue, NativeIrValueImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSrcPtnNativeIrValueClass();

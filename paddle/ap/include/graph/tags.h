@@ -19,10 +19,10 @@
 namespace ap::graph {
 
 // graph node
-DEFINE_ADT_TAG(tNodeId);
+ADT_DEFINE_TAG(tNodeId);
 
 // dst node input index
 
-DEFINE_ADT_TAG(tDstInIdx);
+ADT_DEFINE_TAG(tDstInIdx);
 
 }  // namespace ap::graph

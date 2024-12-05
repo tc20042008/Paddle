@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/cinn/adt/bfs_walker.h"
-#include "paddle/cinn/adt/topo_walker.h"
+#include "paddle/ap/include/adt/bfs_walker.h"
+#include "paddle/ap/include/adt/topo_walker.h"
 
 namespace ap::graph {}  // namespace ap::graph

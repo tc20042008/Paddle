@@ -57,7 +57,7 @@ struct OutTensorDataPtrKernelArgIdImpl {
 };
 
 template <typename BirNode>
-DEFINE_ADT_RC(OutTensorDataPtrKernelArgId,
+ADT_DEFINE_RC(OutTensorDataPtrKernelArgId,
               OutTensorDataPtrKernelArgIdImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>

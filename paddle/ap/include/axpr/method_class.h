@@ -41,7 +41,7 @@ using BuiltinUnaryFuncImpl =
 template <typename ValueT>
 struct BuiltinUnaryFunc : public BuiltinUnaryFuncImpl<ValueT> {
   using BuiltinUnaryFuncImpl<ValueT>::BuiltinUnaryFuncImpl;
-  DEFINE_ADT_VARIANT_METHODS(BuiltinUnaryFuncImpl<ValueT>);
+  ADT_DEFINE_VARIANT_METHODS(BuiltinUnaryFuncImpl<ValueT>);
 };
 
 template <typename ValueT, BuiltinFuncType<ValueT> BuiltinFunc>
@@ -59,7 +59,7 @@ using BuiltinBinaryFuncImpl =
 template <typename ValueT>
 struct BuiltinBinaryFunc : public BuiltinBinaryFuncImpl<ValueT> {
   using BuiltinBinaryFuncImpl<ValueT>::BuiltinBinaryFuncImpl;
-  DEFINE_ADT_VARIANT_METHODS(BuiltinBinaryFuncImpl<ValueT>);
+  ADT_DEFINE_VARIANT_METHODS(BuiltinBinaryFuncImpl<ValueT>);
 };
 
 template <typename ValueT>
@@ -350,7 +350,7 @@ struct MethodClass {
   static adt::Result<ValueT> InstanceDefaultHash(const ValueT& val) {
     ADT_LET_CONST_REF(impl, val.template TryGet<T>());
     // please implement MethodClassImpl<ValueT, T>::Hash if T is not defined
-    // by DEFINE_ADT_RC.
+    // by ADT_DEFINE_RC.
     const void* ptr = impl.__adt_rc_shared_ptr_raw_ptr();
     return reinterpret_cast<int64_t>(ptr);
   }
@@ -399,7 +399,7 @@ struct MethodClass {
     std::ostringstream ss;
     ADT_LET_CONST_REF(impl, val.template TryGet<T>());
     // please implement MethodClassImpl<ValueT, T>::ToString if T is not defined
-    // by DEFINE_ADT_RC.
+    // by ADT_DEFINE_RC.
     const void* ptr = impl.__adt_rc_shared_ptr_raw_ptr();
     ss << "<" << TypeImpl<T>{}.Name() << " object at " << ptr << ">";
     return ss.str();

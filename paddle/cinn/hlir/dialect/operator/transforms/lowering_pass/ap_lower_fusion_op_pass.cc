@@ -48,6 +48,8 @@
 
 namespace cinn::dialect::ir {
 
+namespace adt = ap::adt;
+
 namespace {
 
 using ap::paddle::PirNode;

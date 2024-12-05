@@ -26,9 +26,10 @@ struct ApDrrHelper {
   using DrrNode = ap::drr::Node;
   using DrrCtx = ap::drr::DrrCtx;
 
-  adt::Result<DrrCtx> Interpret(const Function& lambda,
-                                const std::string& drr_pass_name);
-  adt::Result<DrrCtx> Interpret(const ap::registry::DrrPassRegistryItem& item);
+  ap::adt::Result<DrrCtx> Interpret(const Function& lambda,
+                                    const std::string& drr_pass_name);
+  ap::adt::Result<DrrCtx> Interpret(
+      const ap::registry::DrrPassRegistryItem& item);
 };
 
 }  // namespace cinn::dialect::ir

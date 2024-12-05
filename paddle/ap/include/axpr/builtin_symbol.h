@@ -191,7 +191,7 @@ using OpImpl = std::variant<
 
 struct Op : public OpImpl {
   using OpImpl::OpImpl;
-  DEFINE_ADT_VARIANT_METHODS(OpImpl);
+  ADT_DEFINE_VARIANT_METHODS(OpImpl);
 
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });
@@ -208,7 +208,7 @@ using SymbolImpl = std::variant<If, Apply, Id, List, Op>;
 
 struct Symbol : public SymbolImpl {
   using SymbolImpl::SymbolImpl;
-  DEFINE_ADT_VARIANT_METHODS(SymbolImpl);
+  ADT_DEFINE_VARIANT_METHODS(SymbolImpl);
 
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });

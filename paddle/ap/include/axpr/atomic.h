@@ -21,8 +21,6 @@
 #include "paddle/ap/include/axpr/adt.h"
 #include "paddle/common/overloaded.h"
 
-namespace adt = ::cinn::adt;
-
 namespace ap::axpr {
 
 template <typename Expr>
@@ -36,7 +34,7 @@ struct LambdaImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(Lambda, const LambdaImpl<Expr>);
+ADT_DEFINE_RC(Lambda, const LambdaImpl<Expr>);
 
 // aexpr := Var | CONST | (lambda [VAR] expr)
 
@@ -57,7 +55,7 @@ using AtomicBase = std::variant<typename ExprSymbolTrait<Expr>::symbol_type,
 template <typename Expr>
 struct Atomic : public AtomicBase<Expr> {
   using AtomicBase<Expr>::AtomicBase;
-  DEFINE_ADT_VARIANT_METHODS(AtomicBase<Expr>);
+  ADT_DEFINE_VARIANT_METHODS(AtomicBase<Expr>);
 };
 
 template <typename Expr>
@@ -71,6 +69,6 @@ struct CallImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(Call, const CallImpl<Expr>);
+ADT_DEFINE_RC(Call, const CallImpl<Expr>);
 
 }  // namespace ap::axpr

@@ -33,7 +33,7 @@ struct UndefinedIndexExprImpl : public std::monostate {
   std::string ToString() const { return "IndexExpr.Undefined"; }
 };
 
-DEFINE_ADT_RC(UndefinedIndexExpr, UndefinedIndexExprImpl);
+ADT_DEFINE_RC(UndefinedIndexExpr, UndefinedIndexExprImpl);
 
 struct PtrGetItemImpl {
   std::string ptr_var_name;
@@ -53,7 +53,7 @@ struct PtrGetItemImpl {
   }
 };
 
-DEFINE_ADT_RC(PtrGetItem, PtrGetItemImpl);
+ADT_DEFINE_RC(PtrGetItem, PtrGetItemImpl);
 
 struct IndexExprDomainImpl {
   symbol::DimExpr range;
@@ -67,7 +67,7 @@ struct IndexExprDomainImpl {
   }
 };
 
-DEFINE_ADT_RC(IndexExprDomain, const IndexExprDomainImpl);
+ADT_DEFINE_RC(IndexExprDomain, const IndexExprDomainImpl);
 
 template <typename Expr>
 struct IndexExprBroadcastMaskImpl {
@@ -86,7 +86,7 @@ struct IndexExprBroadcastMaskImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(IndexExprBroadcastMask, const IndexExprBroadcastMaskImpl<Expr>);
+ADT_DEFINE_RC(IndexExprBroadcastMask, const IndexExprBroadcastMaskImpl<Expr>);
 
 // IndexExprSlice * IndexExprAffine == IdentityFunc if fields are same.
 template <typename Expr>
@@ -107,7 +107,7 @@ struct IndexExprSliceImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(IndexExprSlice, const IndexExprSliceImpl<Expr>);
+ADT_DEFINE_RC(IndexExprSlice, const IndexExprSliceImpl<Expr>);
 
 template <typename Expr>
 struct IndexExprAffineImpl {
@@ -127,7 +127,7 @@ struct IndexExprAffineImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(IndexExprAffine, const IndexExprAffineImpl<Expr>);
+ADT_DEFINE_RC(IndexExprAffine, const IndexExprAffineImpl<Expr>);
 
 template <typename T>
 struct DisjointUnionImpl {
@@ -145,7 +145,7 @@ struct DisjointUnionImpl {
 };
 
 template <typename T>
-DEFINE_ADT_RC(DisjointUnion, const DisjointUnionImpl<T>);
+ADT_DEFINE_RC(DisjointUnion, const DisjointUnionImpl<T>);
 
 template <typename Expr>
 using IndexExprBase = std::variant<UndefinedIndexExpr,
@@ -158,7 +158,7 @@ using IndexExprBase = std::variant<UndefinedIndexExpr,
 
 struct IndexExpr : public IndexExprBase<IndexExpr> {
   using IndexExprBase<IndexExpr>::IndexExprBase;
-  DEFINE_ADT_VARIANT_METHODS(IndexExprBase<IndexExpr>);
+  ADT_DEFINE_VARIANT_METHODS(IndexExprBase<IndexExpr>);
 
   std::string ToString() const {
     return Match([](const auto& impl) { return impl->ToString(); });

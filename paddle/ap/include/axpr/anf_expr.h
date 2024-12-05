@@ -36,7 +36,7 @@ struct IfImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(If, const IfImpl<Expr>);
+ADT_DEFINE_RC(If, const IfImpl<Expr>);
 
 template <typename Expr>
 using CombinedBase = std::variant<Call<Expr>, If<Expr>>;
@@ -44,7 +44,7 @@ using CombinedBase = std::variant<Call<Expr>, If<Expr>>;
 template <typename Expr>
 struct Combined : public CombinedBase<Expr> {
   using CombinedBase<Expr>::CombinedBase;
-  DEFINE_ADT_VARIANT_METHODS(CombinedBase<Expr>);
+  ADT_DEFINE_VARIANT_METHODS(CombinedBase<Expr>);
 };
 
 template <typename Expr>
@@ -68,7 +68,7 @@ struct LetImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(Let, const LetImpl<Expr>);
+ADT_DEFINE_RC(Let, const LetImpl<Expr>);
 
 struct AnfExpr;
 
@@ -80,7 +80,7 @@ using AnfExprBase =
 // A-norm form
 struct AnfExpr : public AnfExprBase {
   using AnfExprBase::AnfExprBase;
-  DEFINE_ADT_VARIANT_METHODS(AnfExprBase);
+  ADT_DEFINE_VARIANT_METHODS(AnfExprBase);
 
   static constexpr const char* kString() { return "str"; }
   static constexpr const char* kLambda() { return "lambda"; }

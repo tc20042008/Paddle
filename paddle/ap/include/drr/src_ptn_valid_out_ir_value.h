@@ -29,7 +29,7 @@ using SrcPtnValidOutIrValueImpl =
 struct SrcPtnValidOutIrValue : public SrcPtnValidOutIrValueImpl {
   using SrcPtnValidOutIrValueImpl::SrcPtnValidOutIrValueImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(SrcPtnValidOutIrValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(SrcPtnValidOutIrValueImpl);
 
   const std::string& name() const {
     return Match([](const auto& ir_value) -> const std::string& {

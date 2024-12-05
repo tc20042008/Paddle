@@ -36,7 +36,7 @@ struct TensorPatternCtxImpl {
   }
 };
 
-DEFINE_ADT_RC(TensorPatternCtx, TensorPatternCtxImpl);
+ADT_DEFINE_RC(TensorPatternCtx, TensorPatternCtxImpl);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSrcPtnTensorPatternCtxClass();

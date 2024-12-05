@@ -19,13 +19,13 @@
 namespace ap::drr {
 
 // starred
-DEFINE_ADT_TAG(tStarred);
+ADT_DEFINE_TAG(tStarred);
 
 // source pattern
-DEFINE_ADT_TAG(tSrcPtn);
+ADT_DEFINE_TAG(tSrcPtn);
 
 // result pattern
-DEFINE_ADT_TAG(tResPtn);
+ADT_DEFINE_TAG(tResPtn);
 
 template <typename T>
 tSrcPtn<T> SrcPtn(const T& value) {

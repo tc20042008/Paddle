@@ -264,6 +264,6 @@ struct GraphMatchCtxImpl {
 };
 
 template <typename bg_node_t /*big graph node type*/>
-DEFINE_ADT_RC(GraphMatchCtx, GraphMatchCtxImpl<bg_node_t>);
+ADT_DEFINE_RC(GraphMatchCtx, GraphMatchCtxImpl<bg_node_t>);
 
 }  // namespace ap::ir_match

@@ -63,7 +63,7 @@ using BuiltinFunctionImpl =
 template <typename ValueT>
 struct BuiltinFunction : public BuiltinFunctionImpl<ValueT> {
   using BuiltinFunctionImpl<ValueT>::BuiltinFunctionImpl;
-  DEFINE_ADT_VARIANT_METHODS(BuiltinFunctionImpl<ValueT>);
+  ADT_DEFINE_VARIANT_METHODS(BuiltinFunctionImpl<ValueT>);
 
   template <typename T>
   T CastTo() const {

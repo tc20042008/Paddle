@@ -37,7 +37,7 @@ struct ClosureImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(Closure, const ClosureImpl<ValueT>);
+ADT_DEFINE_RC(Closure, const ClosureImpl<ValueT>);
 
 template <typename ValueT>
 struct TypeImpl<Closure<ValueT>> : public std::monostate {

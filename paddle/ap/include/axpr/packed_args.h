@@ -31,7 +31,7 @@ struct PackedArgsImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(PackedArgs, PackedArgsImpl<ValueT>);
+ADT_DEFINE_RC(PackedArgs, PackedArgsImpl<ValueT>);
 
 template <typename ValueT>
 PackedArgs<ValueT> CastToPackedArgs(

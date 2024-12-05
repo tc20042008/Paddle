@@ -18,8 +18,8 @@
 #include <optional>
 #include <ostream>
 #include <vector>
+#include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/atomic.h"
-#include "paddle/cinn/adt/adt.h"
 
 namespace ap::axpr {
 
@@ -36,7 +36,7 @@ struct SListImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(SList, const SListImpl<Expr>);
+ADT_DEFINE_RC(SList, const SListImpl<Expr>);
 
 // s expression
 // expr := aexpr | ([expr])
@@ -44,7 +44,7 @@ using SExprBase = std::variant<Atomic<SExpr>, SList<SExpr>>;
 
 struct SExpr : public SExprBase {
   using SExprBase::SExprBase;
-  DEFINE_ADT_VARIANT_METHODS(SExprBase);
+  ADT_DEFINE_VARIANT_METHODS(SExprBase);
 
   std::string ToSExpression() const;
 };

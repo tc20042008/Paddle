@@ -69,7 +69,7 @@ using DrrValueImpl = std::variant<axpr::Value,
 
 struct DrrValue : public DrrValueImpl {
   using DrrValueImpl::DrrValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(DrrValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(DrrValueImpl);
 
   template <typename... Args>
   decltype(auto) DrrValueMatch(Args&&... args) const {

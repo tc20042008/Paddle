@@ -33,7 +33,7 @@ struct RegistryImpl {
   bool operator==(const RegistryImpl& other) const { return this == &other; }
 };
 
-DEFINE_ADT_RC(Registry, RegistryImpl);
+ADT_DEFINE_RC(Registry, RegistryImpl);
 
 }  // namespace ap::registry
 

@@ -31,7 +31,7 @@ struct OpMatchCtxImpl {
 };
 
 template <typename BirNode>
-DEFINE_ADT_RC(OpMatchCtx, OpMatchCtxImpl<BirNode>);
+ADT_DEFINE_RC(OpMatchCtx, OpMatchCtxImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>
 const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetOpMatchCtxClass();

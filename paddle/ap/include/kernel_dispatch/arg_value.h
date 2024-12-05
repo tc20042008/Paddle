@@ -28,15 +28,13 @@ class DenseTensor;
 
 namespace ap::kernel_dispatch {
 
-namespace adt = ::cinn::adt;
-
 using code_module::ArgType;
 
 using ArgValueImpl = std::variant<ap::axpr::DataValue, ap::axpr::PointerValue>;
 
 struct ArgValue : public ArgValueImpl {
   using ArgValueImpl::ArgValueImpl;
-  DEFINE_ADT_VARIANT_METHODS(ArgValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(ArgValueImpl);
 
   ArgType GetType() const {
     return Match([](auto impl) -> ArgType { return impl.GetType(); });

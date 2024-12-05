@@ -18,7 +18,7 @@
 
 namespace ap::code_gen {
 
-DEFINE_ADT_TAG(tLoopAnchorFlag);
+ADT_DEFINE_TAG(tLoopAnchorFlag);
 
 using LoopAnchorFlags = adt::List<tLoopAnchorFlag<bool>>;
 

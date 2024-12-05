@@ -27,6 +27,6 @@ struct DrrPassRegistryItemImpl {
   axpr::ClassAttrs<axpr::SerializableValue> cls;
 };
 
-DEFINE_ADT_RC(DrrPassRegistryItem, DrrPassRegistryItemImpl);
+ADT_DEFINE_RC(DrrPassRegistryItem, DrrPassRegistryItemImpl);
 
 }  // namespace ap::registry

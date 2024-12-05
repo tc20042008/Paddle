@@ -67,7 +67,7 @@ struct IndexedIrValueImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(IndexedIrValue, IndexedIrValueImpl<NodeT>);
+ADT_DEFINE_RC(IndexedIrValue, IndexedIrValueImpl<NodeT>);
 
 template <typename NodeT>
 struct IndexedIrOpImpl {
@@ -84,7 +84,7 @@ struct IndexedIrOpImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(IndexedIrOp, IndexedIrOpImpl<NodeT>);
+ADT_DEFINE_RC(IndexedIrOp, IndexedIrOpImpl<NodeT>);
 
 template <typename NodeT>
 using IndexedIrNodeImpl =
@@ -93,7 +93,7 @@ using IndexedIrNodeImpl =
 struct IndexedIrNode : public IndexedIrNodeImpl<IndexedIrNode> {
   using IndexedIrNodeImpl<IndexedIrNode>::IndexedIrNodeImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(IndexedIrNodeImpl<IndexedIrNode>);
+  ADT_DEFINE_VARIANT_METHODS(IndexedIrNodeImpl<IndexedIrNode>);
 
   const graph::Node<IndexedIrNode>& node() const {
     return Match([](const auto& impl) -> const graph::Node<IndexedIrNode>& {

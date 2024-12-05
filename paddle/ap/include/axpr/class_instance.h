@@ -53,6 +53,6 @@ struct ClassInstanceImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(ClassInstance, ClassInstanceImpl<ValueT>);
+ADT_DEFINE_RC(ClassInstance, ClassInstanceImpl<ValueT>);
 
 }  // namespace ap::axpr

@@ -31,7 +31,7 @@ struct UndefinedIndexTupleExprImpl : public std::monostate {
 
   const char* TypeName() const { return "UndefinedIndexTupleExpr"; }
 };
-DEFINE_ADT_RC(UndefinedIndexTupleExpr, UndefinedIndexTupleExprImpl);
+ADT_DEFINE_RC(UndefinedIndexTupleExpr, UndefinedIndexTupleExprImpl);
 
 struct NothingIndexTupleExprImpl : public std::monostate {
   using std::monostate::monostate;
@@ -40,7 +40,7 @@ struct NothingIndexTupleExprImpl : public std::monostate {
 
   const char* TypeName() const { return "NothingIndexTupleExpr"; }
 };
-DEFINE_ADT_RC(NothingIndexTupleExpr, NothingIndexTupleExprImpl);
+ADT_DEFINE_RC(NothingIndexTupleExpr, NothingIndexTupleExprImpl);
 
 struct IntArrayLikeIndexTupleExprImpl : public std::monostate {
   using std::monostate::monostate;
@@ -49,7 +49,7 @@ struct IntArrayLikeIndexTupleExprImpl : public std::monostate {
 
   const char* TypeName() const { return "IntArrayLikeIndexTupleExpr"; }
 };
-DEFINE_ADT_RC(IntArrayLikeIndexTupleExpr, IntArrayLikeIndexTupleExprImpl);
+ADT_DEFINE_RC(IntArrayLikeIndexTupleExpr, IntArrayLikeIndexTupleExprImpl);
 
 struct IndexTupleExprDomainImpl {
   adt::List<symbol::DimExpr> ranges;
@@ -73,7 +73,7 @@ struct IndexTupleExprDomainImpl {
 
   const char* TypeName() const { return "IndexTupleExprDomain"; }
 };
-DEFINE_ADT_RC(IndexTupleExprDomain, const IndexTupleExprDomainImpl);
+ADT_DEFINE_RC(IndexTupleExprDomain, const IndexTupleExprDomainImpl);
 
 template <typename Expr>
 struct IndexTupleExprPermuteImpl {
@@ -103,7 +103,7 @@ struct IndexTupleExprPermuteImpl {
 };
 
 template <typename Expr>
-DEFINE_ADT_RC(IndexTupleExprPermute, const IndexTupleExprPermuteImpl<Expr>);
+ADT_DEFINE_RC(IndexTupleExprPermute, const IndexTupleExprPermuteImpl<Expr>);
 
 template <typename Expr>
 struct IndexTupleExprReshapeImpl {
@@ -132,7 +132,7 @@ struct IndexTupleExprReshapeImpl {
   const char* TypeName() const { return "IndexTupleExprReshape"; }
 };
 template <typename Expr>
-DEFINE_ADT_RC(IndexTupleExprReshape, const IndexTupleExprReshapeImpl<Expr>);
+ADT_DEFINE_RC(IndexTupleExprReshape, const IndexTupleExprReshapeImpl<Expr>);
 
 template <typename Expr>
 struct IndexTupleExprTransformImpl {
@@ -161,7 +161,7 @@ struct IndexTupleExprTransformImpl {
   const char* TypeName() const { return "IndexTupleExprTransform"; }
 };
 template <typename Expr>
-DEFINE_ADT_RC(IndexTupleExprTransform, const IndexTupleExprTransformImpl<Expr>);
+ADT_DEFINE_RC(IndexTupleExprTransform, const IndexTupleExprTransformImpl<Expr>);
 
 template <typename Expr>
 using IndexTupleExprBase = std::variant<UndefinedIndexTupleExpr,
@@ -174,7 +174,7 @@ using IndexTupleExprBase = std::variant<UndefinedIndexTupleExpr,
 
 struct IndexTupleExpr : public IndexTupleExprBase<IndexTupleExpr> {
   using IndexTupleExprBase<IndexTupleExpr>::IndexTupleExprBase;
-  DEFINE_ADT_VARIANT_METHODS(IndexTupleExprBase<IndexTupleExpr>);
+  ADT_DEFINE_VARIANT_METHODS(IndexTupleExprBase<IndexTupleExpr>);
 
   const char* TypeName() const {
     return Match([](const auto& impl) { return impl->TypeName(); });

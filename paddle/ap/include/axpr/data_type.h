@@ -119,7 +119,7 @@ using DataTypeImpl = std::variant<
 
 struct DataType : public DataTypeImpl {
   using DataTypeImpl::DataTypeImpl;
-  DEFINE_ADT_VARIANT_METHODS(DataTypeImpl);
+  ADT_DEFINE_VARIANT_METHODS(DataTypeImpl);
 
   const char* Name() const {
     return Match([](const auto& impl) { return impl.Name(); });

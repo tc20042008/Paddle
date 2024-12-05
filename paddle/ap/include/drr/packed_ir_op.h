@@ -40,7 +40,7 @@ struct PackedIrOpImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(PackedIrOp, PackedIrOpImpl<NodeT>);
+ADT_DEFINE_RC(PackedIrOp, PackedIrOpImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetPackedIrOpClass();

@@ -27,7 +27,7 @@ using IrOpImpl = std::variant<typename BirNode::native_op_type,
 template <typename BirNode>
 struct IrOp : public IrOpImpl<BirNode> {
   using IrOpImpl<BirNode>::IrOpImpl;
-  DEFINE_ADT_VARIANT_METHODS(IrOpImpl<BirNode>);
+  ADT_DEFINE_VARIANT_METHODS(IrOpImpl<BirNode>);
 
   template <typename ValueT>
   static adt::Result<IrOp> CastFrom(const ValueT& val) {

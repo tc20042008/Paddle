@@ -35,7 +35,7 @@ struct CodeGenResultImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(CodeGenResult, CodeGenResultImpl<ValueT>);
+ADT_DEFINE_RC(CodeGenResult, CodeGenResultImpl<ValueT>);
 
 template <typename ValueT>
 const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&

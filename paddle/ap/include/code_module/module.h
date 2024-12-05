@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/code_module/adt.h"
 #include "paddle/ap/include/code_module/arg_type.h"
 #include "paddle/ap/include/code_module/data_type.h"
 #include "paddle/ap/include/code_module/func_declare.h"
 #include "paddle/ap/include/code_module/source_code.h"
-#include "paddle/cinn/adt/adt.h"
 
 namespace ap::code_module {
 
@@ -32,6 +32,6 @@ struct ModuleImpl {
            other.source_code == this->source_code;
   }
 };
-DEFINE_ADT_RC(Module, ModuleImpl);
+ADT_DEFINE_RC(Module, ModuleImpl);
 
 }  // namespace ap::code_module

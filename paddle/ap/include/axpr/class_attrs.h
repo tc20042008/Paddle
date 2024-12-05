@@ -31,6 +31,6 @@ struct ClassAttrsImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(ClassAttrs, ClassAttrsImpl<ValueT>);
+ADT_DEFINE_RC(ClassAttrs, ClassAttrsImpl<ValueT>);
 
 }  // namespace ap::axpr

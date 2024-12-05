@@ -14,13 +14,11 @@
 
 #pragma once
 #include <variant>
-#include "paddle/cinn/adt/adt.h"
+#include "paddle/ap/include/adt/adt.h"
 
 namespace ap::axpr {
 
-namespace adt = ::cinn::adt;
-
-DEFINE_ADT_TAG(tVar);
+ADT_DEFINE_TAG(tVar);
 
 using adt::Nothing;
 using adt::Result;

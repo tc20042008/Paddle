@@ -83,7 +83,7 @@ struct AttributeImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(AttrMap, AttributeImpl<ValueT>);
+ADT_DEFINE_RC(AttrMap, AttributeImpl<ValueT>);
 
 template <typename ValueT>
 struct TypeImpl<AttrMap<ValueT>> : public std::monostate {

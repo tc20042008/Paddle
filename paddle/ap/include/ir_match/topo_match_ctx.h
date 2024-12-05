@@ -201,6 +201,6 @@ struct TopoMatchCtxImpl {
 
 template <typename bg_node_t /*big graph node type*/,
           typename sg_node_t /*small graph node type*/>
-DEFINE_ADT_RC(TopoMatchCtx, TopoMatchCtxImpl<bg_node_t, sg_node_t>);
+ADT_DEFINE_RC(TopoMatchCtx, TopoMatchCtxImpl<bg_node_t, sg_node_t>);
 
 }  // namespace ap::ir_match

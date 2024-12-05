@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/data_type.h"
 #include "paddle/ap/include/axpr/pointer_type.h"
 #include "paddle/ap/include/axpr/value.h"
@@ -20,11 +21,8 @@
 #include "paddle/ap/include/code_module/data_type.h"
 #include "paddle/ap/include/code_module/func_declare.h"
 #include "paddle/ap/include/code_module/module.h"
-#include "paddle/cinn/adt/adt.h"
 
 namespace ap::code_module {
-
-namespace adt = ::cinn::adt;
 
 using axpr::Value;
 

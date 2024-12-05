@@ -89,7 +89,7 @@ struct OrderedDictImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(OrderedDict, OrderedDictImpl<ValueT, ValueT, axpr::Hash<ValueT>>);
+ADT_DEFINE_RC(OrderedDict, OrderedDictImpl<ValueT, ValueT, axpr::Hash<ValueT>>);
 
 template <typename ValueT>
 struct TypeImpl<OrderedDict<ValueT>> : public std::monostate {

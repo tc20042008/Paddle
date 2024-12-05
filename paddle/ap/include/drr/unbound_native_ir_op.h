@@ -35,7 +35,7 @@ struct UnboundNativeIrOpImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(UnboundNativeIrOp, UnboundNativeIrOpImpl<NodeT>);
+ADT_DEFINE_RC(UnboundNativeIrOp, UnboundNativeIrOpImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSrcPtnUnboundNativeIrOpClass();

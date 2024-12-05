@@ -30,7 +30,7 @@ struct RefNodeInfoImpl {
 };
 
 template <typename IrValueT, typename IrOperandT>
-DEFINE_ADT_RC(RefNodeInfo, RefNodeInfoImpl<IrValueT, IrOperandT>);
+ADT_DEFINE_RC(RefNodeInfo, RefNodeInfoImpl<IrValueT, IrOperandT>);
 
 }  // namespace ap::ir_match
 

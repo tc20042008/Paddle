@@ -63,14 +63,14 @@ struct OrderedOneofIndexClosureImpl {
   adt::Result<OpIndexTupleExprSignature> CallLambda(
       const Lambda<CoreExpr>& lambda, const IndexTupleExpr&) const;
 };
-DEFINE_ADT_RC(OrderedOneofIndexClosure, OrderedOneofIndexClosureImpl);
+ADT_DEFINE_RC(OrderedOneofIndexClosure, OrderedOneofIndexClosureImpl);
 
 using TrackedIndexesTransformImpl =
     std::variant<adt::IdentityFunc, ap::index_expr::IndexTupleExpr>;
 
 struct TrackedIndexesTransform : public TrackedIndexesTransformImpl {
   using TrackedIndexesTransformImpl::TrackedIndexesTransformImpl;
-  DEFINE_ADT_VARIANT_METHODS(TrackedIndexesTransformImpl);
+  ADT_DEFINE_VARIANT_METHODS(TrackedIndexesTransformImpl);
 };
 
 using OpIndexesTransformSignature =
@@ -87,14 +87,14 @@ struct RecordableIndexClosureImpl {
            this->op_indexes_transform_signature;
   }
 };
-DEFINE_ADT_RC(RecordableIndexClosure, RecordableIndexClosureImpl);
+ADT_DEFINE_RC(RecordableIndexClosure, RecordableIndexClosureImpl);
 
 using IndexClosureImpl =
     std::variant<OrderedOneofIndexClosure, RecordableIndexClosure>;
 
 struct IndexClosure : public IndexClosureImpl {
   using IndexClosureImpl::IndexClosureImpl;
-  DEFINE_ADT_VARIANT_METHODS(IndexClosureImpl);
+  ADT_DEFINE_VARIANT_METHODS(IndexClosureImpl);
 
   adt::Result<OpIndexTupleExprSignature> operator()(
       const IndexTupleExpr& indexes_expr) const;

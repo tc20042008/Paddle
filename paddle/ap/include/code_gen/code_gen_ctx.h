@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/builtin_class_instance.h"
 #include "paddle/ap/include/axpr/core_expr.h"
@@ -23,7 +24,6 @@
 #include "paddle/ap/include/code_module/data_type.h"
 #include "paddle/ap/include/drr/value.h"
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
-#include "paddle/cinn/adt/adt.h"
 
 namespace ap::code_gen {
 
@@ -42,7 +42,7 @@ struct CodeGenCtxImpl {
 };
 
 template <typename BirNode>
-DEFINE_ADT_RC(CodeGenCtx, CodeGenCtxImpl<BirNode>);
+ADT_DEFINE_RC(CodeGenCtx, CodeGenCtxImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>
 const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetCodeGenCtxClass();

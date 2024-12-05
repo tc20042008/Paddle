@@ -13,11 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/adt/adt.h"
+#include "paddle/ap/include/adt/adt.h"
 
 namespace ap {
-
-namespace adt = ::cinn::adt;
 
 using adt::errors::AttributeError;
 using adt::errors::Error;

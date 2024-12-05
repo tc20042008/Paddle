@@ -33,7 +33,7 @@ using SrcPtnValidIrValueImpl =
 struct SrcPtnValidIrValue : public SrcPtnValidIrValueImpl {
   using SrcPtnValidIrValueImpl::SrcPtnValidIrValueImpl;
 
-  DEFINE_ADT_VARIANT_METHODS(SrcPtnValidIrValueImpl);
+  ADT_DEFINE_VARIANT_METHODS(SrcPtnValidIrValueImpl);
 
   const std::string& name() const {
     return Match([](const auto& ir_value) -> const std::string& {

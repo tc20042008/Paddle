@@ -41,6 +41,6 @@ struct DispatchCtxImpl {
 };
 
 template <typename ValueT>
-DEFINE_ADT_RC(DispatchCtx, DispatchCtxImpl<ValueT>);
+ADT_DEFINE_RC(DispatchCtx, DispatchCtxImpl<ValueT>);
 
 }  // namespace ap::kernel_dispatch

@@ -60,7 +60,7 @@ struct OptPackedIrOpDeclareImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(OptPackedIrOpDeclare, OptPackedIrOpDeclareImpl<NodeT>);
+ADT_DEFINE_RC(OptPackedIrOpDeclare, OptPackedIrOpDeclareImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetOptPackedIrOpDeclareClass();

@@ -31,8 +31,8 @@ struct ApKernelDefineHelper {
   using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
   using CodeGenResult = ap::code_gen::CodeGenResult<CGValue>;
 
-  adt::Result<CodeGenResult> Interpret(const Function& lambda,
-                                       const CodeGenCtx& code_gen_ctx);
+  ap::adt::Result<CodeGenResult> Interpret(const Function& lambda,
+                                           const CodeGenCtx& code_gen_ctx);
 };
 
 }  // namespace cinn::dialect::ir

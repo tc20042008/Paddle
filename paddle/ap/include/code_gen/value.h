@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/builtin_serializable_attr_map.h"
 #include "paddle/ap/include/axpr/dim_expr.h"
 #include "paddle/ap/include/axpr/value.h"
@@ -29,11 +30,8 @@
 #include "paddle/ap/include/index_expr/index_tuple_expr.h"
 #include "paddle/ap/include/ir_match/op_match_ctx.h"
 #include "paddle/ap/include/ir_match/tensor_match_ctx.h"
-#include "paddle/cinn/adt/adt.h"
 
 namespace ap::code_gen {
-
-namespace adt = ::cinn::adt;
 
 using axpr::Value;
 

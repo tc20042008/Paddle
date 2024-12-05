@@ -41,7 +41,7 @@ using TensorSourceImpl = std::variant<NativeIrValueSource, PackedIrValueSource>;
 
 struct TensorSource : public TensorSourceImpl {
   using TensorSourceImpl::TensorSourceImpl;
-  DEFINE_ADT_VARIANT_METHODS(TensorSourceImpl);
+  ADT_DEFINE_VARIANT_METHODS(TensorSourceImpl);
 };
 
 struct InTensorSource {
@@ -64,7 +64,7 @@ using InOutTensorSourceImpl = std::variant<InTensorSource, OutTensorSource>;
 
 struct InOutTensorSource : public InOutTensorSourceImpl {
   using InOutTensorSourceImpl::InOutTensorSourceImpl;
-  DEFINE_ADT_VARIANT_METHODS(InOutTensorSourceImpl);
+  ADT_DEFINE_VARIANT_METHODS(InOutTensorSourceImpl);
 };
 
 struct ShapeDimSource {
@@ -90,7 +90,7 @@ struct DataDimSource {
 using DimSourceImpl = std::variant<ShapeDimSource, DataDimSource>;
 struct DimSource : public DimSourceImpl {
   using DimSourceImpl::DimSourceImpl;
-  DEFINE_ADT_VARIANT_METHODS(DimSourceImpl);
+  ADT_DEFINE_VARIANT_METHODS(DimSourceImpl);
 };
 
 template <typename BirNode /* backend ir node*/>
@@ -201,6 +201,6 @@ struct ArgSourceCtxImpl {
 };
 
 template <typename BirNode /* backend ir node*/>
-DEFINE_ADT_RC(ArgSourceCtx, ArgSourceCtxImpl<BirNode>);
+ADT_DEFINE_RC(ArgSourceCtx, ArgSourceCtxImpl<BirNode>);
 
 }  // namespace ap::code_gen

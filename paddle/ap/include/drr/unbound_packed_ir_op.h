@@ -35,7 +35,7 @@ struct UnboundPackedIrOpImpl {
 };
 
 template <typename NodeT>
-DEFINE_ADT_RC(UnboundPackedIrOp, UnboundPackedIrOpImpl<NodeT>);
+ADT_DEFINE_RC(UnboundPackedIrOp, UnboundPackedIrOpImpl<NodeT>);
 
 const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
 GetSrcPtnUnboundPackedIrOpClass();

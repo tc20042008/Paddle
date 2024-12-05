@@ -77,6 +77,8 @@ struct hash<ap::paddle::OpOrArg> {
 
 namespace ap::paddle {
 
+namespace adt = ap::adt;
+
 bool Op2Anchor2IndexesExprSignatureImpl::IsReachable(const OpOrArg& src,
                                                      const OpOrArg& dst) const {
   return std::visit(
@@ -565,7 +567,7 @@ using OpOrArgPath = std::vector<OpOrArg>;
 struct OpOrArgPathsImpl {
   OpArgTo<OpArgTo<OpOrArgPath>> paths;
 };
-DEFINE_ADT_RC(OpOrArgPaths, OpOrArgPathsImpl);
+ADT_DEFINE_RC(OpOrArgPaths, OpOrArgPathsImpl);
 
 // feasible path not shortest path.
 adt::Result<OpArgTo<OpOrArgPath>> GetPathsToYieldOpInArgs(
@@ -646,7 +648,7 @@ struct OpArgPath {
 struct OpArgPathsImpl {
   OpArgTo<OpArgTo<OpArgPath>> paths;
 };
-DEFINE_ADT_RC(OpArgPaths, OpArgPathsImpl);
+ADT_DEFINE_RC(OpArgPaths, OpArgPathsImpl);
 
 adt::Result<OpArg> ConvertToOpArg(const OpOrArg& op_or_arg) {
   return op_or_arg.Match(

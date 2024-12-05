@@ -125,7 +125,7 @@ using NodeCstrImpl = std::variant<NativeIrValueCstr,
 // node constraint
 struct NodeCstr : public NodeCstrImpl {
   using NodeCstrImpl::NodeCstrImpl;
-  DEFINE_ADT_VARIANT_METHODS(NodeCstrImpl);
+  ADT_DEFINE_VARIANT_METHODS(NodeCstrImpl);
 
   adt::Result<bool> Satisfy(const NodeCstr& sg_node_cstr) const {
     using RetT = adt::Result<bool>;

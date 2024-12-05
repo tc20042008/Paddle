@@ -46,7 +46,7 @@ using ValidListTagImpl = std::variant<IndexedTag<T>, UnindexedTag<T>>;
 template <typename T>
 struct ValidListTag : public ValidListTagImpl<T> {
   using ValidListTagImpl<T>::ValidListTagImpl;
-  DEFINE_ADT_VARIANT_METHODS(ValidListTagImpl<T>);
+  ADT_DEFINE_VARIANT_METHODS(ValidListTagImpl<T>);
 };
 
 template <typename T>
@@ -56,7 +56,7 @@ using ListTagImpl =
 template <typename T>
 struct ListTag : public ListTagImpl<T> {
   using ListTagImpl<T>::ListTagImpl;
-  DEFINE_ADT_VARIANT_METHODS(ListTagImpl<T>);
+  ADT_DEFINE_VARIANT_METHODS(ListTagImpl<T>);
 };
 
 template <typename T>

@@ -64,17 +64,16 @@ struct DDimMethodClass {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-GetDDimClass() {
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDDimClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = DDimMethodClass;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>("DDim", [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__getitem__", &Impl::GetItem);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::paddle

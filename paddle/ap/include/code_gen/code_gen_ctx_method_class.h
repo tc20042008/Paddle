@@ -135,15 +135,14 @@ struct CodeGenCtxMethodClass {
   adt::Result<BirNode> CastToBirValue(const ValueT& val) {
     ADT_LET_CONST_REF(
         instance, val.template CastTo<axpr::BuiltinClassInstance<ValueT>>());
-    if (instance->template Has<typename BirNode::native_value_type>()) {
+    if (instance.template Has<typename BirNode::native_value_type>()) {
       ADT_LET_CONST_REF(
-          ret,
-          instance->template TryGet<typename BirNode::native_value_type>());
+          ret, instance.template TryGet<typename BirNode::native_value_type>());
       return ret;
     }
-    if (instance->template Has<typename BirNode::ref_value_type>()) {
+    if (instance.template Has<typename BirNode::ref_value_type>()) {
       ADT_LET_CONST_REF(
-          ret, instance->template TryGet<typename BirNode::ref_value_type>());
+          ret, instance.template TryGet<typename BirNode::ref_value_type>());
       return ret;
     }
     return adt::errors::NotImplementedError{
@@ -270,10 +269,10 @@ struct CodeGenCtxMethodClass {
 };
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetCodeGenCtxClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenCtxClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = CodeGenCtxMethodClass<ValueT, BirNode>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("CodeGenCtx", [&](const auto& Define) {
         Define("make_fusion_op_code_gen_class",
                &ImplMethods::StaticMakeFusionOpCodeGenClass);
@@ -284,7 +283,7 @@ const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetCodeGenCtxClass() {
         Define("out_tensor_data_ptr_kernel_arg_id",
                &ImplMethods::StaticMakeAndCheckOutTensorDataPtrKernelArgId);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::code_gen

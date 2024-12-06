@@ -61,7 +61,7 @@ ADT_DEFINE_RC(InTensorDataPtrKernelArgId,
               InTensorDataPtrKernelArgIdImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetInTensorDataPtrKernelArgIdClass();
 
 }  // namespace ap::code_gen

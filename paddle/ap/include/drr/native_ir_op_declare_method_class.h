@@ -42,17 +42,17 @@ struct SrcPtnNativeIrOpDeclareMethodClassImpl {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnNativeIrOpDeclareClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = SrcPtnNativeIrOpDeclareMethodClassImpl;
   using TT = drr::Type<drr::tSrcPtn<drr::NativeIrOpDeclare<drr::Node>>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 struct ResPtnNativeIrOpDeclareMethodClass {
@@ -75,17 +75,17 @@ struct ResPtnNativeIrOpDeclareMethodClass {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnNativeIrOpDeclareClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = ResPtnNativeIrOpDeclareMethodClass;
   using TT = drr::Type<drr::tResPtn<drr::NativeIrOpDeclare<drr::Node>>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::drr

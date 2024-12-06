@@ -37,7 +37,7 @@ struct UnboundIrValueImpl {
 template <typename NodeT>
 ADT_DEFINE_RC(UnboundIrValue, UnboundIrValueImpl<NodeT>);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetUnboundIrValueClass();
 
 template <typename NodeT>
@@ -45,8 +45,7 @@ struct Type<drr::UnboundIrValue<NodeT>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "UnboundIrValue"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetUnboundIrValueClass();
   }
 };

@@ -99,11 +99,11 @@ struct MutableTensorMethodClass {
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetMutableTensorClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("MutableTensor", [&](const auto& DoEach) {
         DoEach("__getattr__", &MutableTensorMethodClass<ValueT>::GetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::kernel_dispatch

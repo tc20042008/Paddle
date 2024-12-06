@@ -238,18 +238,18 @@ struct SrcPtnUnboundPackedIrOp {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnUnboundPackedIrOpClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = drr::SrcPtnUnboundPackedIrOp;
   using TT = drr::Type<tSrcPtn<UnboundPackedIrOp<drr::Node>>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__call__", &Impl::StaticCall);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::drr

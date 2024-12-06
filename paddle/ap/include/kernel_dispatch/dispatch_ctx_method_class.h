@@ -225,7 +225,7 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using Methods = DispatchCtxMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("DispatchCtx", [&](const auto& DoEach) {
         DoEach("__getattr__", &Methods::GetAttr);
         DoEach("get_input_index_by_name", &Methods::StaticGetInputIndexByName);
@@ -233,7 +233,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
                &Methods::StaticGetOutputIndexByName);
         DoEach("launch_cuda", &detail::LaunchCuda<ValueT>);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::kernel_dispatch

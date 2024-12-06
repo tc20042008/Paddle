@@ -32,13 +32,13 @@ struct SliceMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetSliceClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetSliceClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("Slice", [&](const auto& Define) {
         Define("__str__", &SliceMethodClass<ValueT>::ToString);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::index_expr

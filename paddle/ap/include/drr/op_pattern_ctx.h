@@ -40,7 +40,7 @@ struct OpPatternCtxImpl {
 
 ADT_DEFINE_RC(OpPatternCtx, OpPatternCtxImpl);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnOpPatternCtxClass();
 
 template <>
@@ -49,13 +49,12 @@ struct Type<drr::tSrcPtn<drr::OpPatternCtx>> : public std::monostate {
 
   const char* Name() const { return "SrcPtnOpPatternCtx"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetSrcPtnOpPatternCtxClass();
   }
 };
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnOpPatternCtxClass();
 
 template <>
@@ -64,8 +63,7 @@ struct Type<drr::tResPtn<drr::OpPatternCtx>> : public std::monostate {
 
   const char* Name() const { return "ResPtnOpPatternCtx"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetResPtnOpPatternCtxClass();
   }
 };

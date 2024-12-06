@@ -38,7 +38,6 @@ template <typename ValueT>
 ADT_DEFINE_RC(CodeGenResult, CodeGenResultImpl<ValueT>);
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetCodeGenResultClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenResultClass();
 
 }  // namespace ap::code_gen

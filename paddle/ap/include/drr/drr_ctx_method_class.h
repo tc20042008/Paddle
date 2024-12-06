@@ -146,13 +146,12 @@ struct TypeImplDrrCtxMethodClass {
       const axpr::Value& instance_val,
       const std::vector<axpr::Value>& packed_args_val) {
     ADT_LET_CONST_REF(
-        instance,
+        empty_self,
         instance_val
             .template CastTo<axpr::BuiltinClassInstance<axpr::Value>>());
     DrrCtx self{};
-    instance.shared_ptr()->instance = self;
     if (packed_args_val.size() == 0) {
-      return adt::Nothing{};
+      return empty_self.type.New(self);
     }
     DrrValueHelper helper{};
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_val);
@@ -192,17 +191,17 @@ struct TypeImplDrrCtxMethodClass {
            helper.CastToAxprValue(
                ResPtn(result_pattern_ctx->tensor_pattern_ctx))}));
     }
-    return adt::Nothing{};
+    return empty_self.type.New(self);
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetDrrCtxClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = drr::DrrCtxMethodClass;
   using TImpl = TypeImplDrrCtxMethodClass;
   using TT = drr::Type<drr::DrrCtx>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__init__", &TImpl::StaticConstruct);
         Define("init_pass_name", &Impl::StaticInitPassName);
@@ -212,7 +211,7 @@ GetDrrCtxClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::drr

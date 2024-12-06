@@ -109,7 +109,7 @@ template <typename ValueT>
 ValueT GetType(const ValueT& value) {
   return value.Match(
       [](const BuiltinClassInstance<ValueT>& impl) -> ValueT {
-        return impl->type;
+        return impl.type;
       },
       [](const ClassInstance<ValueT>& impl) -> ValueT { return impl->type; },
       [](const auto& impl) -> ValueT {
@@ -136,7 +136,7 @@ template <typename T, typename ValueT>
 adt::Result<T> TryGetBuiltinClassInstance(const ValueT& val) {
   ADT_LET_CONST_REF(instance,
                     val.template TryGet<BuiltinClassInstance<ValueT>>());
-  ADT_LET_CONST_REF(ret, instance->template TryGet<T>());
+  ADT_LET_CONST_REF(ret, instance.template TryGet<T>());
   return ret;
 }
 

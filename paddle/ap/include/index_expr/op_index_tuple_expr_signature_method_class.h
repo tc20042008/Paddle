@@ -31,15 +31,15 @@ struct InIndexTupleExprSignatureMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetInIndexTupleExprSignatureClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "InIndexTupleExprSignature", [&](const auto& Define) {
         Define("__str__",
                &InIndexTupleExprSignatureMethodClass<ValueT>::ToString);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 template <typename ValueT>
@@ -54,15 +54,15 @@ struct OutIndexTupleExprSignatureMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetOutIndexTupleExprSignatureClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "OutIndexTupleExprSignature", [&](const auto& Define) {
         Define("__str__",
                &OutIndexTupleExprSignatureMethodClass<ValueT>::ToString);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 template <typename ValueT>
@@ -77,15 +77,15 @@ struct OpIndexTupleExprSignatureMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetOpIndexTupleExprSignatureClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "OpIndexTupleExprSignature", [&](const auto& Define) {
         Define("__str__",
                &OpIndexTupleExprSignatureMethodClass<ValueT>::ToString);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::index_expr

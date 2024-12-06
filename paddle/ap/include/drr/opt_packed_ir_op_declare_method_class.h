@@ -42,17 +42,17 @@ struct OptPackedIrOpDeclareMethodClass {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetOptPackedIrOpDeclareClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = OptPackedIrOpDeclareMethodClass;
   using TT = drr::Type<drr::OptPackedIrOpDeclare<drr::Node>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::drr

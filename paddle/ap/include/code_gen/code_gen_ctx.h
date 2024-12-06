@@ -45,6 +45,6 @@ template <typename BirNode>
 ADT_DEFINE_RC(CodeGenCtx, CodeGenCtxImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetCodeGenCtxClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenCtxClass();
 
 }  // namespace ap::code_gen

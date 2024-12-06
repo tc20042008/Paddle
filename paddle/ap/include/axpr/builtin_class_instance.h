@@ -31,10 +31,14 @@ struct BuiltinClassInstance;
 template <typename ValueT>
 struct TypeImpl<BuiltinClassInstance<ValueT>> {
   explicit TypeImpl<BuiltinClassInstance<ValueT>>(
-      const ClassAttrs<ValueT>& class_attr_val)
-      : class_attrs(class_attr_val) {}
+      const ClassAttrs<ValueT>& class_attrs_val)
+      : class_attrs(class_attrs_val.shared_ptr().get()) {}
 
-  ClassAttrs<ValueT> class_attrs;
+  explicit TypeImpl<BuiltinClassInstance<ValueT>>(
+      const ClassAttrsImpl<ValueT>* class_attrs_val)
+      : class_attrs(class_attrs_val) {}
+
+  const ClassAttrsImpl<ValueT>* class_attrs;
 
   ValueT New(const std::any& any) const;
 
@@ -46,7 +50,7 @@ struct TypeImpl<BuiltinClassInstance<ValueT>> {
 };
 
 template <typename ValueT>
-struct BuiltinClassInstanceImpl {
+struct BuiltinClassInstance {
   TypeImpl<BuiltinClassInstance<ValueT>> type;
   std::any instance;
 
@@ -67,13 +71,10 @@ struct BuiltinClassInstanceImpl {
     }
   }
 
-  bool operator==(const BuiltinClassInstanceImpl& other) const {
+  bool operator==(const BuiltinClassInstance& other) const {
     return this == &other;
   }
 };
-
-template <typename ValueT>
-ADT_DEFINE_RC(BuiltinClassInstance, BuiltinClassInstanceImpl<ValueT>);
 
 template <typename ValueT>
 ValueT TypeImpl<BuiltinClassInstance<ValueT>>::New(const std::any& any) const {
@@ -81,16 +82,14 @@ ValueT TypeImpl<BuiltinClassInstance<ValueT>>::New(const std::any& any) const {
 }
 
 template <typename ValueT, typename VisitorT>
-TypeImpl<BuiltinClassInstance<ValueT>> MakeBuiltinClass(
-    const std::string& class_name, const VisitorT& Visitor) {
-  using TypeImplT = TypeImpl<BuiltinClassInstance<ValueT>>;
+ClassAttrs<ValueT> MakeBuiltinClass(const std::string& class_name,
+                                    const VisitorT& Visitor) {
   AttrMap<ValueT> attr_map;
   Visitor([&](const auto& name, const axpr::BuiltinFunction<ValueT>& func) {
     attr_map->Set(name, func.template CastTo<ValueT>());
   });
   adt::List<std::shared_ptr<ClassAttrsImpl<ValueT>>> empty_superclasses{};
-  ClassAttrs<ValueT> class_attrs{class_name, empty_superclasses, attr_map};
-  return TypeImplT(class_attrs);
+  return ClassAttrs<ValueT>{class_name, empty_superclasses, attr_map};
 }
 
 }  // namespace ap::axpr

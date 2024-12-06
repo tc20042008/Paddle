@@ -23,6 +23,6 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetDimExprClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDimExprClass();
 
 }  // namespace ap::axpr

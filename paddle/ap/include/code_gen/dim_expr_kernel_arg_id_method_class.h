@@ -56,15 +56,15 @@ struct DimExprKernelArgIdMethodClass {
 };
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetDimExprKernelArgIdClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = DimExprKernelArgIdMethodClass<ValueT, BirNode>;
-  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "DimExprKernelArgId", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::code_gen

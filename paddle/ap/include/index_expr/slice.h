@@ -42,6 +42,6 @@ struct SliceImpl {
 ADT_DEFINE_RC(Slice, const SliceImpl);
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetSliceClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetSliceClass();
 
 }  // namespace ap::index_expr

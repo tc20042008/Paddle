@@ -24,12 +24,17 @@ template <typename ValueT, typename ItemValueT>
 struct ClassAttrsHelper {
   std::optional<ValueT> OptGet(const ClassAttrs<ItemValueT>& class_attrs,
                                const std::string& attr_name) {
-    return OptGet(class_attrs.shared_ptr(), attr_name);
+    return ImplOptGet(class_attrs.shared_ptr().get(), attr_name);
+  }
+
+  std::optional<ValueT> OptGet(const ClassAttrsImpl<ItemValueT>* class_attrs,
+                               const std::string& attr_name) {
+    return ImplOptGet(class_attrs, attr_name);
   }
 
  private:
-  std::optional<ValueT> OptGet(
-      const std::shared_ptr<ClassAttrsImpl<ItemValueT>>& class_attrs_impl,
+  std::optional<ValueT> ImplOptGet(
+      const ClassAttrsImpl<ItemValueT>* class_attrs_impl,
       const std::string& attr_name) {
     const auto& opt_val = class_attrs_impl->attrs->OptGet(attr_name);
     if (opt_val.has_value()) {
@@ -40,7 +45,7 @@ struct ClassAttrsHelper {
       }
     }
     for (const auto& base : *class_attrs_impl->superclasses) {
-      if (const auto val_in_base = OptGet(base, attr_name)) {
+      if (const auto val_in_base = ImplOptGet(base.get(), attr_name)) {
         return val_in_base.value();
       }
     }

@@ -196,12 +196,12 @@ struct ResPtnOpPatternCtxMethodClass {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnOpPatternCtxClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = drr::ResPtnOpPatternCtxMethodClass;
   using TT = drr::Type<drr::tResPtn<drr::OpPatternCtx>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
@@ -209,7 +209,7 @@ GetResPtnOpPatternCtxClass() {
         Define("__setattr__", &Impl::SetAttr);
         Define("ap_pattern_fusion_op", &Impl::StaticDeclareApPatternFusionOp);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::drr

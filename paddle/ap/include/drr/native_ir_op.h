@@ -43,16 +43,14 @@ struct NativeIrOpImpl {
 template <typename NodeT>
 ADT_DEFINE_RC(NativeIrOp, NativeIrOpImpl<NodeT>);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-GetNativeIrOpClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetNativeIrOpClass();
 
 template <typename NodeT>
 struct Type<drr::NativeIrOp<NodeT>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "NativeIrOp"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetNativeIrOpClass();
   }
 };

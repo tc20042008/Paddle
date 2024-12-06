@@ -34,6 +34,6 @@ template <typename BirNode>
 ADT_DEFINE_RC(OpMatchCtx, OpMatchCtxImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetOpMatchCtxClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetOpMatchCtxClass();
 
 }  // namespace ap::ir_match

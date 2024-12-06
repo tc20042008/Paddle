@@ -38,7 +38,7 @@ struct ResultPatternCtxImpl {
 
 ADT_DEFINE_RC(ResultPatternCtx, ResultPatternCtxImpl);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResultPatternCtxClass();
 
 template <>
@@ -46,8 +46,7 @@ struct Type<drr::ResultPatternCtx> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResultPatternCtx"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetResultPatternCtxClass();
   }
 };

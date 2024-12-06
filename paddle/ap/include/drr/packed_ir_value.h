@@ -40,7 +40,7 @@ struct PackedIrValueImpl {
 template <typename NodeT>
 ADT_DEFINE_RC(PackedIrValue, PackedIrValueImpl<NodeT>);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnPackedIrValueClass();
 
 template <typename NodeT>
@@ -48,13 +48,12 @@ struct Type<drr::tSrcPtn<drr::PackedIrValue<NodeT>>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "SrcPtnPackedIrValue"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetSrcPtnPackedIrValueClass();
   }
 };
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetStarredSrcPtnPackedIrValueClass();
 
 template <typename NodeT>
@@ -63,13 +62,12 @@ struct Type<drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<NodeT>>>>
   using std::monostate::monostate;
   const char* Name() const { return "StarredSrcPtnPackedIrValue"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetStarredSrcPtnPackedIrValueClass();
   }
 };
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnPackedIrValueClass();
 
 template <typename NodeT>
@@ -77,13 +75,12 @@ struct Type<drr::tResPtn<drr::PackedIrValue<NodeT>>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResPtnPackedIrValue"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetResPtnPackedIrValueClass();
   }
 };
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetStarredResPtnPackedIrValueClass();
 
 template <typename NodeT>
@@ -92,8 +89,7 @@ struct Type<drr::tStarred<drr::tResPtn<drr::PackedIrValue<NodeT>>>>
   using std::monostate::monostate;
   const char* Name() const { return "StarredResPtnPackedIrValue"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetStarredResPtnPackedIrValueClass();
   }
 };

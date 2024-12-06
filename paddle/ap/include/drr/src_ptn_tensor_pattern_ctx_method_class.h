@@ -68,18 +68,18 @@ struct SrcPtnTensorPatternCtx {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnTensorPatternCtxClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = drr::SrcPtnTensorPatternCtx;
   using TT = drr::Type<drr::tSrcPtn<drr::TensorPatternCtx>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__getattr__", &Impl::GetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::drr

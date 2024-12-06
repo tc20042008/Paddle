@@ -48,7 +48,6 @@ template <typename BirNode>
 ADT_DEFINE_RC(DimExprKernelArgId, DimExprKernelArgIdImpl<BirNode>);
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetDimExprKernelArgIdClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDimExprKernelArgIdClass();
 
 }  // namespace ap::code_gen

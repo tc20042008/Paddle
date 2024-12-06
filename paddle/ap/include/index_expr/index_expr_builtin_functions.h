@@ -81,7 +81,7 @@ inline adt::Result<symbol::DimExpr> TryGetDimExpr(const Val& val) {
   using RetT = adt::Result<symbol::DimExpr>;
   return val.Match([](int64_t c) -> RetT { return symbol::DimExpr{c}; },
                    [](const axpr::BuiltinClassInstance<Val>& instance) -> RetT {
-                     return instance->template TryGet<symbol::DimExpr>();
+                     return instance.template TryGet<symbol::DimExpr>();
                    },
                    [&](const auto&) -> RetT {
                      return adt::errors::TypeError{

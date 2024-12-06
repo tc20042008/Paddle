@@ -53,15 +53,15 @@ struct InTensorDataPtrKernelArgIdMethodClass {
 };
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetInTensorDataPtrKernelArgIdClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = InTensorDataPtrKernelArgIdMethodClass<ValueT, BirNode>;
-  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "InTensorDataPtrKernelArgId", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::code_gen

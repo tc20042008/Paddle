@@ -73,17 +73,16 @@ struct TypeImplIndexTupleExprMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetIndexTupleExprClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetIndexTupleExprClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using TypeImplMethods = TypeImplIndexTupleExprMethodClass<ValueT>;
   using ImplMethods = IndexTupleExprMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("IndexTupleExpr", [&](const auto& Define) {
         Define("Domain", &TypeImplMethods::StaticConstructIndexTupleExprDomain);
         Define("__str__", &ImplMethods::ToString);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::index_expr

@@ -34,7 +34,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
                            const Self& self) {
     const auto& opt_func = GetClassAttr(self, "__hash__");
     ADT_CHECK(opt_func.has_value()) << adt::errors::TypeError{
-        std::string() + self->type.class_attrs->class_name +
+        std::string() + self.type.class_attrs->class_name +
         ".__hash__() not implemented"};
     using RetT = adt::Result<ValueT>;
     static std::vector<ValueT> empty_args{};
@@ -56,7 +56,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
                                const Self& self) {
     const auto& opt_func = GetClassAttr(self, "__str__");
     ADT_CHECK(opt_func.has_value()) << adt::errors::TypeError{
-        std::string() + self->type.class_attrs->class_name +
+        std::string() + self.type.class_attrs->class_name +
         ".__str__() not implemented"};
     using RetT = adt::Result<ValueT>;
     static std::vector<ValueT> empty_args{};
@@ -83,7 +83,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
       return opt_val.value();
     }
     const auto& opt_gettattr = GetClassAttr(self, "__getattr__");
-    const auto& class_attrs = self->type.class_attrs;
+    const auto& class_attrs = self.type.class_attrs;
     ADT_CHECK(opt_gettattr.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
                                        " class has no attribute '__getattr__'"};
@@ -97,7 +97,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
                               const Self& self,
                               const ValueT& idx_val) {
     const auto& opt_getitem = GetClassAttr(self, "__getitem__");
-    const auto& class_attrs = self->type.class_attrs;
+    const auto& class_attrs = self.type.class_attrs;
     ADT_CHECK(opt_getitem.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
                                        " class has no attribute '__getitem__'"};
@@ -109,7 +109,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
 
   adt::Result<ValueT> Call(const Self& self) {
     const auto& opt_func = GetClassAttr(self, "__call__");
-    const auto& class_attrs = self->type.class_attrs;
+    const auto& class_attrs = self.type.class_attrs;
     ADT_CHECK(opt_func.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
                                        " class has no attribute '__call__'"};
@@ -118,7 +118,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
 
   adt::Result<ValueT> Starred(const Self& self) {
     const auto& opt_func = GetClassAttr(self, "__starred__");
-    const auto& class_attrs = self->type.class_attrs;
+    const auto& class_attrs = self.type.class_attrs;
     ADT_CHECK(opt_func.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
                                        " class has no attribute '__starred__'"};
@@ -127,7 +127,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
 
   std::optional<ValueT> GetClassAttr(const Self& self,
                                      const std::string& attr_name) {
-    const auto& class_attrs = self->type.class_attrs;
+    const auto& class_attrs = self.type.class_attrs;
     const auto& opt_func =
         ClassAttrsHelper<ValueT, ValueT>{}.OptGet(class_attrs, attr_name);
     if (!opt_func.has_value()) {
@@ -145,7 +145,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
   }
 
   adt::Result<ValueT> SetAttr(const Self& self, const ValueT& attr_name_val) {
-    const auto& class_attrs = self->type.class_attrs;
+    const auto& class_attrs = self.type.class_attrs;
     const auto& opt_func = GetClassAttr(self, "__setattr__");
     ADT_CHECK(opt_func.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
@@ -154,7 +154,7 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
   }
 
   adt::Result<ValueT> SetItem(const Self& self, const ValueT& idx_val) {
-    const auto& class_attrs = self->type.class_attrs;
+    const auto& class_attrs = self.type.class_attrs;
     const auto& opt_func = GetClassAttr(self, "__setitem__");
     ADT_CHECK(opt_func.has_value())
         << adt::errors::AttributeError{std::string() + class_attrs->class_name +
@@ -188,7 +188,7 @@ struct MethodClassImpl<ValueT, TypeImpl<BuiltinClassInstance<ValueT>>> {
   }
 
   adt::Result<ValueT> Hash(const Self& self) {
-    return reinterpret_cast<int64_t>(self.class_attrs.shared_ptr().get());
+    return reinterpret_cast<int64_t>(self.class_attrs);
   }
 
   static adt::Result<ValueT> StaticConstruct(
@@ -204,15 +204,15 @@ struct MethodClassImpl<ValueT, TypeImpl<BuiltinClassInstance<ValueT>>> {
                                 const std::vector<ValueT>& args) {
     const auto& class_attrs = self.class_attrs;
     TypeImpl<BuiltinClassInstance<ValueT>> type(class_attrs);
-    BuiltinClassInstance<ValueT> instance{type, std::nullopt};
+    BuiltinClassInstance<ValueT> empty_instance{type, std::nullopt};
     const auto& init_func =
         ClassAttrsHelper<ValueT, ValueT>{}.OptGet(class_attrs, "__init__");
     ADT_CHECK(init_func.has_value())
         << adt::errors::TypeError{std::string() + class_attrs->class_name +
                                   " class has no __init__ function"};
-    Method<ValueT> f{instance, init_func.value()};
-    ADT_RETURN_IF_ERR(interpreter->InterpretCall(f, args));
-    return instance;
+    Method<ValueT> f{empty_instance, init_func.value()};
+    ADT_LET_CONST_REF(ret_instance, interpreter->InterpretCall(f, args));
+    return ret_instance;
   }
 };
 

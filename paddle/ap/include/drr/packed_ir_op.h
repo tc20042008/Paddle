@@ -42,8 +42,7 @@ struct PackedIrOpImpl {
 template <typename NodeT>
 ADT_DEFINE_RC(PackedIrOp, PackedIrOpImpl<NodeT>);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-GetPackedIrOpClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPackedIrOpClass();
 
 template <typename NodeT>
 struct Type<drr::PackedIrOp<NodeT>> : public std::monostate {
@@ -51,8 +50,7 @@ struct Type<drr::PackedIrOp<NodeT>> : public std::monostate {
 
   const char* Name() const { return "PackedIrOp"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetPackedIrOpClass();
   }
 };

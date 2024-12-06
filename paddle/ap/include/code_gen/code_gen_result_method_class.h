@@ -32,7 +32,8 @@ struct TypeImplCodeGenResultMethodClass {
   adt::Result<ValueT> Make(const ValueT& self_val,
                            const std::vector<ValueT>& packed_args_val) {
     ADT_LET_CONST_REF(
-        self, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
+        empty_self,
+        self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
     const auto& packed_args = axpr::CastToPackedArgs(packed_args_val);
     const auto& [args, kwargs] = *packed_args;
     ADT_LET_CONST_REF(module_val, kwargs->Get("module"))
@@ -70,22 +71,20 @@ struct TypeImplCodeGenResultMethodClass {
       kernel_dispatch_const_data = axpr::AttrMap<axpr::SerializableValue>{};
     }
     ADT_CHECK(kernel_dispatch_const_data.has_value());
-    self.shared_ptr()->instance = CodeGenResult<ValueT>{
-        m, kernel_dispatch_func, kernel_dispatch_const_data.value()};
-    return adt::Nothing{};
+    return empty_self.type.New(CodeGenResult<ValueT>{
+        m, kernel_dispatch_func, kernel_dispatch_const_data.value()});
   }
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetCodeGenResultClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenResultClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using TypeImplMethods = TypeImplCodeGenResultMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("CodeGenResult", [&](const auto& Define) {
         Define("__init__", &TypeImplMethods::Construct);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::code_gen

@@ -33,19 +33,19 @@ struct IrOp : public IrOpImpl<BirNode> {
   static adt::Result<IrOp> CastFrom(const ValueT& val) {
     ADT_LET_CONST_REF(
         instance, val.template CastTo<axpr::BuiltinClassInstance<ValueT>>());
-    if (instance->template Has<typename BirNode::native_op_type>()) {
+    if (instance.template Has<typename BirNode::native_op_type>()) {
       ADT_LET_CONST_REF(
-          ret, instance->template TryGet<typename BirNode::native_op_type>());
+          ret, instance.template TryGet<typename BirNode::native_op_type>());
       return ret;
     }
-    if (instance->template Has<typename BirNode::packed_op_type>()) {
+    if (instance.template Has<typename BirNode::packed_op_type>()) {
       ADT_LET_CONST_REF(
-          ret, instance->template TryGet<typename BirNode::packed_op_type>());
+          ret, instance.template TryGet<typename BirNode::packed_op_type>());
       return ret;
     }
-    if (instance->template Has<typename BirNode::ref_op_type>()) {
+    if (instance.template Has<typename BirNode::ref_op_type>()) {
       ADT_LET_CONST_REF(
-          ret, instance->template TryGet<typename BirNode::ref_op_type>());
+          ret, instance.template TryGet<typename BirNode::ref_op_type>());
       return ret;
     }
     return adt::errors::ValueError{"IrOp::CastFrom failed."};

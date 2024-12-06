@@ -50,7 +50,7 @@ struct DrrValueHelper {
   DrrValue CastInstanceToDrrValue(
       const axpr::BuiltinClassInstance<axpr::Value>& instance) {
     const AxprInstanceToDrrValueMap& map = GetAxprInstanceToDrrValueMap();
-    const auto& iter = map.find(instance->instance.type());
+    const auto& iter = map.find(instance.instance.type());
     if (iter == map.end()) {
       return axpr::Value{instance};
     } else {
@@ -84,7 +84,7 @@ struct DrrValueHelper {
   template <typename T>
   static DrrValue ConvertAxprInstanceToDrrValue(
       const axpr::BuiltinClassInstance<axpr::Value>& instance) {
-    return std::any_cast<T>(instance->instance);
+    return std::any_cast<T>(instance.instance);
   }
 };
 

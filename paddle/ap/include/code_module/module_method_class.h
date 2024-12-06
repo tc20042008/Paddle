@@ -58,18 +58,18 @@ template <typename ValueT>
 adt::Result<ValueT> InitModule(const ValueT& self_val,
                                const std::vector<ValueT>& args) {
   ADT_LET_CONST_REF(
-      instance, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
+      empty_self,
+      self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
   ADT_LET_CONST_REF(m, TypeImplModuleMethodClass<ValueT>::Make(args));
-  instance.shared_ptr()->instance = m;
-  return adt::Nothing{};
+  return empty_self.type.New(m);
 }
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeModuleClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(axpr::MakeBuiltinClass<ValueT>(
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "Module",
       [&](const auto& DoEach) { DoEach("__init__", &InitModule<ValueT>); }));
-  return cls;
+  return ClassT(cls);
 }
 }  // namespace ap::code_module

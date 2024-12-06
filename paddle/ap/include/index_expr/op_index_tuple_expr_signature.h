@@ -30,15 +30,15 @@ using OpIndexTupleExprSignature = OpSignature<IndexTupleExpr>;
 namespace ap::axpr {
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetInIndexTupleExprSignatureClass();
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetOutIndexTupleExprSignatureClass();
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetOpIndexTupleExprSignatureClass();
 
 }  // namespace ap::axpr

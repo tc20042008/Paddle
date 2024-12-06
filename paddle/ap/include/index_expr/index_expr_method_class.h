@@ -33,13 +33,13 @@ struct IndexExprMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetIndexExprClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetIndexExprClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("IndexExpr", [&](const auto& Define) {
         Define("__str__", &IndexExprMethodClass<ValueT>::ToString);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::index_expr

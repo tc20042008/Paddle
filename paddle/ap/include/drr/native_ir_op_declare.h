@@ -38,7 +38,7 @@ struct NativeIrOpDeclareImpl {
 template <typename NodeT>
 ADT_DEFINE_RC(NativeIrOpDeclare, NativeIrOpDeclareImpl<NodeT>);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnNativeIrOpDeclareClass();
 
 template <typename NodeT>
@@ -47,13 +47,12 @@ struct Type<drr::tSrcPtn<drr::NativeIrOpDeclare<NodeT>>>
   using std::monostate::monostate;
   const char* Name() const { return "SrcPtnNativeIrOpDeclare"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetSrcPtnNativeIrOpDeclareClass();
   }
 };
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnNativeIrOpDeclareClass();
 
 template <typename NodeT>
@@ -62,8 +61,7 @@ struct Type<drr::tResPtn<drr::NativeIrOpDeclare<NodeT>>>
   using std::monostate::monostate;
   const char* Name() const { return "ResPtnNativeIrOpDeclare"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetResPtnNativeIrOpDeclareClass();
   }
 };

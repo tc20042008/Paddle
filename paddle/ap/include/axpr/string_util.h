@@ -95,7 +95,7 @@ Result<Val> BuiltinStringBinary(const std::string& str, const Val& rhs_val) {
         return adt::errors::TypeError{std::string() +
                                       "unsupported operand types for " +
                                       ArithmeticOp::Name() + ": 'str' and '" +
-                                      impl->type.class_attrs->class_name + "'"};
+                                      impl.type.class_attrs->class_name + "'"};
       },
       [&](const ClassInstance<Val>& impl) -> Result<Val> {
         return adt::errors::TypeError{std::string() +

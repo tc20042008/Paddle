@@ -39,14 +39,14 @@ struct DimExprMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetDimExprClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDimExprClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("DimExpr", [&](const auto& Define) {
         Define("__str__", &DimExprMethodClass<ValueT>::ToString);
         Define("__hash__", &DimExprMethodClass<ValueT>::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::axpr

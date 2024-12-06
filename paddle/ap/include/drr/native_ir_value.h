@@ -39,7 +39,7 @@ struct NativeIrValueImpl {
 template <typename NodeT>
 ADT_DEFINE_RC(NativeIrValue, NativeIrValueImpl<NodeT>);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnNativeIrValueClass();
 
 template <typename NodeT>
@@ -47,13 +47,12 @@ struct Type<drr::tSrcPtn<drr::NativeIrValue<NodeT>>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "SrcPtnNativeIrValue"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetSrcPtnNativeIrValueClass();
   }
 };
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnNativeIrValueClass();
 
 template <typename NodeT>
@@ -61,8 +60,7 @@ struct Type<drr::tResPtn<drr::NativeIrValue<NodeT>>> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "ResPtnNativeIrValue"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetResPtnNativeIrValueClass();
   }
 };

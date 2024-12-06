@@ -33,31 +33,28 @@
 namespace ap::paddle {
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetNativeIrValueClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrValueClass();
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetPackedIrValueClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrValueClass();
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrValueClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrValueClass();
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetNativeIrOpClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrOpClass();
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetPackedIrOpClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrOpClass();
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrOpClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrOpClass();
 
 struct NativeIrValue {
   pir::Value value;
 
   template <typename ValueT>
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-  GetBuiltinClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetBuiltinClass() {
     return GetNativeIrValueClass<ValueT>();
   }
 
@@ -120,8 +117,7 @@ struct PackedIrValue {
   bool is_output;
 
   template <typename ValueT>
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-  GetBuiltinClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetBuiltinClass() {
     return GetPackedIrValueClass<ValueT>();
   }
 
@@ -181,8 +177,7 @@ struct NativeIrOp {
   pir::Operation* op;
 
   template <typename ValueT>
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-  GetBuiltinClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetBuiltinClass() {
     return GetNativeIrOpClass<ValueT>();
   }
 
@@ -201,8 +196,7 @@ struct PackedIrOp {
   cinn::dialect::FusionOp fusion_op;
 
   template <typename ValueT>
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-  GetBuiltinClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetBuiltinClass() {
     return GetPackedIrOpClass<ValueT>();
   }
 
@@ -280,8 +274,7 @@ struct RefIrValue {
   RefNodeInfo ref_node_info;
 
   template <typename ValueT>
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-  GetBuiltinClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetBuiltinClass() {
     return GetRefIrValueClass<ValueT>();
   }
 
@@ -320,8 +313,7 @@ struct RefIrOp {
   RefNodeInfo ref_node_info;
 
   template <typename ValueT>
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-  GetBuiltinClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetBuiltinClass() {
     return GetRefIrOpClass<ValueT>();
   }
 

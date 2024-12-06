@@ -132,18 +132,18 @@ struct MetaTensorPtrMethodClass {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetMetaTensorPtrClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = MetaTensorPtrMethodClass;
-  static ClassT cls(axpr::MakeBuiltinClass<axpr::Value>(
+  static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
       "MetaTensorPtr", [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__getattr__", &Impl::GetAttr);
         Define("__setattr__", &Impl::SetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::paddle

@@ -469,7 +469,7 @@ template <typename ValueT>
 std::string GetTypeName(const ValueT& val) {
   return val.Match(
       [](const BuiltinClassInstance<ValueT>& impl) -> std::string {
-        return impl->type.class_attrs->class_name;
+        return impl.type.class_attrs->class_name;
       },
       [](const ClassInstance<ValueT>& impl) -> std::string {
         return impl->type.class_attrs->class_name;

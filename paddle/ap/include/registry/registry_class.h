@@ -58,11 +58,11 @@ adt::Result<ValueT> RegisterDrrPass(const ValueT&,
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeRegistryClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("Registry", [&](const auto& DoEach) {
         DoEach("drr_pass", &RegisterDrrPass<ValueT>);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::registry

@@ -63,17 +63,17 @@ struct StdVectorMetaTensorPtrPtrMethodClass {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetStdVectorMetaTensorPtrPtrClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = StdVectorMetaTensorPtrPtrMethodClass;
-  static ClassT cls(axpr::MakeBuiltinClass<axpr::Value>(
+  static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
       "StdVectorMetaTensorPtrPtr", [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__getitem__", &Impl::GetItem);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::paddle

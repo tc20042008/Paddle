@@ -98,11 +98,11 @@ struct ConstTensorMethodClass {
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetConstTensorClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("ConstTensor", [&](const auto& DoEach) {
         DoEach("__getattr__", &ConstTensorMethodClass<ValueT>::GetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::kernel_dispatch

@@ -118,15 +118,14 @@ struct TensorMatchCtxMethodClass {
 };
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetTensorMatchCtxClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetTensorMatchCtxClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = TensorMatchCtxMethodClass<ValueT, BirNode>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("TensorMatchCtx", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::ir_match

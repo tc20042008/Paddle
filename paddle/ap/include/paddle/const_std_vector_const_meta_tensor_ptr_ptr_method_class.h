@@ -63,17 +63,17 @@ struct ConstStdVectorConstMetaTensorPtrPtrMethodClass {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetConstStdVectorConstMetaTensorPtrPtrClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = ConstStdVectorConstMetaTensorPtrPtrMethodClass;
-  static ClassT cls(axpr::MakeBuiltinClass<axpr::Value>(
+  static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
       "ConstStdVectorConstMetaTensorPtrPtr", [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__getitem__", &Impl::GetItem);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::paddle

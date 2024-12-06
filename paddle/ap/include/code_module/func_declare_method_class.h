@@ -60,21 +60,21 @@ template <typename ValueT>
 adt::Result<ValueT> InitFuncDeclare(const ValueT& self_val,
                                     const std::vector<ValueT>& args) {
   ADT_LET_CONST_REF(
-      instance, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
+      empty_self,
+      self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
   ADT_LET_CONST_REF(func_declare,
                     TypeImplFuncDeclareMethodClass<ValueT>::Make(args));
-  instance.shared_ptr()->instance = func_declare;
-  return adt::Nothing{};
+  return empty_self.type.New(func_declare);
 }
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeFuncDeclareClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("FuncDeclare", [&](const auto& DoEach) {
         DoEach("__init__", &InitFuncDeclare<ValueT>);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::code_module

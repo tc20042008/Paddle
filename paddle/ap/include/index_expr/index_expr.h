@@ -166,6 +166,6 @@ struct IndexExpr : public IndexExprBase<IndexExpr> {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetIndexExprClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetIndexExprClass();
 
 }  // namespace ap::index_expr

@@ -64,30 +64,30 @@ struct ResPtnPackedIrOpDeclareMethodClassImpl {
   }
 };
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnPackedIrOpDeclareClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = SrcPtnPackedIrOpDeclareMethodClassImpl;
   using TT = drr::Type<drr::tSrcPtn<drr::PackedIrOpDeclare<drr::Node>>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
-inline const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnPackedIrOpDeclareClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = ResPtnPackedIrOpDeclareMethodClassImpl;
   using TT = drr::Type<drr::tResPtn<drr::PackedIrOpDeclare<drr::Node>>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::drr

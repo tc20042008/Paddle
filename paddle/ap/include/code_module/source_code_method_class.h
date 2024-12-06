@@ -53,7 +53,8 @@ template <typename ValueT>
 adt::Result<ValueT> InitSourceCode(const ValueT& self_val,
                                    const std::vector<ValueT>& args) {
   ADT_LET_CONST_REF(
-      instance, self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
+      empty_self,
+      self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
   ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
       std::string("the constructor of 'SourceCode' takes 1 arguments. but ") +
       std::to_string(args.size()) + "were given."};
@@ -61,18 +62,17 @@ adt::Result<ValueT> InitSourceCode(const ValueT& self_val,
       << adt::errors::TypeError{
              std::string("the argument 1 of constructor of 'SourceCode' must "
                          "be a 'str'.")};
-  instance.shared_ptr()->instance = std::make_any<SourceCode>(str);
-  return adt::Nothing{};
+  return empty_self.type.New(std::make_any<SourceCode>(str));
 }
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeSourceCodeClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("SourceCode", [&](const auto& DoEach) {
         DoEach("__init__", &InitSourceCode<ValueT>);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::code_module

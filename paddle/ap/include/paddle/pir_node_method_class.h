@@ -74,17 +74,16 @@ struct NativeIrValueMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetNativeIrValueClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrValueClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = NativeIrValueMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("NativeIrValue", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 template <typename ValueT>
@@ -110,16 +109,15 @@ struct PackedIrValueMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetPackedIrValueClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrValueClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = PackedIrValueMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("PackedIrValue", [&](const auto& Define) {
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 template <typename ValueT>
@@ -180,16 +178,16 @@ struct RefIrValueMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrValueClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrValueClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = RefIrValueMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("RefIrValue", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 template <typename ValueT>
@@ -215,15 +213,15 @@ struct NativeIrOpMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetNativeIrOpClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrOpClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = NativeIrOpMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("NativeIrOp", [&](const auto& Define) {
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 template <typename ValueT>
@@ -249,15 +247,15 @@ struct PackedIrOpMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetPackedIrOpClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrOpClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = PackedIrOpMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("PackedIrOp", [&](const auto& Define) {
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 template <typename ValueT>
@@ -283,15 +281,15 @@ struct RefIrOpMethodClass {
 };
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetRefIrOpClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrOpClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = RefIrOpMethodClass<ValueT>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("RefIrOp", [&](const auto& Define) {
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::paddle

@@ -45,15 +45,14 @@ struct DrrCtxImpl {
 
 ADT_DEFINE_RC(DrrCtx, DrrCtxImpl);
 
-const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>& GetDrrCtxClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDrrCtxClass();
 
 template <>
 struct Type<drr::DrrCtx> : public std::monostate {
   using std::monostate::monostate;
   const char* Name() const { return "DrrCtx"; }
 
-  static const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-  GetClass() {
+  static axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetClass() {
     return GetDrrCtxClass();
   }
 };

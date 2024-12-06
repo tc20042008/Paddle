@@ -108,14 +108,14 @@ struct OpMatchCtxMethodClass {
 };
 
 template <typename ValueT, typename BirNode>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>& GetOpMatchCtxClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetOpMatchCtxClass() {
   using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = OpMatchCtxMethodClass<ValueT, BirNode>;
-  static ClassT cls(
+  static auto cls(
       axpr::MakeBuiltinClass<ValueT>("OpMatchCtx", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
-  return cls;
+  return ClassT(cls);
 }
 
 }  // namespace ap::ir_match

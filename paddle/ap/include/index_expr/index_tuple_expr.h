@@ -191,7 +191,6 @@ inline std::string IndexTupleExprToString(
 }
 
 template <typename ValueT>
-const axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>&
-GetIndexTupleExprClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetIndexTupleExprClass();
 
 }  // namespace ap::index_expr

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/code_module/func_declare.h"
 
 namespace ap::code_module {
@@ -69,12 +70,12 @@ adt::Result<ValueT> InitFuncDeclare(const ValueT& self_val,
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeFuncDeclareClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("FuncDeclare", [&](const auto& DoEach) {
         DoEach("__init__", &InitFuncDeclare<ValueT>);
       }));
-  return ClassT(cls);
+  using Self = FuncDeclare;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::code_module

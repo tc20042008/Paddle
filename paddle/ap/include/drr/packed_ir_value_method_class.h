@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/packed_ir_value.h"
@@ -50,7 +51,6 @@ struct SrcPtnPackedIrValueMethodClassImpl {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnPackedIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = SrcPtnPackedIrValueMethodClassImpl;
   using TT = drr::Type<drr::tSrcPtn<drr::PackedIrValue<drr::Node>>>;
   static auto cls(
@@ -58,7 +58,7 @@ GetSrcPtnPackedIrValueClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 struct StarredSrcPtnPackedIrValueMethodClassImpl {
@@ -84,7 +84,6 @@ struct StarredSrcPtnPackedIrValueMethodClassImpl {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetStarredSrcPtnPackedIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = StarredSrcPtnPackedIrValueMethodClassImpl;
   using TT =
       drr::Type<drr::tStarred<drr::tSrcPtn<drr::PackedIrValue<drr::Node>>>>;
@@ -93,7 +92,8 @@ GetStarredSrcPtnPackedIrValueClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 struct ResPtnPackedIrValueMethodClassImpl {
@@ -124,7 +124,6 @@ struct ResPtnPackedIrValueMethodClassImpl {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnPackedIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = ResPtnPackedIrValueMethodClassImpl;
   using TT = drr::Type<drr::tResPtn<drr::PackedIrValue<drr::Node>>>;
   static auto cls(
@@ -132,7 +131,8 @@ GetResPtnPackedIrValueClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 struct StarredResPtnPackedIrValueMethodClassImpl {
@@ -158,7 +158,6 @@ struct StarredResPtnPackedIrValueMethodClassImpl {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetStarredResPtnPackedIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = StarredResPtnPackedIrValueMethodClassImpl;
   using TT =
       drr::Type<drr::tStarred<drr::tResPtn<drr::PackedIrValue<drr::Node>>>>;
@@ -167,7 +166,8 @@ GetStarredResPtnPackedIrValueClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

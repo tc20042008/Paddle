@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/kernel_dispatch/mutable_tensor.h"
 
 namespace ap::kernel_dispatch {
@@ -84,7 +85,7 @@ Result<Val> TensorGetAttr(const MutableTensor<Val>& tensor,
 
 template <typename ValueT>
 struct MutableTensorMethodClass {
-  using Self = MutableTensorMethodClass;
+  using Self = MutableTensor<ValueT>;
 
   static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
                                      const std::vector<ValueT>& args) {
@@ -98,12 +99,12 @@ struct MutableTensorMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetMutableTensorClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("MutableTensor", [&](const auto& DoEach) {
-        DoEach("__getattr__", &MutableTensorMethodClass<ValueT>::GetAttr);
-      }));
-  return ClassT(cls);
+  using Methods = MutableTensorMethodClass<ValueT>;
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
+      "MutableTensor",
+      [&](const auto& DoEach) { DoEach("__getattr__", &Methods::GetAttr); }));
+  using Self = typename Methods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::kernel_dispatch

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/index_expr/index_expr.h"
 #include "paddle/ap/include/index_expr/index_expr_builtin_functions.h"
 
@@ -34,12 +35,12 @@ struct IndexExprMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetIndexExprClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("IndexExpr", [&](const auto& Define) {
-        Define("__str__", &IndexExprMethodClass<ValueT>::ToString);
-      }));
-  return ClassT(cls);
+  using ImplMethods = IndexExprMethodClass<ValueT>;
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
+      "IndexExpr",
+      [&](const auto& Define) { Define("__str__", &ImplMethods::ToString); }));
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::index_expr

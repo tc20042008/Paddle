@@ -16,6 +16,7 @@
 
 #include <unordered_set>
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/native_ir_value.h"
@@ -122,7 +123,6 @@ struct ResPtnUnboundNativeIrOpMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnUnboundNativeIrOpClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using TT = drr::Type<drr::tResPtn<drr::UnboundNativeIrOp<drr::Node>>>;
   using Impl = ResPtnUnboundNativeIrOpMethodClass;
   static auto cls(
@@ -131,7 +131,8 @@ GetResPtnUnboundNativeIrOpClass() {
         Define("__hash__", &Impl::Hash);
         Define("__call__", &Impl::StaticCall);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

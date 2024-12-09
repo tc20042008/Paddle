@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace ap::axpr {
@@ -40,13 +41,13 @@ struct DimExprMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDimExprClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using Impl = DimExprMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("DimExpr", [&](const auto& Define) {
-        Define("__str__", &DimExprMethodClass<ValueT>::ToString);
-        Define("__hash__", &DimExprMethodClass<ValueT>::Hash);
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 }  // namespace ap::axpr

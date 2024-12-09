@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/value_method_class.h"
 #include "paddle/ap/include/kernel_dispatch/dispatch_ctx.h"
 
@@ -223,7 +224,6 @@ struct DispatchCtxMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using Methods = DispatchCtxMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("DispatchCtx", [&](const auto& DoEach) {
@@ -233,7 +233,8 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
                &Methods::StaticGetOutputIndexByName);
         DoEach("launch_cuda", &detail::LaunchCuda<ValueT>);
       }));
-  return ClassT(cls);
+  using Self = typename Methods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::kernel_dispatch

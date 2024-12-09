@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/opt_packed_ir_op.h"
@@ -44,7 +45,6 @@ struct OptPackedIrOpMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetOptPackedIrOpClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = OptPackedIrOpMethodClass;
   using TT = drr::Type<drr::OptPackedIrOp<drr::Node>>;
   static auto cls(
@@ -52,7 +52,7 @@ GetOptPackedIrOpClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 }  // namespace ap::drr

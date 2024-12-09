@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/code_module/func_declare.h"
 #include "paddle/ap/include/code_module/module.h"
 #include "paddle/ap/include/code_module/source_code.h"
@@ -66,10 +67,10 @@ adt::Result<ValueT> InitModule(const ValueT& self_val,
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeModuleClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "Module",
       [&](const auto& DoEach) { DoEach("__init__", &InitModule<ValueT>); }));
-  return ClassT(cls);
+  using Self = Module;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 }  // namespace ap::code_module

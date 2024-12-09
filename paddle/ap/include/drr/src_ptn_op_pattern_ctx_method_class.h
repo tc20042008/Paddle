@@ -17,6 +17,7 @@
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/type.h"
 
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/drr_value_helper.h"
 #include "paddle/ap/include/drr/native_ir_op_declare.h"
@@ -174,7 +175,6 @@ struct SrcPtnOpPatternCtxMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnOpPatternCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = drr::SrcPtnOpPatternCtxMethodClass;
   using TT = drr::Type<drr::tSrcPtn<drr::OpPatternCtx>>;
   static auto cls(
@@ -188,7 +188,8 @@ GetSrcPtnOpPatternCtxClass() {
         Define("__getattr__", &Impl::GetAttr);
         Define("__setattr__", &Impl::SetAttr);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

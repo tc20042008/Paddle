@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/data_type_util.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/paddle/ddim.h"
 
@@ -65,7 +66,6 @@ struct DDimMethodClass {
 };
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDDimClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = DDimMethodClass;
   static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>("DDim", [&](const auto& Define) {
@@ -73,7 +73,7 @@ inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDDimClass() {
         Define("__hash__", &Impl::Hash);
         Define("__getitem__", &Impl::GetItem);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 }  // namespace ap::paddle

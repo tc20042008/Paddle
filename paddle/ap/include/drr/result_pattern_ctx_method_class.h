@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/result_pattern_ctx.h"
@@ -44,7 +45,6 @@ struct ResultPatternCtxMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResultPatternCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = ResultPatternCtxMethodClass;
   using TT = drr::Type<drr::ResultPatternCtx>;
   static auto cls(
@@ -52,7 +52,8 @@ GetResultPatternCtxClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

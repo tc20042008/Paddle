@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/drr/drr_value.h"
@@ -58,7 +59,6 @@ struct UnboundIrValueMethodClassImpl {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetUnboundIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = UnboundIrValueMethodClassImpl;
   using TT = drr::Type<UnboundIrValue<drr::Node>>;
   static auto cls(
@@ -67,7 +67,8 @@ GetUnboundIrValueClass() {
         Define("__hash__", &Impl::Hash);
         Define("__starred__", &Impl::Starred);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

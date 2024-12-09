@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/code_gen/code_gen_result.h"
 
 namespace ap::code_gen {
@@ -78,13 +79,13 @@ struct TypeImplCodeGenResultMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenResultClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using TypeImplMethods = TypeImplCodeGenResultMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("CodeGenResult", [&](const auto& Define) {
         Define("__init__", &TypeImplMethods::Construct);
       }));
-  return ClassT(cls);
+  using Self = CodeGenResult<ValueT>;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::code_gen

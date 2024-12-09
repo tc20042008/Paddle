@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/index_expr/index_expr_builtin_functions.h"
 #include "paddle/ap/include/index_expr/index_tuple_expr.h"
 
@@ -74,7 +75,6 @@ struct TypeImplIndexTupleExprMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetIndexTupleExprClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using TypeImplMethods = TypeImplIndexTupleExprMethodClass<ValueT>;
   using ImplMethods = IndexTupleExprMethodClass<ValueT>;
   static auto cls(
@@ -82,7 +82,8 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetIndexTupleExprClass() {
         Define("Domain", &TypeImplMethods::StaticConstructIndexTupleExprDomain);
         Define("__str__", &ImplMethods::ToString);
       }));
-  return ClassT(cls);
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::index_expr

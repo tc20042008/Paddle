@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/native_ir_op_declare.h"
@@ -44,7 +45,6 @@ struct SrcPtnNativeIrOpDeclareMethodClassImpl {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetSrcPtnNativeIrOpDeclareClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = SrcPtnNativeIrOpDeclareMethodClassImpl;
   using TT = drr::Type<drr::tSrcPtn<drr::NativeIrOpDeclare<drr::Node>>>;
   static auto cls(
@@ -52,7 +52,8 @@ GetSrcPtnNativeIrOpDeclareClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 struct ResPtnNativeIrOpDeclareMethodClass {
@@ -77,7 +78,6 @@ struct ResPtnNativeIrOpDeclareMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnNativeIrOpDeclareClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = ResPtnNativeIrOpDeclareMethodClass;
   using TT = drr::Type<drr::tResPtn<drr::NativeIrOpDeclare<drr::Node>>>;
   static auto cls(
@@ -85,7 +85,8 @@ GetResPtnNativeIrOpDeclareClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

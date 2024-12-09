@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/index_expr/op_index_tuple_expr_signature.h"
 
 namespace ap::index_expr {
@@ -33,13 +34,12 @@ struct InIndexTupleExprSignatureMethodClass {
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetInIndexTupleExprSignatureClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = InIndexTupleExprSignatureMethodClass<ValueT>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
-      "InIndexTupleExprSignature", [&](const auto& Define) {
-        Define("__str__",
-               &InIndexTupleExprSignatureMethodClass<ValueT>::ToString);
-      }));
-  return ClassT(cls);
+      "InIndexTupleExprSignature",
+      [&](const auto& Define) { Define("__str__", &ImplMethods::ToString); }));
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 template <typename ValueT>
@@ -56,13 +56,12 @@ struct OutIndexTupleExprSignatureMethodClass {
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetOutIndexTupleExprSignatureClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = OutIndexTupleExprSignatureMethodClass<ValueT>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
-      "OutIndexTupleExprSignature", [&](const auto& Define) {
-        Define("__str__",
-               &OutIndexTupleExprSignatureMethodClass<ValueT>::ToString);
-      }));
-  return ClassT(cls);
+      "OutIndexTupleExprSignature",
+      [&](const auto& Define) { Define("__str__", &ImplMethods::ToString); }));
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 template <typename ValueT>
@@ -79,13 +78,14 @@ struct OpIndexTupleExprSignatureMethodClass {
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetOpIndexTupleExprSignatureClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = OpIndexTupleExprSignatureMethodClass<ValueT>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "OpIndexTupleExprSignature", [&](const auto& Define) {
         Define("__str__",
                &OpIndexTupleExprSignatureMethodClass<ValueT>::ToString);
       }));
-  return ClassT(cls);
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::index_expr

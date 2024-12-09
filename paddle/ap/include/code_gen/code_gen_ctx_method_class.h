@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/packed_args.h"
 #include "paddle/ap/include/code_gen/arg_source_helper.h"
 #include "paddle/ap/include/code_gen/cuda_code_gen_util.h"
@@ -270,7 +271,6 @@ struct CodeGenCtxMethodClass {
 
 template <typename ValueT, typename BirNode>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = CodeGenCtxMethodClass<ValueT, BirNode>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("CodeGenCtx", [&](const auto& Define) {
@@ -283,7 +283,8 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenCtxClass() {
         Define("out_tensor_data_ptr_kernel_arg_id",
                &ImplMethods::StaticMakeAndCheckOutTensorDataPtrKernelArgId);
       }));
-  return ClassT(cls);
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::code_gen

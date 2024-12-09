@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/graph/node.h"
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
 #include "paddle/ap/include/ir_match/op_match_ctx.h"
@@ -109,13 +110,11 @@ struct OpMatchCtxMethodClass {
 
 template <typename ValueT, typename BirNode>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetOpMatchCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  using ImplMethods = OpMatchCtxMethodClass<ValueT, BirNode>;
-  static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("OpMatchCtx", [&](const auto& Define) {
-        Define("__getattr__", &ImplMethods::GetAttr);
-      }));
-  return ClassT(cls);
+  using Impl = OpMatchCtxMethodClass<ValueT, BirNode>;
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
+      "OpMatchCtx",
+      [&](const auto& Define) { Define("__getattr__", &Impl::GetAttr); }));
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 }  // namespace ap::ir_match

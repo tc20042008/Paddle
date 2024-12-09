@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/data_type_util.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/paddle/ddim.h"
 #include "paddle/ap/include/paddle/ddim_method_class.h"
@@ -134,7 +135,6 @@ struct MetaTensorPtrMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetMetaTensorPtrClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = MetaTensorPtrMethodClass;
   static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
       "MetaTensorPtr", [&](const auto& Define) {
@@ -143,7 +143,7 @@ GetMetaTensorPtrClass() {
         Define("__getattr__", &Impl::GetAttr);
         Define("__setattr__", &Impl::SetAttr);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 }  // namespace ap::paddle

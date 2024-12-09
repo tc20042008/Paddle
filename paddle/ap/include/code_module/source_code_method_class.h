@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/code_module/source_code.h"
 
 namespace ap::code_module {
@@ -67,12 +68,12 @@ adt::Result<ValueT> InitSourceCode(const ValueT& self_val,
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeSourceCodeClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("SourceCode", [&](const auto& DoEach) {
         DoEach("__init__", &InitSourceCode<ValueT>);
       }));
-  return ClassT(cls);
+  using Self = SourceCode;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::code_module

@@ -92,10 +92,10 @@ template <typename ArithmeticOp, typename Val>
 Result<Val> BuiltinStringBinary(const std::string& str, const Val& rhs_val) {
   return rhs_val.Match(
       [&](const BuiltinClassInstance<Val>& impl) -> Result<Val> {
-        return adt::errors::TypeError{std::string() +
-                                      "unsupported operand types for " +
-                                      ArithmeticOp::Name() + ": 'str' and '" +
-                                      impl.type.class_attrs->class_name + "'"};
+        return adt::errors::TypeError{
+            std::string() + "unsupported operand types for " +
+            ArithmeticOp::Name() + ": 'str' and '" +
+            impl.type.class_attrs()->class_name + "'"};
       },
       [&](const ClassInstance<Val>& impl) -> Result<Val> {
         return adt::errors::TypeError{std::string() +

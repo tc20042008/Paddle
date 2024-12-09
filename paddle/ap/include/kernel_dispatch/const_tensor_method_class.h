@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/kernel_dispatch/const_tensor.h"
 
 namespace ap::kernel_dispatch {
@@ -83,7 +84,7 @@ Result<Val> TensorGetAttr(const ConstTensor<Val>& tensor,
 
 template <typename ValueT>
 struct ConstTensorMethodClass {
-  using Self = ConstTensorMethodClass;
+  using Self = ConstTensor<ValueT>;
 
   static adt::Result<ValueT> GetAttr(const ValueT& obj_val,
                                      const std::vector<ValueT>& args) {
@@ -97,12 +98,13 @@ struct ConstTensorMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetConstTensorClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
+  using ImplMethods = ConstTensorMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("ConstTensor", [&](const auto& DoEach) {
-        DoEach("__getattr__", &ConstTensorMethodClass<ValueT>::GetAttr);
+        DoEach("__getattr__", &ImplMethods::GetAttr);
       }));
-  return ClassT(cls);
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::kernel_dispatch

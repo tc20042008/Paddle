@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/code_gen/code_gen_ctx.h"
 #include "paddle/ap/include/code_gen/dim_expr_kernel_arg_id.h"
 #include "paddle/ap/include/code_gen/kernel_arg_id_helper.h"
@@ -58,13 +59,13 @@ struct DimExprKernelArgIdMethodClass {
 template <typename ValueT, typename BirNode>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetDimExprKernelArgIdClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = DimExprKernelArgIdMethodClass<ValueT, BirNode>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "DimExprKernelArgId", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
-  return ClassT(cls);
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::code_gen

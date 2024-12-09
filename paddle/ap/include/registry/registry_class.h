@@ -17,6 +17,7 @@
 #include "paddle/ap/include/axpr/builtin_class_instance.h"
 #include "paddle/ap/include/axpr/method.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/registry/registry.h"
 #include "paddle/ap/include/registry/registry_singleton.h"
@@ -57,12 +58,12 @@ adt::Result<ValueT> RegisterDrrPass(const ValueT&,
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeRegistryClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("Registry", [&](const auto& DoEach) {
         DoEach("drr_pass", &RegisterDrrPass<ValueT>);
       }));
-  return ClassT(cls);
+  using Self = Registry;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::registry

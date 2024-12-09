@@ -17,6 +17,7 @@
 #include <set>
 #include "paddle/ap/include/axpr/function.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/axpr/value.h"
@@ -198,7 +199,6 @@ struct ResPtnOpPatternCtxMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnOpPatternCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = drr::ResPtnOpPatternCtxMethodClass;
   using TT = drr::Type<drr::tResPtn<drr::OpPatternCtx>>;
   static auto cls(
@@ -209,7 +209,8 @@ GetResPtnOpPatternCtxClass() {
         Define("__setattr__", &Impl::SetAttr);
         Define("ap_pattern_fusion_op", &Impl::StaticDeclareApPatternFusionOp);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

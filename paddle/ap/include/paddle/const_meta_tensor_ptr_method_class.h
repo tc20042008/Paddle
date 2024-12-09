@@ -17,6 +17,7 @@
 #include "paddle/ap/include/axpr/builtin_class_instance.h"
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/paddle/const_meta_tensor_ptr.h"
 #include "paddle/ap/include/paddle/ddim_method_class.h"
 
@@ -70,7 +71,6 @@ struct ConstMetaTensorPtrMethodClass {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetConstMetaTensorPtrClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = ConstMetaTensorPtrMethodClass;
   static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
       "ConstMetaTensorPtr", [&](const auto& Define) {
@@ -78,7 +78,7 @@ GetConstMetaTensorPtrClass() {
         Define("__hash__", &Impl::Hash);
         Define("__getattr__", &Impl::GetAttr);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 }  // namespace ap::paddle

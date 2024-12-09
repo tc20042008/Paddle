@@ -152,6 +152,21 @@ adt::Result<T> Get(const ValueT& val) {
   }
 }
 
+template <typename T, typename ValueT>
+adt::Result<bool> CastableTo(const ValueT& val) {
+  using TypeT = typename TypeTrait<ValueT>::TypeT;
+  if constexpr (ValueT::template IsMyAlternative<T>()) {
+    return val.template Has<T>();
+  } else if constexpr (TypeT::template IsMyAlternative<T>()) {
+    ADT_LET_CONST_REF(type, CastToType(val));
+    return type.template Has<T>();
+  } else {
+    ADT_LET_CONST_REF(instance,
+                      val.template TryGet<BuiltinClassInstance<ValueT>>());
+    return instance.template Has<T>();
+  }
+}
+
 struct Value : public ValueBase<Value> {
   using ValueBase<Value>::ValueBase;
   ADT_DEFINE_VARIANT_METHODS(ValueBase<Value>);
@@ -163,6 +178,12 @@ struct Value : public ValueBase<Value> {
   template <typename T>
   adt::Result<T> CastTo() const {
     return axpr::Get<T>(*this);
+  }
+
+  template <typename T>
+  bool CastableTo() const {
+    const auto& ret = axpr::CastableTo<T>(*this);
+    return ret.HasOkValue() ? ret.GetOkValue() : false;
   }
 };
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
 #include "paddle/ap/include/ir_match/tensor_match_ctx.h"
 
@@ -119,13 +120,12 @@ struct TensorMatchCtxMethodClass {
 
 template <typename ValueT, typename BirNode>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetTensorMatchCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = TensorMatchCtxMethodClass<ValueT, BirNode>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("TensorMatchCtx", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }
 
 }  // namespace ap::ir_match

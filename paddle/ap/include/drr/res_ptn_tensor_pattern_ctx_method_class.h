@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/drr_value_helper.h"
@@ -90,7 +91,6 @@ struct ResPtnTensorPatternCtx {
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
 GetResPtnTensorPatternCtxClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>;
   using Impl = drr::ResPtnTensorPatternCtx;
   using TT = drr::Type<drr::tResPtn<drr::TensorPatternCtx>>;
   static auto cls(
@@ -99,7 +99,8 @@ GetResPtnTensorPatternCtxClass() {
         Define("__hash__", &Impl::Hash);
         Define("__getattr__", &Impl::GetAttr);
       }));
-  return ClassT(cls);
+  using Self = typename Impl::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::drr

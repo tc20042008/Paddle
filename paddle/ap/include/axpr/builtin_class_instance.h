@@ -16,9 +16,11 @@
 
 #include <any>
 #include <unordered_map>
+#include "glog/logging.h"
 #include "paddle/ap/include/axpr/adt.h"
 #include "paddle/ap/include/axpr/builtin_func_type.h"
 #include "paddle/ap/include/axpr/class_attrs.h"
+#include "paddle/ap/include/axpr/class_ops.h"
 #include "paddle/ap/include/axpr/error.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/axpr/type.h"
@@ -30,22 +32,24 @@ struct BuiltinClassInstance;
 
 template <typename ValueT>
 struct TypeImpl<BuiltinClassInstance<ValueT>> {
-  explicit TypeImpl<BuiltinClassInstance<ValueT>>(
-      const ClassAttrs<ValueT>& class_attrs_val)
-      : class_attrs(class_attrs_val.shared_ptr().get()) {}
+  TypeImpl<BuiltinClassInstance<ValueT>>(  // NOLINT
+      const ClassOps<ValueT>* class_ops)
+      : class_ops_(class_ops) {}
 
-  explicit TypeImpl<BuiltinClassInstance<ValueT>>(
-      const ClassAttrsImpl<ValueT>* class_attrs_val)
-      : class_attrs(class_attrs_val) {}
+  const ClassOps<ValueT>* class_ops_;
 
-  const ClassAttrsImpl<ValueT>* class_attrs;
+  const ClassOps<ValueT>* class_ops() const { return class_ops_; }
+
+  const ClassAttrsImpl<ValueT>* class_attrs() const {
+    return class_ops_->class_attrs();
+  }
 
   ValueT New(const std::any& any) const;
 
-  const std::string& Name() const { return class_attrs->Name(); }
+  const std::string& Name() const { return class_attrs()->Name(); }
 
   bool operator==(const TypeImpl<BuiltinClassInstance<ValueT>>& other) const {
-    return this->class_attrs == other.class_attrs;
+    return this->class_ops_ == other.class_ops_;
   }
 };
 
@@ -72,7 +76,14 @@ struct BuiltinClassInstance {
   }
 
   bool operator==(const BuiltinClassInstance& other) const {
-    return this == &other;
+    const auto* class_ops = this->type.class_ops();
+    const auto& ret = class_ops->Equals(*this, other);
+    CHECK(ret.HasOkValue())
+        << "\nTraceback (most recent call last):\n"
+        << ret.GetError().CallStackToString() << "\n"
+        << ret.GetError().class_name()
+        << ": BuiltinClassInstance::operator()(): " << ret.GetError().msg();
+    return ret.GetOkValue();
   }
 };
 

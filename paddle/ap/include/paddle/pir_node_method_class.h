@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/dim_expr_method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/paddle/pir_node.h"
 
 namespace ap::paddle {
@@ -75,7 +76,6 @@ struct NativeIrValueMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = NativeIrValueMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("NativeIrValue", [&](const auto& Define) {
@@ -83,7 +83,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrValueClass() {
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }
 
 template <typename ValueT>
@@ -110,14 +110,13 @@ struct PackedIrValueMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = PackedIrValueMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("PackedIrValue", [&](const auto& Define) {
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }
 
 template <typename ValueT>
@@ -179,7 +178,6 @@ struct RefIrValueMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrValueClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = RefIrValueMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("RefIrValue", [&](const auto& Define) {
@@ -187,7 +185,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrValueClass() {
         Define("__str__", &ImplMethods::ToString);
         Define("__hash__", &ImplMethods::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }
 
 template <typename ValueT>
@@ -214,14 +212,13 @@ struct NativeIrOpMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrOpClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  using ImplMethods = NativeIrOpMethodClass<ValueT>;
+  using Impl = NativeIrOpMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("NativeIrOp", [&](const auto& Define) {
-        Define("__str__", &ImplMethods::ToString);
-        Define("__hash__", &ImplMethods::Hash);
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 template <typename ValueT>
@@ -248,14 +245,13 @@ struct PackedIrOpMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrOpClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  using ImplMethods = PackedIrOpMethodClass<ValueT>;
+  using Impl = PackedIrOpMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("PackedIrOp", [&](const auto& Define) {
-        Define("__str__", &ImplMethods::ToString);
-        Define("__hash__", &ImplMethods::Hash);
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 template <typename ValueT>
@@ -282,14 +278,13 @@ struct RefIrOpMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrOpClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  using ImplMethods = RefIrOpMethodClass<ValueT>;
+  using Impl = RefIrOpMethodClass<ValueT>;
   static auto cls(
       axpr::MakeBuiltinClass<ValueT>("RefIrOp", [&](const auto& Define) {
-        Define("__str__", &ImplMethods::ToString);
-        Define("__hash__", &ImplMethods::Hash);
+        Define("__str__", &Impl::ToString);
+        Define("__hash__", &Impl::Hash);
       }));
-  return ClassT(cls);
+  return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
 
 }  // namespace ap::paddle

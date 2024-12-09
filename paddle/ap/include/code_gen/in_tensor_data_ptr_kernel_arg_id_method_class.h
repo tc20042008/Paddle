@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/code_gen/in_tensor_data_ptr_kernel_arg_id.h"
 #include "paddle/ap/include/code_gen/kernel_arg_id_helper.h"
 
@@ -55,13 +56,13 @@ struct InTensorDataPtrKernelArgIdMethodClass {
 template <typename ValueT, typename BirNode>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>
 GetInTensorDataPtrKernelArgIdClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
   using ImplMethods = InTensorDataPtrKernelArgIdMethodClass<ValueT, BirNode>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "InTensorDataPtrKernelArgId", [&](const auto& Define) {
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
-  return ClassT(cls);
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::code_gen

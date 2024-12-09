@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/index_expr/slice.h"
 
 namespace ap::index_expr {
@@ -33,12 +34,12 @@ struct SliceMethodClass {
 
 template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetSliceClass() {
-  using ClassT = axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>>;
-  static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("Slice", [&](const auto& Define) {
-        Define("__str__", &SliceMethodClass<ValueT>::ToString);
-      }));
-  return ClassT(cls);
+  using ImplMethods = SliceMethodClass<ValueT>;
+  static auto cls(axpr::MakeBuiltinClass<ValueT>(
+      "Slice",
+      [&](const auto& Define) { Define("__str__", &ImplMethods::ToString); }));
+  using Self = typename ImplMethods::Self;
+  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 
 }  // namespace ap::index_expr

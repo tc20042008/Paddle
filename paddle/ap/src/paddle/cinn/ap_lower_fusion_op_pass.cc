@@ -647,10 +647,9 @@ struct ApRewriter {
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttrMap(
       ap::axpr::LetContext* ctx,
-      const ap::axpr::AttrMap<ap::axpr::SerializableValue>&
-          kernel_dispatch_const_data) const {
+      const ap::axpr::AttrMap<ap::axpr::SerializableValue>& attr_map) const {
     std::map<std::string, AnfExpr> kwargs;
-    for (const auto& [keyword, val] : kernel_dispatch_const_data->storage) {
+    for (const auto& [keyword, val] : attr_map->storage) {
       ADT_LET_CONST_REF(val_anf,
                         GetCodeFromBuiltinSerializableAttrMapItem(ctx, val));
       kwargs[keyword] = val_anf;
@@ -740,8 +739,8 @@ struct ApRewriter {
     const auto& lambda = op_declare_data->code_gen_func();
     ADT_LET_CONST_REF(code_gen_result,
                       GetApKernelModule(lambda, match_ctx, res_ptn_ir_op));
-    ap::axpr::AnfExpr anf_expr =
-        ConvertApKernelModuleToAnfExpr(code_gen_result->code_module);
+    ADT_LET_CONST_REF(
+        anf_expr, ConvertApKernelModuleToAnfExpr(code_gen_result->code_module));
     const std::string& code_gen_lambda_str = anf_expr.DumpToJsonString();
     const auto& kernel_dispatch_func = code_gen_result->kernel_dispatch_func;
     auto* data = &code_gen_result.shared_ptr()->kernel_dispatch_const_data;
@@ -825,7 +824,8 @@ struct ApRewriter {
     return arg_source_ctx;
   }
 
-  AnfExpr ConvertApKernelModuleToAnfExpr(const CodeModule& m) const {
+  adt::Result<AnfExpr> ConvertApKernelModuleToAnfExpr(
+      const CodeModule& m) const {
     auto ConvertArgType = [&](auto& ctx, const auto& arg_type) -> AnfExpr {
       return arg_type.Match(
           [&](const ap::axpr::DataType& data_type) -> AnfExpr {
@@ -854,36 +854,69 @@ struct ApRewriter {
       for (const auto& func_declare : *m->func_declares) {
         elts.emplace_back(ConvertFuncDeclareCall(ctx, func_declare));
       }
-      return ctx.Apply(ap::axpr::kBuiltinList(), elts);
+      return ctx.Call(ap::axpr::kBuiltinList(), elts);
     };
     auto ConvertCudaKernelSourceCodeConstruction =
         [&](auto& ctx, const auto& cuda_kernel) -> AnfExpr {
       const auto& str = ctx.String(cuda_kernel->source_code);
       return ctx.Call("CudaKernelSourceCode", str);
     };
-    auto ConvertSourceCodeConstruction = [&](auto& ctx) -> AnfExpr {
+    auto ConvertSourceCodeConstruction =
+        [&](auto& ctx) -> adt::Result<AnfExpr> {
       return m->source_code.Match(
           [&](const ap::code_module::CudaKernelSourceCode& cuda_kernel)
-              -> AnfExpr {
+              -> adt::Result<AnfExpr> {
             return ConvertCudaKernelSourceCodeConstruction(ctx, cuda_kernel);
           },
-          [&](const ap::code_module::Project& project) -> AnfExpr {
-            const auto* ret_var = ConvertProjectConstruct(&ctx, project);
-            return static_cast<AnfExpr>(*ret_var);
+          [&](const ap::code_module::Project& project) -> adt::Result<AnfExpr> {
+            return ConvertProjectConstruct(&ctx, project);
           });
     };
-    auto ConstructLambdaBody = [&](auto& ctx) -> ap::axpr::AnfExpr {
+    auto ConstructLambdaBody = [&](auto& ctx) -> adt::Result<AnfExpr> {
       const auto& declare = ConvertFuncDeclareList(ctx);
-      const auto& source_code = ConvertSourceCodeConstruction(ctx);
+      ADT_LET_CONST_REF(source_code, ConvertSourceCodeConstruction(ctx));
       return ctx.Call("CodeModule", declare, source_code);
     };
-    return ap::axpr::LambdaExprBuilder{}.Lambda({}, ConstructLambdaBody);
+    return ap::axpr::LambdaExprBuilder{}.TryLambda({}, ConstructLambdaBody);
   }
 
-  ap::axpr::LetVar* ConvertProjectConstruct(
+  adt::Result<AnfExpr> ConvertProjectConstruct(
       ap::axpr::LetContext* ctx,
       const ap::code_module::Project& project) const {
-    LOG(FATAL) << "NotImplemented";
+    const auto& attrs = project->others;
+    ADT_LET_CONST_REF(others_anf_expr,
+                      GetCodeFromBuiltinSerializableAttrMap(ctx, attrs));
+    return ctx->Apply(
+        "Project",
+        {},
+        {
+            {"nested_files",
+             ConvertProjectNestedFiles(ctx, project->nested_files)},
+            {"cmd", AnfExpr{ctx->String(project->cmd)}},
+            {"so_relative_path", AnfExpr{ctx->String(project->cmd)}},
+            {"others", others_anf_expr},
+        });
+  }
+
+  AnfExpr ConvertProjectNestedFiles(ap::axpr::LetContext* ctx,
+                                    const ap::code_module::File& file) const {
+    return file.Match(
+        [&](const ap::code_module::FileContent& file_content) -> AnfExpr {
+          const auto& str = file_content->file_content;
+          return ctx->Var("Project").Attr("FileContent").Call(ctx->String(str));
+        },
+        [&](const ap::code_module::SoftLink& soft_link) -> AnfExpr {
+          const auto& str = soft_link->linked_file_relative_path;
+          return ctx->Var("Project").Attr("SoftLink").Call(ctx->String(str));
+        },
+        [&](const ap::code_module::Directory<ap::code_module::File>& dir)
+            -> AnfExpr {
+          std::map<std::string, AnfExpr> kwargs;
+          for (const auto& [k, v] : dir.dentry2file->storage) {
+            kwargs[k] = ConvertProjectNestedFiles(ctx, v);
+          }
+          return ctx->Apply(ctx->Var("Project").Attr("Directory"), {}, kwargs);
+        });
   }
 
   adt::Result<std::string> GetKernelDispatchLambdaStr(

@@ -886,16 +886,13 @@ struct ApRewriter {
     const auto& attrs = project->others;
     ADT_LET_CONST_REF(others_anf_expr,
                       GetCodeFromBuiltinSerializableAttrMap(ctx, attrs));
-    return ctx->Apply(
-        "Project",
-        {},
-        {
-            {"nested_files",
-             ConvertProjectNestedFiles(ctx, project->nested_files)},
-            {"cmd", AnfExpr{ctx->String(project->cmd)}},
-            {"so_relative_path", AnfExpr{ctx->String(project->cmd)}},
-            {"others", others_anf_expr},
-        });
+    std::map<std::string, AnfExpr> kwargs{
+        {"nested_files", ConvertProjectNestedFiles(ctx, project->nested_files)},
+        {"cmd", AnfExpr{ctx->String(project->cmd)}},
+        {"so_relative_path", AnfExpr{ctx->String(project->cmd)}},
+        {"others", others_anf_expr},
+    };
+    return ctx->Apply("Project", {}, kwargs);
   }
 
   AnfExpr ConvertProjectNestedFiles(ap::axpr::LetContext* ctx,

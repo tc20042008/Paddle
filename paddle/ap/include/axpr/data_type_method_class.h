@@ -103,6 +103,7 @@ struct TypeImplDataTypeMethodClass {
 
             AP_FOR_EACH_INT_TYPE(MAKE_INT_CPP_TYPE_CASE)
 #undef MAKE_INT_CPP_TYPE_CASE
+                {"void", DataType{CppDataType<adt::Undefined>{}}},
     };
     const auto iter = map.find(attr_name);
     if (iter != map.end()) {

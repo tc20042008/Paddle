@@ -14,16 +14,20 @@
 
 #pragma once
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/data_type.h"
-#include "paddle/ap/include/axpr/pointer_type.h"
-#include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/code_module/adt.h"
-#include "paddle/ap/include/code_module/code_module.h"
+#include "paddle/ap/include/code_module/arg_type.h"
 #include "paddle/ap/include/code_module/data_type.h"
-#include "paddle/ap/include/code_module/func_declare.h"
 
 namespace ap::code_module {
 
-using axpr::Value;
+struct CudaKernelSourceCodeImpl {
+  std::string source_code;
+
+  bool operator==(const CudaKernelSourceCodeImpl& other) const {
+    return other.source_code == this->source_code;
+  }
+};
+ADT_DEFINE_RC(CudaKernelSourceCode, CudaKernelSourceCodeImpl);
 
 }  // namespace ap::code_module

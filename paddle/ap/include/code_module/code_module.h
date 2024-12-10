@@ -23,15 +23,15 @@
 
 namespace ap::code_module {
 
-struct ModuleImpl {
+struct CodeModuleImpl {
   adt::List<FuncDeclare> func_declares;
   SourceCode source_code;
 
-  bool operator==(const ModuleImpl& other) const {
+  bool operator==(const CodeModuleImpl& other) const {
     return other.func_declares == this->func_declares &&
            other.source_code == this->source_code;
   }
 };
-ADT_DEFINE_RC(Module, ModuleImpl);
+ADT_DEFINE_RC(CodeModule, CodeModuleImpl);
 
 }  // namespace ap::code_module

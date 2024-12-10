@@ -74,7 +74,7 @@ namespace code_module {
 class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
  public:
   explicit ApUnaryCudaModuleImpl(
-      const Module& module_val,
+      const CodeModule& module_val,
       const std::shared_ptr<ap::paddle::CUDAModule>& cuda_module_val)
       : CudaModule(), module_(module_val), cuda_module_(cuda_module_val) {}
 
@@ -103,21 +103,24 @@ class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
     return adt::Ok{};
   }
 
-  const Module& GetModule() const { return module_; }
+  const CodeModule& GetModule() const { return module_; }
 
  private:
-  Module module_;
+  CodeModule module_;
   std::shared_ptr<ap::paddle::CUDAModule> cuda_module_;
 };
 ADT_DEFINE_RC(ApUnaryCudaModule, ApUnaryCudaModuleImpl);
 
 adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
-    const Module& m) {
+    const CodeModule& m) {
   ap::paddle::Compiler compiler;
-  const std::string& source_code = m->source_code->source_code;
-  auto ptx = compiler(source_code);
+  ADT_LET_CONST_REF(
+      source_code,
+      m->source_code.template TryGet<ap::code_module::CudaKernelSourceCode>());
+  const std::string& source_code_str = source_code->source_code;
+  auto ptx = compiler(source_code_str);
   ADT_CHECK(!ptx.empty()) << adt::errors::RuntimeError{
-      std::string() + "Compilation failed. source_code: " + source_code};
+      std::string() + "Compilation failed. source_code: " + source_code_str};
   return std::make_shared<ap::paddle::CUDAModule>(
       ptx, ap::paddle::CUDAModule::Kind::PTX);
 }
@@ -296,7 +299,7 @@ adt::Result<adt::List<Val>> MakeMutableTensors(
 
 using FuncName2ArgTypes =
     std::unordered_map<std::string, adt::List<code_module::ArgType>>;
-FuncName2ArgTypes MakeFuncName2ArgTypes(const code_module::Module& m) {
+FuncName2ArgTypes MakeFuncName2ArgTypes(const code_module::CodeModule& m) {
   auto GetArgTypes = [&](const auto& declare) { return declare->arg_types; };
   FuncName2ArgTypes ret;
   for (const auto& declare : *m->func_declares) {

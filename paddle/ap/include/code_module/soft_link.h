@@ -14,16 +14,17 @@
 
 #pragma once
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/data_type.h"
-#include "paddle/ap/include/axpr/pointer_type.h"
-#include "paddle/ap/include/axpr/value.h"
-#include "paddle/ap/include/code_module/adt.h"
-#include "paddle/ap/include/code_module/code_module.h"
-#include "paddle/ap/include/code_module/data_type.h"
-#include "paddle/ap/include/code_module/func_declare.h"
+#include "paddle/ap/include/axpr/type.h"
 
 namespace ap::code_module {
 
-using axpr::Value;
+struct SoftLinkImpl {
+  std::string linked_file_relative_path;
+
+  bool operator==(const SoftLinkImpl& other) const {
+    return this->linked_file_relative_path == other.linked_file_relative_path;
+  }
+};
+ADT_DEFINE_RC(SoftLink, SoftLinkImpl);
 
 }  // namespace ap::code_module

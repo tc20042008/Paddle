@@ -26,18 +26,18 @@ using CoreExpr = ap::axpr::CoreExpr;
 
 using Lambda = ap::axpr::Lambda<CoreExpr>;
 
-using Module = ap::code_module::Module;
+using CodeModule = ap::code_module::CodeModule;
 
 using Val = ap::code_module::Value;
 
 }  // namespace
 
-adt::Result<Module> KernelDefineHelper::InterpretKernelDefineLambda(
+adt::Result<CodeModule> KernelDefineHelper::InterpretKernelDefineLambda(
     const Lambda& lambda) {
   ap::axpr::Interpreter cps_interpreter(
       ap::code_module::MakeBuiltinFrameAttrMap<Val>());
   ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {}));
-  ADT_LET_CONST_REF(m, ap::axpr::Get<Module>(interpret_ret));
+  ADT_LET_CONST_REF(m, ap::axpr::Get<CodeModule>(interpret_ret));
   return m;
 }
 

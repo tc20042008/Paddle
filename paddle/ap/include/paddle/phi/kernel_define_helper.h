@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/code_module/module.h"
+#include "paddle/ap/include/code_module/code_module.h"
 
 namespace phi {
 
@@ -24,9 +24,9 @@ namespace adt = ap::adt;
 struct KernelDefineHelper {
   using CoreExpr = ap::axpr::CoreExpr;
   using Lambda = ap::axpr::Lambda<CoreExpr>;
-  using Module = ap::code_module::Module;
+  using CodeModule = ap::code_module::CodeModule;
 
-  adt::Result<Module> InterpretKernelDefineLambda(
+  adt::Result<CodeModule> InterpretKernelDefineLambda(
       const Lambda& code_module_lambda);
 };
 

@@ -16,20 +16,21 @@
 
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
+#include "paddle/ap/include/code_module/code_module.h"
+#include "paddle/ap/include/code_module/cuda_kernel_source_code.h"
 #include "paddle/ap/include/code_module/func_declare.h"
-#include "paddle/ap/include/code_module/module.h"
 #include "paddle/ap/include/code_module/source_code.h"
 
 namespace ap::code_module {
 
 template <typename ValueT>
-struct TypeImplModuleMethodClass {
-  using This = TypeImplModuleMethodClass;
-  using Self = axpr::TypeImpl<Module>;
+struct TypeImplCodeModuleMethodClass {
+  using This = TypeImplCodeModuleMethodClass;
+  using Self = axpr::TypeImpl<CodeModule>;
 
-  static adt::Result<Module> Make(const std::vector<ValueT>& args) {
+  static adt::Result<CodeModule> Make(const std::vector<ValueT>& args) {
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
-        std::string("the constructor of 'Module' takes 2 arguments. but ") +
+        std::string("the constructor of 'CodeModule' takes 2 arguments. but ") +
         std::to_string(args.size()) + "were given."};
     const auto& list = args.at(0).Match(
         [&](const adt::List<ValueT>& l) -> adt::List<ValueT> { return l; },
@@ -42,35 +43,36 @@ struct TypeImplModuleMethodClass {
       ADT_LET_CONST_REF(func_declare, axpr::Get<FuncDeclare>(elt))
           << adt::errors::TypeError{
                  std::string() +
-                 "the argument 1 of constructor of 'Module' should be a "
+                 "the argument 1 of constructor of 'CodeModule' should be a "
                  "'FuncDeclare' object or a list of 'FuncDeclare' object."};
       func_declares->emplace_back(func_declare);
     }
-    ADT_LET_CONST_REF(source_code, axpr::Get<SourceCode>(args.at(1)))
-        << adt::errors::TypeError{
-               std::string() +
-               "the argument 2 of Module() should be a 'SourceCode' (not " +
-               axpr::GetTypeName(args.at(1)) + ") object"};
-    return Module{func_declares, source_code};
+    ADT_LET_CONST_REF(source_code, SourceCode::CastFromAxprValue(args.at(1)))
+        << adt::errors::TypeError{std::string() +
+                                  "the argument 2 of CodeModule() should be a "
+                                  "'Project' or 'CudaKernelSourceCode' (not " +
+                                  axpr::GetTypeName(args.at(1)) + ") object"};
+    return CodeModule{func_declares, source_code};
   }
 };
 
 template <typename ValueT>
-adt::Result<ValueT> InitModule(const ValueT& self_val,
-                               const std::vector<ValueT>& args) {
+adt::Result<ValueT> InitCodeModule(const ValueT& self_val,
+                                   const std::vector<ValueT>& args) {
   ADT_LET_CONST_REF(
       empty_self,
       self_val.template TryGet<axpr::BuiltinClassInstance<ValueT>>());
-  ADT_LET_CONST_REF(m, TypeImplModuleMethodClass<ValueT>::Make(args));
+  ADT_LET_CONST_REF(m, TypeImplCodeModuleMethodClass<ValueT>::Make(args));
   return empty_self.type.New(m);
 }
 
 template <typename ValueT>
-axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeModuleClass() {
-  static auto cls(axpr::MakeBuiltinClass<ValueT>(
-      "Module",
-      [&](const auto& DoEach) { DoEach("__init__", &InitModule<ValueT>); }));
-  using Self = Module;
+axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> MakeCodeModuleClass() {
+  static auto cls(
+      axpr::MakeBuiltinClass<ValueT>("CodeModule", [&](const auto& DoEach) {
+        DoEach("__init__", &InitCodeModule<ValueT>);
+      }));
+  using Self = CodeModule;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }
 }  // namespace ap::code_module

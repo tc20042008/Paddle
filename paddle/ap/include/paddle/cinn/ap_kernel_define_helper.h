@@ -18,14 +18,14 @@
 #include "paddle/ap/include/code_gen/code_gen_ctx.h"
 #include "paddle/ap/include/code_gen/code_gen_result.h"
 #include "paddle/ap/include/code_gen/value.h"
-#include "paddle/ap/include/code_module/module.h"
+#include "paddle/ap/include/code_module/code_module.h"
 #include "paddle/ap/include/paddle/pir_node.h"
 
 namespace cinn::dialect::ir {
 
 struct ApKernelDefineHelper {
   using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
-  using Module = ap::code_module::Module;
+  using CodeModule = ap::code_module::CodeModule;
   using PirNode = ap::paddle::PirNode;
   using CGValue = ap::code_gen::Value;
   using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;

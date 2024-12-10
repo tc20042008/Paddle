@@ -41,12 +41,12 @@ struct TypeImplCodeGenResultMethodClass {
         << adt::errors::TypeError{
                std::string() +
                "the constructor of 'CodeGenResult' missing keyword argument "
-               "'module' of type 'Module'."};
-    ADT_LET_CONST_REF(m, axpr::Get<code_module::Module>(module_val))
+               "'module' of type 'CodeModule'."};
+    ADT_LET_CONST_REF(m, axpr::Get<code_module::CodeModule>(module_val))
         << adt::errors::TypeError{
                std::string() +
                "the constructor of 'CodeGenResult' missing keyword argument "
-               "'module' of type 'Module'."};
+               "'module' of type 'CodeModule'."};
     ADT_LET_CONST_REF(
         kernel_dispatch_func,
         kwargs->template TryGet<axpr::Function<axpr::SerializableValue>>(

@@ -81,7 +81,7 @@ using ap::axpr::AnfExpr;
 using CGValue = ap::code_gen::Value;
 using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;
 using CodeGenResult = ap::code_gen::CodeGenResult<CGValue>;
-using ap::code_module::Module;
+using ap::code_module::CodeModule;
 
 struct DrrIrOp : public DrrIrOpImpl {
   using DrrIrOpImpl::DrrIrOpImpl;
@@ -832,7 +832,7 @@ struct ApRewriter {
     return arg_source_ctx;
   }
 
-  AnfExpr ConvertApKernelModuleToAnfExpr(const Module& m) const {
+  AnfExpr ConvertApKernelModuleToAnfExpr(const CodeModule& m) const {
     auto ConvertArgType = [&](auto& ctx, const auto& arg_type) -> AnfExpr {
       return arg_type.Match(
           [&](const ap::axpr::DataType& data_type) -> AnfExpr {
@@ -863,16 +863,34 @@ struct ApRewriter {
       }
       return ctx.Call(ap::axpr::kBuiltinList(), elts);
     };
-    auto ConvertSourceCodeCall = [&](auto& ctx) -> AnfExpr {
-      const auto& str = ctx.String(m->source_code->source_code);
-      return ctx.Call("SourceCode", str);
+    auto ConvertCudaKernelSourceCodeConstruction =
+        [&](auto& ctx, const auto& cuda_kernel) -> AnfExpr {
+      const auto& str = ctx.String(cuda_kernel->source_code);
+      return ctx.Call("CudaKernelSourceCode", str);
+    };
+    auto ConvertSourceCodeConstruction = [&](auto& ctx) -> AnfExpr {
+      return m->source_code.Match(
+          [&](const ap::code_module::CudaKernelSourceCode& cuda_kernel)
+              -> AnfExpr {
+            return ConvertCudaKernelSourceCodeConstruction(ctx, cuda_kernel);
+          },
+          [&](const ap::code_module::Project& project) -> AnfExpr {
+            const auto* ret_var = ConvertProjectConstruct(&ctx, project);
+            return static_cast<AnfExpr>(*ret_var);
+          });
     };
     auto ConstructLambdaBody = [&](auto& ctx) -> ap::axpr::AnfExpr {
       const auto& declare = ConvertFuncDeclareList(ctx);
-      const auto& source_code = ConvertSourceCodeCall(ctx);
-      return ctx.Call("Module", declare, source_code);
+      const auto& source_code = ConvertSourceCodeConstruction(ctx);
+      return ctx.Call("CodeModule", declare, source_code);
     };
     return ap::axpr::LambdaExprBuilder{}.Lambda({}, ConstructLambdaBody);
+  }
+
+  ap::axpr::LetVar* ConvertProjectConstruct(
+      ap::axpr::LetContext* ctx,
+      const ap::code_module::Project& project) const {
+    LOG(FATAL) << "NotImplemented";
   }
 
   adt::Result<std::string> GetKernelDispatchLambdaStr(

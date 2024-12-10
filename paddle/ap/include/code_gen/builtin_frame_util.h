@@ -18,9 +18,9 @@
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/axpr/dim_expr_method_class.h"
 #include "paddle/ap/include/code_gen/code_gen_result_method_class.h"
+#include "paddle/ap/include/code_module/code_module_method_class.h"
+#include "paddle/ap/include/code_module/cuda_kernel_source_code_method_class.h"
 #include "paddle/ap/include/code_module/func_declare_method_class.h"
-#include "paddle/ap/include/code_module/module_method_class.h"
-#include "paddle/ap/include/code_module/source_code_method_class.h"
 #include "paddle/ap/include/index_expr/index_expr_method_class.h"
 #include "paddle/ap/include/index_expr/index_tuple_expr_method_class.h"
 #include "paddle/ap/include/index_expr/slice_method_class.h"
@@ -29,9 +29,9 @@ namespace ap::code_gen {
 
 template <typename ValueT, typename DoEachT>
 void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
-  DoEach(code_module::MakeSourceCodeClass<ValueT>());
+  DoEach(code_module::MakeCudaKernelSourceCodeClass<ValueT>());
   DoEach(code_module::MakeFuncDeclareClass<ValueT>());
-  DoEach(code_module::MakeModuleClass<ValueT>());
+  DoEach(code_module::MakeCodeModuleClass<ValueT>());
   DoEach(axpr::GetDimExprClass<ValueT>());
   DoEach(index_expr::GetSliceClass<ValueT>());
   DoEach(index_expr::GetIndexExprClass<ValueT>());

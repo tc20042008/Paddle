@@ -29,7 +29,7 @@ namespace adt = ap::adt;
 namespace {
 
 using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
-using Module = ap::code_module::Module;
+using CodeModule = ap::code_module::CodeModule;
 using PirNode = ap::paddle::PirNode;
 using Val = ap::code_gen::Value;
 using CodeGenCtx = ap::code_gen::CodeGenCtx<PirNode>;

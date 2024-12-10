@@ -32,8 +32,8 @@ struct BuiltinClassInstance;
 
 template <typename ValueT>
 struct TypeImpl<BuiltinClassInstance<ValueT>> {
-  TypeImpl<BuiltinClassInstance<ValueT>>(  // NOLINT
-      const ClassOps<ValueT>* class_ops)
+  TypeImpl<BuiltinClassInstance<ValueT>>(
+      const ClassOps<ValueT>* class_ops)  // NOLINT
       : class_ops_(class_ops) {}
 
   const ClassOps<ValueT>* class_ops_;
@@ -96,9 +96,7 @@ template <typename ValueT, typename VisitorT>
 ClassAttrs<ValueT> MakeBuiltinClass(const std::string& class_name,
                                     const VisitorT& Visitor) {
   AttrMap<ValueT> attr_map;
-  Visitor([&](const auto& name, const axpr::BuiltinFunction<ValueT>& func) {
-    attr_map->Set(name, func.template CastTo<ValueT>());
-  });
+  Visitor([&](const auto& name, const auto& val) { attr_map->Set(name, val); });
   adt::List<std::shared_ptr<ClassAttrsImpl<ValueT>>> empty_superclasses{};
   return ClassAttrs<ValueT>{class_name, empty_superclasses, attr_map};
 }

@@ -25,7 +25,7 @@
 #include "paddle/ap/include/code_gen/kernel_arg_id_helper.h"
 #include "paddle/ap/include/code_gen/op_code_gen_ctx.h"
 #include "paddle/ap/include/code_gen/out_tensor_data_ptr_kernel_arg_id_method_class.h"
-#include "paddle/ap/include/code_module/module.h"
+#include "paddle/ap/include/code_module/code_module.h"
 #include "paddle/ap/include/index_expr/index_tuple_expr.h"
 #include "paddle/ap/include/ir_match/native_or_ref_ir_value.h"
 #include "paddle/ap/include/registry/registry_singleton.h"

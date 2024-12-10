@@ -14,16 +14,24 @@
 
 #pragma once
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/data_type.h"
-#include "paddle/ap/include/axpr/pointer_type.h"
-#include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/axpr/attr_map.h"
+#include "paddle/ap/include/axpr/serializable_value.h"
+#include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/code_module/adt.h"
-#include "paddle/ap/include/code_module/code_module.h"
+#include "paddle/ap/include/code_module/arg_type.h"
 #include "paddle/ap/include/code_module/data_type.h"
-#include "paddle/ap/include/code_module/func_declare.h"
+#include "paddle/ap/include/code_module/file.h"
 
 namespace ap::code_module {
 
-using axpr::Value;
+struct ProjectImpl {
+  Directory<File> nested_files;
+  std::string cmd;
+  std::string so_relative_path;
+  axpr::AttrMap<axpr::SerializableValue> others;
+
+  bool operator==(const ProjectImpl& other) const { return this == &other; }
+};
+ADT_DEFINE_RC(Project, ProjectImpl);
 
 }  // namespace ap::code_module

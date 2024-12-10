@@ -16,36 +16,29 @@
 
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
+#include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/code_module/code_module_method_class.h"
+#include "paddle/ap/include/code_module/cuda_kernel_source_code_method_class.h"
 #include "paddle/ap/include/code_module/func_declare_method_class.h"
-#include "paddle/ap/include/code_module/module_method_class.h"
-#include "paddle/ap/include/code_module/source_code_method_class.h"
+#include "paddle/ap/include/code_module/project_method_class.h"
 
 namespace ap::code_module {
 
 template <typename ValueT, typename DoEachT>
 void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
-  {
-    const auto& cls = MakeSourceCodeClass<ValueT>();
-    DoEach(cls.Name(), ValueT{cls});
-  }
-  {
-    const auto& cls = MakeFuncDeclareClass<ValueT>();
-    DoEach(cls.Name(), ValueT{cls});
-  }
-  {
-    const auto& cls = MakeModuleClass<ValueT>();
-    DoEach(cls.Name(), ValueT{cls});
-  }
+  DoEach(GetProjectClass());
+  DoEach(MakeCudaKernelSourceCodeClass<ValueT>());
+  DoEach(MakeFuncDeclareClass<ValueT>());
+  DoEach(MakeCodeModuleClass<ValueT>());
 }
 
 template <typename ValueT>
 axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
   axpr::AttrMap<ValueT> attr_map;
-  auto Insert = [&](const std::string& k, const ValueT& v) {
-    attr_map->Set(k, v);
-  };
-  axpr::VisitEachBuiltinFrameAttr<ValueT>(Insert);
-  VisitEachBuiltinFrameAttr<ValueT>(Insert);
+  axpr::VisitEachBuiltinFrameAttr<ValueT>(
+      [&](const std::string& k, const ValueT& v) { attr_map->Set(k, v); });
+  VisitEachBuiltinFrameAttr<ValueT>(
+      [&](const auto& cls) { attr_map->Set(cls.Name(), cls); });
   return attr_map;
 }
 

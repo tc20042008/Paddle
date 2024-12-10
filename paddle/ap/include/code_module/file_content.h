@@ -14,16 +14,17 @@
 
 #pragma once
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/data_type.h"
-#include "paddle/ap/include/axpr/pointer_type.h"
-#include "paddle/ap/include/axpr/value.h"
-#include "paddle/ap/include/code_module/adt.h"
-#include "paddle/ap/include/code_module/code_module.h"
-#include "paddle/ap/include/code_module/data_type.h"
-#include "paddle/ap/include/code_module/func_declare.h"
+#include "paddle/ap/include/axpr/type.h"
 
 namespace ap::code_module {
 
-using axpr::Value;
+struct FileContentImpl {
+  std::string file_content;
+
+  bool operator==(const FileContentImpl& other) const {
+    return this->file_content == other.file_content;
+  }
+};
+ADT_DEFINE_RC(FileContent, FileContentImpl);
 
 }  // namespace ap::code_module

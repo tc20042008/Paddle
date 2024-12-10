@@ -19,13 +19,13 @@
 #include "paddle/ap/include/axpr/builtin_serializable_attr_map.h"
 #include "paddle/ap/include/axpr/core_expr.h"
 #include "paddle/ap/include/axpr/type.h"
-#include "paddle/ap/include/code_module/module.h"
+#include "paddle/ap/include/code_module/code_module.h"
 
 namespace ap::code_gen {
 
 template <typename ValueT>
 struct CodeGenResultImpl {
-  code_module::Module code_module;
+  code_module::CodeModule code_module;
   axpr::Function<axpr::SerializableValue> kernel_dispatch_func;
   axpr::AttrMap<axpr::SerializableValue> kernel_dispatch_const_data;
 

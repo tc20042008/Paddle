@@ -14,16 +14,18 @@
 
 #pragma once
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/data_type.h"
-#include "paddle/ap/include/axpr/pointer_type.h"
-#include "paddle/ap/include/axpr/value.h"
-#include "paddle/ap/include/code_module/adt.h"
-#include "paddle/ap/include/code_module/code_module.h"
-#include "paddle/ap/include/code_module/data_type.h"
-#include "paddle/ap/include/code_module/func_declare.h"
+#include "paddle/ap/include/axpr/attr_map.h"
+#include "paddle/ap/include/axpr/type.h"
 
 namespace ap::code_module {
 
-using axpr::Value;
+template <typename FileT>
+struct Directory {
+  axpr::AttrMap<FileT> dentry2file;
+
+  bool operator==(const Directory& other) const {
+    return this->dentry2file == other.dentry2file;
+  }
+};
 
 }  // namespace ap::code_module

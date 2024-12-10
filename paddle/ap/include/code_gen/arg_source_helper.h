@@ -42,7 +42,7 @@ struct ArgSourceHelper {
       }
       auto* ctx = dispatch_ctx->ctx();
       auto* ret_ptr = &ctx->Var(ctx->NewTmpVarName());
-      *ret_ptr = ctx->Call(axpr::kBuiltinList(), items);
+      *ret_ptr = ctx->Var(axpr::kBuiltinList()).Call(items);
       return ret_ptr;
     };
     ADT_LET_CONST_REF(lambda, CreateLambda("ctx", GetBody));

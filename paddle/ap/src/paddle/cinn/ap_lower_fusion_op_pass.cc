@@ -649,20 +649,13 @@ struct ApRewriter {
       ap::axpr::LetContext* ctx,
       const ap::axpr::AttrMap<ap::axpr::SerializableValue>&
           kernel_dispatch_const_data) const {
-    std::vector<AnfExpr> kwargs;
+    std::map<std::string, AnfExpr> kwargs;
     for (const auto& [keyword, val] : kernel_dispatch_const_data->storage) {
-      const AnfExpr& keyword_anf = ctx->String(keyword);
       ADT_LET_CONST_REF(val_anf,
                         GetCodeFromBuiltinSerializableAttrMapItem(ctx, val));
-      const AnfExpr& item =
-          ctx->Call(ap::axpr::kBuiltinList(), keyword_anf, val_anf);
-      kwargs.emplace_back(item);
+      kwargs[keyword] = val_anf;
     }
-    const AnfExpr& packed_args =
-        ctx->Call("__builtin_PackedArgs__",
-                  ctx->Call(ap::axpr::kBuiltinList()),
-                  ctx->Call(ap::axpr::kBuiltinList(), kwargs));
-    return ctx->Call("BuiltinSerializableAttrMap", packed_args);
+    return ctx->Apply("BuiltinSerializableAttrMap", {}, kwargs);
   }
 
   adt::Result<AnfExpr> GetCodeFromBuiltinSerializableAttrMapItem(
@@ -861,7 +854,7 @@ struct ApRewriter {
       for (const auto& func_declare : *m->func_declares) {
         elts.emplace_back(ConvertFuncDeclareCall(ctx, func_declare));
       }
-      return ctx.Call(ap::axpr::kBuiltinList(), elts);
+      return ctx.Apply(ap::axpr::kBuiltinList(), elts);
     };
     auto ConvertCudaKernelSourceCodeConstruction =
         [&](auto& ctx, const auto& cuda_kernel) -> AnfExpr {

@@ -42,7 +42,8 @@ class LetVar {
   template <typename... Args>
   LetVar& Call(Args&&... args);
 
-  LetVar& Apply(const std::vector<AnfExpr>& args);
+  template <typename... Args>
+  LetVar& Apply(Args&&... args);
 
   LetContext* ctx() const { return let_ctx_; }
 
@@ -73,58 +74,69 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
     return *iter->second;
   }
 
-  using CallArgBase = std::variant<LetVar, AnfExpr>;
-
-  struct CallArg : public CallArgBase {
-    using CallArgBase::CallArgBase;
-    const CallArgBase& variant() const {
-      return reinterpret_cast<const CallArgBase&>(*this);
-    }
-    DEFINE_MATCH_METHOD();
-  };
-
   template <typename Arg0, typename... Args>
   AnfExpr Call(const LetVar& f, Arg0 arg0, Args&&... args) {
-    return Call(f.name(),
-                std::vector<CallArg>{std::forward<Arg0>(arg0),
-                                     std::forward<Args>(args)...});
-  }
-
-  AnfExpr Call(const LetVar& f) {
-    return Call(f.name(), std::vector<CallArg>{});
-  }
-
-  AnfExpr Call(const LetVar& f, const std::vector<LetVar>& vars) {
-    return Call(f.name(), vars);
-  }
-
-  AnfExpr Call(const std::string& f) {
-    return CallImpl(f, std::vector<CallArg>{});
+    return ApplyImpl(f.name(),
+                     std::vector<AnfExpr>{std::forward<Arg0>(arg0),
+                                          std::forward<Args>(args)...});
   }
 
   template <typename Arg0, typename... Args>
   AnfExpr Call(const std::string& f, Arg0 arg0, Args&&... args) {
-    return CallImpl(f,
-                    std::vector<CallArg>{std::forward<Arg0>(arg0),
-                                         std::forward<Args>(args)...});
+    return ApplyImpl(f,
+                     std::vector<AnfExpr>{std::forward<Arg0>(arg0),
+                                          std::forward<Args>(args)...});
   }
 
-  AnfExpr Call(const std::string& f, const std::vector<LetVar>& vars) {
-    std::vector<CallArg> args;
+  AnfExpr Call(const LetVar& f) {
+    return ApplyImpl(f.name(), std::vector<AnfExpr>{});
+  }
+
+  AnfExpr Call(const std::string& f) {
+    return ApplyImpl(f, std::vector<AnfExpr>{});
+  }
+
+  AnfExpr Apply(const LetVar& f, const std::vector<LetVar>& vars) {
+    return Apply(f.name(), vars);
+  }
+
+  AnfExpr Apply(const std::string& f, const std::vector<LetVar>& vars) {
+    std::vector<AnfExpr> args;
     args.reserve(vars.size());
     for (const auto& var : vars) {
       args.emplace_back(var);
     }
-    return CallImpl(f, args);
+    return ApplyImpl(f, args);
   }
 
-  AnfExpr Call(const std::string& f, const std::vector<AnfExpr>& vars) {
-    std::vector<CallArg> args;
-    args.reserve(vars.size());
-    for (const auto& var : vars) {
-      args.emplace_back(var);
+  AnfExpr Apply(const LetVar& f, const std::vector<AnfExpr>& args) {
+    return ApplyImpl(f.name(), args);
+  }
+
+  AnfExpr Apply(const std::string& f, const std::vector<AnfExpr>& args) {
+    return ApplyImpl(f, args);
+  }
+
+  AnfExpr Apply(const LetVar& f,
+                const std::vector<AnfExpr>& args,
+                const std::map<std::string, AnfExpr>& kwargs) {
+    return Apply(f.name(), args, kwargs);
+  }
+
+  AnfExpr Apply(const std::string& f,
+                const std::vector<AnfExpr>& args,
+                const std::map<std::string, AnfExpr>& kwargs) {
+    std::vector<AnfExpr> kwarg_list;
+    for (const auto& [keyword, val] : kwargs) {
+      const AnfExpr& item =
+          this->Call(ap::axpr::kBuiltinList(), this->String(keyword), val);
+      kwarg_list.emplace_back(item);
     }
-    return CallImpl(f, args);
+    const AnfExpr& packed_args =
+        this->Call(this->Var("__builtin_PackedArgs__"),
+                   this->Apply(ap::axpr::kBuiltinList(), args),
+                   this->Apply(ap::axpr::kBuiltinList(), kwarg_list));
+    return this->Call(f, packed_args);
   }
 
   LetVar& Attr(const AnfExpr& self, const std::string& attr_name) {
@@ -143,23 +155,13 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
  private:
   friend class LetVar;
 
-  AnfExpr CallImpl(const std::string& f, const std::vector<CallArg>& args) {
+  AnfExpr ApplyImpl(const std::string& f, const std::vector<AnfExpr>& args) {
     std::vector<Atomic<AnfExpr>> atomic_args;
     atomic_args.reserve(args.size());
-    for (const auto& arg : args) {
-      arg.Match(
-          [&](const LetVar& var) {
-            atomic_args.push_back(tVar<std::string>{var.name()});
-          },
-          [&](const AnfExpr& anf_expr) {
-            arg.Match(
-                [&](const Atomic<AnfExpr>& atomic) {
-                  atomic_args.push_back(atomic);
-                },
-                [&](const auto&) {
-                  atomic_args.push_back(BindToTmpVar(anf_expr));
-                });
-          });
+    for (const auto& anf_expr : args) {
+      anf_expr.Match(
+          [&](const Atomic<AnfExpr>& atomic) { atomic_args.push_back(atomic); },
+          [&](const auto&) { atomic_args.push_back(BindToTmpVar(anf_expr)); });
     }
     return AnfExprBuilder().Call(tVar<std::string>{f}, atomic_args);
   }
@@ -249,8 +251,9 @@ inline LetVar& LetVar::Call(Args&&... args) {
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 
-inline LetVar& LetVar::Apply(const std::vector<AnfExpr>& args) {
-  const auto& anf_expr = let_ctx_->Call(this->name(), args);
+template <typename... Args>
+inline LetVar& LetVar::Apply(Args&&... args) {
+  const auto& anf_expr = let_ctx_->Apply(*this, std::forward<Args>(args)...);
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 

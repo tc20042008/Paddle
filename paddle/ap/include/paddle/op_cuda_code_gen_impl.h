@@ -473,11 +473,12 @@ struct OpCudaCodeGenImpl {
       yield_op_input_items.reserve(ir_graph->yield_op_inputs.size());
       for (const auto& yield_op_input : ir_graph->yield_op_inputs) {
         const auto& name = yield_op_input->GetUniqueNameInsideNodeArena();
-        const auto& pair =
-            ctx->Call(axpr::kBuiltinList(), ctx->String(name), ctx->Var(name));
+        const auto& pair = ctx->Var(axpr::kBuiltinList())
+                               .Call(ctx->String(name), ctx->Var(name));
         yield_op_input_items.emplace_back(static_cast<axpr::AnfExpr>(pair));
       }
-      const auto& items = ctx->Call(axpr::kBuiltinList(), yield_op_input_items);
+      const auto& items =
+          ctx->Var(axpr::kBuiltinList()).Call(yield_op_input_items);
       return ctx->Call("OrderedDict", items);
     };
     auto GetBody = [&](auto& ctx) -> adt::Result<axpr::AnfExpr> {

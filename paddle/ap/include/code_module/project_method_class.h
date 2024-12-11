@@ -47,13 +47,17 @@ struct TypeProjectClassMethodClass {
                "the keyword argument 'nested_files' of Project() should be a "
                "Project.Directory, but " +
                axpr::GetTypeName(direcotry_val) + " were given"};
-    ADT_LET_CONST_REF(cmd_val, kwargs->Get("cmd")) << adt::errors::TypeError{
-        std::string() + "Project() need the keyword argument 'cmd'"};
-    ADT_LET_CONST_REF(cmd, cmd_val.template CastTo<std::string>())
+    ADT_LET_CONST_REF(compile_cmd_val, kwargs->Get("compile_cmd"))
         << adt::errors::TypeError{
                std::string() +
-               "the keyword argument 'cmd' of Project() should be a str, but " +
-               axpr::GetTypeName(cmd_val) + " were given"};
+               "Project() need the keyword argument 'compile_cmd'"};
+    ADT_LET_CONST_REF(compile_cmd,
+                      compile_cmd_val.template CastTo<std::string>())
+        << adt::errors::TypeError{std::string() +
+                                  "the keyword argument 'compile_cmd' of "
+                                  "Project() should be a str, but " +
+                                  axpr::GetTypeName(compile_cmd_val) +
+                                  " were given"};
     ADT_LET_CONST_REF(so_relative_path_val, kwargs->Get("so_relative_path"))
         << adt::errors::TypeError{
                std::string() +
@@ -82,7 +86,7 @@ struct TypeProjectClassMethodClass {
       others = others_attrs;
     }
     return GetProjectClass().New(
-        Project{direcotry, cmd, so_relative_path, others});
+        Project{direcotry, compile_cmd, so_relative_path, others});
   }
 };
 

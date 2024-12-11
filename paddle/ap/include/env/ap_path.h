@@ -13,26 +13,30 @@
 // limitations under the License.
 
 #pragma once
+
+#include <cstdlib>
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/type.h"
-#include "paddle/ap/include/code_module/adt.h"
-#include "paddle/ap/include/code_module/arg_type.h"
-#include "paddle/ap/include/code_module/data_type.h"
 
-namespace ap::code_module {
+namespace ap::env {
 
-using FuncId = std::string;
-
-struct FuncDeclareImpl {
-  ArgType ret_type;
-  FuncId func_id;
-  adt::List<ArgType> arg_types;
-
-  bool operator==(const FuncDeclareImpl& other) const {
-    return other.func_id == this->func_id && other.ret_type == this->ret_type &&
-           other.arg_types == this->arg_types;
+template <typename DoEachT>
+adt::Result<adt::Ok> VisitEachApPath(const DoEachT& DoEach) {
+  const char* ap_path_chars = std::getenv("AP_PATH");
+  if (ap_path_chars == nullptr) {
+    return adt::Ok{};
   }
-};
-ADT_DEFINE_RC(FuncDeclare, FuncDeclareImpl);
+  std::string ap_path(ap_path_chars);
+  std::string path;
+  std::istringstream ss(ap_path);
+  while (std::getline(ss, path, ':')) {
+    if (!path.empty()) {
+      ADT_LET_CONST_REF(loop_ctr, DoEach(path));
+      if (loop_ctr.template Has<adt::Break>()) {
+        break;
+      }
+    }
+  }
+  return adt::Ok{};
+}
 
-}  // namespace ap::code_module
+}  // namespace ap::env

@@ -29,13 +29,13 @@ struct TypeSoftLinkMethodClass {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "SoftLink() takes 1 argument, but " +
         std::to_string(args.size()) + " were given."};
-    ADT_LET_CONST_REF(linked_file_relative_path,
+    ADT_LET_CONST_REF(target_relative_path,
                       args.at(0).template CastTo<std::string>())
         << adt::errors::TypeError{
                std::string() +
                "the argument 1 of SoftLink() should a a str, but " +
                axpr::GetTypeName(args.at(0)) + " were given"};
-    return GetSoftLinkClass().New(SoftLink{linked_file_relative_path});
+    return GetSoftLinkClass().New(SoftLink{target_relative_path});
   }
 };
 

@@ -14,6 +14,7 @@
 
 #include "paddle/ap/include/kernel_dispatch/ap_unary_kernel.h"
 
+#include <cstdlib>
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"
@@ -25,6 +26,7 @@
 #include "paddle/ap/include/kernel_dispatch/builtin_frame_util.h"
 #include "paddle/ap/include/paddle/phi/kernel_define_helper.h"
 #include "paddle/ap/include/paddle/phi/kernel_dispatch_helper.h"
+#include "paddle/ap/include/rt_module/naive_module_maker.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 
@@ -69,12 +71,23 @@ adt::Result<ap::axpr::Lambda<ap::axpr::CoreExpr>> CacheCoreExpr(
 
 constexpr MakeCoreExprT MakeOrGetCoreExpr = &CacheCoreExpr<&ConvertToCoreExpr>;
 
-namespace code_module {
+namespace kernel_dispatch {
+
+using FuncName2ArgTypes =
+    std::unordered_map<std::string, adt::List<code_module::ArgType>>;
+FuncName2ArgTypes MakeFuncName2ArgTypes(const code_module::CodeModule& m) {
+  auto GetArgTypes = [&](const auto& declare) { return declare->arg_types; };
+  FuncName2ArgTypes ret;
+  for (const auto& declare : *m->func_declares) {
+    ret[declare->func_id] = GetArgTypes(declare);
+  }
+  return ret;
+}
 
 class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
  public:
   explicit ApUnaryCudaModuleImpl(
-      const CodeModule& module_val,
+      const code_module::CodeModule& module_val,
       const std::shared_ptr<ap::paddle::CUDAModule>& cuda_module_val)
       : CudaModule(), module_(module_val), cuda_module_(cuda_module_val) {}
 
@@ -103,16 +116,16 @@ class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
     return adt::Ok{};
   }
 
-  const CodeModule& GetModule() const { return module_; }
+  const code_module::CodeModule& GetModule() const { return module_; }
 
  private:
-  CodeModule module_;
+  code_module::CodeModule module_;
   std::shared_ptr<ap::paddle::CUDAModule> cuda_module_;
 };
 ADT_DEFINE_RC(ApUnaryCudaModule, ApUnaryCudaModuleImpl);
 
 adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
-    const CodeModule& m) {
+    const code_module::CodeModule& m) {
   ap::paddle::Compiler compiler;
   ADT_LET_CONST_REF(
       source_code,
@@ -125,14 +138,14 @@ adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
       ptx, ap::paddle::CUDAModule::Kind::PTX);
 }
 
-using MakeCudaModuleT =
-    adt::Result<ApUnaryCudaModule> (*)(const std::string& code_module_lambda);
+using MakeCudaModuleT = adt::Result<kernel_dispatch::RtModule> (*)(
+    const std::string& code_module_lambda);
 
 template <MakeCudaModuleT MakeCudaModule>
-adt::Result<ApUnaryCudaModule> CacheCudaModule(
+adt::Result<kernel_dispatch::RtModule> CacheCudaModule(
     const std::string& code_module_lambda) {
   using Definer2CudaModule =
-      std::unordered_map<std::string, adt::Result<ApUnaryCudaModule>>;
+      std::unordered_map<std::string, adt::Result<kernel_dispatch::RtModule>>;
   static Definer2CudaModule definer2cuda_module;
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
@@ -144,23 +157,40 @@ adt::Result<ApUnaryCudaModule> CacheCudaModule(
   return iter->second;
 }
 
-adt::Result<ApUnaryCudaModule> MakeApUnaryCudaModule(
+adt::Result<kernel_dispatch::RtModule> MakeApUnaryCudaModule(
     const std::string& code_module_lambda) {
   ADT_LET_CONST_REF(code_module_core_expr,
                     MakeOrGetCoreExpr(code_module_lambda));
   phi::KernelDefineHelper helper{};
-  ADT_LET_CONST_REF(m,
+  ADT_LET_CONST_REF(code_module,
                     helper.InterpretKernelDefineLambda(code_module_core_expr));
-  ADT_LET_CONST_REF(cuda_module, MakeBackendCudaModule(m));
-  return ApUnaryCudaModule(m, cuda_module);
+  using RetT = adt::Result<kernel_dispatch::RtModule>;
+  return code_module->source_code.Match(
+      [&](const ap::code_module::CudaKernelSourceCode&) -> RetT {
+        ADT_LET_CONST_REF(cuda_module, MakeBackendCudaModule(code_module));
+        ApUnaryCudaModule ap_unary_cuda_module(code_module, cuda_module);
+        return DeprecatedRtModule{ap_unary_cuda_module.shared_ptr(),
+                                  MakeFuncName2ArgTypes(code_module)};
+      },
+      [&](const ap::code_module::Project& project) -> RetT {
+        const char* ap_workspace_dir = std::getenv("AP_WORKSPACE_DIR");
+        ADT_CHECK(ap_workspace_dir != nullptr) << adt::errors::TypeError{
+            std::string() + "AP_WORKSPACE_DIR not set"};
+        auto hash_value_str =
+            std::to_string(std::hash<std::string>()(code_module_lambda));
+        std::string workspace_dir =
+            std::string(ap_workspace_dir) + "/" + hash_value_str;
+        ap::rt_module::NaiveModuleMaker maker(workspace_dir);
+        auto Serialize = [&](const auto&) -> const std::string& {
+          return code_module_lambda;
+        };
+        ADT_LET_CONST_REF(rt_module, maker.Make(code_module, Serialize));
+        return rt_module;
+      });
 }
 
 constexpr MakeCudaModuleT MakeOrGetApUnaryCudaModule =
     &CacheCudaModule<&MakeApUnaryCudaModule>;
-
-}  // namespace code_module
-
-namespace kernel_dispatch {
 
 adt::List<Val> MakeTensorDims(const phi::DenseTensor& tensor) {
   adt::List<Val> ret;
@@ -297,17 +327,6 @@ adt::Result<adt::List<Val>> MakeMutableTensors(
   return ret;
 }
 
-using FuncName2ArgTypes =
-    std::unordered_map<std::string, adt::List<code_module::ArgType>>;
-FuncName2ArgTypes MakeFuncName2ArgTypes(const code_module::CodeModule& m) {
-  auto GetArgTypes = [&](const auto& declare) { return declare->arg_types; };
-  FuncName2ArgTypes ret;
-  for (const auto& declare : *m->func_declares) {
-    ret[declare->func_id] = GetArgTypes(declare);
-  }
-  return ret;
-}
-
 adt::Result<adt::Ok> ApUnaryKernel(
     const std::vector<const phi::DenseTensor*>& xs,
     int num_outputs,
@@ -324,14 +343,12 @@ adt::Result<adt::Ok> ApUnaryKernel(
       kernel_dispatch_const_data,
       ctx_maker_ret.TryGet<ap::axpr::AttrMap<ap::axpr::SerializableValue>>());
   ADT_LET_CONST_REF(
-      cuda_module, code_module::MakeOrGetApUnaryCudaModule(code_module_lambda));
+      rt_module,
+      kernel_dispatch::MakeOrGetApUnaryCudaModule(code_module_lambda));
   ADT_LET_CONST_REF(inputs, MakeConstTensors(xs, kernel_dispatch_const_data));
   ADT_LET_CONST_REF(outputs,
                     MakeMutableTensors(outs, kernel_dispatch_const_data));
-  DispatchRawCtx<Val> raw_ctx{inputs,
-                              outputs,
-                              cuda_module.shared_ptr(),
-                              MakeFuncName2ArgTypes(cuda_module->GetModule())};
+  DispatchRawCtx<Val> raw_ctx{inputs, outputs, rt_module};
   DispatchCtx<Val> dispatch_ctx{raw_ctx, kernel_dispatch_const_data};
   ADT_LET_CONST_REF(lambda, MakeOrGetCoreExpr(kernel_dispatch_lambda));
   ADT_RETURN_IF_ERR(helper.InterpretKernelDispatcher(lambda, dispatch_ctx));

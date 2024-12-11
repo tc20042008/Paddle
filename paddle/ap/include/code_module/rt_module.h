@@ -13,26 +13,15 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/type.h"
-#include "paddle/ap/include/code_module/adt.h"
-#include "paddle/ap/include/code_module/arg_type.h"
-#include "paddle/ap/include/code_module/data_type.h"
 
 namespace ap::code_module {
 
-using FuncId = std::string;
+class RtModule {
+ public:
+  virtual ~RtModule() = default;
 
-struct FuncDeclareImpl {
-  ArgType ret_type;
-  FuncId func_id;
-  adt::List<ArgType> arg_types;
-
-  bool operator==(const FuncDeclareImpl& other) const {
-    return other.func_id == this->func_id && other.ret_type == this->ret_type &&
-           other.arg_types == this->arg_types;
-  }
+ protected:
+  RtModule() = default;
 };
-ADT_DEFINE_RC(FuncDeclare, FuncDeclareImpl);
 
 }  // namespace ap::code_module

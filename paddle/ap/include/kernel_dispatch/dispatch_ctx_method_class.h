@@ -19,6 +19,7 @@
 #include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/value_method_class.h"
 #include "paddle/ap/include/kernel_dispatch/dispatch_ctx.h"
+#include "paddle/ap/include/rt_module/function_method_class.h"
 
 namespace ap::kernel_dispatch {
 
@@ -39,10 +40,12 @@ Result<adt::Ok> DispatchRawCtxImpl<Val>::LaunchCudaKernel(
     int64_t num_blocks,
     int64_t num_threads,
     const adt::List<ArgValue>& kernel_args) const {
+  ADT_LET_CONST_REF(deprecated_module,
+                    this->rt_module.template TryGet<DeprecatedRtModule>());
   std::vector<void*> void_args;
   void_args.reserve(kernel_args->size());
-  const auto& iter = this->func_name2arg_types.find(func_name);
-  if (iter == this->func_name2arg_types.end()) {
+  const auto& iter = deprecated_module.func_name2arg_types.find(func_name);
+  if (iter == deprecated_module.func_name2arg_types.end()) {
     return TypeError{std::string() + "cuda kernel function '" + func_name +
                      "' not found"};
   }
@@ -67,7 +70,7 @@ Result<adt::Ok> DispatchRawCtxImpl<Val>::LaunchCudaKernel(
           const_cast<std::decay_t<decltype(impl)>*>(&impl)));
     });
   }
-  return cuda_module->LaunchCudaKernel(
+  return deprecated_module.cuda_module->LaunchCudaKernel(
       func_name, num_blocks, num_threads, void_args);
 }
 
@@ -210,6 +213,31 @@ struct DispatchCtxMethodClass {
     return This{}.GetOutputIndexByName(self, tensor_name);
   }
 
+  static adt::Result<ValueT> StaticGetSoFunction(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, axpr::Get<Self>(self_val));
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() +
+        "'DispatchCtx.get_so_function()' takes 1 argument but " +
+        std::to_string(args.size()) + " were given."};
+    ADT_LET_CONST_REF(function_name, args.at(0).template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "the argument 1 of 'DispatchCtx.get_so_function()' "
+               "should be str (not '" +
+               axpr::GetTypeName(args.at(0)) + "')."};
+    ADT_LET_CONST_REF(
+        rt_module,
+        self->raw_ctx->rt_module
+            .template TryGet<std::shared_ptr<const ap::rt_module::Module>>());
+    ADT_LET_CONST_REF(function, rt_module->Get(function_name))
+        << adt::errors::TypeError{
+               std::string() +
+               "DispatchCtx.get_so_function() failed. so function '" +
+               function_name + "' not found"};
+    return rt_module::GetSoFunctionClass().New(function);
+  }
+
   adt::Result<ValueT> GetOutputIndexByName(const Self& self,
                                            const std::string& tensor_name) {
     const auto& data = self->kernel_dispatch_const_data;
@@ -231,6 +259,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
         DoEach("get_input_index_by_name", &Methods::StaticGetInputIndexByName);
         DoEach("get_output_index_by_name",
                &Methods::StaticGetOutputIndexByName);
+        DoEach("get_so_function", &Methods::StaticGetSoFunction);
         DoEach("launch_cuda", &detail::LaunchCuda<ValueT>);
       }));
   using Self = typename Methods::Self;

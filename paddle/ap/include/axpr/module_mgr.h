@@ -21,6 +21,7 @@
 #include "paddle/ap/include/axpr/anf_expr_util.h"
 #include "paddle/ap/include/axpr/frame.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
+#include "paddle/ap/include/env/ap_path.h"
 #include "paddle/ap/include/memory/circlable_ref_list.h"
 
 namespace ap::axpr {
@@ -128,22 +129,7 @@ class ModuleMgr {
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachConfigFilePath(const DoEachT& DoEach) {
-    const char* ap_path_chars = std::getenv("AP_PATH");
-    if (ap_path_chars == nullptr) {
-      return adt::Ok{};
-    }
-    std::string ap_path(ap_path_chars);
-    std::string path;
-    std::istringstream ss(ap_path);
-    while (std::getline(ss, path, ':')) {
-      if (!path.empty()) {
-        ADT_LET_CONST_REF(loop_ctr, DoEach(path));
-        if (loop_ctr.template Has<adt::Break>()) {
-          break;
-        }
-      }
-    }
-    return adt::Ok{};
+    return ap::env::VisitEachApPath(DoEach);
   }
 
   std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list_;

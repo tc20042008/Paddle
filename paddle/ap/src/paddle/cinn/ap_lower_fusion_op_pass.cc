@@ -839,6 +839,8 @@ struct ApRewriter {
     };
     auto ConvertFuncDeclareCall = [&](auto& ctx,
                                       const auto& func_declare) -> AnfExpr {
+      const auto& ret_val_anf_expr =
+          ConvertArgType(ctx, func_declare->ret_type);
       const auto& func_name = ctx.String(func_declare->func_id);
       std::vector<AnfExpr> elts;
       elts.reserve(func_declare->arg_types->size());
@@ -846,7 +848,8 @@ struct ApRewriter {
         elts.emplace_back(ConvertArgType(ctx, arg_type));
       }
       const auto& arg_type_anf_expr = ctx.Call(ap::axpr::kBuiltinList(), elts);
-      return ctx.Call("FuncDeclare", func_name, arg_type_anf_expr);
+      return ctx.Call(
+          "FuncDeclare", ret_val_anf_expr, func_name, arg_type_anf_expr);
     };
     auto ConvertFuncDeclareList = [&](auto& ctx) -> AnfExpr {
       std::vector<AnfExpr> elts;
@@ -888,8 +891,8 @@ struct ApRewriter {
                       GetCodeFromBuiltinSerializableAttrMap(ctx, attrs));
     std::map<std::string, AnfExpr> kwargs{
         {"nested_files", ConvertProjectNestedFiles(ctx, project->nested_files)},
-        {"cmd", AnfExpr{ctx->String(project->cmd)}},
-        {"so_relative_path", AnfExpr{ctx->String(project->cmd)}},
+        {"compile_cmd", AnfExpr{ctx->String(project->compile_cmd)}},
+        {"so_relative_path", AnfExpr{ctx->String(project->so_relative_path)}},
         {"others", others_anf_expr},
     };
     return ctx->Apply("Project", {}, kwargs);
@@ -903,7 +906,7 @@ struct ApRewriter {
           return ctx->Var("Project").Attr("FileContent").Call(ctx->String(str));
         },
         [&](const ap::code_module::SoftLink& soft_link) -> AnfExpr {
-          const auto& str = soft_link->linked_file_relative_path;
+          const auto& str = soft_link->target_relative_path;
           return ctx->Var("Project").Attr("SoftLink").Call(ctx->String(str));
         },
         [&](const ap::code_module::Directory<ap::code_module::File>& dir)

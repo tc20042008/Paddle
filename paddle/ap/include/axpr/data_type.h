@@ -29,16 +29,6 @@ using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
 using float8_e5m2 = ::phi::dtype::float8_e5m2;
 using pstring = ::phi::dtype::pstring;
 
-#define PEXPR_FOR_EACH_INT_TYPE(_) \
-  _(int8)                          \
-  _(uint8)                         \
-  _(int16)                         \
-  _(uint16)                        \
-  _(int32)                         \
-  _(uint32)                        \
-  _(int64)                         \
-  _(uint64)
-
 #define PEXPR_FOR_EACH_ARITHMETIC_OP_SUPPORTED_TYPE(_) \
   _(bool)                                              \
   _(float)                                             \
@@ -83,29 +73,29 @@ struct GetDataTypeNameHelper;
 #define SPECIALIZE_GET_CPP_TYPE_NAME(cpp_type, enum_type)    \
   template <>                                                \
   struct GetDataTypeNameHelper<cpp_type> {                   \
-    static const char* Call() { return #cpp_type; }          \
+    static const char* Name() { return #cpp_type; }          \
   };                                                         \
   template <>                                                \
   struct GetDataTypeNameHelper<const cpp_type> {             \
-    static const char* Call() { return "const_" #cpp_type; } \
+    static const char* Name() { return "const_" #cpp_type; } \
   };
 PD_FOR_EACH_DATA_TYPE(SPECIALIZE_GET_CPP_TYPE_NAME);
 #undef SPECIALIZE_GET_CPP_TYPE_NAME
 template <>
 struct GetDataTypeNameHelper<adt::Undefined> {
-  static const char* Call() { return "void"; }
+  static const char* Name() { return "void"; }
 };
 
 template <>
 struct GetDataTypeNameHelper<const adt::Undefined> {
-  static const char* Call() { return "const_void"; }
+  static const char* Name() { return "const_void"; }
 };
 
 template <typename T>
 struct CppDataType : public std::monostate {
   using std::monostate::monostate;
   using type = T;
-  const char* Name() const { return GetDataTypeNameHelper<T>::Call(); }
+  const char* Name() const { return GetDataTypeNameHelper<T>::Name(); }
 };
 
 // clang-format off

@@ -26,15 +26,19 @@ struct TypeImplFuncDeclareMethodClass {
   using Self = axpr::TypeImpl<FuncDeclare>;
 
   static adt::Result<FuncDeclare> Make(const std::vector<ValueT>& args) {
-    ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
-        std::string("the constructor of FuncDeclare takes 2 arguments but ") +
-        std::to_string(args.size()) + "were given."};
-    ADT_LET_CONST_REF(func_id, axpr::TryGetImpl<std::string>(args.at(0)))
+    ADT_CHECK(args.size() == 3) << adt::errors::TypeError{
+        std::string("the constructor of FuncDeclare takes 3 arguments but ") +
+        std::to_string(args.size()) + " were given."};
+    ADT_LET_CONST_REF(ret_type, CastToArgType<axpr::Value>(args.at(0)))
         << adt::errors::TypeError{std::string() +
-                                  "the argument 1 of constructor of "
-                                  "FuncDeclare should be a 'str'"};
-    ADT_LET_CONST_REF(arg_types, GetArgTypes(args.at(1)));
-    return FuncDeclare{func_id, arg_types};
+                                  "the argument 1 of FuncDeclare() should be a "
+                                  "'DataType or PointerType'"};
+    ADT_LET_CONST_REF(func_id, axpr::TryGetImpl<std::string>(args.at(1)))
+        << adt::errors::TypeError{std::string() +
+                                  "the argument 2 of "
+                                  "FuncDeclare() should be a 'str'"};
+    ADT_LET_CONST_REF(arg_types, GetArgTypes(args.at(2)));
+    return FuncDeclare{ret_type, func_id, arg_types};
   }
 
   static Result<adt::List<ArgType>> GetArgTypes(const ValueT& val) {

@@ -26,7 +26,7 @@ namespace ap::code_module {
 
 struct ProjectImpl {
   Directory<File> nested_files;
-  std::string cmd;
+  std::string compile_cmd;
   std::string so_relative_path;
   axpr::AttrMap<axpr::SerializableValue> others;
 

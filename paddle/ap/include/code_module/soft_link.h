@@ -19,10 +19,10 @@
 namespace ap::code_module {
 
 struct SoftLinkImpl {
-  std::string linked_file_relative_path;
+  std::string target_relative_path;
 
   bool operator==(const SoftLinkImpl& other) const {
-    return this->linked_file_relative_path == other.linked_file_relative_path;
+    return this->target_relative_path == other.target_relative_path;
   }
 };
 ADT_DEFINE_RC(SoftLink, SoftLinkImpl);

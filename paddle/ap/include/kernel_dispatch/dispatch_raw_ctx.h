@@ -18,6 +18,7 @@
 #include "paddle/ap/include/code_module/data_type.h"
 #include "paddle/ap/include/kernel_dispatch/arg_value.h"
 #include "paddle/ap/include/kernel_dispatch/typed_buffer.h"
+#include "paddle/ap/include/rt_module/module.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -42,13 +43,29 @@ class CudaModule {
   CudaModule() = default;
 };
 
+struct DeprecatedRtModule {
+  std::shared_ptr<CudaModule> cuda_module;
+  std::unordered_map<std::string, adt::List<code_module::ArgType>>
+      func_name2arg_types;
+
+  bool operator==(const DeprecatedRtModule& other) const {
+    return this == &other;
+  }
+};
+
+using RtModuleImpl =
+    std::variant<DeprecatedRtModule, std::shared_ptr<const rt_module::Module>>;
+
+struct RtModule : public RtModuleImpl {
+  using RtModuleImpl::RtModuleImpl;
+  ADT_DEFINE_VARIANT_METHODS(RtModuleImpl);
+};
+
 template <typename ValueT>
 struct DispatchRawCtxImpl {
   adt::List<ValueT> inputs;
   adt::List<ValueT> outputs;
-  std::shared_ptr<CudaModule> cuda_module;
-  std::unordered_map<std::string, adt::List<code_module::ArgType>>
-      func_name2arg_types;
+  RtModule rt_module;
 
   bool operator==(const DispatchRawCtxImpl& other) const {
     return &other == this;

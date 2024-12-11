@@ -15,9 +15,8 @@
 #pragma once
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/value.h"
-#include "paddle/ap/include/code_module/arg_type.h"
-#include "paddle/ap/include/code_module/data_type.h"
 #include "paddle/ap/include/kernel_dispatch/typed_buffer.h"
+#include "paddle/ap/include/rt_module/arg_value.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -30,44 +29,8 @@ namespace ap::kernel_dispatch {
 
 using code_module::ArgType;
 
-using ArgValueImpl = std::variant<ap::axpr::DataValue, ap::axpr::PointerValue>;
+using rt_module::ArgValue;
 
-struct ArgValue : public ArgValueImpl {
-  using ArgValueImpl::ArgValueImpl;
-  ADT_DEFINE_VARIANT_METHODS(ArgValueImpl);
-
-  ArgType GetType() const {
-    return Match([](auto impl) -> ArgType { return impl.GetType(); });
-  }
-
-  template <typename T>
-  adt::Result<T> TryGetValue() const {
-    if constexpr (std::is_pointer_v<T>) {
-      const auto& pointer_value =
-          this->template TryGet<ap::axpr::PointerValue>();
-      ADT_RETURN_IF_ERR(pointer_value);
-      return pointer_value.GetOkValue().template TryGet<T>();
-    } else {
-      const auto& data_value = this->template TryGet<ap::axpr::DataValue>();
-      ADT_RETURN_IF_ERR(data_value);
-      return data_value.GetOkValue().template TryGet<T>();
-    }
-  }
-};
-
-template <typename ValueT>
-Result<ArgValue> CastToArgValue(const ValueT& value) {
-  return value.Match(
-      [&](const ap::axpr::DataValue& impl) -> Result<ArgValue> { return impl; },
-      [&](const ap::axpr::PointerValue& impl) -> Result<ArgValue> {
-        return impl;
-      },
-      [&](const auto&) -> Result<ArgValue> {
-        return TypeError{std::string() +
-                         "CastToArgValue failed. expected types: "
-                         "(DataValue, PointerValue), actual type: " +
-                         axpr::GetTypeName(value)};
-      });
-}
+using rt_module::CastToArgValue;
 
 }  // namespace ap::kernel_dispatch

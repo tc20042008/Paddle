@@ -911,11 +911,13 @@ struct ApRewriter {
         },
         [&](const ap::code_module::Directory<ap::code_module::File>& dir)
             -> AnfExpr {
-          std::map<std::string, AnfExpr> kwargs;
+          std::vector<AnfExpr> args;
           for (const auto& [k, v] : dir.dentry2file->storage) {
-            kwargs[k] = ConvertProjectNestedFiles(ctx, v);
+            const auto& v_anf_expr = ConvertProjectNestedFiles(ctx, v);
+            args.emplace_back(ctx->Call(
+                ap::axpr::kBuiltinList(), ctx->String(k), v_anf_expr));
           }
-          return ctx->Apply(ctx->Var("Project").Attr("Directory"), {}, kwargs);
+          return ctx->Apply(ctx->Var("Project").Attr("Directory"), args);
         });
   }
 

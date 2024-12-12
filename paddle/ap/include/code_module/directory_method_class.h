@@ -25,21 +25,39 @@ namespace ap::code_module {
 axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDirectoryClass();
 
 struct TypeDirectoryClassMethodClass {
-  static adt::Result<axpr::Value> New(
-      const axpr::Value&, const std::vector<axpr::Value>& args_vec) {
-    const auto& packed_args = axpr::CastToPackedArgs(args_vec);
-    const auto& [args, kwargs] = *packed_args;
-    ADT_CHECK(args->empty()) << adt::errors::TypeError{
-        std::string() + "Directory() takes no positional argument, bug " +
-        std::to_string(args->size()) + " were given"};
+  static adt::Result<axpr::Value> New(const axpr::Value&,
+                                      const std::vector<axpr::Value>& args) {
     axpr::AttrMap<File> dentry2file{};
-    for (const auto& [dentry, elt] : kwargs->storage) {
-      ADT_LET_CONST_REF(file, File::CastFromAxprValue(elt))
+    int i = 0;
+    for (const auto& arg : args) {
+      ++i;
+      ADT_LET_CONST_REF(pair, arg.template CastTo<adt::List<axpr::Value>>())
+          << adt::errors::TypeError{
+                 std::string() + "the argument of " + std::to_string(i) +
+                 " Directory() should be a [str, Project.Directory | "
+                 "Project.FileContent | Project.SoftLink]"
+                 ", but " +
+                 axpr::GetTypeName(arg) + " were given"};
+      ADT_CHECK(pair->size() == 2) << adt::errors::TypeError{
+          std::string() + "the argument of " + std::to_string(i) +
+          " Directory() should be a [str, Project.Directory | "
+          "Project.FileContent | Project.SoftLink]"
+          ", but its length is " +
+          std::to_string(pair->size())};
+      ADT_LET_CONST_REF(dentry, pair->at(0).template CastTo<std::string>())
+          << adt::errors::TypeError{
+                 std::string() + "the argument of " + std::to_string(i) +
+                 " Directory() only acepts list of [str, Project.Directory | "
+                 "Project.FileContent | Project.SoftLink]"
+                 ". but the first of pair is a " +
+                 axpr::GetTypeName(pair->at(0))};
+      ADT_LET_CONST_REF(file, File::CastFromAxprValue(pair->at(1)))
           << adt::errors::TypeError{
                  std::string() +
-                 "Directory() only acepts Project.FileContent, "
-                 "Project.SoftLink and Project.Directory, but " +
-                 axpr::GetTypeName(elt) + " were given"};
+                 "Directory() only acepts list of [str, Project.Directory | "
+                 "Project.FileContent | Project.SoftLink]"
+                 ", but the second of pair is a " +
+                 axpr::GetTypeName(pair->at(1))};
       dentry2file->Set(dentry, file);
     }
     return GetDirectoryClass().New(Directory<File>{dentry2file});

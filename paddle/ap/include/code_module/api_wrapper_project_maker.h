@@ -55,16 +55,17 @@ struct ApiWrapperProjectMaker {
     (*ss) << "void " << func_declare->func_id
           << "(void* ret, void* f, void** args) {" << std::endl;
     ADT_LET_CONST_REF(func_ptr_var, DeclareFuncPtrType(func_declare, "func"));
-    (*ss) << func_ptr_var << " = f";
+    (*ss) << "  " << func_ptr_var << " = f"
+          << ";\n";
     ADT_LET_CONST_REF(func_call_str,
                       GenreateFuncCall(func_declare, "func", "args"));
     if (IsVoidRet(func_declare)) {
-      (*ss) << func_call_str << ";";
+      (*ss) << "  " << func_call_str << ";\n";
     } else {
       ADT_LET_CONST_REF(ret_type, GenCode4ArgType(func_declare->ret_type));
-      (*ss) << "*(" << ret_type << "*)ret = " << func_call_str << ";";
+      (*ss) << "  *(" << ret_type << "*)ret = " << func_call_str << ";\n";
     }
-    (*ss) << "}" << std::endl;
+    (*ss) << "}\n" << std::endl;
     return adt::Ok{};
   }
 
@@ -81,11 +82,11 @@ struct ApiWrapperProjectMaker {
                                             const std::string& args_var_name) {
     std::ostringstream ss;
     ss << func_var_name << "(";
-    int i = 0;
-    for (const auto& arg_type : *func_declare->arg_types) {
-      if (i++ > 0) {
+    for (int i = 0; i < func_declare->arg_types->size(); ++i) {
+      if (i > 0) {
         ss << ", ";
       }
+      const auto& arg_type = func_declare->arg_types->at(i);
       ADT_LET_CONST_REF(arg_type_str, GenCode4ArgType(arg_type));
       ss << "*(" << arg_type_str << "*)" << args_var_name << "[" << i << "]";
     }
@@ -162,10 +163,7 @@ struct ApiWrapperProjectMaker {
           return adt::errors::TypeError{
               "pstring are not allowed being used by so function"};
         },
-        [&](axpr::CppDataType<adt::Undefined>) -> RetT {
-          return adt::errors::TypeError{
-              "void are not allowed being used by so function"};
-        });
+        [&](axpr::CppDataType<adt::Undefined>) -> RetT { return "void"; });
   }
 
   adt::Result<std::string> GenCode4PointerType(

@@ -49,7 +49,7 @@ struct NaiveModuleMaker {
       ADT_RETURN_IF_ERR(main_compile_helper.DumpNestedFilesToFs());
       ADT_RETURN_IF_ERR(api_wrapper_compile_helper.Compile());
       ADT_RETURN_IF_ERR(main_compile_helper.Compile());
-      WriteSerializedProject(serialized_project);
+      ADT_RETURN_IF_ERR(WriteSerializedProject(serialized_project));
     }
     std::string api_wrapper_so_path = api_wrapper_compile_helper.GetSoPath();
     std::string main_so_path = main_compile_helper.GetSoPath();

@@ -21,7 +21,7 @@
 namespace ap::rt_module {
 
 // dynamic link handle
-class DlHandle {
+class DlHandle : public std::enable_shared_from_this<DlHandle> {
  public:
   virtual ~DlHandle() = default;
 

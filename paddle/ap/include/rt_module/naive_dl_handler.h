@@ -21,8 +21,7 @@
 
 namespace ap::rt_module {
 
-class NaiveDlHandle : public DlHandle,
-                      std::enable_shared_from_this<NaiveDlHandle> {
+class NaiveDlHandle : public DlHandle {
  public:
   NaiveDlHandle(const NaiveDlHandle&) = default;
   NaiveDlHandle(NaiveDlHandle&&) = default;
@@ -41,9 +40,10 @@ class NaiveDlHandle : public DlHandle,
         std::string() + "api_wrapper so '" + name + "' not found in '" +
         api_wrappers_so_path_ + "'"};
     std::shared_ptr<const DlHandle> self = shared_from_this();
+    ADT_CHECK(self != nullptr);
     using ApiWrapperT = void (*)(void* ret, void* func, void** args);
-    return DlFunction{
-        self, function, reinterpret_cast<ApiWrapperT>(api_wrapper)};
+    DlFunction ret{self, function, reinterpret_cast<ApiWrapperT>(api_wrapper)};
+    return ret;
   }
 
   static adt::Result<std::shared_ptr<const DlHandle>> DlOpen(

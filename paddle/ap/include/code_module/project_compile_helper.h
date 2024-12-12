@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <sys/wait.h>
 #include <fstream>
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/code_module/project.h"
@@ -32,15 +33,13 @@ struct ProjectCompileHelper {
 
   adt::Result<adt::Ok> Compile() {
     int ret_code = 0;
-    std::string cmd = std::string() + "cd " + this->workspace_dir;
-    ret_code = std::system(cmd.c_str());
+    std::string change_dir_cmd = std::string() + "cd " + this->workspace_dir;
+    std::string compile_cmd =
+        change_dir_cmd + "; " + this->project->compile_cmd;
+    ret_code = WEXITSTATUS(std::system(compile_cmd.c_str()));
     ADT_CHECK(ret_code == 0) << adt::errors::RuntimeError{
         std::string() + "system() failed. ret_code: " +
-        std::to_string(ret_code) + ", cmd: cd " + this->workspace_dir};
-    ret_code = std::system(this->project->compile_cmd.c_str());
-    ADT_CHECK(ret_code == 0) << adt::errors::RuntimeError{
-        std::string() + "system() failed. ret_code: " +
-        std::to_string(ret_code) + ", compile_cmd: " + project->compile_cmd};
+        std::to_string(ret_code) + ", compile_cmd: " + compile_cmd};
     return adt::Ok{};
   }
 
@@ -56,7 +55,7 @@ struct ProjectCompileHelper {
       const Directory<File>& directory, const std::string& relative_dir_path) {
     std::string dir_path = this->workspace_dir + "/" + relative_dir_path;
     std::string cmd = std::string() + "mkdir -p " + dir_path;
-    ADT_CHECK(std::system(cmd.c_str()) == 0);
+    ADT_CHECK(WEXITSTATUS(std::system(cmd.c_str())) == 0);
     using Ok = adt::Result<adt::Ok>;
     for (const auto& [dentry, file] : directory.dentry2file->storage) {
       ADT_RETURN_IF_ERR(file.Match(
@@ -108,7 +107,7 @@ struct ProjectCompileHelper {
         "link failed. relative_path: " + soft_link->target_relative_path};
     std::string cmd =
         std::string() + "ln -s " + target_path.value() + " " + link;
-    ADT_CHECK(std::system(cmd.c_str()) == 0);
+    ADT_CHECK(WEXITSTATUS(std::system(cmd.c_str())) == 0);
     return adt::Ok{};
   }
 

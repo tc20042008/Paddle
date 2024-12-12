@@ -17,7 +17,6 @@
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/code_module/code_module.h"
-#include "paddle/ap/include/code_module/cuda_kernel_source_code.h"
 #include "paddle/ap/include/code_module/func_declare.h"
 #include "paddle/ap/include/code_module/source_code.h"
 
@@ -50,7 +49,7 @@ struct TypeImplCodeModuleMethodClass {
     ADT_LET_CONST_REF(source_code, SourceCode::CastFromAxprValue(args.at(1)))
         << adt::errors::TypeError{std::string() +
                                   "the argument 2 of CodeModule() should be a "
-                                  "'Project' or 'CudaKernelSourceCode' (not " +
+                                  "'Project' (not " +
                                   axpr::GetTypeName(args.at(1)) + ") object"};
     return CodeModule{func_declares, source_code};
   }

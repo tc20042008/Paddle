@@ -29,32 +29,7 @@ class DenseTensor;
 
 namespace ap::kernel_dispatch {
 
-class CudaModule {
- public:
-  virtual ~CudaModule() = default;
-
-  virtual adt::Result<adt::Ok> LaunchCudaKernel(
-      const std::string& func_name,
-      int64_t num_blocks,
-      int64_t num_threads,
-      const std::vector<void*>& args) = 0;
-
- protected:
-  CudaModule() = default;
-};
-
-struct DeprecatedRtModule {
-  std::shared_ptr<CudaModule> cuda_module;
-  std::unordered_map<std::string, adt::List<code_module::ArgType>>
-      func_name2arg_types;
-
-  bool operator==(const DeprecatedRtModule& other) const {
-    return this == &other;
-  }
-};
-
-using RtModuleImpl =
-    std::variant<DeprecatedRtModule, std::shared_ptr<const rt_module::Module>>;
+using RtModuleImpl = std::variant<std::shared_ptr<const rt_module::Module>>;
 
 struct RtModule : public RtModuleImpl {
   using RtModuleImpl::RtModuleImpl;

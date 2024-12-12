@@ -34,46 +34,6 @@ using ap::axpr::MethodClass;
 using ap::axpr::PointerType;
 using ap::axpr::PointerValue;
 
-template <typename Val>
-Result<adt::Ok> DispatchRawCtxImpl<Val>::LaunchCudaKernel(
-    const std::string& func_name,
-    int64_t num_blocks,
-    int64_t num_threads,
-    const adt::List<ArgValue>& kernel_args) const {
-  ADT_LET_CONST_REF(deprecated_module,
-                    this->rt_module.template TryGet<DeprecatedRtModule>());
-  std::vector<void*> void_args;
-  void_args.reserve(kernel_args->size());
-  const auto& iter = deprecated_module.func_name2arg_types.find(func_name);
-  if (iter == deprecated_module.func_name2arg_types.end()) {
-    return TypeError{std::string() + "cuda kernel function '" + func_name +
-                     "' not found"};
-  }
-  const auto& defined_arg_types = iter->second;
-  if (defined_arg_types->size() != kernel_args->size()) {
-    return TypeError{std::string() + "cuda kernel function '" + func_name +
-                     "' takes " + std::to_string(defined_arg_types->size()) +
-                     " arguments. but " + std::to_string(kernel_args->size()) +
-                     " were given."};
-  }
-  for (int i = 0; i < defined_arg_types->size(); ++i) {
-    const auto& defined_arg_type = defined_arg_types->at(i);
-    const auto& kernel_arg = kernel_args->at(i);
-    const auto& arg_type = kernel_arg.GetType();
-    if (!(defined_arg_type == arg_type)) {
-      return TypeError{std::string() + "error: invalid conversion from '" +
-                       arg_type.Name() + "' to '" + defined_arg_type.Name() +
-                       "'"};
-    }
-    kernel_arg.Match([&](const auto& impl) {
-      void_args.push_back(reinterpret_cast<void*>(
-          const_cast<std::decay_t<decltype(impl)>*>(&impl)));
-    });
-  }
-  return deprecated_module.cuda_module->LaunchCudaKernel(
-      func_name, num_blocks, num_threads, void_args);
-}
-
 namespace detail {
 
 template <typename Val>
@@ -260,7 +220,6 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
         DoEach("get_output_index_by_name",
                &Methods::StaticGetOutputIndexByName);
         DoEach("get_so_function", &Methods::StaticGetSoFunction);
-        DoEach("launch_cuda", &detail::LaunchCuda<ValueT>);
       }));
   using Self = typename Methods::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

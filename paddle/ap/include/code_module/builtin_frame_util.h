@@ -18,7 +18,6 @@
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/code_module/code_module_method_class.h"
-#include "paddle/ap/include/code_module/cuda_kernel_source_code_method_class.h"
 #include "paddle/ap/include/code_module/func_declare_method_class.h"
 #include "paddle/ap/include/code_module/project_method_class.h"
 
@@ -27,7 +26,6 @@ namespace ap::code_module {
 template <typename ValueT, typename DoEachT>
 void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
   DoEach(GetProjectClass());
-  DoEach(MakeCudaKernelSourceCodeClass<ValueT>());
   DoEach(MakeFuncDeclareClass<ValueT>());
   DoEach(MakeCodeModuleClass<ValueT>());
 }

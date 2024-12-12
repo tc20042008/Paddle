@@ -859,18 +859,9 @@ struct ApRewriter {
       }
       return ctx.Call(ap::axpr::kBuiltinList(), elts);
     };
-    auto ConvertCudaKernelSourceCodeConstruction =
-        [&](auto& ctx, const auto& cuda_kernel) -> AnfExpr {
-      const auto& str = ctx.String(cuda_kernel->source_code);
-      return ctx.Call("CudaKernelSourceCode", str);
-    };
     auto ConvertSourceCodeConstruction =
         [&](auto& ctx) -> adt::Result<AnfExpr> {
       return m->source_code.Match(
-          [&](const ap::code_module::CudaKernelSourceCode& cuda_kernel)
-              -> adt::Result<AnfExpr> {
-            return ConvertCudaKernelSourceCodeConstruction(ctx, cuda_kernel);
-          },
           [&](const ap::code_module::Project& project) -> adt::Result<AnfExpr> {
             return ConvertProjectConstruct(&ctx, project);
           });

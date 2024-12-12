@@ -15,23 +15,17 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/code_module/cuda_kernel_source_code.h"
 #include "paddle/ap/include/code_module/project.h"
 
 namespace ap::code_module {
 
-using SourceCodeImpl = std::variant<CudaKernelSourceCode, Project>;
+using SourceCodeImpl = std::variant<Project>;
 
 struct SourceCode : public SourceCodeImpl {
   using SourceCodeImpl::SourceCodeImpl;
   ADT_DEFINE_VARIANT_METHODS(SourceCodeImpl);
 
   static adt::Result<SourceCode> CastFromAxprValue(const axpr::Value& val) {
-    if (val.template CastableTo<CudaKernelSourceCode>()) {
-      ADT_LET_CONST_REF(cuda_kernel,
-                        val.template CastTo<CudaKernelSourceCode>());
-      return cuda_kernel;
-    }
     if (val.template CastableTo<Project>()) {
       ADT_LET_CONST_REF(project, val.template CastTo<Project>());
       return project;

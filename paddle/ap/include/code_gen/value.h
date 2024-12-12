@@ -24,7 +24,6 @@
 #include "paddle/ap/include/code_gen/out_tensor_data_ptr_kernel_arg_id.h"
 #include "paddle/ap/include/code_module/adt.h"
 #include "paddle/ap/include/code_module/code_module.h"
-#include "paddle/ap/include/code_module/cuda_kernel_source_code.h"
 #include "paddle/ap/include/code_module/data_type.h"
 #include "paddle/ap/include/index_expr/index_expr.h"
 #include "paddle/ap/include/index_expr/index_tuple_expr.h"

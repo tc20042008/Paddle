@@ -18,17 +18,13 @@
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"
-#include "jitify.hpp"  // NOLINT
 #include "paddle/common/enforce.h"
 
 #include "paddle/ap/include/axpr/anf_expr_util.h"
-#include "paddle/ap/include/kernel_dispatch/ap_cuda_jit_util.h"
 #include "paddle/ap/include/kernel_dispatch/builtin_frame_util.h"
 #include "paddle/ap/include/paddle/phi/kernel_define_helper.h"
 #include "paddle/ap/include/paddle/phi/kernel_dispatch_helper.h"
 #include "paddle/ap/include/rt_module/naive_module_maker.h"
-#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
-#include "paddle/cinn/runtime/cuda/cuda_module.h"
 
 namespace ap {
 
@@ -84,80 +80,26 @@ FuncName2ArgTypes MakeFuncName2ArgTypes(const code_module::CodeModule& m) {
   return ret;
 }
 
-class ApUnaryCudaModuleImpl : public kernel_dispatch::CudaModule {
- public:
-  explicit ApUnaryCudaModuleImpl(
-      const code_module::CodeModule& module_val,
-      const std::shared_ptr<ap::paddle::CUDAModule>& cuda_module_val)
-      : CudaModule(), module_(module_val), cuda_module_(cuda_module_val) {}
-
-  ApUnaryCudaModuleImpl& operator=(const ApUnaryCudaModuleImpl& other) {
-    this->module_ = other.module_;
-    this->cuda_module_ = other.cuda_module_;
-    return *this;
-  }
-
-  ApUnaryCudaModuleImpl& operator=(ApUnaryCudaModuleImpl&& other) {
-    this->module_ = std::move(other.module_);
-    this->cuda_module_ = std::move(other.cuda_module_);
-    return *this;
-  }
-
-  adt::Result<adt::Ok> LaunchCudaKernel(
-      const std::string& func_name,
-      int64_t num_blocks,
-      int64_t num_threads,
-      const std::vector<void*>& args) override {
-    dim3 blocks_per_grid(num_blocks);
-    dim3 threads_per_block(num_threads);
-    std::vector<void*>* vec_ptr = const_cast<std::vector<void*>*>(&args);
-    cuda_module_->LaunchKernel(
-        0, func_name, blocks_per_grid, threads_per_block, vec_ptr->data());
-    return adt::Ok{};
-  }
-
-  const code_module::CodeModule& GetModule() const { return module_; }
-
- private:
-  code_module::CodeModule module_;
-  std::shared_ptr<ap::paddle::CUDAModule> cuda_module_;
-};
-ADT_DEFINE_RC(ApUnaryCudaModule, ApUnaryCudaModuleImpl);
-
-adt::Result<std::shared_ptr<ap::paddle::CUDAModule>> MakeBackendCudaModule(
-    const code_module::CodeModule& m) {
-  ap::paddle::Compiler compiler;
-  ADT_LET_CONST_REF(
-      source_code,
-      m->source_code.template TryGet<ap::code_module::CudaKernelSourceCode>());
-  const std::string& source_code_str = source_code->source_code;
-  auto ptx = compiler(source_code_str);
-  ADT_CHECK(!ptx.empty()) << adt::errors::RuntimeError{
-      std::string() + "Compilation failed. source_code: " + source_code_str};
-  return std::make_shared<ap::paddle::CUDAModule>(
-      ptx, ap::paddle::CUDAModule::Kind::PTX);
-}
-
-using MakeCudaModuleT = adt::Result<kernel_dispatch::RtModule> (*)(
+using MakeRtModuleT = adt::Result<kernel_dispatch::RtModule> (*)(
     const std::string& code_module_lambda);
 
-template <MakeCudaModuleT MakeCudaModule>
-adt::Result<kernel_dispatch::RtModule> CacheCudaModule(
+template <MakeRtModuleT MakeRtModule>
+adt::Result<kernel_dispatch::RtModule> CacheRtModule(
     const std::string& code_module_lambda) {
-  using Definer2CudaModule =
+  using Definer2RtModule =
       std::unordered_map<std::string, adt::Result<kernel_dispatch::RtModule>>;
-  static Definer2CudaModule definer2cuda_module;
+  static Definer2RtModule definer2rt_module;
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
-  auto iter = definer2cuda_module.find(code_module_lambda);
-  if (iter == definer2cuda_module.end()) {
-    const auto& cuda_module = MakeCudaModule(code_module_lambda);
-    iter = definer2cuda_module.emplace(code_module_lambda, cuda_module).first;
+  auto iter = definer2rt_module.find(code_module_lambda);
+  if (iter == definer2rt_module.end()) {
+    const auto& rt_module = MakeRtModule(code_module_lambda);
+    iter = definer2rt_module.emplace(code_module_lambda, rt_module).first;
   }
   return iter->second;
 }
 
-adt::Result<kernel_dispatch::RtModule> MakeApUnaryCudaModule(
+adt::Result<kernel_dispatch::RtModule> MakeRtModule(
     const std::string& code_module_lambda) {
   ADT_LET_CONST_REF(code_module_core_expr,
                     MakeOrGetCoreExpr(code_module_lambda));
@@ -166,12 +108,6 @@ adt::Result<kernel_dispatch::RtModule> MakeApUnaryCudaModule(
                     helper.InterpretKernelDefineLambda(code_module_core_expr));
   using RetT = adt::Result<kernel_dispatch::RtModule>;
   return code_module->source_code.Match(
-      [&](const ap::code_module::CudaKernelSourceCode&) -> RetT {
-        ADT_LET_CONST_REF(cuda_module, MakeBackendCudaModule(code_module));
-        ApUnaryCudaModule ap_unary_cuda_module(code_module, cuda_module);
-        return DeprecatedRtModule{ap_unary_cuda_module.shared_ptr(),
-                                  MakeFuncName2ArgTypes(code_module)};
-      },
       [&](const ap::code_module::Project& project) -> RetT {
         const char* ap_workspace_dir = std::getenv("AP_WORKSPACE_DIR");
         ADT_CHECK(ap_workspace_dir != nullptr) << adt::errors::TypeError{
@@ -189,8 +125,7 @@ adt::Result<kernel_dispatch::RtModule> MakeApUnaryCudaModule(
       });
 }
 
-constexpr MakeCudaModuleT MakeOrGetApUnaryCudaModule =
-    &CacheCudaModule<&MakeApUnaryCudaModule>;
+constexpr MakeRtModuleT MakeOrGetRtModule = &CacheRtModule<&MakeRtModule>;
 
 adt::List<Val> MakeTensorDims(const phi::DenseTensor& tensor) {
   adt::List<Val> ret;
@@ -342,9 +277,8 @@ adt::Result<adt::Ok> ApUnaryKernel(
   ADT_LET_CONST_REF(
       kernel_dispatch_const_data,
       ctx_maker_ret.TryGet<ap::axpr::AttrMap<ap::axpr::SerializableValue>>());
-  ADT_LET_CONST_REF(
-      rt_module,
-      kernel_dispatch::MakeOrGetApUnaryCudaModule(code_module_lambda));
+  ADT_LET_CONST_REF(rt_module,
+                    kernel_dispatch::MakeOrGetRtModule(code_module_lambda));
   ADT_LET_CONST_REF(inputs, MakeConstTensors(xs, kernel_dispatch_const_data));
   ADT_LET_CONST_REF(outputs,
                     MakeMutableTensors(outs, kernel_dispatch_const_data));

@@ -38,7 +38,7 @@ class GlobalEnvironment : public Environment<ValueT> {
   adt::Result<adt::Ok> Set(const std::string& var, const ValueT& val) override {
     ADT_LET_CONST_REF(frame_ptr, frame_.Mut());
     {
-      static std::string tmp_var_prefix("__axpr_generated_tmp_var");
+      static std::string tmp_var_prefix("__");
       if (var.substr(0, tmp_var_prefix.size()) != tmp_var_prefix) {
         ADT_CHECK(SerializableValue::IsSerializable(val)) << [&] {
           std::ostringstream ss;

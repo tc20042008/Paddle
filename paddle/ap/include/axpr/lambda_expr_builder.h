@@ -148,7 +148,7 @@ class LetContext : public AtomicExprBuilder<AnfExpr> {
   const std::vector<Bind<AnfExpr>>& bindings() { return bindings_; }
 
   std::string NewTmpVarName() {
-    static const std::string prefix = "__lambda_expr_tmp";
+    static const std::string prefix = "___";
     return prefix + std::to_string(SeqNoGenerator_());
   }
 

@@ -1942,24 +1942,26 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachDrrCtx(const DoEachT& DoEach) {
-    ADT_RETURN_IF_ERR(VisitEachDrrCtxByDrrPassRegistryItems(DoEach));
+    ADT_RETURN_IF_ERR(VisitEachDrrCtxByAbstractDrrPassRegistryItems(DoEach));
     return adt::Ok{};
   }
 
   template <typename DoEachT>
-  adt::Result<adt::Ok> VisitEachDrrCtxByDrrPassRegistryItems(
+  adt::Result<adt::Ok> VisitEachDrrCtxByAbstractDrrPassRegistryItems(
       const DoEachT& DoEach) {
     ADT_LET_CONST_REF(registry, ApRegistryHelper{}.SingltonRegistry());
-    const auto& drr_pass_registry_items = registry->drr_pass_registry_items;
-    for (const auto& [drr_pass_name, nice2drr_pass_items] :
-         drr_pass_registry_items) {
+    const auto& abstract_drr_pass_registry_items =
+        registry->abstract_drr_pass_registry_items;
+    for (const auto& [abstract_drr_pass_name, nice2abstract_drr_pass_items] :
+         abstract_drr_pass_registry_items) {
       std::optional<DrrCtx> opt_drr_ctx;
-      for (const auto& [nice, drr_pass_items] : nice2drr_pass_items) {
+      for (const auto& [nice, abstract_drr_pass_items] :
+           nice2abstract_drr_pass_items) {
         if (opt_drr_ctx.has_value()) {
           break;
         }
-        for (const auto& drr_pass_item : drr_pass_items) {
-          const auto& drr_ctx = GetDrrCtx(drr_pass_item);
+        for (const auto& abstract_drr_pass_item : abstract_drr_pass_items) {
+          const auto& drr_ctx = GetDrrCtx(abstract_drr_pass_item);
           if (drr_ctx.HasOkValue()) {
             ADT_RETURN_IF_ERR(DoEach(drr_ctx.GetOkValue()));
             opt_drr_ctx = drr_ctx.GetOkValue();
@@ -1968,7 +1970,7 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
             LOG(ERROR) << "\nTraceback (most recent call last):\n"
                        << drr_ctx.GetError().CallStackToString() << "\n"
                        << drr_ctx.GetError().class_name()
-                       << ": drr_pass_name: " << drr_pass_name
+                       << ": abstract_drr_pass_name: " << abstract_drr_pass_name
                        << " nice: " << nice
                        << " msg: " << drr_ctx.GetError().msg();
           }
@@ -1979,10 +1981,11 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
   }
 
   adt::Result<DrrCtx> GetDrrCtx(
-      const ap::registry::DrrPassRegistryItem& drr_pass_item) {
-    ADT_LET_CONST_REF(drr_ctx, ApDrrHelper{}.Interpret(drr_pass_item));
+      const ap::registry::AbstractDrrPassRegistryItem& abstract_drr_pass_item) {
+    ADT_LET_CONST_REF(drr_ctx, ApDrrHelper{}.Interpret(abstract_drr_pass_item));
     if (!drr_ctx->pass_name.has_value()) {
-      drr_ctx.shared_ptr()->pass_name = drr_pass_item->drr_pass_name;
+      drr_ctx.shared_ptr()->pass_name =
+          abstract_drr_pass_item->abstract_drr_pass_name;
     }
     return drr_ctx;
   }

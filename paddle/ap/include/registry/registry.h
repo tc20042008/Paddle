@@ -20,7 +20,8 @@
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/type.h"
-#include "paddle/ap/include/registry/drr_pass_registry_item.h"
+#include "paddle/ap/include/registry/abstract_drr_pass_registry_item.h"
+#include "paddle/ap/include/registry/classic_drr_pass_registry_item.h"
 
 namespace ap::registry {
 
@@ -28,7 +29,8 @@ template <typename T>
 using Key2Nice2Items = std::map<std::string, std::map<int64_t, std::vector<T>>>;
 
 struct RegistryImpl {
-  Key2Nice2Items<DrrPassRegistryItem> drr_pass_registry_items;
+  Key2Nice2Items<AbstractDrrPassRegistryItem> abstract_drr_pass_registry_items;
+  Key2Nice2Items<ClassicDrrPassRegistryItem> classic_drr_pass_registry_items;
 
   bool operator==(const RegistryImpl& other) const { return this == &other; }
 };

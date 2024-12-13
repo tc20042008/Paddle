@@ -36,8 +36,8 @@ using DrrCtx = ap::drr::DrrCtx;
 
 }  // namespace
 
-adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
-                                           const std::string& drr_pass_name) {
+adt::Result<DrrCtx> ApDrrHelper::Interpret(
+    const Function& lambda, const std::string& abstract_drr_pass_name) {
   ap::axpr::Interpreter interpreter(ap::drr::MakeBuiltinFrameAttrMap());
   ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
@@ -49,7 +49,7 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
 }
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(
-    const ap::registry::DrrPassRegistryItem& item) {
+    const ap::registry::AbstractDrrPassRegistryItem& item) {
   static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
     ap::axpr::LambdaExprBuilder lmd;
     const ap::axpr::AnfExpr anf_expr = lmd.Lambda({"cls"}, [](auto& ctx) {

@@ -29,12 +29,22 @@ struct RegistrySingleton {
     return MutOptSingleton()->value();
   }
 
-  static void Add(const DrrPassRegistryItem& item) {
+  static void Add(const AbstractDrrPassRegistryItem& item) {
     auto registry = MutSingleton();
-    const auto& drr_pass_name = item->drr_pass_name;
+    const auto& abstract_drr_pass_name = item->abstract_drr_pass_name;
     int64_t nice = item->nice;
     std::unique_lock<std::mutex> lock(*SingletonMutex());
-    registry->drr_pass_registry_items[drr_pass_name][nice].emplace_back(item);
+    registry->abstract_drr_pass_registry_items[abstract_drr_pass_name][nice]
+        .emplace_back(item);
+  }
+
+  static void Add(const ClassicDrrPassRegistryItem& item) {
+    auto registry = MutSingleton();
+    const auto& classic_drr_pass_name = item->classic_drr_pass_name;
+    int64_t nice = item->nice;
+    std::unique_lock<std::mutex> lock(*SingletonMutex());
+    registry->classic_drr_pass_registry_items[classic_drr_pass_name][nice]
+        .emplace_back(item);
   }
 
   static std::mutex* SingletonMutex() {

@@ -21,12 +21,12 @@
 
 namespace ap::registry {
 
-struct DrrPassRegistryItemImpl {
-  std::string drr_pass_name;
+struct AbstractDrrPassRegistryItemImpl {
+  std::string abstract_drr_pass_name;
   int64_t nice;
   axpr::ClassAttrs<axpr::SerializableValue> cls;
 };
 
-ADT_DEFINE_RC(DrrPassRegistryItem, DrrPassRegistryItemImpl);
+ADT_DEFINE_RC(AbstractDrrPassRegistryItem, AbstractDrrPassRegistryItemImpl);
 
 }  // namespace ap::registry

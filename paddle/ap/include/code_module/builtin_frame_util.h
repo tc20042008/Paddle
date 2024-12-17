@@ -18,13 +18,19 @@
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/code_module/code_module_method_class.h"
+#include "paddle/ap/include/code_module/directory_method_class.h"
+#include "paddle/ap/include/code_module/file_content_method_class.h"
 #include "paddle/ap/include/code_module/func_declare_method_class.h"
 #include "paddle/ap/include/code_module/project_method_class.h"
+#include "paddle/ap/include/code_module/soft_link_method_class.h"
 
 namespace ap::code_module {
 
 template <typename ValueT, typename DoEachT>
 void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
+  DoEach(GetFileContentClass());
+  DoEach(GetSoftLinkClass());
+  DoEach(GetDirectoryClass());
   DoEach(GetProjectClass());
   DoEach(MakeFuncDeclareClass<ValueT>());
   DoEach(MakeCodeModuleClass<ValueT>());

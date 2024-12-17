@@ -31,6 +31,20 @@ struct NaiveModuleMaker {
       const code_module::CodeModule& code_module,
       const std::function<const std::string&(const code_module::CodeModule&)>&
           Serialize) const {
+    using RetT = adt::Result<std::shared_ptr<const Module>>;
+    return code_module->source_code.Match(
+        [&](const code_module::Project&) -> RetT {
+          return MakeByProject(code_module, Serialize);
+        },
+        [&](const code_module::Package&) -> RetT {
+          return MakeByPackage(code_module, Serialize);
+        });
+  }
+
+  adt::Result<std::shared_ptr<const Module>> MakeByProject(
+      const code_module::CodeModule& code_module,
+      const std::function<const std::string&(const code_module::CodeModule&)>&
+          Serialize) const {
     const auto& func_declares = code_module->func_declares.vector();
     ADT_LET_CONST_REF(
         api_wrapper_project,
@@ -53,6 +67,23 @@ struct NaiveModuleMaker {
     }
     std::string api_wrapper_so_path = api_wrapper_compile_helper.GetSoPath();
     std::string main_so_path = main_compile_helper.GetSoPath();
+    ADT_LET_CONST_REF(dl_handler,
+                      NaiveDlHandle::DlOpen(main_so_path, api_wrapper_so_path));
+    return NaiveModule::Make(func_declares, dl_handler);
+  }
+
+  adt::Result<std::shared_ptr<const Module>> MakeByPackage(
+      const code_module::CodeModule& code_module,
+      const std::function<const std::string&(const code_module::CodeModule&)>&
+          Serialize) const {
+    const auto& func_declares = code_module->func_declares.vector();
+    ADT_LET_CONST_REF(package, GetPackage(code_module));
+    std::string api_wrapper_so_path =
+        GetApiWrapperProjectDir() + "/" + package->api_wrapper_so_relative_path;
+    ADT_CHECK(FileExists(api_wrapper_so_path));
+    std::string main_so_path =
+        GetApiWrapperProjectDir() + "/" + package->main_so_relative_path;
+    ADT_CHECK(FileExists(main_so_path));
     ADT_LET_CONST_REF(dl_handler,
                       NaiveDlHandle::DlOpen(main_so_path, api_wrapper_so_path));
     return NaiveModule::Make(func_declares, dl_handler);
@@ -91,6 +122,10 @@ struct NaiveModuleMaker {
     return code_module->source_code.template TryGet<code_module::Project>();
   }
 
+  adt::Result<code_module::Package> GetPackage(
+      const code_module::CodeModule& code_module) const {
+    return code_module->source_code.template TryGet<code_module::Package>();
+  }
   std::string GetApiWrapperProjectDir() const {
     return workspace_dir + "/api_wrapper/";
   }

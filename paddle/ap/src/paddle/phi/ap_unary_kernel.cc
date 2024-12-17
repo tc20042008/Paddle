@@ -107,22 +107,19 @@ adt::Result<kernel_dispatch::RtModule> MakeRtModule(
   ADT_LET_CONST_REF(code_module,
                     helper.InterpretKernelDefineLambda(code_module_core_expr));
   using RetT = adt::Result<kernel_dispatch::RtModule>;
-  return code_module->source_code.Match(
-      [&](const ap::code_module::Project& project) -> RetT {
-        const char* ap_workspace_dir = std::getenv("AP_WORKSPACE_DIR");
-        ADT_CHECK(ap_workspace_dir != nullptr) << adt::errors::TypeError{
-            std::string() + "AP_WORKSPACE_DIR not set"};
-        auto hash_value_str =
-            std::to_string(std::hash<std::string>()(code_module_lambda));
-        std::string workspace_dir =
-            std::string(ap_workspace_dir) + "/" + hash_value_str;
-        ap::rt_module::NaiveModuleMaker maker(workspace_dir);
-        auto Serialize = [&](const auto&) -> const std::string& {
-          return code_module_lambda;
-        };
-        ADT_LET_CONST_REF(rt_module, maker.Make(code_module, Serialize));
-        return rt_module;
-      });
+  const char* ap_workspace_dir = std::getenv("AP_WORKSPACE_DIR");
+  ADT_CHECK(ap_workspace_dir != nullptr)
+      << adt::errors::TypeError{std::string() + "AP_WORKSPACE_DIR not set"};
+  auto hash_value_str =
+      std::to_string(std::hash<std::string>()(code_module_lambda));
+  std::string workspace_dir =
+      std::string(ap_workspace_dir) + "/" + hash_value_str;
+  ap::rt_module::NaiveModuleMaker maker(workspace_dir);
+  auto Serialize = [&](const auto&) -> const std::string& {
+    return code_module_lambda;
+  };
+  ADT_LET_CONST_REF(rt_module, maker.Make(code_module, Serialize));
+  return rt_module;
 }
 
 constexpr MakeRtModuleT MakeOrGetRtModule = &CacheRtModule<&MakeRtModule>;

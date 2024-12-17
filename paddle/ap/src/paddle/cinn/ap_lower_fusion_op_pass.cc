@@ -864,6 +864,9 @@ struct ApRewriter {
       return m->source_code.Match(
           [&](const ap::code_module::Project& project) -> adt::Result<AnfExpr> {
             return ConvertProjectConstruct(&ctx, project);
+          },
+          [&](const ap::code_module::Package& package) -> adt::Result<AnfExpr> {
+            return ConvertPackageConstruct(&ctx, package);
           });
     };
     auto ConstructLambdaBody = [&](auto& ctx) -> adt::Result<AnfExpr> {
@@ -889,16 +892,33 @@ struct ApRewriter {
     return ctx->Apply("Project", {}, kwargs);
   }
 
+  adt::Result<AnfExpr> ConvertPackageConstruct(
+      ap::axpr::LetContext* ctx,
+      const ap::code_module::Package& package) const {
+    const auto& attrs = package->others;
+    ADT_LET_CONST_REF(others_anf_expr,
+                      GetCodeFromBuiltinSerializableAttrMap(ctx, attrs));
+    const auto& api_so_path = package->api_wrapper_so_relative_path;
+    const auto& main_so_path = package->main_so_relative_path;
+    std::map<std::string, AnfExpr> kwargs{
+        {"nested_files", ConvertProjectNestedFiles(ctx, package->nested_files)},
+        {"api_wrapper_so_relative_path", AnfExpr{ctx->String(api_so_path)}},
+        {"main_so_relative_path", AnfExpr{ctx->String(main_so_path)}},
+        {"others", others_anf_expr},
+    };
+    return ctx->Apply("Package", {}, kwargs);
+  }
+
   AnfExpr ConvertProjectNestedFiles(ap::axpr::LetContext* ctx,
                                     const ap::code_module::File& file) const {
     return file.Match(
         [&](const ap::code_module::FileContent& file_content) -> AnfExpr {
           const auto& str = file_content->file_content;
-          return ctx->Var("Project").Attr("FileContent").Call(ctx->String(str));
+          return ctx->Var("FileContent").Call(ctx->String(str));
         },
         [&](const ap::code_module::SoftLink& soft_link) -> AnfExpr {
           const auto& str = soft_link->target_relative_path;
-          return ctx->Var("Project").Attr("SoftLink").Call(ctx->String(str));
+          return ctx->Var("SoftLink").Call(ctx->String(str));
         },
         [&](const ap::code_module::Directory<ap::code_module::File>& dir)
             -> AnfExpr {
@@ -908,7 +928,7 @@ struct ApRewriter {
             args.emplace_back(ctx->Call(
                 ap::axpr::kBuiltinList(), ctx->String(k), v_anf_expr));
           }
-          return ctx->Apply(ctx->Var("Project").Attr("Directory"), args);
+          return ctx->Apply(ctx->Var("Directory"), args);
         });
   }
 

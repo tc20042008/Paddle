@@ -27,8 +27,11 @@ struct NativeIrValueImpl {
   graph::Node<NodeT> node;
   std::string name;
 
+  std::optional<axpr::Value> type;
+
   bool operator==(const NativeIrValueImpl& other) const {
-    return this->node == other.node && this->name == other.name;
+    return this->node == other.node && this->name == other.name &&
+           this->type == other.type;
   }
 
   graph::NativeIrValueCstr node_cstr() const {

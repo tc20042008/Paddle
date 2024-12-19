@@ -27,6 +27,40 @@ struct SrcPtnNativeIrValueMethodClassImpl {
   using Self = drr::tSrcPtn<drr::NativeIrValue<drr::Node>>;
   using This = SrcPtnNativeIrValueMethodClassImpl;
 
+  static adt::Result<axpr::Value> GetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+    if (attr_name == "type") {
+      if (self.value()->type.has_value()) {
+        return self.value()->type.value();
+      } else {
+        return adt::Nothing{};
+      }
+    } else {
+      return adt::errors::AttributeError{
+          std::string() + "SrcPtnNativeIrValue '" + self.value()->name +
+          "' has no attribute '" + attr_name + "'"};
+    }
+  }
+
+  static adt::Result<axpr::Value> SetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 2);
+    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+    const auto& attr_val = args.at(1);
+    if (attr_name == "type") {
+      self.value().shared_ptr()->type = attr_val;
+      return adt::Nothing{};
+    } else {
+      return adt::errors::AttributeError{
+          std::string() + "SrcPtnNativeIrValue '" + self.value()->name +
+          "' has no attribute '" + attr_name + "'"};
+    }
+  }
+
   static adt::Result<axpr::Value> ToString(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
@@ -63,6 +97,8 @@ GetSrcPtnNativeIrValueClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__starred__", &Impl::Starred);
+        Define("__getattr__", &Impl::GetAttr);
+        Define("__setattr__", &Impl::SetAttr);
       }));
   using Self = typename Impl::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

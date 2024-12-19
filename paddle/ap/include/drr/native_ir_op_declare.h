@@ -28,10 +28,12 @@ template <typename NodeT>
 struct NativeIrOpDeclareImpl {
   std::string op_name;
   std::weak_ptr<OpPatternCtxImpl> op_pattern_ctx;
+  axpr::AttrMap<axpr::Value> attr_map;
 
   bool operator==(const NativeIrOpDeclareImpl& other) const {
     return this->op_name == other.op_name &&
-           this->op_pattern_ctx.lock() == other.op_pattern_ctx.lock();
+           this->op_pattern_ctx.lock() == other.op_pattern_ctx.lock() &&
+           this->attr_map == other.attr_map;
   }
 };
 

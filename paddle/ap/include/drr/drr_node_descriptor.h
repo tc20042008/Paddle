@@ -109,6 +109,13 @@ struct DrrNodeDescriptor {
     ADT_LET_CONST_REF(dst, downstreams.Sole());
     return SrcAndDst{src, dst};
   }
+
+  adt::Result<bool> AttrsSatisfyIfBothAreOpsOrValues(
+      const drr::Node& node, const graph::Node<drr::Node>& drr_node) {
+    return adt::errors::NotImplementedError{
+        "NodeDescriptor<graph::Node<drr::Node>>::AttrSatisfy() not "
+        "implemented"};
+  }
 };
 
 }  // namespace ap::drr

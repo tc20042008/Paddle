@@ -24,6 +24,10 @@ namespace ap::graph {
 template <typename NodeT>
 struct NodeDescriptor {
   std::string DebugId(const NodeT&);
+
+  template <typename DrrGraphNodeT>
+  adt::Result<bool> AttrsSatisfyIfBothAreOpsOrValues(
+      const NodeT& node, const DrrGraphNodeT& drr_node);
 };
 
 }  // namespace ap::graph

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <sstream>
+#include "paddle/ap/include/drr/node.h"
 #include "paddle/ap/include/graph/node_descriptor.h"
 #include "paddle/ap/include/ir_match/ref_match_ctx.h"
 #include "paddle/ap/include/paddle/pir_node.h"
@@ -116,6 +117,53 @@ struct PirNodeDescriptor {
 
   std::string GetOpDebugId(const pir::Operation* op) const {
     return op->name() + "_" + std::to_string(op->id());
+  }
+
+  adt::Result<bool> AttrsSatisfyIfBothAreOpsOrValues(
+      const PirNode& node, const graph::Node<drr::Node>& drr_graph_node) {
+    ADT_LET_CONST_REF(drr_node, drr_graph_node.Get());
+    using RetT = adt::Result<bool>;
+    auto pattern_match = ::common::Overloaded{
+        [&](const NativeIrValue& pir_value,
+            const drr::NativeIrValue<drr::Node>& drr_value) -> RetT {
+          return ValueAttrsSatisfy(pir_value, drr_value);
+        },
+        [&](const NativeIrOp& pir_op, const drr::NativeIrOp<drr::Node>& drr_op)
+            -> RetT { return OpAttrsSatisfy(pir_op, drr_op); },
+        [&](const auto& lhs, const auto& rhs) -> RetT { return true; }};
+    return std::visit(pattern_match, node.variant(), drr_node.variant());
+  }
+
+  adt::Result<bool> ValueAttrsSatisfy(
+      const NativeIrValue& pir_value,
+      const drr::NativeIrValue<drr::Node>& drr_value) {
+    if (!drr_value->type.has_value()) {
+      return true;
+    }
+    ADT_LET_CONST_REF(type,
+                      drr_value->type.value().template CastTo<pir::Type>());
+    return type == pir_value.value.type();
+  }
+
+  adt::Result<bool> OpAttrsSatisfy(const NativeIrOp& pir_op,
+                                   const drr::NativeIrOp<drr::Node>& drr_op) {
+    if (drr_op->op_declare->attr_map->storage.empty()) {
+      return true;
+    }
+    for (const auto& [attr_name, attr_val] :
+         drr_op->op_declare->attr_map->storage) {
+      const auto& iter = pir_op.op->attributes().find(attr_name);
+      if (iter == pir_op.op->attributes().end()) {
+        return false;
+      }
+      const auto& pir_attr_val = iter->second;
+      ADT_LET_CONST_REF(drr_attr_val,
+                        attr_val.template CastTo<pir::Attribute>());
+      if (pir_attr_val != drr_attr_val) {
+        return false;
+      }
+    }
+    return true;
   }
 };
 

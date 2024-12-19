@@ -260,8 +260,16 @@ struct TopoMatcher {
                       sg_descriptor_.GetSmallGraphNodeTopoCstr(sg_node));
     const auto& VisitBigGraphNode =
         [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(matched,
+      ADT_LET_CONST_REF(topo_matched,
                         bg_descriptor_.TopoSatisfy(bg_node, sg_node_topo_cstr));
+      bool matched = topo_matched;
+      if (matched) {
+        ap::graph::NodeDescriptor<bg_node_t> node_descriptor{};
+        ADT_LET_CONST_REF(
+            attrs_matched,
+            node_descriptor.AttrsSatisfyIfBothAreOpsOrValues(bg_node, sg_node));
+        matched = attrs_matched;
+      }
       if (!matched) {
         return adt::Ok{};
       }

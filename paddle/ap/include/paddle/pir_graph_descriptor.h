@@ -198,9 +198,9 @@ struct DefaultPirGraphDescriptor {
         });
   }
 
-  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+  adt::Result<graph::SmallGraphNodeTopoCstr> GetSmallGraphNodeTopoCstr(
       const NodeT& node) const {
-    return graph::SmallGraphNodeCstr{node.node_cstr()};
+    return graph::SmallGraphNodeTopoCstr{node.node_topo_cstr()};
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -223,10 +223,11 @@ struct DefaultPirGraphDescriptor {
                       [&](const auto&) -> bool { return false; });
   }
 
-  adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::SmallGraphNodeCstr& node_cstr) const {
-    graph::BigGraphNodeCstr bg_node_cstr{node.node_cstr()};
-    return bg_node_cstr.Satisfy(node_cstr);
+  adt::Result<bool> Satisfy(
+      const NodeT& node,
+      const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
+    graph::BigGraphNodeTopoCstr bg_node_topo_cstr{node.node_topo_cstr()};
+    return bg_node_topo_cstr.Satisfy(node_topo_cstr);
   }
 
   const std::vector<pir::Value>& GetFusionOpInputValues(
@@ -292,9 +293,9 @@ struct RefAugmentedPirGraphDescriptor {
         });
   }
 
-  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+  adt::Result<graph::SmallGraphNodeTopoCstr> GetSmallGraphNodeTopoCstr(
       const NodeT& node) const {
-    return backend_graph.GetSmallGraphNodeCstr(node);
+    return backend_graph.GetSmallGraphNodeTopoCstr(node);
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -305,9 +306,10 @@ struct RefAugmentedPirGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::SmallGraphNodeCstr& node_cstr) const {
-    return backend_graph.Satisfy(node, node_cstr);
+  adt::Result<bool> Satisfy(
+      const NodeT& node,
+      const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
+    return backend_graph.Satisfy(node, node_topo_cstr);
   }
 };
 
@@ -341,9 +343,9 @@ struct AllOperandAndResultPirGraphDescriptor {
     return backend_graph.VisitDownstreamNodes(node, DoEachOpOrValue);
   }
 
-  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+  adt::Result<graph::SmallGraphNodeTopoCstr> GetSmallGraphNodeTopoCstr(
       const NodeT& node) const {
-    return backend_graph.GetSmallGraphNodeCstr(node);
+    return backend_graph.GetSmallGraphNodeTopoCstr(node);
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -359,9 +361,10 @@ struct AllOperandAndResultPirGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::SmallGraphNodeCstr& node_cstr) const {
-    return backend_graph.Satisfy(node, node_cstr);
+  adt::Result<bool> Satisfy(
+      const NodeT& node,
+      const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
+    return backend_graph.Satisfy(node, node_topo_cstr);
   }
 };
 
@@ -426,9 +429,9 @@ struct NativeOperandAndResultPirGraphDescriptor {
     return backend_graph.VisitDownstreamNodes(node, DoEachOperandOrResult);
   }
 
-  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+  adt::Result<graph::SmallGraphNodeTopoCstr> GetSmallGraphNodeTopoCstr(
       const NodeT& node) const {
-    return backend_graph.GetSmallGraphNodeCstr(node);
+    return backend_graph.GetSmallGraphNodeTopoCstr(node);
   }
 
   adt::Result<bool> IgnoredNode(const NodeT& node) const {
@@ -443,9 +446,10 @@ struct NativeOperandAndResultPirGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(const NodeT& node,
-                            const graph::SmallGraphNodeCstr& node_cstr) const {
-    return backend_graph.Satisfy(node, node_cstr);
+  adt::Result<bool> Satisfy(
+      const NodeT& node,
+      const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
+    return backend_graph.Satisfy(node, node_topo_cstr);
   }
 
   adt::Result<bool> IsNative(const NodeT& node) const {

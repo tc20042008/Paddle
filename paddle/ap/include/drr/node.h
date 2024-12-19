@@ -25,7 +25,7 @@
 #include "paddle/ap/include/drr/packed_ir_op_operand.h"
 #include "paddle/ap/include/drr/packed_ir_op_result.h"
 #include "paddle/ap/include/drr/packed_ir_value.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::drr {
 
@@ -52,9 +52,10 @@ struct Node : public NodeImpl<Node> {
     });
   }
 
-  graph::NodeCstr node_cstr() const {
-    return Match(
-        [](const auto& impl) -> graph::NodeCstr { return impl->node_cstr(); });
+  graph::NodeTopoCstr node_topo_cstr() const {
+    return Match([](const auto& impl) -> graph::NodeTopoCstr {
+      return impl->node_topo_cstr();
+    });
   }
 };
 

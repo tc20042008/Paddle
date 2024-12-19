@@ -19,7 +19,7 @@
 #include "paddle/ap/include/drr/packed_ir_op_declare.h"
 #include "paddle/ap/include/drr/type.h"
 #include "paddle/ap/include/graph/node.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::drr {
 
@@ -34,8 +34,8 @@ struct PackedIrOpImpl {
            this->name == other.name;
   }
 
-  graph::PackedIrOpCstr node_cstr() const {
-    return graph::PackedIrOpCstr{this->op_declare->op_name};
+  graph::PackedIrOpTopoCstr node_topo_cstr() const {
+    return graph::PackedIrOpTopoCstr{this->op_declare->op_name};
   }
 };
 

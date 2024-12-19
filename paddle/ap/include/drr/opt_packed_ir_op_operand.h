@@ -16,7 +16,7 @@
 
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/graph/node.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::drr {
 
@@ -29,8 +29,8 @@ struct OptPackedIrOpOperandImpl {
     return this->node == other.node && this->local_uid == other.local_uid;
   }
 
-  graph::OptPackedIrOpOperandCstr node_cstr() const {
-    return graph::OptPackedIrOpOperandCstr{};
+  graph::OptPackedIrOpOperandTopoCstr node_topo_cstr() const {
+    return graph::OptPackedIrOpOperandTopoCstr{};
   }
 };
 

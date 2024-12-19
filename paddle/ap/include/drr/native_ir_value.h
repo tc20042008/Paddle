@@ -18,7 +18,7 @@
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/drr/type.h"
 #include "paddle/ap/include/graph/node.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::drr {
 
@@ -34,8 +34,8 @@ struct NativeIrValueImpl {
            this->type == other.type;
   }
 
-  graph::NativeIrValueCstr node_cstr() const {
-    return graph::NativeIrValueCstr{};
+  graph::NativeIrValueTopoCstr node_topo_cstr() const {
+    return graph::NativeIrValueTopoCstr{};
   }
 };
 

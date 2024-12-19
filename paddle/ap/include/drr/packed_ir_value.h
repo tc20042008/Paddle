@@ -19,7 +19,7 @@
 #include "paddle/ap/include/drr/tags.h"
 #include "paddle/ap/include/drr/type.h"
 #include "paddle/ap/include/graph/node.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::drr {
 
@@ -32,8 +32,8 @@ struct PackedIrValueImpl {
     return this->node == other.node && this->name == other.name;
   }
 
-  graph::PackedIrValueCstr node_cstr() const {
-    return graph::PackedIrValueCstr{};
+  graph::PackedIrValueTopoCstr node_topo_cstr() const {
+    return graph::PackedIrValueTopoCstr{};
   }
 };
 

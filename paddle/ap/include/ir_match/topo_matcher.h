@@ -256,11 +256,12 @@ struct TopoMatcher {
       const sg_node_t& from_node,
       tIsUpstream<bool> is_from_node_upstream,
       const DoEachT& DoEach) {
-    ADT_LET_CONST_REF(sg_node_cstr,
-                      sg_descriptor_.GetSmallGraphNodeCstr(sg_node));
+    ADT_LET_CONST_REF(sg_node_topo_cstr,
+                      sg_descriptor_.GetSmallGraphNodeTopoCstr(sg_node));
     const auto& VisitBigGraphNode =
         [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
-      ADT_LET_CONST_REF(matched, bg_descriptor_.Satisfy(bg_node, sg_node_cstr));
+      ADT_LET_CONST_REF(matched,
+                        bg_descriptor_.Satisfy(bg_node, sg_node_topo_cstr));
       if (!matched) {
         return adt::Ok{};
       }

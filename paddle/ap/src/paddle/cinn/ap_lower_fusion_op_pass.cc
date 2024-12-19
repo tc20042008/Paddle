@@ -1417,25 +1417,28 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     const auto& native_op_anchor = ctx_.native_op_anchor.value();
     {
       ADT_LET_CONST_REF(
-          anchor_cstr, drr_graph.GetSmallGraphNodeCstr(native_op_anchor->node));
+          anchor_topo_cstr,
+          drr_graph.GetSmallGraphNodeTopoCstr(native_op_anchor->node));
       ap::paddle::NativeIrOp native_ir_op{op};
       ADT_LET_CONST_REF(satisfy_constraint,
-                        pir_graph.Satisfy(native_ir_op, anchor_cstr));
+                        pir_graph.Satisfy(native_ir_op, anchor_topo_cstr));
       ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
-          "pir_graph.Satisfy(native_ir_op, anchor_cstr) test failed."};
+          "pir_graph.Satisfy(native_ir_op, anchor_topo_cstr) test failed."};
     }
     ADT_LET_CONST_REF(drr_op_result_anchor,
                       GetFirstNativeDrrIrOpResult(native_op_anchor));
     ADT_LET_CONST_REF(pir_op_result_anchor, GetFirstNativePirIrOpResult(op));
     {
-      ADT_LET_CONST_REF(drr_op_result_anchor_cstr,
-                        drr_graph.GetSmallGraphNodeCstr(drr_op_result_anchor));
       ADT_LET_CONST_REF(
-          satisfy_constraint,
-          pir_graph.Satisfy(pir_op_result_anchor, drr_op_result_anchor_cstr));
+          drr_op_result_anchor_topo_cstr,
+          drr_graph.GetSmallGraphNodeTopoCstr(drr_op_result_anchor));
+      ADT_LET_CONST_REF(satisfy_constraint,
+                        pir_graph.Satisfy(pir_op_result_anchor,
+                                          drr_op_result_anchor_topo_cstr));
       ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
           std::string() +
-          "pir_graph.Satisfy(pir_op_result_anchor, drr_op_result_anchor_cstr) "
+          "pir_graph.Satisfy(pir_op_result_anchor, "
+          "drr_op_result_anchor_topo_cstr) "
           "test failed. pir_op_result_anchor: " +
           DebugId(pir_op_result_anchor) +
           ", drr_op_result_anchor: " + DebugId(drr_op_result_anchor) +
@@ -1897,13 +1900,13 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     ap::ir_match::GraphMatcher<PirNode, Default, Default> graph_matcher(
         pir_graph, src_ptn_graph);
     ADT_LET_CONST_REF(
-        anchor_cstr,
-        src_ptn_graph.GetSmallGraphNodeCstr(default_anchor.node()));
+        anchor_topo_cstr,
+        src_ptn_graph.GetSmallGraphNodeTopoCstr(default_anchor.node()));
     const auto& obj_node = CastToPirNode(op);
     ADT_LET_CONST_REF(satisfy_constraint,
-                      pir_graph.Satisfy(obj_node, anchor_cstr));
+                      pir_graph.Satisfy(obj_node, anchor_topo_cstr));
     ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
-        "pir_graph.Satisfy(obj_node, anchor_cstr) test failed."};
+        "pir_graph.Satisfy(obj_node, anchor_topo_cstr) test failed."};
     ADT_LET_CONST_REF(
         graph_ctx,
         graph_matcher.MatchByAnchor(obj_node, default_anchor.node()));

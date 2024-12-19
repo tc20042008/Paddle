@@ -20,7 +20,7 @@
 #include "paddle/ap/include/drr/tags.h"
 #include "paddle/ap/include/drr/type.h"
 #include "paddle/ap/include/graph/node.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::drr {
 
@@ -35,8 +35,8 @@ struct NativeIrOpImpl {
            this->name == other.name;
   }
 
-  graph::NativeIrOpCstr node_cstr() const {
-    return graph::NativeIrOpCstr{this->op_declare->op_name};
+  graph::NativeIrOpTopoCstr node_topo_cstr() const {
+    return graph::NativeIrOpTopoCstr{this->op_declare->op_name};
   }
 };
 

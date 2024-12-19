@@ -20,7 +20,7 @@
 #include "paddle/ap/include/axpr/data_type.h"
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/type.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 #include "paddle/ap/include/ir_match/ref_match_ctx.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -64,8 +64,8 @@ struct NativeIrValue {
     return this->value == other.value;
   }
 
-  graph::NativeIrValueCstr node_cstr() const {
-    return graph::NativeIrValueCstr{};
+  graph::NativeIrValueTopoCstr node_topo_cstr() const {
+    return graph::NativeIrValueTopoCstr{};
   }
 
   adt::Result<axpr::DataType> GetDataType() const {
@@ -132,8 +132,8 @@ struct PackedIrValue {
            this->is_output == other.is_output;
   }
 
-  graph::PackedIrValueCstr node_cstr() const {
-    return graph::PackedIrValueCstr{};
+  graph::PackedIrValueTopoCstr node_topo_cstr() const {
+    return graph::PackedIrValueTopoCstr{};
   }
 };
 
@@ -148,8 +148,8 @@ struct NativeIrOpOperand {
     return this->op_operand == other.op_operand;
   }
 
-  graph::NativeIrOpOperandCstr node_cstr() const {
-    return graph::NativeIrOpOperandCstr{this->op_operand.index()};
+  graph::NativeIrOpOperandTopoCstr node_topo_cstr() const {
+    return graph::NativeIrOpOperandTopoCstr{this->op_operand.index()};
   }
 };
 
@@ -168,8 +168,8 @@ struct PackedIrOpOperand {
            this->free_tensor_index == other.free_tensor_index;
   }
 
-  graph::PackedIrOpOperandCstr node_cstr() const {
-    return graph::PackedIrOpOperandCstr{};
+  graph::PackedIrOpOperandTopoCstr node_topo_cstr() const {
+    return graph::PackedIrOpOperandTopoCstr{};
   }
 };
 
@@ -187,8 +187,8 @@ struct NativeIrOp {
     return this->op == other.op;
   }
 
-  graph::NativeIrOpCstr node_cstr() const {
-    return graph::NativeIrOpCstr{this->op->name()};
+  graph::NativeIrOpTopoCstr node_topo_cstr() const {
+    return graph::NativeIrOpTopoCstr{this->op->name()};
   }
 };
 
@@ -209,8 +209,8 @@ struct PackedIrOp {
     return this->fusion_op == other.fusion_op;
   }
 
-  graph::PackedIrOpCstr node_cstr() const {
-    return graph::PackedIrOpCstr{"ap_trivial_fusion_op"};
+  graph::PackedIrOpTopoCstr node_topo_cstr() const {
+    return graph::PackedIrOpTopoCstr{"ap_trivial_fusion_op"};
   }
 };
 
@@ -225,8 +225,8 @@ struct NativeIrOpResult {
     return this->op_result == other.op_result;
   }
 
-  graph::NativeIrOpResultCstr node_cstr() const {
-    return graph::NativeIrOpResultCstr{this->op_result.index()};
+  graph::NativeIrOpResultTopoCstr node_topo_cstr() const {
+    return graph::NativeIrOpResultTopoCstr{this->op_result.index()};
   }
 };
 
@@ -241,8 +241,8 @@ struct PackedIrOpResult {
     return this->op_result == other.op_result;
   }
 
-  graph::PackedIrOpResultCstr node_cstr() const {
-    return graph::PackedIrOpResultCstr{};
+  graph::PackedIrOpResultTopoCstr node_topo_cstr() const {
+    return graph::PackedIrOpResultTopoCstr{};
   }
 };
 
@@ -290,7 +290,9 @@ struct RefIrValue {
     return this->ref_node_info->ir_value;
   }
 
-  graph::RefIrValueCstr node_cstr() const { return graph::RefIrValueCstr{}; }
+  graph::RefIrValueTopoCstr node_topo_cstr() const {
+    return graph::RefIrValueTopoCstr{};
+  }
 };
 
 struct RefIrOpOperand {
@@ -304,8 +306,8 @@ struct RefIrOpOperand {
     return this->ref_node_info == other.ref_node_info;
   }
 
-  graph::RefIrOpOperandCstr node_cstr() const {
-    return graph::RefIrOpOperandCstr{};
+  graph::RefIrOpOperandTopoCstr node_topo_cstr() const {
+    return graph::RefIrOpOperandTopoCstr{};
   }
 };
 
@@ -325,7 +327,9 @@ struct RefIrOp {
     return this->ref_node_info == other.ref_node_info;
   }
 
-  graph::RefIrOpCstr node_cstr() const { return graph::RefIrOpCstr{}; }
+  graph::RefIrOpTopoCstr node_topo_cstr() const {
+    return graph::RefIrOpTopoCstr{};
+  }
 };
 
 struct RefIrOpResult {
@@ -339,8 +343,8 @@ struct RefIrOpResult {
     return this->ref_node_info == other.ref_node_info;
   }
 
-  graph::RefIrOpResultCstr node_cstr() const {
-    return graph::RefIrOpResultCstr{};
+  graph::RefIrOpResultTopoCstr node_topo_cstr() const {
+    return graph::RefIrOpResultTopoCstr{};
   }
 };
 
@@ -374,9 +378,10 @@ struct PirNode : public PirNodeImpl {
     return Match([](const auto& impl) { return impl.GetHashValue(); });
   }
 
-  graph::NodeCstr node_cstr() const {
-    return Match(
-        [](const auto& impl) -> graph::NodeCstr { return impl.node_cstr(); });
+  graph::NodeTopoCstr node_topo_cstr() const {
+    return Match([](const auto& impl) -> graph::NodeTopoCstr {
+      return impl.node_topo_cstr();
+    });
   }
 
   static adt::Result<std::string> GetOpNameFromDrrPackedOpName(

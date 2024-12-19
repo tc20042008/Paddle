@@ -16,7 +16,7 @@
 
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/graph/node.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::drr {
 
@@ -29,8 +29,8 @@ struct NativeIrOpResultImpl {
     return this->node == other.node && this->index == other.index;
   }
 
-  graph::NativeIrOpResultCstr node_cstr() const {
-    return graph::NativeIrOpResultCstr{index};
+  graph::NativeIrOpResultTopoCstr node_topo_cstr() const {
+    return graph::NativeIrOpResultTopoCstr{index};
   }
 };
 

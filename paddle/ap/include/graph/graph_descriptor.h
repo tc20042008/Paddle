@@ -18,7 +18,7 @@
 #include "glog/logging.h"
 #include "paddle/ap/include/graph/adt.h"
 #include "paddle/ap/include/graph/node.h"
-#include "paddle/ap/include/graph/node_cstr.h"
+#include "paddle/ap/include/graph/node_topo_cstr.h"
 
 namespace ap::graph {
 
@@ -35,7 +35,7 @@ struct GraphDescriptor {
   adt::Result<adt::Ok> VisitDownstreamNodes(const NodeT&,
                                             const DoEachT& DoEach) const;
 
-  adt::Result<graph::SmallGraphNodeCstr> GetSmallGraphNodeCstr(
+  adt::Result<graph::SmallGraphNodeTopoCstr> GetSmallGraphNodeTopoCstr(
       const NodeT&) const;
 
   adt::Result<bool> IgnoredNode(const NodeT&) const;
@@ -43,7 +43,7 @@ struct GraphDescriptor {
   adt::Result<bool> IsOpNode(const NodeT&) const;
 
   adt::Result<bool> Satisfy(const NodeT&,
-                            const graph::SmallGraphNodeCstr&) const;
+                            const graph::SmallGraphNodeTopoCstr&) const;
 };
 
 }  // namespace ap::graph

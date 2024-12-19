@@ -261,7 +261,7 @@ struct TopoMatcher {
     const auto& VisitBigGraphNode =
         [&](const bg_node_t& bg_node) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(matched,
-                        bg_descriptor_.Satisfy(bg_node, sg_node_topo_cstr));
+                        bg_descriptor_.TopoSatisfy(bg_node, sg_node_topo_cstr));
       if (!matched) {
         return adt::Ok{};
       }

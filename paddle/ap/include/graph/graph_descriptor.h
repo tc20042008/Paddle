@@ -42,8 +42,8 @@ struct GraphDescriptor {
 
   adt::Result<bool> IsOpNode(const NodeT&) const;
 
-  adt::Result<bool> Satisfy(const NodeT&,
-                            const graph::SmallGraphNodeTopoCstr&) const;
+  adt::Result<bool> TopoSatisfy(const NodeT&,
+                                const graph::SmallGraphNodeTopoCstr&) const;
 };
 
 }  // namespace ap::graph

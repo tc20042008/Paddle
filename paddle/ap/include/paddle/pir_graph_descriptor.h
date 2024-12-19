@@ -223,11 +223,11 @@ struct DefaultPirGraphDescriptor {
                       [&](const auto&) -> bool { return false; });
   }
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const NodeT& node,
       const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
     graph::BigGraphNodeTopoCstr bg_node_topo_cstr{node.node_topo_cstr()};
-    return bg_node_topo_cstr.Satisfy(node_topo_cstr);
+    return bg_node_topo_cstr.TopoSatisfy(node_topo_cstr);
   }
 
   const std::vector<pir::Value>& GetFusionOpInputValues(
@@ -306,10 +306,10 @@ struct RefAugmentedPirGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const NodeT& node,
       const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
-    return backend_graph.Satisfy(node, node_topo_cstr);
+    return backend_graph.TopoSatisfy(node, node_topo_cstr);
   }
 };
 
@@ -361,10 +361,10 @@ struct AllOperandAndResultPirGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const NodeT& node,
       const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
-    return backend_graph.Satisfy(node, node_topo_cstr);
+    return backend_graph.TopoSatisfy(node, node_topo_cstr);
   }
 };
 
@@ -446,10 +446,10 @@ struct NativeOperandAndResultPirGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const NodeT& node,
       const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
-    return backend_graph.Satisfy(node, node_topo_cstr);
+    return backend_graph.TopoSatisfy(node, node_topo_cstr);
   }
 
   adt::Result<bool> IsNative(const NodeT& node) const {

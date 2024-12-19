@@ -129,7 +129,7 @@ struct NodeTopoCstr : public NodeTopoCstrImpl {
   using NodeTopoCstrImpl::NodeTopoCstrImpl;
   ADT_DEFINE_VARIANT_METHODS(NodeTopoCstrImpl);
 
-  adt::Result<bool> Satisfy(const NodeTopoCstr& sg_node_topo_cstr) const {
+  adt::Result<bool> TopoSatisfy(const NodeTopoCstr& sg_node_topo_cstr) const {
     using RetT = adt::Result<bool>;
     const auto& pattern_match = ::common::Overloaded{
         [&](const PackedIrOpTopoCstr& bg_topo_cstr,
@@ -171,9 +171,9 @@ struct SmallGraphNodeTopoCstr {
 struct BigGraphNodeTopoCstr {
   NodeTopoCstr node_topo_cstr;
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const SmallGraphNodeTopoCstr& sg_node_topo_cstr) const {
-    return this->node_topo_cstr.Satisfy(sg_node_topo_cstr.node_topo_cstr);
+    return this->node_topo_cstr.TopoSatisfy(sg_node_topo_cstr.node_topo_cstr);
   }
 };
 

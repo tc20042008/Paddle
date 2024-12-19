@@ -217,13 +217,13 @@ struct DefaultDrrGraphDescriptor {
         [](const DrrOptPackedIrOpResult&) -> bool { return false; });
   }
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const NodeT& node,
       const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
     const graph::BigGraphNodeTopoCstr& drr_node_topo_cstr{
         drr_node.node_topo_cstr()};
-    return drr_node_topo_cstr.Satisfy(node_topo_cstr);
+    return drr_node_topo_cstr.TopoSatisfy(node_topo_cstr);
   }
 };
 
@@ -319,10 +319,10 @@ struct AllOperandAndResultDrrGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const NodeT& node,
       const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
-    return backend_graph.Satisfy(node, node_topo_cstr);
+    return backend_graph.TopoSatisfy(node, node_topo_cstr);
   }
 };
 
@@ -406,10 +406,10 @@ struct NativeOperandAndResultDrrGraphDescriptor {
     return backend_graph.IsOpNode(node);
   }
 
-  adt::Result<bool> Satisfy(
+  adt::Result<bool> TopoSatisfy(
       const NodeT& node,
       const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
-    return backend_graph.Satisfy(node, node_topo_cstr);
+    return backend_graph.TopoSatisfy(node, node_topo_cstr);
   }
 
   adt::Result<bool> IsNative(const NodeT& node) const {

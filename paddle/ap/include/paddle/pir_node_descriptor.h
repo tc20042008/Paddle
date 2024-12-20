@@ -154,7 +154,7 @@ struct PirNodeDescriptor {
          drr_op->op_declare->attr_map->storage) {
       const auto& iter = pir_op.op->attributes().find(attr_name);
       if (iter == pir_op.op->attributes().end()) {
-        return false;
+        continue;
       }
       const auto& pir_attr_val = iter->second;
       ADT_LET_CONST_REF(drr_attr_val,

@@ -24,6 +24,7 @@
 #include "paddle/ap/include/drr/op_pattern_ctx.h"
 #include "paddle/ap/include/drr/op_tensor_pattern_ctx_helper.h"
 #include "paddle/ap/include/drr/packed_ir_op_declare.h"
+#include "paddle/ap/include/drr/src_ptn_packed_ir_op_declare_data.h"
 #include "paddle/ap/include/drr/tags.h"
 #include "paddle/ap/include/drr/unbound_native_ir_op.h"
 #include "paddle/ap/include/drr/unbound_packed_ir_op.h"
@@ -128,8 +129,10 @@ struct SrcPtnOpPatternCtxMethodClass {
         std::string() +
         "SrcPtnOpPatternCtx.ap_trivial_fusion_op takes 0 arguments. but " +
         std::to_string(args.size()) + " were given."};
+    std::shared_ptr<PackedIrOpDeclareData> op_declare_data{
+        std::make_shared<SrcPtnPackedIrOpDeclareData>()};
     PackedIrOpDeclare<drr::Node> op_declare{
-        "ap_trivial_fusion_op", self.value().shared_ptr(), std::nullopt};
+        "ap_trivial_fusion_op", self.value().shared_ptr(), op_declare_data};
     return DrrValueHelper{}.CastToAxprValue(SrcPtn(op_declare));
   }
 

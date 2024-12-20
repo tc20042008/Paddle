@@ -14,12 +14,16 @@
 
 #pragma once
 
+#include "paddle/ap/include/axpr/interpreter_base.h"
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value_helper.h"
+#include "paddle/ap/include/drr/ir_op.h"
+#include "paddle/ap/include/drr/ir_value.h"
 #include "paddle/ap/include/drr/op_tensor_pattern_ctx_helper.h"
 #include "paddle/ap/include/drr/packed_ir_value.h"
+#include "paddle/ap/include/drr/src_ptn_packed_ir_op_declare_data.h"
 #include "paddle/ap/include/drr/src_ptn_valid_in_ir_value.h"
 #include "paddle/ap/include/drr/src_ptn_valid_out_ir_value.h"
 #include "paddle/ap/include/drr/tags.h"
@@ -52,16 +56,76 @@ struct SrcPtnUnboundPackedIrOp {
     return reinterpret_cast<int64_t>(ptr);
   }
 
+  static adt::Result<axpr::Value> SetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 2);
+    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+    if (attr_name == "inner_source_pattern_func") {
+      ADT_LET_CONST_REF(
+          func,
+          args.at(0)
+              .template CastTo<axpr::Function<axpr::SerializableValue>>());
+      auto* raw_ptr = self.value()->op_declare->data.value().get();
+      auto* ptr = dynamic_cast<SrcPtnPackedIrOpDeclareData*>(raw_ptr);
+      ADT_CHECK(ptr != nullptr);
+      ptr->inner_source_pattern_func = func;
+    } else {
+      return adt::errors::AttributeError{
+          std::string() + "SrcPtnUnboundPackedIrOp object has no attribute '" +
+          attr_name + "'"};
+    }
+    return adt::Nothing{};
+  }
+
   using Helper = OpTensorPatternCtxHelper;
 
   static adt::Result<axpr::Value> StaticCall(
-      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+      axpr::InterpreterBase<axpr::Value>* interpreter,
+      const axpr::Value& self_val,
+      const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
-    return This{}.Call(self, args);
+    return This{}.Call(interpreter, self, args);
   }
 
-  adt::Result<axpr::Value> Call(const Self& self,
+  adt::Result<axpr::Value> InitInnerSourcePatternCtx(
+      axpr::InterpreterBase<axpr::Value>* interpreter, const Self& self) {
+    const auto& op_declare = self.value()->op_declare;
+    ADT_LET_CONST_REF(op_pattern_ctx,
+                      adt::WeakPtrLock(op_declare->op_pattern_ctx));
+    const auto& drr_ctx_impl = op_pattern_ctx->drr_ctx;
+    auto node_arena = std::make_shared<graph::NodeArena<drr::Node>>();
+    SourcePatternCtx inner_source_pattern_ctx{
+        node_arena,
+        OpPatternCtx{node_arena, std::map<std::string, IrOp>{}, drr_ctx_impl},
+        TensorPatternCtx{
+            node_arena, std::map<std::string, IrValue>{}, drr_ctx_impl}};
+    ADT_CHECK(op_declare->data.has_value());
+    auto* raw_ptr = op_declare->data.value().get();
+    auto* ptr = dynamic_cast<SrcPtnPackedIrOpDeclareData*>(raw_ptr);
+    ADT_CHECK(ptr != nullptr);
+    if (!ptr->inner_source_pattern_func.has_value()) {
+      return adt::Nothing{};
+    }
+    ADT_CHECK(!ptr->inner_source_pattern_ctx.has_value());
+    ptr->inner_source_pattern_ctx = inner_source_pattern_ctx;
+    ADT_CHECK(ptr->inner_source_pattern_func.has_value());
+    const auto& inner_source_pattern_func =
+        ptr->inner_source_pattern_func.value();
+    DrrValueHelper helper{};
+    ADT_RETURN_IF_ERR(interpreter->InterpretCall(
+        inner_source_pattern_func,
+        {helper.CastToAxprValue(
+             SrcPtn(inner_source_pattern_ctx->op_pattern_ctx)),
+         helper.CastToAxprValue(
+             SrcPtn(inner_source_pattern_ctx->tensor_pattern_ctx))}));
+    return adt::Nothing{};
+  }
+
+  adt::Result<axpr::Value> Call(axpr::InterpreterBase<axpr::Value>* interpreter,
+                                const Self& self,
                                 const std::vector<axpr::Value>& args) {
+    ADT_RETURN_IF_ERR(InitInnerSourcePatternCtx(interpreter, self));
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string() +
         "SrcPtnUnboundPackedIrOp.__call__ takes 2 arguments. but " +
@@ -248,6 +312,7 @@ GetSrcPtnUnboundPackedIrOpClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__call__", &Impl::StaticCall);
+        Define("__setattr__", &Impl::SetAttr);
       }));
   using Self = Impl::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

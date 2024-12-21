@@ -68,10 +68,6 @@ struct SrcPtnOpPatternCtxMethodClass {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 2);
     ADT_LET_CONST_REF(op_uid, args.at(0).template CastTo<std::string>());
-    bool has_ir_op = Helper{}.HasIrOpByUid(self.value(), op_uid);
-    ADT_CHECK(!has_ir_op) << adt::errors::TypeError{
-        std::string() + "op name '" + op_uid +
-        "' has been bound. please  bound to a new name."};
     const auto& drr_value = DrrValueHelper{}.CastFromAxprValue(args.at(1));
     const auto& opt_ir_op = drr_value.DrrValueMatch(
         [&](const tSrcPtn<PackedIrOpDeclare<drr::Node>>& op)
@@ -93,7 +89,13 @@ struct SrcPtnOpPatternCtxMethodClass {
               axpr::GetTypeName(args.at(1)) + "' were given."};
         });
     ADT_LET_CONST_REF(ir_op, opt_ir_op);
-    Helper{}.SetIrOpByUid(self.value(), op_uid, ir_op);
+    bool has_ir_op = Helper{}.HasIrOpByUid(self.value(), op_uid);
+    if (has_ir_op) {
+      ADT_RETURN_IF_ERR(
+          Helper{}.CheckIrOpNameByUid(self.value(), op_uid, ir_op));
+    } else {
+      Helper{}.SetIrOpByUid(self.value(), op_uid, ir_op);
+    }
     return adt::Nothing{};
   }
 

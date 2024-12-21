@@ -35,6 +35,29 @@ using IrOpImpl = std::variant<NativeIrOp<drr::Node>,
 struct IrOp : public IrOpImpl {
   using IrOpImpl::IrOpImpl;
   ADT_DEFINE_VARIANT_METHODS(IrOpImpl);
+
+  const std::string& op_name() const {
+    using RetT = const std::string&;
+    return Match(
+        [&](const NativeIrOp<drr::Node>& impl) -> RetT {
+          return impl->op_declare->op_name;
+        },
+        [&](const PackedIrOp<drr::Node>& impl) -> RetT {
+          return impl->op_declare->op_name;
+        },
+        [&](const OptPackedIrOp<drr::Node>& impl) -> RetT {
+          return impl->op_declare->op_name;
+        },
+        [&](const UnboundNativeIrOp<drr::Node>& impl) -> RetT {
+          return impl->op_declare->op_name;
+        },
+        [&](const UnboundPackedIrOp<drr::Node>& impl) -> RetT {
+          return impl->op_declare->op_name;
+        },
+        [&](const UnboundOptPackedIrOp<drr::Node>& impl) -> RetT {
+          return impl->op_declare->op_name;
+        });
+  }
 };
 
 }  // namespace ap::drr

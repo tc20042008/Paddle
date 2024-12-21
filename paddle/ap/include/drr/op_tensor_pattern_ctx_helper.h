@@ -168,7 +168,8 @@ struct OpTensorPatternCtxHelper {
     return adt::Nothing{};
   }
 
-  adt::Result<IrOp> GetIrOpByUid(const OpPtnCtx& self,
+  template <typename OpPtnCtxT>
+  adt::Result<IrOp> GetIrOpByUid(const OpPtnCtxT& self,
                                  const std::string& name) {
     const auto& iter = self->uid2ir_op.find(name);
     if (iter == self->uid2ir_op.end()) {
@@ -176,6 +177,18 @@ struct OpTensorPatternCtxHelper {
                                          name + "' registered."};
     }
     return iter->second;
+  }
+
+  template <typename OpPtnCtxT>
+  adt::Result<adt::Ok> CheckIrOpNameByUid(const OpPtnCtxT& self,
+                                          const std::string& name,
+                                          const IrOp& ir_op) {
+    ADT_LET_CONST_REF(existed_ir_op, GetIrOpByUid(self, name));
+    ADT_CHECK(ir_op.op_name() == existed_ir_op.op_name())
+        << adt::errors::TypeError{
+               std::string() + "CheckIrOpNameByUid() failed. lhs: " +
+               ir_op.op_name() + ", rhs: " + existed_ir_op.op_name() + ""};
+    return adt::Ok{};
   }
 
   template <typename OpPtnCtxT>

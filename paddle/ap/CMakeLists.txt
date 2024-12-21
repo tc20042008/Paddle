@@ -22,8 +22,16 @@ cc_library(
   SRCS ${ap_phi_srcs}
   DEPS ${ap_phi_deps})
 
+file(GLOB_RECURSE ap_pir_srcs "src/paddle/pir/*.cc")
+set(ap_pir_deps axpr)
+
+cc_library(
+  ap_pir
+  SRCS ${ap_pir_srcs}
+  DEPS ${ap_pir_deps})
+
 file(GLOB_RECURSE ap_cinn_srcs "src/paddle/cinn/*.cc")
-set(ap_cinn_deps axpr index_expr)
+set(ap_cinn_deps axpr ap_pir index_expr)
 
 cc_library(
   ap_cinn

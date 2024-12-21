@@ -459,6 +459,69 @@ struct NativeOperandAndResultPirGraphDescriptor {
   }
 };
 
+struct BlockBoundPirGraphDescriptor {
+  using NodeT = PirNode;
+
+ private:
+  std::function<adt::Result<bool>(const NodeT&)> BelongToThisBlockOrNotOp_;
+  DefaultPirGraphDescriptor backend_graph_;
+
+ public:
+  explicit BlockBoundPirGraphDescriptor(
+      const std::function<adt::Result<bool>(const NodeT&)>&
+          BelongToThisBlockOrNotOp)
+      : BelongToThisBlockOrNotOp_(BelongToThisBlockOrNotOp), backend_graph_{} {}
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitUpstreamNodes(const NodeT& node,
+                                          const DoEachT& DoEach) const {
+    using Ok = adt::Result<adt::Ok>;
+    return backend_graph_.VisitUpstreamNodes(
+        node, [&](const NodeT& upstream) -> Ok {
+          ADT_LET_CONST_REF(belong_to_this_block,
+                            BelongToThisBlockOrNotOp_(upstream));
+          if (belong_to_this_block) {
+            return DoEach(upstream);
+          }
+          return adt::Ok{};
+        });
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitDownstreamNodes(const NodeT& node,
+                                            const DoEachT& DoEach) const {
+    using Ok = adt::Result<adt::Ok>;
+    return backend_graph_.VisitDownstreamNodes(
+        node, [&](const NodeT& downstream) -> Ok {
+          ADT_LET_CONST_REF(belong_to_this_block,
+                            BelongToThisBlockOrNotOp_(downstream));
+          if (belong_to_this_block) {
+            return DoEach(downstream);
+          }
+          return adt::Ok{};
+        });
+  }
+
+  adt::Result<graph::SmallGraphNodeTopoCstr> GetSmallGraphNodeTopoCstr(
+      const NodeT& node) const {
+    return backend_graph_.GetSmallGraphNodeTopoCstr(node);
+  }
+
+  adt::Result<bool> IgnoredNode(const NodeT& node) const {
+    return backend_graph_.IgnoredNode(node);
+  }
+
+  adt::Result<bool> IsOpNode(const NodeT& node) const {
+    return backend_graph_.IsOpNode(node);
+  }
+
+  adt::Result<bool> TopoSatisfy(
+      const NodeT& node,
+      const graph::SmallGraphNodeTopoCstr& node_topo_cstr) const {
+    return backend_graph_.TopoSatisfy(node, node_topo_cstr);
+  }
+};
+
 }  // namespace ap::paddle
 
 namespace ap::graph {
@@ -479,5 +542,11 @@ template <>
 struct GraphDescriptor<ap::paddle::PirNode,
                        drr::topo_kind::NativeOperandAndResult>
     : public ap::paddle::NativeOperandAndResultPirGraphDescriptor {};
+
+template <>
+struct GraphDescriptor<ap::paddle::PirNode, drr::topo_kind::BlockBound>
+    : public ap::paddle::BlockBoundPirGraphDescriptor {
+  using ap::paddle::BlockBoundPirGraphDescriptor::BlockBoundPirGraphDescriptor;
+};
 
 }  // namespace ap::graph

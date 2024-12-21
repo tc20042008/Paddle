@@ -16,8 +16,10 @@
 
 #include <sstream>
 #include "paddle/ap/include/drr/node.h"
+#include "paddle/ap/include/drr/src_ptn_packed_ir_op_declare_data.h"
 #include "paddle/ap/include/graph/node_descriptor.h"
 #include "paddle/ap/include/ir_match/ref_match_ctx.h"
+#include "paddle/ap/include/paddle/pir/packed_ir_op_inner_source_pattern_helper.h"
 #include "paddle/ap/include/paddle/pir_node.h"
 
 namespace ap::paddle {
@@ -129,7 +131,9 @@ struct PirNodeDescriptor {
           return ValueAttrsSatisfy(pir_value, drr_value);
         },
         [&](const NativeIrOp& pir_op, const drr::NativeIrOp<drr::Node>& drr_op)
-            -> RetT { return OpAttrsSatisfy(pir_op, drr_op); },
+            -> RetT { return NativeOpAttrsSatisfy(pir_op, drr_op); },
+        [&](const PackedIrOp& pir_op, const drr::PackedIrOp<drr::Node>& drr_op)
+            -> RetT { return PackedOpAttrsSatisfy(pir_op, drr_op); },
         [&](const auto& lhs, const auto& rhs) -> RetT { return true; }};
     return std::visit(pattern_match, node.variant(), drr_node.variant());
   }
@@ -145,8 +149,8 @@ struct PirNodeDescriptor {
     return type == pir_value.value.type();
   }
 
-  adt::Result<bool> OpAttrsSatisfy(const NativeIrOp& pir_op,
-                                   const drr::NativeIrOp<drr::Node>& drr_op) {
+  adt::Result<bool> NativeOpAttrsSatisfy(
+      const NativeIrOp& pir_op, const drr::NativeIrOp<drr::Node>& drr_op) {
     if (drr_op->op_declare->attr_map->storage.empty()) {
       return true;
     }
@@ -164,6 +168,32 @@ struct PirNodeDescriptor {
       }
     }
     return true;
+  }
+
+  adt::Result<bool> PackedOpAttrsSatisfy(
+      const PackedIrOp& pir_op, const drr::PackedIrOp<drr::Node>& drr_op) {
+    ADT_LET_CONST_REF(inner_source_pattern_satisfy,
+                      PackedOpInnerSourcePatternSatisfy(pir_op, drr_op));
+    if (!inner_source_pattern_satisfy) {
+      return false;
+    }
+    return true;
+  }
+
+  adt::Result<bool> PackedOpInnerSourcePatternSatisfy(
+      const PackedIrOp& pir_op, const drr::PackedIrOp<drr::Node>& drr_op) {
+    ADT_CHECK(drr_op->op_declare->data.has_value());
+    auto* raw_data_ptr = drr_op->op_declare->data.value().get();
+    auto* data_ptr =
+        dynamic_cast<drr::SrcPtnPackedIrOpDeclareData*>(raw_data_ptr);
+    ADT_CHECK(data_ptr != nullptr);
+    if (!data_ptr->inner_source_pattern_func.has_value()) {
+      ADT_CHECK(!data_ptr->inner_source_pattern_ctx.has_value());
+      return true;
+    }
+    ADT_CHECK(data_ptr->inner_source_pattern_ctx.has_value());
+    PackedIrOpInnerSourcePatternHelper helper{};
+    return helper.Match(pir_op, data_ptr->inner_source_pattern_ctx.value());
   }
 };
 

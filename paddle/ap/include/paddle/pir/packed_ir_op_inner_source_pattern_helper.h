@@ -14,21 +14,21 @@
 
 #pragma once
 
-namespace ap::drr::topo_kind {
+#include "paddle/ap/include/adt/adt.h"
 
-struct Default;
+namespace ap::drr {
 
-// graph of all OpOperand and OpResult relationship.
-struct AllOperandAndResult;
+struct SourcePatternCtx;
 
-// graph of native OpOperand and OpResult relationship.
-struct NativeOperandAndResult;
+}
 
-// graph with augmented reference value/op_operand/op/op_result.
-struct RefAugmented;
+namespace ap::paddle {
 
-// bound to owner block
+struct PackedIrOp;
 
-struct BlockBound;
+struct PackedIrOpInnerSourcePatternHelper {
+  adt::Result<bool> Match(const PackedIrOp& ir_op,
+                          const drr::SourcePatternCtx& src_ptn_ctx);
+};
 
-}  // namespace ap::drr::topo_kind
+}  // namespace ap::paddle

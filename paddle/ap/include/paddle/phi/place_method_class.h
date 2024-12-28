@@ -36,6 +36,13 @@ inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPlaceClass() {
   return axpr::MakeGlobalNaiveClassOps<phi::Place>(cls);
 }
 
+inline adt::Result<axpr::Value> CreateUndefinedPlace(
+    const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 0);
+  phi::Place place;
+  return GetPlaceClass().New(place);
+}
+
 inline adt::Result<axpr::Value> CreateCPUPlace(
     const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
   ADT_CHECK(args.size() == 0);

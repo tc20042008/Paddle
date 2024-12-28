@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ap/include/axpr/builtin_func_type.h"
 #include "paddle/ap/include/axpr/constants.h"
 #include "paddle/ap/include/axpr/data_value.h"
 #include "paddle/ap/include/axpr/data_value_util.h"
@@ -161,19 +162,189 @@ adt::Result<ValueT> ConstructDataValue(const ValueT&,
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
-  template <typename BuiltinUnarySymbol>
-  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
-    if constexpr (std::is_same_v<BuiltinUnarySymbol, builtin_symbol::Call>) {
-      return &UnaryFuncReturnCapturedValue<ValueT,
-                                           &detail::ConstructDataValue<ValueT>>;
-    } else {
-      return adt::Nothing{};
-    }
+  using This = MethodClassImpl<ValueT, TypeImpl<DataValue>>;
+  using Self = TypeImpl<DataValue>;
+
+  adt::Result<ValueT> Call(const Self& self_val,
+                           const std::vector<ValueT>& args) {
+    return detail::ConstructDataValue<ValueT>(self_val, args);
   }
 
-  template <typename BultinBinarySymbol>
-  static BuiltinBinaryFunc<ValueT> GetBuiltinBinaryFunc() {
-    return adt::Nothing{};
+  adt::Result<ValueT> GetAttr(const Self&, const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+    static const std::map<std::string, axpr::BuiltinFuncType<ValueT>> map{
+        {"float32", &This::MakeFloat32},
+        {"float64", &This::MakeFloat64},
+        // {"float16", &This::Make<float16>},
+        // {"bfloat16", &This::Make<bfloat16>},
+        {"int64", &This::MakeInt64},
+        {"int64_t", &This::MakeInt64},
+        {"int32", &This::MakeInt32},
+        {"int32_t", &This::MakeInt32},
+        {"int16", &This::MakeInt16},
+        {"int16_t", &This::MakeInt16},
+        {"int8", &This::MakeInt8},
+        {"int8_t", &This::MakeInt8},
+        {"uint64", &This::MakeUint64},
+        {"uint64_t", &This::MakeUint64},
+        {"uint32", &This::MakeUint32},
+        {"uint32_t", &This::MakeUint32},
+        {"uint16", &This::MakeUint16},
+        {"uint16_t", &This::MakeUint16},
+        {"uint8", &This::MakeUint8},
+        {"uint8_t", &This::MakeUint8},
+        {"bool", &This::MakeBool},
+        {"complex64", &This::MakeComplex64},
+        {"complex128", &This::MakeComplex128}};
+    return adt::errors::NotImplementedError{std::string() + "DataValue." +
+                                            attr_name + "() not implemented"};
+  }
+
+  template <typename T>
+  static T StrToNum(const std::string& str) {
+    T x;
+    std::stringstream ss;
+    ss << str;
+    ss >> x;
+    return x;
+  }
+
+  static adt::Result<ValueT> MakeInt64(const ValueT&,
+                                       const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.int64() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<int64_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeInt32(const ValueT&,
+                                       const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.int32() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<int32_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeInt16(const ValueT&,
+                                       const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.int16() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<int16_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeInt8(const ValueT&,
+                                      const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.int8() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<int8_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeUint64(const ValueT&,
+                                        const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.uint64() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<uint64_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeUint32(const ValueT&,
+                                        const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.uint32() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<uint32_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeUint16(const ValueT&,
+                                        const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.uint16() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<uint16_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeUint8(const ValueT&,
+                                       const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.uint8() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<uint8_t>(str)};
+  }
+
+  static adt::Result<ValueT> MakeBool(const ValueT&,
+                                      const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.bool() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<bool>(str)};
+  }
+
+  static adt::Result<ValueT> MakeComplex64(const ValueT&,
+                                           const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+        std::string() + "DataValue.complex64() takes 2 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(real_val, args.at(0).template CastTo<axpr::DataValue>())
+        << adt::errors::TypeError{
+               "the argument 1 of DataValue.complex64() should be a DataValue, "
+               "but a " +
+               axpr::GetTypeName(args.at(0)) + " were given"};
+    ADT_LET_CONST_REF(real, real_val.template TryGet<float>())
+        << adt::errors::TypeError{
+               "the argument 1 of DataValue.complex64() should be a float32, "
+               "but a " +
+               real_val.GetType().Name() + " were given"};
+    ADT_LET_CONST_REF(imag_val, args.at(1).template CastTo<axpr::DataValue>())
+        << adt::errors::TypeError{
+               "the argument 2 of DataValue.complex64() should be a DataValue, "
+               "but a " +
+               axpr::GetTypeName(args.at(1)) + " were given"};
+    ADT_LET_CONST_REF(imag, real_val.template TryGet<float>())
+        << adt::errors::TypeError{
+               "the argument 2 of DataValue.complex64() should be a float32, "
+               "but a " +
+               imag_val.GetType().Name() + " were given"};
+    return DataValue{axpr::complex64(real, imag)};
+  }
+
+  static adt::Result<ValueT> MakeComplex128(const ValueT&,
+                                            const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+        std::string() + "DataValue.complex128() takes 2 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(real_val, args.at(0).template CastTo<axpr::DataValue>())
+        << adt::errors::TypeError{
+               "the argument 1 of DataValue.complex128() should be a "
+               "DataValue, but a " +
+               axpr::GetTypeName(args.at(0)) + " were given"};
+    ADT_LET_CONST_REF(real, real_val.template TryGet<double>())
+        << adt::errors::TypeError{
+               "the argument 1 of DataValue.complex128() should be a float64, "
+               "but a " +
+               real_val.GetType().Name() + " were given"};
+    ADT_LET_CONST_REF(imag_val, args.at(1).template CastTo<axpr::DataValue>())
+        << adt::errors::TypeError{
+               "the argument 2 of DataValue.complex128() should be a "
+               "DataValue, but a " +
+               axpr::GetTypeName(args.at(1)) + " were given"};
+    ADT_LET_CONST_REF(imag, real_val.template TryGet<double>())
+        << adt::errors::TypeError{
+               "the argument 2 of DataValue.complex128() should be a float64, "
+               "but a " +
+               imag_val.GetType().Name() + " were given"};
+    return DataValue{axpr::complex128(real, imag)};
   }
 };
 

@@ -63,7 +63,11 @@ struct MethodClassImpl<ValueT, ClassInstance<ValueT>> {
   adt::Result<ValueT> GetAttr(InterpreterBase<ValueT>* interpreter,
                               const Self& self,
                               const ValueT& attr_name_val) {
-    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() + "type: '" + self->type.class_attrs->class_name +
+               "'. attr_name should be a str, but " +
+               axpr::GetTypeName(attr_name_val) + " were given"};
     ADT_LET_CONST_REF(instance_attrs, self->instance_attrs.Get());
     if (instance_attrs->Has(attr_name)) {
       return instance_attrs->Get(attr_name);

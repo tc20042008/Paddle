@@ -29,7 +29,7 @@ struct ApDrrHelper {
   ap::adt::Result<DrrCtx> Interpret(const Function& lambda,
                                     const std::string& abstract_drr_pass_name);
   ap::adt::Result<DrrCtx> Interpret(
-      const ap::registry::AbstractDrrPassRegistryItem& item);
+      const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls);
 };
 
 }  // namespace cinn::dialect::ir

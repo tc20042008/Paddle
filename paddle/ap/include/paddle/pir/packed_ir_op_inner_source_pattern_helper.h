@@ -15,6 +15,8 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/ir_match/graph_match_ctx.h"
+#include "paddle/ap/include/paddle/pir_node.h"
 
 namespace ap::drr {
 
@@ -27,8 +29,8 @@ namespace ap::paddle {
 struct PackedIrOp;
 
 struct PackedIrOpInnerSourcePatternHelper {
-  adt::Result<bool> Match(const PackedIrOp& ir_op,
-                          const drr::SourcePatternCtx& src_ptn_ctx);
+  adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>> Match(
+      const PackedIrOp& ir_op, const drr::SourcePatternCtx& src_ptn_ctx);
 };
 
 }  // namespace ap::paddle

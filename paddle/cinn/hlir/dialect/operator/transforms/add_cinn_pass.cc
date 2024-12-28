@@ -212,18 +212,34 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
   }
   if (FLAGS_enable_ap) {
-    if (auto pass = CreateApLowerFusionOpPass()) {
-      pass_manager->AddPass(std::move(pass.value()));
-      pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    {
+      if (auto pass = CreateApLowerFusionOpClassicDrrPass()) {
+        pass_manager->AddPass(std::move(pass.value()));
+        pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+      }
+      pir::IrPrinter(LOG(ERROR) << "before ApLowerFusionOpClassicDrrPass:\n")
+          .PrintProgram(program);
+      pass_manager->Run(program);
+      pir::IrPrinter(LOG(ERROR) << "after ApLowerFusionOpClassicDrrPass:\n")
+          .PrintProgram(program);
+      pass_manager = CreatePassManager();
+      pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
+      pass_manager->Run(program);
     }
-    pir::IrPrinter(LOG(ERROR) << "before ApLowerFusionOpPass:\n")
-        .PrintProgram(program);
-    pass_manager->Run(program);
-    pir::IrPrinter(LOG(ERROR) << "after ApLowerFusionOpPass:\n")
-        .PrintProgram(program);
-    pass_manager = CreatePassManager();
-    pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
-    pass_manager->Run(program);
+    {
+      if (auto pass = CreateApLowerFusionOpAbstractDrrPass()) {
+        pass_manager->AddPass(std::move(pass.value()));
+        pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+      }
+      pir::IrPrinter(LOG(ERROR) << "before ApLowerFusionOpAbstractDrrPass:\n")
+          .PrintProgram(program);
+      pass_manager->Run(program);
+      pir::IrPrinter(LOG(ERROR) << "after ApLowerFusionOpAbstractDrrPass:\n")
+          .PrintProgram(program);
+      pass_manager = CreatePassManager();
+      pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
+      pass_manager->Run(program);
+    }
   } else {
     if (has_dynamic_shape && !force_static_shape) {
       pass_manager->AddPass(

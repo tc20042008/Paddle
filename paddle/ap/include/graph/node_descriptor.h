@@ -22,7 +22,10 @@
 namespace ap::graph {
 
 template <typename NodeT>
-struct NodeDescriptor {
+struct NodeDescriptor;
+
+template <typename NodeT>
+struct NodeDescriptorInterface {
   std::string DebugId(const NodeT&);
 
   template <typename DrrGraphNodeT>

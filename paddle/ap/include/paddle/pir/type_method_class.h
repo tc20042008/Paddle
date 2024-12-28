@@ -32,7 +32,8 @@ inline adt::Result<axpr::Value> PirTypeString(
   return ss.str();
 }
 
-axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirTypeClass() {
+inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
+GetPirTypeClass() {
   static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
       "PirType",
       [&](const auto& DoEach) { DoEach("__str__", &PirTypeString); }));
@@ -243,10 +244,31 @@ template <>
 struct MakePirTypeImpl<::paddle::dialect::DenseTensorArrayType> {
   adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                 const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{::paddle::dialect::DenseTensorArrayType::get(
-        pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
+    ADT_CHECK(args.size() == 3);
+    ADT_LET_CONST_REF(type, args.at(0).template CastTo<pir::Type>());
+    ADT_LET_CONST_REF(int_list,
+                      args.at(1).template CastTo<adt::List<axpr::Value>>());
+    std::vector<int64_t> dims;
+    dims.reserve(int_list->size());
+    for (const auto& int_val : *int_list) {
+      ADT_LET_CONST_REF(elt, int_val.template CastTo<int64_t>());
+      dims.emplace_back(elt);
+    }
+    ::common::DDim ddim(dims.data(), dims.size());
+    ADT_LET_CONST_REF(data_layout_str,
+                      args.at(2).template CastTo<std::string>());
+    std::optional<::common::DataLayout> data_layout;
+    try {
+      data_layout = ::common::StringToDataLayout(data_layout_str);
+    } catch (const std::exception&) {
+      return adt::errors::ValueError{"StringToDataLayout('" + data_layout_str +
+                                     "') failed"};
+    }
+    ADT_CHECK(data_layout.has_value());
+    const pir::Type dense_tensor_type{
+        ::paddle::dialect::DenseTensorArrayType::get(
+            pir::IrContext::Instance(), type, ddim, data_layout.value())};
+    return GetPirTypeClass().New(dense_tensor_type);
   }
 };
 

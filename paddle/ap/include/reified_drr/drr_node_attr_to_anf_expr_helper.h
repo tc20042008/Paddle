@@ -14,28 +14,19 @@
 
 #pragma once
 
-#include <variant>
-#include "paddle/common/overloaded.h"
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/lambda_expr_builder.h"
+#include "paddle/ap/include/axpr/value.h"
 
-namespace common {
+namespace ap::reified_drr {
 
-template <typename T>
-struct AdtTypeId {
-  using type = T;
+struct DrrNodeAttrToAnfExprHelper {
+  virtual ~DrrNodeAttrToAnfExprHelper() {}
+
+  virtual adt::Result<axpr::AnfExpr> ConvertTypeToAnfExpr(axpr::LetContext* ctx,
+                                                          axpr::Value type) = 0;
+  virtual adt::Result<axpr::AnfExpr> ConvertAttrToAnfExpr(axpr::LetContext* ctx,
+                                                          axpr::Value attr) = 0;
 };
 
-template <typename... Ts>
-struct AdtBaseTypeId : public std::variant<AdtTypeId<Ts>...> {
-  using std::variant<AdtTypeId<Ts>...>::variant;
-
-  const std::variant<AdtTypeId<Ts>...>& variant() const {
-    return static_cast<const std::variant<AdtTypeId<Ts>...>&>(*this);
-  }
-
-  template <typename... Args>
-  decltype(auto) Match(Args&&... args) const {
-    return std::visit(Overloaded{std::forward<Args>(args)...}, variant());
-  }
-};
-
-}  // namespace common
+}  // namespace ap::reified_drr

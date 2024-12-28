@@ -17,6 +17,7 @@
 #include "paddle/ap/include/drr/drr_node_descriptor.h"
 #include "paddle/ap/include/drr/node.h"
 #include "paddle/ap/include/drr/topo_kind.h"
+#include "paddle/ap/include/drr/value_method_class.h"
 #include "paddle/ap/include/graph/node.h"
 #include "paddle/ap/include/ir_match/graph_matcher.h"
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
@@ -78,7 +79,8 @@ adt::Result<PirNode> GetPirYieldNode(const PackedIrOp& ir_op) {
 
 }  // namespace
 
-adt::Result<bool> PackedIrOpInnerSourcePatternHelper::Match(
+adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>>
+PackedIrOpInnerSourcePatternHelper::Match(
     const PackedIrOp& ir_op, const drr::SourcePatternCtx& src_ptn_ctx) {
   auto BelongToThisBlockOrNotOp =
       [&](const PirNode& node) -> adt::Result<bool> {
@@ -104,8 +106,10 @@ adt::Result<bool> PackedIrOpInnerSourcePatternHelper::Match(
   ADT_LET_CONST_REF(
       graph_matched,
       graph_matcher.IsGraphMatched(graph_ctx, drr_yield_node.node()));
-  ADT_CHECK(graph_matched);
-  return graph_matched;
+  if (!graph_matched) {
+    return std::nullopt;
+  }
+  return graph_ctx;
 }
 
 }  // namespace ap::paddle

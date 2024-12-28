@@ -22,7 +22,10 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::optional<std::unique_ptr<::pir::Pass>> CreateApLowerFusionOpPass();
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateApLowerFusionOpAbstractDrrPass();
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateApLowerFusionOpClassicDrrPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

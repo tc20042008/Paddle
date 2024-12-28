@@ -17,14 +17,16 @@
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/paddle/phi/scalar_helper.h"
 #include "paddle/ap/include/paddle/pir/attr_adt_type_id.h"
 #include "paddle/ap/include/paddle/pir/attribute.h"
 
 namespace ap::paddle {
 
-adt::Result<axpr::Value> PirAttributeToString(
+inline adt::Result<axpr::Value> PirAttributeToString(
     const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
   ADT_CHECK(args.size() == 0);
   ADT_LET_CONST_REF(self, self_val.template CastTo<pir::Attribute>());
@@ -49,7 +51,8 @@ struct MakePirAttributeImpl<pir::BoolAttribute> {
   adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                 const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
-    ADT_LET_CONST_REF(bool_val, args.at(0).template CastTo<bool>());
+    ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
+    ADT_LET_CONST_REF(bool_val, data_val.template TryGet<bool>());
     pir::Attribute attr{
         pir::BoolAttribute::get(pir::IrContext::Instance(), bool_val)};
     return GetPirAttributeClass().New(attr);
@@ -217,12 +220,9 @@ template <>
 struct MakePirAttributeImpl<pir::shape::SymbolAttribute> {
   adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                 const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 1);
-    ADT_LET_CONST_REF(
-        val, args.at(0).template CastTo<symbol::ShapeOrDataDimExprs>());
-    pir::Attribute attr{
-        pir::shape::SymbolAttribute::get(pir::IrContext::Instance(), val)};
-    return GetPirAttributeClass().New(attr);
+    return adt::errors::NotImplementedError{
+        std::string() + "pir." + pir::shape::SymbolAttribute::name() +
+        "() not implemented"};
   }
 };
 
@@ -254,29 +254,7 @@ struct MakePirAttributeImpl<::paddle::dialect::IntArrayAttribute> {
 
 inline adt::Result<phi::Scalar> ConvertDataValueToScalar(
     const axpr::DataValue& data_val) {
-  using RetT = adt::Result<phi::Scalar>;
-  return data_val.Match(
-      [&](double c) -> RetT { return phi::Scalar(c); },
-      [&](float c) -> RetT { return phi::Scalar(c); },
-      [&](axpr::float16 c) -> RetT { return phi::Scalar(c); },
-      [&](axpr::bfloat16 c) -> RetT { return phi::Scalar(c); },
-      [&](int64_t c) -> RetT { return phi::Scalar(c); },
-      [&](int32_t c) -> RetT { return phi::Scalar(c); },
-      [&](int16_t c) -> RetT { return phi::Scalar(c); },
-      [&](int8_t c) -> RetT { return phi::Scalar(c); },
-      [&](uint64_t c) -> RetT { return phi::Scalar(c); },
-      [&](uint32_t c) -> RetT { return phi::Scalar(c); },
-      [&](uint16_t c) -> RetT { return phi::Scalar(c); },
-      [&](uint8_t c) -> RetT { return phi::Scalar(c); },
-      [&](bool c) -> RetT { return phi::Scalar(c); },
-      [&](const axpr::complex64& c) -> RetT { return phi::Scalar(c); },
-      [&](const axpr::complex128& c) -> RetT { return phi::Scalar(c); },
-      [&](const auto&) -> RetT {
-        return adt::errors::TypeError{
-            std::string() +
-            "ConvertDataValueToScalar(): can not convert from " +
-            data_val.GetType().Name() + " to phi::Scalar"};
-      });
+  return ScalarHelper{}.ConvertFromDataType(data_val);
 }
 
 template <>

@@ -28,6 +28,7 @@ namespace ap::paddle {
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirClass() {
   static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>("pir", [&](const auto& DoEach) {
+        DoEach("UndefinedPlace", &CreateUndefinedPlace);
         DoEach("CPUPlace", &CreateCPUPlace);
         DoEach("GPUPlace", &CreateGPUPlace);
         DoEach("GPUPinnedPlace", &CreateGPUPinnedPlace);

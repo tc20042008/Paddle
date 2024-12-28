@@ -193,7 +193,10 @@ struct PirNodeDescriptor {
     }
     ADT_CHECK(data_ptr->inner_source_pattern_ctx.has_value());
     PackedIrOpInnerSourcePatternHelper helper{};
-    return helper.Match(pir_op, data_ptr->inner_source_pattern_ctx.value());
+    ADT_LET_CONST_REF(
+        opt_match_ctx,
+        helper.Match(pir_op, data_ptr->inner_source_pattern_ctx.value()));
+    return opt_match_ctx.has_value();
   }
 };
 

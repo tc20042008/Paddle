@@ -23,6 +23,11 @@
 #include "paddle/ap/include/drr/op_pattern_ctx.h"
 #include "paddle/ap/include/drr/tags.h"
 #include "paddle/ap/include/drr/tensor_pattern_ctx.h"
+#include "paddle/ap/include/drr/unbound_ir_value.h"
+#include "paddle/ap/include/drr/unbound_native_ir_op.h"
+#include "paddle/ap/include/drr/unbound_opt_packed_ir_op.h"
+#include "paddle/ap/include/drr/unbound_packed_ir_op.h"
+#include "paddle/ap/include/drr/unbound_packed_ir_value.h"
 
 namespace ap::drr {
 

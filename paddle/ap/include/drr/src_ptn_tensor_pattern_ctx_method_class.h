@@ -50,9 +50,17 @@ struct SrcPtnTensorPatternCtx {
 
   static adt::Result<axpr::Value> GetAttr(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    return This::GetOrCreateTensor(self_val, args);
+  }
+
+  static adt::Result<axpr::Value> GetOrCreateTensor(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     const auto& arg = args.at(0);
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    if (arg.template Has<adt::Nothing>()) {
+      return adt::Nothing{};
+    }
     ADT_LET_CONST_REF(tensor_name, arg.template CastTo<std::string>());
 
     const auto& opt_ir_value =
@@ -78,6 +86,7 @@ GetSrcPtnTensorPatternCtxClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__getattr__", &Impl::GetAttr);
+        Define("get_or_create_tensor", &Impl::GetOrCreateTensor);
       }));
   using Self = typename Impl::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

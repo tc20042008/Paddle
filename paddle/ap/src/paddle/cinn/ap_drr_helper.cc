@@ -37,8 +37,8 @@ using DrrCtx = ap::drr::DrrCtx;
 
 }  // namespace
 
-adt::Result<DrrCtx> ApDrrHelper::Interpret(
-    const Function& lambda, const std::string& abstract_drr_pass_name) {
+adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
+                                           const std::string& drr_pass_name) {
   const auto& builtin_frame = ap::drr::MakeBuiltinFrameAttrMap(
       [&](const auto& Insert) { Insert(ap::paddle::GetPirClass()); });
   ap::axpr::Interpreter interpreter(builtin_frame);
@@ -52,11 +52,14 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
 }
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(
-    const ap::registry::AbstractDrrPassRegistryItem& item) {
+    const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls) {
   static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
     ap::axpr::LambdaExprBuilder lmd;
     const ap::axpr::AnfExpr anf_expr = lmd.Lambda({"cls"}, [](auto& ctx) {
-      return ctx.Var("cls").Call().Attr("make_drr_ctx").Call();
+      auto& obj = ctx.Var("cls").Call();
+      auto& method = obj.Attr("make_drr_ctx");
+      auto& ret = method.Call();
+      return ret;
     });
     const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
     const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
@@ -65,9 +68,9 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(
   const auto& builtin_frame = ap::drr::MakeBuiltinFrameAttrMap(
       [&](const auto& Insert) { Insert(ap::paddle::GetPirClass()); });
   ap::axpr::Interpreter interpreter(builtin_frame);
-  ap::axpr::Value cls{
-      ap::axpr::TypeImpl<ap::axpr::ClassInstance<ap::axpr::Value>>(item->cls)};
-  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls}));
+  ap::axpr::Value cls_val{
+      ap::axpr::TypeImpl<ap::axpr::ClassInstance<ap::axpr::Value>>(cls)};
+  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls_val}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
       << adt::errors::TypeError{
              std::string() +

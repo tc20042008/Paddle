@@ -14,6 +14,7 @@
 
 #pragma once
 #include <atomic>
+#include <map>
 #include "paddle/ap/include/axpr/anf_expr_builder.h"
 #include "paddle/ap/include/axpr/core_expr.h"
 #include "paddle/common/enforce.h"
@@ -34,8 +35,13 @@ class LetVar {
 
   operator Atomic<AnfExpr>() const { return tVar<std::string>{name()}; }
 
-  LetVar& Attr(const std::string& attr_name);
-  void SetAttr(const std::string& attr_name, const AnfExpr& anf_expr);
+  LetVar& Attr(const std::string& attr_name) {
+    return AttrImpl(Atomic<AnfExpr>{attr_name});
+  }
+  LetVar& Attr(const LetVar& attr_val) {
+    return AttrImpl(static_cast<Atomic<AnfExpr>>(attr_val));
+  }
+  void SetAttr(const Atomic<AnfExpr>& attr_name, const AnfExpr& anf_expr);
   LetVar& At(int64_t idx);
   LetVar& At(const Atomic<AnfExpr>& idx);
 
@@ -51,6 +57,8 @@ class LetVar {
   friend class LetContext;
   LetVar(LetContext* let_ctx, const std::string& name)
       : let_ctx_(let_ctx), name_(name) {}
+
+  LetVar& AttrImpl(const Atomic<AnfExpr>& attr_name);
 
   LetContext* let_ctx_;
   std::string name_;
@@ -206,15 +214,15 @@ inline LetVar& LetVar::operator=(const AnfExpr& anf_val) {
   return *this;
 }
 
-inline LetVar& LetVar::Attr(const std::string& attr_name) {
+inline LetVar& LetVar::AttrImpl(const Atomic<AnfExpr>& attr_name) {
   AnfExprBuilder anf{};
-  AnfExpr anf_expr =
-      anf.Call(tVar<std::string>{kBuiltinGetAttr()},
-               {tVar<std::string>{name()}, anf.String(attr_name)});
+  AnfExpr anf_expr = anf.Call(tVar<std::string>{kBuiltinGetAttr()},
+                              {tVar<std::string>{name()}, attr_name});
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 
-inline void LetVar::SetAttr(const std::string& attr_name, const AnfExpr& val) {
+inline void LetVar::SetAttr(const Atomic<AnfExpr>& attr_name,
+                            const AnfExpr& val) {
   const auto& atomic = val.Match(
       [&](const Atomic<AnfExpr>& atomic_val) -> Atomic<AnfExpr> {
         return atomic_val;
@@ -225,9 +233,9 @@ inline void LetVar::SetAttr(const std::string& attr_name, const AnfExpr& val) {
   AnfExprBuilder anf{};
   const auto& method_anf_expr =
       anf.Call(tVar<std::string>{kBuiltinSetAttr()},
-               {tVar<std::string>{name()}, anf.String(attr_name)});
+               {tVar<std::string>{name()}, attr_name});
   const auto& method = let_ctx_->BindToTmpVar(method_anf_expr);
-  AnfExpr anf_expr = anf.Call(method, {anf.String(attr_name), atomic});
+  AnfExpr anf_expr = anf.Call(method, {attr_name, atomic});
   let_ctx_->BindToTmpVar(anf_expr);
 }
 

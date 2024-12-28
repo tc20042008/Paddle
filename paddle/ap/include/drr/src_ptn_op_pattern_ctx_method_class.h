@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/type.h"
+#include "paddle/ap/include/axpr/value.h"
 
 #include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/drr/drr_value.h"
@@ -127,12 +128,23 @@ struct SrcPtnOpPatternCtxMethodClass {
   static adt::Result<axpr::Value> DeclareApTrivialFusionOp(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
-    ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
-        std::string() +
-        "SrcPtnOpPatternCtx.ap_trivial_fusion_op takes 0 arguments. but " +
-        std::to_string(args.size()) + " were given."};
-    std::shared_ptr<PackedIrOpDeclareData> op_declare_data{
-        std::make_shared<SrcPtnPackedIrOpDeclareData>()};
+    std::optional<axpr::Function<axpr::SerializableValue>> opt_func;
+    if (args.size() == 1) {
+      ADT_LET_CONST_REF(
+          func,
+          args.at(0)
+              .template CastTo<axpr::Function<axpr::SerializableValue>>());
+      opt_func = func;
+    } else {
+      ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
+          std::string() +
+          "SrcPtnOpPatternCtx.ap_trivial_fusion_op takes 1 or 0 arguments. "
+          "but " +
+          std::to_string(args.size()) + " were given."};
+    }
+    auto ptr = std::make_shared<SrcPtnPackedIrOpDeclareData>();
+    ptr->inner_source_pattern_func = opt_func;
+    std::shared_ptr<PackedIrOpDeclareData> op_declare_data{ptr};
     PackedIrOpDeclare<drr::Node> op_declare{
         "ap_trivial_fusion_op", self.value().shared_ptr(), op_declare_data};
     return DrrValueHelper{}.CastToAxprValue(SrcPtn(op_declare));

@@ -16,6 +16,7 @@
 
 #include <sstream>
 #include "paddle/ap/include/drr/node.h"
+#include "paddle/ap/include/drr/op_tensor_pattern_ctx_helper.h"
 #include "paddle/ap/include/drr/src_ptn_packed_ir_op_declare_data.h"
 #include "paddle/ap/include/graph/node_descriptor.h"
 #include "paddle/ap/include/ir_match/ref_match_ctx.h"
@@ -142,11 +143,12 @@ struct PirNodeDescriptor {
   adt::Result<bool> ValueAttrsSatisfy(
       const NativeIrValue& pir_value,
       const drr::NativeIrValue<drr::Node>& drr_value) {
-    if (!drr_value->type.has_value()) {
+    ADT_LET_CONST_REF(opt_type,
+                      drr::OpTensorPatternCtxHelper{}.GetOptType(drr_value));
+    if (!opt_type.has_value()) {
       return true;
     }
-    ADT_LET_CONST_REF(type,
-                      drr_value->type.value().template CastTo<pir::Type>());
+    ADT_LET_CONST_REF(type, opt_type.value().template CastTo<pir::Type>());
     return type == pir_value.value.type();
   }
 

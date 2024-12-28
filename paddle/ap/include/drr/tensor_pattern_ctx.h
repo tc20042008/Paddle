@@ -30,6 +30,7 @@ struct TensorPatternCtxImpl {
   std::shared_ptr<graph::NodeArena<drr::Node>> node_arena;
   mutable std::map<std::string, IrValue> uid2ir_value;
   std::weak_ptr<DrrCtxImpl> drr_ctx;
+  mutable std::map<std::string, axpr::Value> uid2type;
 
   bool operator==(const TensorPatternCtxImpl& other) const {
     return this == &other;

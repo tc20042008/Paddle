@@ -22,16 +22,17 @@
 
 namespace ap::drr {
 
+struct TensorPatternCtxImpl;
+
 template <typename NodeT>
 struct NativeIrValueImpl {
   graph::Node<NodeT> node;
   std::string name;
-
-  std::optional<axpr::Value> type;
+  std::weak_ptr<TensorPatternCtxImpl> tensor_pattern_ctx;
 
   bool operator==(const NativeIrValueImpl& other) const {
     return this->node == other.node && this->name == other.name &&
-           this->type == other.type;
+           this->tensor_pattern_ctx.lock() == other.tensor_pattern_ctx.lock();
   }
 
   graph::NativeIrValueTopoCstr node_topo_cstr() const {

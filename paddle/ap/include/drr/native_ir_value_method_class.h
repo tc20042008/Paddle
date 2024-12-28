@@ -19,6 +19,7 @@
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/native_ir_value.h"
+#include "paddle/ap/include/drr/op_tensor_pattern_ctx_helper.h"
 #include "paddle/ap/include/drr/tags.h"
 
 namespace ap::drr {
@@ -33,8 +34,10 @@ struct SrcPtnNativeIrValueMethodClassImpl {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
     if (attr_name == "type") {
-      if (self.value()->type.has_value()) {
-        return self.value()->type.value();
+      ADT_LET_CONST_REF(opt_type,
+                        OpTensorPatternCtxHelper{}.GetOptType(self.value()));
+      if (opt_type.has_value()) {
+        return opt_type.value();
       } else {
         return adt::Nothing{};
       }
@@ -52,7 +55,8 @@ struct SrcPtnNativeIrValueMethodClassImpl {
     ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
     const auto& attr_val = args.at(1);
     if (attr_name == "type") {
-      self.value().shared_ptr()->type = attr_val;
+      ADT_RETURN_IF_ERR(
+          drr::OpTensorPatternCtxHelper{}.SetType(self.value(), attr_val));
       return adt::Nothing{};
     } else {
       return adt::errors::AttributeError{

@@ -20,6 +20,7 @@
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/drr_value_helper.h"
+#include "paddle/ap/include/drr/op_tensor_pattern_ctx_helper.h"
 #include "paddle/ap/include/drr/tags.h"
 #include "paddle/ap/include/drr/unbound_ir_value.h"
 #include "paddle/ap/include/drr/unbound_packed_ir_value.h"
@@ -46,6 +47,22 @@ struct UnboundIrValueMethodClassImpl {
     return reinterpret_cast<int64_t>(ptr);
   }
 
+  static adt::Result<axpr::Value> SetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 2);
+    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+    const auto& attr_val = args.at(1);
+    if (attr_name == "type") {
+      ADT_RETURN_IF_ERR(OpTensorPatternCtxHelper{}.SetType(self, attr_val));
+      return adt::Nothing{};
+    } else {
+      return adt::errors::AttributeError{
+          std::string(axpr::GetTypeName(self_val)) + " '" + self->name +
+          "' has no attribute '" + attr_name + "'"};
+    }
+  }
+
   static adt::Result<axpr::Value> Starred(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
@@ -66,6 +83,7 @@ GetUnboundIrValueClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__starred__", &Impl::Starred);
+        Define("__setattr__", &Impl::SetAttr);
       }));
   using Self = typename Impl::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

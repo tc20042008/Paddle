@@ -491,14 +491,54 @@ struct BlockBoundPirGraphDescriptor {
   adt::Result<adt::Ok> VisitDownstreamNodes(const NodeT& node,
                                             const DoEachT& DoEach) const {
     using Ok = adt::Result<adt::Ok>;
-    return backend_graph_.VisitDownstreamNodes(
-        node, [&](const NodeT& downstream) -> Ok {
-          ADT_LET_CONST_REF(belong_to_this_block,
-                            BelongToThisBlockOrNotOp_(downstream));
-          if (belong_to_this_block) {
-            return DoEach(downstream);
+    return node.Match(
+        [&](const NativeIrValue& impl) -> adt::Result<adt::Ok> {
+          for (auto iter = impl.value.use_begin(); iter != impl.value.use_end();
+               ++iter) {
+            ADT_LET_CONST_REF(
+                belong_to_this_block,
+                BelongToThisBlockOrNotOp_(NativeIrOp{iter->owner()}));
+            if (belong_to_this_block) {
+              pir::OpOperand op_operand = *iter;
+              NativeIrOpOperand ir_op_operand{op_operand};
+              ADT_RETURN_IF_ERR(DoEach(ir_op_operand));
+              continue;
+            }
+            auto* user_parent_block = iter->owner()->GetParent();
+            ADT_CHECK(user_parent_block != nullptr);
+            auto* user_parent_op = user_parent_block->GetParentOp();
+            if (!user_parent_op->isa<cinn::dialect::FusionOp>()) {
+              continue;
+            }
+            auto fusion_op =
+                user_parent_op->dyn_cast<cinn::dialect::FusionOp>();
+            ADT_LET_CONST_REF(parent_belong_to_this_block,
+                              BelongToThisBlockOrNotOp_(PackedIrOp{fusion_op}));
+            if (!parent_belong_to_this_block) {
+              continue;
+            }
+            const auto& user_op_inputs =
+                backend_graph_.GetFusionOpInputValues(fusion_op);
+            for (int i = 0; i < user_op_inputs.size(); ++i) {
+              if (user_op_inputs.at(i) == impl.value) {
+                PackedIrOpOperand ir_op_operand{fusion_op, i};
+                ADT_RETURN_IF_ERR(DoEach(ir_op_operand));
+              }
+            }
           }
           return adt::Ok{};
+        },
+        [&](const auto&) -> Ok {
+          return backend_graph_.VisitDownstreamNodes(
+              node, [&](const NodeT& downstream) -> Ok {
+                ADT_LET_CONST_REF(belong_to_this_block,
+                                  BelongToThisBlockOrNotOp_(downstream));
+                LOG(ERROR) << "belong_to_this_block: " << belong_to_this_block;
+                if (belong_to_this_block) {
+                  return DoEach(downstream);
+                }
+                return adt::Ok{};
+              });
         });
   }
 

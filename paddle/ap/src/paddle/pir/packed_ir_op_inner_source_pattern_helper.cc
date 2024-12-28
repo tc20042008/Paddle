@@ -88,7 +88,7 @@ PackedIrOpInnerSourcePatternHelper::Match(
     if (!opt_block.has_value()) {
       return true;
     }
-    return opt_block.value() == ir_op.fusion_op->GetParent();
+    return opt_block.value() == ir_op.fusion_op.block();
   };
   using Default = drr::topo_kind::Default;
   using BlockBound = drr::topo_kind::BlockBound;

@@ -160,8 +160,7 @@ struct ArgSourceHelper {
           auto* ctx = dispatch_ctx->ctx();
           auto* dim_expr =
               &tensor_var_ptr->Attr("shape").At(shape_dim_source.dim_axis);
-          auto* data_value = &ctx->Var(ctx->NewTmpVarName());
-          *data_value = ctx->Var("DataValue").Call(*dim_expr);
+          auto* data_value = &ctx->Var("DataValue").Call(*dim_expr);
           auto* ret = &ctx->Var(ctx->NewTmpVarName());
           *ret = data_value->Attr("cast").Call(
               ctx->Var("DataType").Attr("const_int64"));

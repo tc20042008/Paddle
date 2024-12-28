@@ -27,7 +27,7 @@ struct ModuleToAxprHelper {
 
   adt::Result<AnfExpr> ConvertModuleToAnfExpr(axpr::LetContext* ctx,
                                               const CodeModule& m) const {
-    return ConvertModuleToAnfExprImpl(*ctx, m);
+    return ConvertModuleToAnfExprImpl(ctx, m);
   }
 
   adt::Result<AnfExpr> ConvertModuleToAnfExpr(const CodeModule& m) const {
@@ -74,13 +74,13 @@ struct ModuleToAxprHelper {
       return ctx->Call(ap::axpr::kBuiltinList(), elts);
     };
     auto ConvertSourceCodeConstruction =
-        [&](auto& ctx) -> adt::Result<AnfExpr> {
+        [&](auto* ctx) -> adt::Result<AnfExpr> {
       return m->source_code.Match(
           [&](const ap::code_module::Project& project) -> adt::Result<AnfExpr> {
-            return ConvertProjectConstruct(&ctx, project);
+            return ConvertProjectConstruct(ctx, project);
           },
           [&](const ap::code_module::Package& package) -> adt::Result<AnfExpr> {
-            return ConvertPackageConstruct(&ctx, package);
+            return ConvertPackageConstruct(ctx, package);
           });
     };
     const auto& declare = ConvertFuncDeclareList(ctx);

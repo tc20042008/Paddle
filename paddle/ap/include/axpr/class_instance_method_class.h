@@ -123,7 +123,13 @@ struct MethodClassImpl<ValueT, ClassInstance<ValueT>> {
                std::string() +
                "type(self) is unexpected. given: " + GetTypeName(self_val)};
     ADT_CHECK(args.size() == 2);
-    ADT_LET_CONST_REF(attr_name, args.at(0).template TryGet<std::string>());
+    ADT_LET_CONST_REF(attr_name, args.at(0).template TryGet<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "SetInstanceAttr() failed. args.at(0) should be a str. "
+               "type(self): " +
+               axpr::GetTypeName(self_val) +
+               ", type(args.at(0)): " + axpr::GetTypeName(args.at(0))};
     ADT_LET_CONST_REF(instance_attrs, self->instance_attrs.Mut());
     instance_attrs->Set(attr_name, args.at(1));
     return adt::Nothing{};

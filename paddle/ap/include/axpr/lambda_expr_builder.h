@@ -38,10 +38,16 @@ class LetVar {
   LetVar& Attr(const std::string& attr_name) {
     return AttrImpl(Atomic<AnfExpr>{attr_name});
   }
-  LetVar& Attr(const LetVar& attr_val) {
-    return AttrImpl(static_cast<Atomic<AnfExpr>>(attr_val));
+  LetVar& Attr(const LetVar& attr_name) {
+    return AttrImpl(static_cast<Atomic<AnfExpr>>(attr_name));
   }
-  void SetAttr(const Atomic<AnfExpr>& attr_name, const AnfExpr& anf_expr);
+  void SetAttr(const std::string& attr_name, const AnfExpr& anf_expr) {
+    return SetAttrImpl(Atomic<AnfExpr>{attr_name}, anf_expr);
+  }
+  void SetAttr(const LetVar& attr_name, const AnfExpr& anf_expr) {
+    return SetAttrImpl(static_cast<Atomic<AnfExpr>>(attr_name), anf_expr);
+  }
+  void SetAttrImpl(const Atomic<AnfExpr>& attr_name, const AnfExpr& anf_expr);
   LetVar& At(int64_t idx);
   LetVar& At(const Atomic<AnfExpr>& idx);
 
@@ -221,8 +227,8 @@ inline LetVar& LetVar::AttrImpl(const Atomic<AnfExpr>& attr_name) {
   return let_ctx_->Var(let_ctx_->BindToTmpVar(anf_expr).value());
 }
 
-inline void LetVar::SetAttr(const Atomic<AnfExpr>& attr_name,
-                            const AnfExpr& val) {
+inline void LetVar::SetAttrImpl(const Atomic<AnfExpr>& attr_name,
+                                const AnfExpr& val) {
   const auto& atomic = val.Match(
       [&](const Atomic<AnfExpr>& atomic_val) -> Atomic<AnfExpr> {
         return atomic_val;

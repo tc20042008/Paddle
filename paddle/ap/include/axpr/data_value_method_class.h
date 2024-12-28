@@ -165,14 +165,12 @@ struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
   using This = MethodClassImpl<ValueT, TypeImpl<DataValue>>;
   using Self = TypeImpl<DataValue>;
 
-  adt::Result<ValueT> Call(const Self& self_val,
-                           const std::vector<ValueT>& args) {
-    return detail::ConstructDataValue<ValueT>(self_val, args);
+  adt::Result<ValueT> Call(const Self& self_val) {
+    return &detail::ConstructDataValue<ValueT>;
   }
 
-  adt::Result<ValueT> GetAttr(const Self&, const std::vector<ValueT>& args) {
-    ADT_CHECK(args.size() == 1);
-    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+  adt::Result<ValueT> GetAttr(const Self&, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template CastTo<std::string>());
     static const std::map<std::string, axpr::BuiltinFuncType<ValueT>> map{
         {"float32", &This::MakeFloat32},
         {"float64", &This::MakeFloat64},
@@ -197,6 +195,10 @@ struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
         {"bool", &This::MakeBool},
         {"complex64", &This::MakeComplex64},
         {"complex128", &This::MakeComplex128}};
+    const auto& iter = map.find(attr_name);
+    if (iter != map.end()) {
+      return ValueT{iter->second};
+    }
     return adt::errors::NotImplementedError{std::string() + "DataValue." +
                                             attr_name + "() not implemented"};
   }
@@ -208,6 +210,24 @@ struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
     ss << str;
     ss >> x;
     return x;
+  }
+
+  static adt::Result<ValueT> MakeFloat32(const ValueT&,
+                                         const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.float32() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<float>(str)};
+  }
+
+  static adt::Result<ValueT> MakeFloat64(const ValueT&,
+                                         const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "DataValue.float64() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(str, args.at(0).template CastTo<std::string>());
+    return DataValue{StrToNum<double>(str)};
   }
 
   static adt::Result<ValueT> MakeInt64(const ValueT&,
@@ -298,21 +318,25 @@ struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
         std::to_string(args.size()) + " were given"};
     ADT_LET_CONST_REF(real_val, args.at(0).template CastTo<axpr::DataValue>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 1 of DataValue.complex64() should be a DataValue, "
                "but a " +
                axpr::GetTypeName(args.at(0)) + " were given"};
     ADT_LET_CONST_REF(real, real_val.template TryGet<float>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 1 of DataValue.complex64() should be a float32, "
                "but a " +
                real_val.GetType().Name() + " were given"};
     ADT_LET_CONST_REF(imag_val, args.at(1).template CastTo<axpr::DataValue>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 2 of DataValue.complex64() should be a DataValue, "
                "but a " +
                axpr::GetTypeName(args.at(1)) + " were given"};
     ADT_LET_CONST_REF(imag, real_val.template TryGet<float>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 2 of DataValue.complex64() should be a float32, "
                "but a " +
                imag_val.GetType().Name() + " were given"};
@@ -326,21 +350,25 @@ struct MethodClassImpl<ValueT, TypeImpl<DataValue>> {
         std::to_string(args.size()) + " were given"};
     ADT_LET_CONST_REF(real_val, args.at(0).template CastTo<axpr::DataValue>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 1 of DataValue.complex128() should be a "
                "DataValue, but a " +
                axpr::GetTypeName(args.at(0)) + " were given"};
     ADT_LET_CONST_REF(real, real_val.template TryGet<double>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 1 of DataValue.complex128() should be a float64, "
                "but a " +
                real_val.GetType().Name() + " were given"};
     ADT_LET_CONST_REF(imag_val, args.at(1).template CastTo<axpr::DataValue>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 2 of DataValue.complex128() should be a "
                "DataValue, but a " +
                axpr::GetTypeName(args.at(1)) + " were given"};
     ADT_LET_CONST_REF(imag, real_val.template TryGet<double>())
         << adt::errors::TypeError{
+               std::string() +
                "the argument 2 of DataValue.complex128() should be a float64, "
                "but a " +
                imag_val.GetType().Name() + " were given"};

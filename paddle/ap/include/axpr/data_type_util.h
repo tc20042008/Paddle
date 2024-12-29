@@ -21,6 +21,7 @@ namespace ap::axpr {
 
 inline Result<DataType> GetDataTypeFromPhiDataType(::phi::DataType data_type) {
   static const std::unordered_map<::phi::DataType, DataType> map{
+      {::phi::DataType::UNDEFINED, DataType{CppDataType<adt::Undefined>{}}},
 #define MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE(cpp_type, enum_type) \
   {::phi::enum_type, DataType{CppDataType<cpp_type>{}}},
       PD_FOR_EACH_DATA_TYPE(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
@@ -28,7 +29,11 @@ inline Result<DataType> GetDataTypeFromPhiDataType(::phi::DataType data_type) {
   };
   const auto& iter = map.find(data_type);
   if (iter == map.end()) {
-    return adt::errors::KeyError{"Invalid phi data type."};
+    return adt::errors::KeyError{[&] {
+      std::ostringstream ss{};
+      ss << "Invalid phi data type. enum value: " << data_type;
+      return ss.str();
+    }()};
   }
   return iter->second;
 }

@@ -124,7 +124,6 @@ struct PirNodeDescriptor {
 
   adt::Result<bool> AttrsSatisfyIfBothAreOpsOrValues(
       const PirNode& node, const graph::Node<drr::Node>& drr_graph_node) {
-    return true;
     ADT_LET_CONST_REF(drr_node, drr_graph_node.Get());
     using RetT = adt::Result<bool>;
     auto pattern_match = ::common::Overloaded{

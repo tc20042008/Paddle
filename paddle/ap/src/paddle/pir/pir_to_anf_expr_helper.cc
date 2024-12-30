@@ -588,18 +588,18 @@ adt::Result<axpr::AnfExpr> ConvertToPlaceAnfExpr(axpr::LetContext* ctx,
   if (place.GetType() == phi::AllocationType::UNDEFINED) {
     return ctx->Var("pir").Attr("UndefinedPlace").Call();
   } else if (place.GetType() == phi::AllocationType::CPU) {
-    return ctx->Var("pir").Attr("CPUDevice").Call();
+    return ctx->Var("pir").Attr("CPUPlace").Call();
   } else if (place.GetType() == phi::AllocationType::GPU) {
     const auto& device_id = ctx->Int64(place.GetDeviceId());
-    return ctx->Var("pir").Attr("GPUDevice").Call(device_id);
+    return ctx->Var("pir").Attr("GPUPlace").Call(device_id);
   } else if (place.GetType() == phi::AllocationType::GPUPINNED) {
     return ctx->Var("pir").Attr("GPUPinnedPlace").Call();
   } else if (place.GetType() == phi::AllocationType::XPU) {
     const auto& device_id = ctx->Int64(place.GetDeviceId());
-    return ctx->Var("pir").Attr("XPUDevice").Call(device_id);
+    return ctx->Var("pir").Attr("XPUPlace").Call(device_id);
   } else if (place.GetType() == phi::AllocationType::IPU) {
     const auto& device_id = ctx->Int64(place.GetDeviceId());
-    return ctx->Var("pir").Attr("IPUDevice").Call(device_id);
+    return ctx->Var("pir").Attr("IPUPlace").Call(device_id);
   } else if (place.GetType() == phi::AllocationType::CUSTOM) {
     const auto& device_type = ctx->String(place.GetDeviceType());
     const auto& device_id = ctx->Int64(place.GetDeviceId());

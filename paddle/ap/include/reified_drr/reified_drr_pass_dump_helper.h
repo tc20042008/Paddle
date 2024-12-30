@@ -28,7 +28,8 @@ namespace ap::reified_drr {
 struct ReifiedDrrPassDumpHelper {
   bool DumpEnabled();
 
-  adt::Result<adt::Ok> Dump(
+  // Returns reified drr_pass_class lambda
+  adt::Result<axpr::AnfExpr> Dump(
       const drr::DrrCtx& abstract_drr_ctx,
       DrrNodeAttrToAnfExprHelper* attr2axpr_helper,
       MatchedSrcPtnCtxHelper* src_ptn_ctx_helper,

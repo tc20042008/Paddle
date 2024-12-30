@@ -187,10 +187,9 @@ struct MethodClassImpl<ValueT, TypeImpl<BuiltinClassInstance<ValueT>>> {
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     ADT_LET_CONST_REF(attr_val, self.class_attrs()->attrs->Get(attr_name))
-        << adt::errors::AttributeError{std::string() + "type object '" +
-                                       self.class_attrs()->class_name +
-                                       "' has no attribute '" + attr_name +
-                                       "'"};
+        << adt::errors::AttributeError{
+               std::string() + "type '" + self.class_attrs()->class_name +
+               "' has no attribute '" + attr_name + "'"};
     return attr_val;
   }
 

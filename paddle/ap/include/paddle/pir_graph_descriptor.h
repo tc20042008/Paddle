@@ -533,7 +533,6 @@ struct BlockBoundPirGraphDescriptor {
               node, [&](const NodeT& downstream) -> Ok {
                 ADT_LET_CONST_REF(belong_to_this_block,
                                   BelongToThisBlockOrNotOp_(downstream));
-                LOG(ERROR) << "belong_to_this_block: " << belong_to_this_block;
                 if (belong_to_this_block) {
                   return DoEach(downstream);
                 }

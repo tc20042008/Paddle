@@ -19,8 +19,8 @@
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/drr/builtin_frame_util.h"
 #include "paddle/ap/include/drr/drr_graph_descriptor.h"
+#include "paddle/ap/include/drr/drr_interpreter.h"
 #include "paddle/ap/include/drr/drr_node_descriptor.h"
-#include "paddle/ap/include/drr/value.h"
 #include "paddle/ap/include/drr/value_method_class.h"
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
 
@@ -39,44 +39,15 @@ using DrrCtx = ap::drr::DrrCtx;
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
-  const auto& builtin_frame = ap::drr::MakeBuiltinFrameAttrMap(
-      [&](const auto& Insert) { Insert(ap::paddle::GetPirClass()); });
-  ap::axpr::Interpreter interpreter(builtin_frame);
-  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
-  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
-      << adt::errors::TypeError{
-             std::string() +
-             "drr function should return a 'DrrCtx' object but '" +
-             ap::axpr::GetTypeName(drr_ctx_val) + "' were given."};
-  return drr_ctx;
+  ap::drr::DrrInterpreter drr_interpreter{};
+  return drr_interpreter.Interpret(
+      ap::paddle::GetPirClass(), lambda, drr_pass_name);
 }
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(
     const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls) {
-  static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
-    ap::axpr::LambdaExprBuilder lmd;
-    const ap::axpr::AnfExpr anf_expr = lmd.Lambda({"cls"}, [](auto& ctx) {
-      auto& obj = ctx.Var("cls").Call();
-      auto& method = obj.Attr("make_drr_ctx");
-      auto& ret = method.Call();
-      return ret;
-    });
-    const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
-    const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
-    return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
-  }());
-  const auto& builtin_frame = ap::drr::MakeBuiltinFrameAttrMap(
-      [&](const auto& Insert) { Insert(ap::paddle::GetPirClass()); });
-  ap::axpr::Interpreter interpreter(builtin_frame);
-  ap::axpr::Value cls_val{
-      ap::axpr::TypeImpl<ap::axpr::ClassInstance<ap::axpr::Value>>(cls)};
-  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls_val}));
-  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
-      << adt::errors::TypeError{
-             std::string() +
-             "drr function should return a 'DrrCtx' object but '" +
-             ap::axpr::GetTypeName(drr_ctx_val) + "' were given."};
-  return drr_ctx;
+  ap::drr::DrrInterpreter drr_interpreter{};
+  return drr_interpreter.Interpret(ap::paddle::GetPirClass(), cls);
 }
 
 }  // namespace cinn::dialect::ir

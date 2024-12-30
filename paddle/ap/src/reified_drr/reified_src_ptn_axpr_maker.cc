@@ -307,7 +307,7 @@ ReifiedSrcPtnAxprMaker::GenAnfExprForSrcPtnCtxOpValueConnections(
     std::vector<axpr::AnfExpr> in_anf_exprs;
     in_anf_exprs.reserve(in_names.size());
     for (const auto& opt_name : in_names) {
-      if (opt_name.has_value()) {
+      if (!opt_name.has_value()) {
         in_anf_exprs.emplace_back(ctx->None());
       } else {
         ADT_LET_CONST_REF(anf_expr, GetDrrIrValueAxpr(opt_name.value()));

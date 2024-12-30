@@ -48,8 +48,8 @@ struct MakePirAttributeImpl;
 
 template <>
 struct MakePirAttributeImpl<pir::BoolAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(bool_val, data_val.template TryGet<bool>());
@@ -61,8 +61,8 @@ struct MakePirAttributeImpl<pir::BoolAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::Complex64Attribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(complex_val, data_val.template TryGet<axpr::complex64>());
@@ -74,8 +74,8 @@ struct MakePirAttributeImpl<pir::Complex64Attribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::Complex128Attribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(val, data_val.template TryGet<axpr::complex128>());
@@ -87,8 +87,8 @@ struct MakePirAttributeImpl<pir::Complex128Attribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::FloatAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(val, data_val.template TryGet<float>());
@@ -100,8 +100,8 @@ struct MakePirAttributeImpl<pir::FloatAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::DoubleAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(val, data_val.template TryGet<double>());
@@ -113,8 +113,8 @@ struct MakePirAttributeImpl<pir::DoubleAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::Int32Attribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(val, data_val.template TryGet<int32_t>());
@@ -126,8 +126,8 @@ struct MakePirAttributeImpl<pir::Int32Attribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::IndexAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(val, data_val.template TryGet<int64_t>());
@@ -139,8 +139,8 @@ struct MakePirAttributeImpl<pir::IndexAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::Int64Attribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(val, data_val.template TryGet<int64_t>());
@@ -152,8 +152,8 @@ struct MakePirAttributeImpl<pir::Int64Attribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::PointerAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val,
                       args.at(0).template CastTo<axpr::PointerValue>());
@@ -166,8 +166,8 @@ struct MakePirAttributeImpl<pir::PointerAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::TypeAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(type_val, args.at(0).template CastTo<pir::Type>());
     pir::Attribute attr{
@@ -178,8 +178,8 @@ struct MakePirAttributeImpl<pir::TypeAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::StrAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(val, args.at(0).template CastTo<std::string>());
     pir::Attribute attr{
@@ -190,8 +190,8 @@ struct MakePirAttributeImpl<pir::StrAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::ArrayAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     std::vector<pir::Attribute> attrs;
     attrs.reserve(args.size());
     for (const auto& arg : args) {
@@ -206,8 +206,8 @@ struct MakePirAttributeImpl<pir::ArrayAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::TensorNameAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(val, args.at(0).template CastTo<std::string>());
     pir::Attribute attr{
@@ -218,8 +218,8 @@ struct MakePirAttributeImpl<pir::TensorNameAttribute> {
 
 template <>
 struct MakePirAttributeImpl<pir::shape::SymbolAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     return adt::errors::NotImplementedError{
         std::string() + "pir." + pir::shape::SymbolAttribute::name() +
         "() not implemented"};
@@ -228,8 +228,8 @@ struct MakePirAttributeImpl<pir::shape::SymbolAttribute> {
 
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::KernelAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     return adt::errors::NotImplementedError{
         std::string() + "pir." + ::paddle::dialect::KernelAttribute::name() +
         "() is not implemneted"};
@@ -238,8 +238,8 @@ struct MakePirAttributeImpl<::paddle::dialect::KernelAttribute> {
 
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::IntArrayAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     std::vector<int64_t> int_array;
     int_array.reserve(args.size());
     for (const auto& arg : args) {
@@ -259,8 +259,8 @@ inline adt::Result<phi::Scalar> ConvertDataValueToScalar(
 
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::ScalarAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
     ADT_LET_CONST_REF(val, ConvertDataValueToScalar(data_val));
@@ -272,8 +272,8 @@ struct MakePirAttributeImpl<::paddle::dialect::ScalarAttribute> {
 
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::DataTypeAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_type, args.at(0).template CastTo<axpr::DataType>());
     ADT_LET_CONST_REF(phi_data_type,
@@ -286,21 +286,20 @@ struct MakePirAttributeImpl<::paddle::dialect::DataTypeAttribute> {
 
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::PlaceAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
-    ADT_LET_CONST_REF(
-        place, args.at(0).template CastTo<std::shared_ptr<const phi::Place>>());
+    ADT_LET_CONST_REF(place, args.at(0).template CastTo<phi::Place>());
     pir::Attribute attr{::paddle::dialect::PlaceAttribute::get(
-        pir::IrContext::Instance(), *place)};
+        pir::IrContext::Instance(), place)};
     return GetPirAttributeClass().New(attr);
   }
 };
 
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::DataLayoutAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(data_layout_str,
                       args.at(0).template CastTo<std::string>());
@@ -319,8 +318,8 @@ struct MakePirAttributeImpl<::paddle::dialect::DataLayoutAttribute> {
 
 template <>
 struct MakePirAttributeImpl<::cinn::dialect::GroupInfoAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     return adt::errors::NotImplementedError{
         std::string() + "pir." + ::cinn::dialect::GroupInfoAttribute::name() +
         "() is not implemneted"};
@@ -329,8 +328,8 @@ struct MakePirAttributeImpl<::cinn::dialect::GroupInfoAttribute> {
 
 template <>
 struct MakePirAttributeImpl<::cinn::dialect::CINNKernelInfoAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     return adt::errors::NotImplementedError{
         std::string() + "pir." +
         ::cinn::dialect::CINNKernelInfoAttribute::name() +
@@ -340,8 +339,8 @@ struct MakePirAttributeImpl<::cinn::dialect::CINNKernelInfoAttribute> {
 
 template <>
 struct MakePirAttributeImpl<UnclassifiedAttribute> {
-  adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
     return adt::errors::NotImplementedError{std::string() + "pir." +
                                             UnclassifiedAttribute::name() +
                                             "() is not implemneted"};

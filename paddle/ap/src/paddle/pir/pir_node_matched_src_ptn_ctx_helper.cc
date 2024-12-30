@@ -394,6 +394,9 @@ adt::Result<adt::Ok> PirNodeMatchedSrcPtnCtxHelper::VisitNativeIrOpAttr(
                     match_ctx_->GetSoleBigGraphNode(drr_native_ir_op->node));
   ADT_LET_CONST_REF(pir_native_ir_op, pir_node.template TryGet<NativeIrOp>());
   for (const auto& [attr_name, attr] : pir_native_ir_op.op->attributes()) {
+    if (!attr) continue;
+    if (attr_name == "op_callstack") continue;
+    if (attr_name == "sym_shape_str") continue;
     const auto& attr_val = GetPirAttributeClass().New(attr);
     ADT_RETURN_IF_ERR(DoEachAttr(attr_name, attr_val));
   }

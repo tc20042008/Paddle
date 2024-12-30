@@ -31,50 +31,64 @@ struct ReifiedDrrPassDumpHelperImpl {
       CodeGenResult4FusedOpName_;
   int64_t nice_;
 
-  adt::Result<adt::Ok> Dump() {
+  struct DumpCtx {
     std::optional<std::string> dump_dir;
-    ADT_LET_CONST_REF(anf_expr, ConvertToModuleAnfExpr(&dump_dir));
-    if (dump_dir.has_value()) {
+    std::optional<axpr::AnfExpr> reified_drr_pass_class_lambda_anf_expr;
+  };
+
+  // Returns reified drr_pass_class lambda
+  adt::Result<axpr::AnfExpr> Dump() {
+    DumpCtx dump_ctx;
+    ADT_LET_CONST_REF(anf_expr, ConvertToModuleAnfExpr(&dump_ctx));
+    if (dump_ctx.dump_dir.has_value()) {
       const auto& reified_drr_json = anf_expr.DumpToJsonString();
       const auto& reified_drr_json_path =
-          dump_dir.value() + "/reified_drr.json";
+          dump_ctx.dump_dir.value() + "/reified_drr.json";
       ADT_RETURN_IF_ERR(
           fs::WriteFileContent(reified_drr_json_path, reified_drr_json));
     }
-    return adt::Ok{};
+    ADT_CHECK(dump_ctx.reified_drr_pass_class_lambda_anf_expr.has_value());
+    return dump_ctx.reified_drr_pass_class_lambda_anf_expr.value();
   }
 
-  adt::Result<axpr::AnfExpr> ConvertToModuleAnfExpr(
-      std::optional<std::string>* dump_dir) {
+  adt::Result<axpr::AnfExpr> ConvertToModuleAnfExpr(DumpCtx* dump_ctx) {
     axpr::LambdaExprBuilder lmd;
     auto GetBody = [&](auto& ctx) -> adt::Result<axpr::AnfExpr> {
-      ADT_RETURN_IF_ERR(DefineAxprModule(&ctx, dump_dir));
+      ADT_RETURN_IF_ERR(DefineAxprModule(&ctx, dump_ctx));
       return ctx.None();
     };
     return lmd.TryLambda({}, GetBody);
   }
 
   adt::Result<adt::Ok> DefineAxprModule(axpr::LetContext* ctx,
-                                        std::optional<std::string>* dump_dir) {
-    ADT_LET_CONST_REF(make_drr_ctx_anf_expr, DefineMakeDrrCtxLambda(dump_dir));
+                                        DumpCtx* dump_ctx) {
+    ADT_LET_CONST_REF(make_drr_ctx_anf_expr, DefineMakeDrrCtxLambda(dump_ctx));
     ADT_LET_CONST_REF(drr_pass_class_anf_expr,
                       DefineDrrPassClass(ctx, make_drr_ctx_anf_expr));
+    auto GetBody = [&](auto& let_ctx) -> adt::Result<axpr::AnfExpr> {
+      return DefineDrrPassClass(&let_ctx, make_drr_ctx_anf_expr);
+    };
+    ADT_LET_CONST_REF(lambda, axpr::LambdaExprBuilder{}.TryLambda({}, GetBody));
+    dump_ctx->reified_drr_pass_class_lambda_anf_expr = lambda;
     ADT_RETURN_IF_ERR(
         InsertRegisterReifiedDrrPass(ctx, drr_pass_class_anf_expr));
     return adt::Ok{};
   }
 
-  adt::Result<axpr::AnfExpr> DefineMakeDrrCtxLambda(
-      std::optional<std::string>* dump_dir) {
+  adt::Result<axpr::AnfExpr> DefineMakeDrrCtxLambda(DumpCtx* dump_ctx) {
     auto GetBody = [&](auto& ctx) -> adt::Result<axpr::AnfExpr> {
       auto& drr_ctx = ctx.Var("DrrCtx").Call();
       ADT_LET_CONST_REF(src_ptn_func, DefineSourcePatternFunc());
-      ADT_LET_CONST_REF(constraint_func, DefineConstraintFunc());
+      ADT_LET_CONST_REF(constraint_lambda, DefineConstraintLambda());
       ADT_LET_CONST_REF(res_ptn_func,
                         DefineOrGetResultPatternFunc(
-                            src_ptn_func, constraint_func, dump_dir));
+                            src_ptn_func, constraint_lambda, dump_ctx));
       drr_ctx.Attr("init_source_pattern").Call(src_ptn_func);
-      drr_ctx.Attr("init_constraint_func").Call(constraint_func);
+      const auto& constaint_func_name = ctx.NewTmpVarName();
+      ctx.Var(constaint_func_name) = constraint_lambda;
+      const auto& constaint_func =
+          ctx.Var(constaint_func_name).Attr("__function__");
+      drr_ctx.Attr("init_constraint_func").Call(constaint_func);
       drr_ctx.Attr("init_result_pattern").Call(res_ptn_func);
       return drr_ctx;
     };
@@ -99,7 +113,7 @@ struct ReifiedDrrPassDumpHelperImpl {
     return axpr::LambdaExprBuilder{}.TryLambda({"o", "t"}, GetBody);
   }
 
-  adt::Result<axpr::AnfExpr> DefineConstraintFunc() {
+  adt::Result<axpr::AnfExpr> DefineConstraintLambda() {
     ADT_CHECK(abstract_drr_ctx_->constraint_func.has_value());
     const auto& core_expr = abstract_drr_ctx_->constraint_func.value()->lambda;
     return axpr::ConvertCoreExprToAnfExpr(core_expr);
@@ -108,7 +122,7 @@ struct ReifiedDrrPassDumpHelperImpl {
   adt::Result<axpr::AnfExpr> DefineOrGetResultPatternFunc(
       const axpr::AnfExpr& src_ptn_func,
       const axpr::AnfExpr& constraint_func,
-      std::optional<std::string>* dump_dir) {
+      DumpCtx* dump_ctx) {
     std::string src_ptn_func_json = src_ptn_func.DumpToJsonString();
     std::string constraint_func_json = constraint_func.DumpToJsonString();
     std::hash<std::string> str_hash{};
@@ -141,7 +155,7 @@ struct ReifiedDrrPassDumpHelperImpl {
                         axpr::MakeAnfExprFromJsonString(res_ptn_func_json));
       return res_ptn_func;
     } else {
-      *dump_dir = dump_root_dir + "/" + relative_dump_dir;
+      dump_ctx->dump_dir = dump_root_dir + "/" + relative_dump_dir;
       code_module::ModuleCompileHelper compile_helper{dump_root_dir,
                                                       relative_dump_dir};
       using RetT = adt::Result<code_gen::CodeGenResult<axpr::Value>>;
@@ -197,10 +211,12 @@ struct ReifiedDrrPassDumpHelperImpl {
       axpr::LetContext* ctx, const axpr::AnfExpr& make_drr_lambda) {
     const auto& class_name = ctx->String(std::string("ReifiedDrrPass"));
     const auto& superclasses = ctx->Var(axpr::kBuiltinList()).Call();
+    const auto& make_drr_func_name = ctx->NewTmpVarName();
+    ctx->Var(make_drr_func_name) = make_drr_lambda;
     const auto& methods = [&] {
       std::vector<axpr::AnfExpr> args{};
       std::map<std::string, axpr::AnfExpr> kwargs{
-          {"make_drr_ctx", make_drr_lambda}};
+          {"make_drr_ctx", ctx->Var(make_drr_func_name).Attr("__function__")}};
       return ctx->Var("BuiltinSerializableAttrMap").Apply(args, kwargs);
     }();
     return ctx->Var("type").Call(class_name, superclasses, methods);
@@ -234,7 +250,8 @@ bool ReifiedDrrPassDumpHelper::DumpEnabled() {
   return std::getenv("AP_REIFIED_DRR_PASS_DUMP_DIR") != nullptr;
 }
 
-adt::Result<adt::Ok> ReifiedDrrPassDumpHelper::Dump(
+// Returns reified drr_pass_class lambda
+adt::Result<axpr::AnfExpr> ReifiedDrrPassDumpHelper::Dump(
     const drr::DrrCtx& abstract_drr_ctx,
     DrrNodeAttrToAnfExprHelper* attr2axpr_helper,
     MatchedSrcPtnCtxHelper* matched_src_ptn_ctx_helper,

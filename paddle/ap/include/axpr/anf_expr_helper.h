@@ -30,13 +30,13 @@ struct AnfExprHelper {
   adt::Result<std::string> FunctionToString(
       const std::string& func_name, const Lambda<AnfExpr>& lambda) const {
     std::ostringstream ss;
-    auto OutputOneLine = [&](const std::string& str) { ss << str << "\n"; };
-    ADT_RETURN_IF_ERR(SerializeFunction(OutputOneLine, func_name, lambda));
+    auto Generate = [&](const std::string& str) { ss << str << "\n"; };
+    ADT_RETURN_IF_ERR(SerializeFunction(Generate, func_name, lambda));
     return ss.str();
   }
 
   adt::Result<adt::Ok> SerializeFunction(
-      const std::function<void(const std::string&)>& OutputOneLine,
+      const std::function<void(const std::string&)>& Generate,
       const std::string& func_name,
       const Lambda<AnfExpr>& lambda) const {
     {
@@ -50,20 +50,19 @@ struct AnfExprHelper {
         ss << arg.value();
       }
       ss << "):";
-      OutputOneLine(ss.str());
+      Generate(ss.str());
     }
     {
-      auto BodyOutputOneLine = [&](const std::string& str) {
-        OutputOneLine(std::string("    ") + str);
+      auto BodyGenerate = [&](const std::string& str) {
+        Generate(std::string("    ") + str);
       };
-      ADT_RETURN_IF_ERR(
-          SerializeLastExprInLambda(BodyOutputOneLine, lambda->body));
+      ADT_RETURN_IF_ERR(SerializeLastExprInLambda(BodyGenerate, lambda->body));
     }
     return adt::Ok{};
   }
 
   struct LambdaBodySerializeCtx {
-    std::function<void(const std::string&)> OutputOneLine;
+    std::function<void(const std::string&)> Generate;
 
     std::size_t auto_id_in_body = 0;
 
@@ -71,9 +70,9 @@ struct AnfExprHelper {
   };
 
   adt::Result<adt::Ok> SerializeLastExprInLambda(
-      const std::function<void(const std::string&)>& OutputOneLine,
+      const std::function<void(const std::string&)>& Generate,
       const AnfExpr& lambda_body) const {
-    LambdaBodySerializeCtx ctx{OutputOneLine};
+    LambdaBodySerializeCtx ctx{Generate};
     return SerializeLastExprInLambda(&ctx, lambda_body);
   }
 
@@ -91,7 +90,7 @@ struct AnfExprHelper {
         atomic.Match([&](const auto& impl) -> adt::Result<std::string> {
           return AtomicToStringImpl(ctx, impl);
         }));
-    ctx->OutputOneLine(std::string() + "return " + atomic_str);
+    ctx->Generate(std::string() + "return " + atomic_str);
     return adt::Ok{};
   }
 
@@ -109,7 +108,7 @@ struct AnfExprHelper {
         combined.Match([&](const auto& impl) -> adt::Result<std::string> {
           return CombinedToStringImpl(ctx, impl);
         }));
-    ctx->OutputOneLine(std::string() + "return " + combined_str);
+    ctx->Generate(std::string() + "return " + combined_str);
     return adt::Ok{};
   }
 
@@ -124,7 +123,7 @@ struct AnfExprHelper {
       LambdaBodySerializeCtx* ctx, const Let<AnfExpr>& let) const {
     for (const auto& [var, combined] : let->bindings) {
       ADT_LET_CONST_REF(combined_str, CombinedToString(ctx, combined));
-      ctx->OutputOneLine(var.value() + " = " + combined_str);
+      ctx->Generate(var.value() + " = " + combined_str);
     }
     return SerializeLastExprInLambda(ctx, let->body);
   }
@@ -207,7 +206,7 @@ struct AnfExprHelper {
       LambdaBodySerializeCtx* ctx, const Lambda<AnfExpr>& lambda) const {
     const auto& func_name =
         std::string("tmp_func_") + std::to_string(ctx->GetAutoIdInBody());
-    ADT_RETURN_IF_ERR(SerializeFunction(ctx->OutputOneLine, func_name, lambda));
+    ADT_RETURN_IF_ERR(SerializeFunction(ctx->Generate, func_name, lambda));
     return func_name;
   }
 };

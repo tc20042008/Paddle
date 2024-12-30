@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/paddle/phi/place.h"
@@ -23,10 +24,9 @@ namespace ap::paddle {
 
 inline adt::Result<axpr::Value> PlaceToString(
     const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
-  ADT_LET_CONST_REF(
-      self, self_val.template CastTo<std::shared_ptr<const phi::Place>>());
+  ADT_LET_CONST_REF(self, self_val.template CastTo<phi::Place>());
   ADT_CHECK(args.size() == 0);
-  const auto& str = self->DebugString();
+  const auto& str = self.DebugString();
   return str;
 }
 

@@ -124,7 +124,7 @@ adt::Result<kernel_dispatch::RtModule> MakeRtModule(
         return rt_module;
       },
       [&](const ap::code_module::Package&) -> RetT {
-        const char* ap_workspace_dir = std::getenv("AP_WORKSPACE_DIR");
+        const char* ap_workspace_dir = std::getenv("AP_PACKAGE_DIR");
         ap::rt_module::NaiveModuleMaker maker(ap_workspace_dir);
         auto Serialize = [&](const auto&) -> const std::string& {
           return code_module_lambda;

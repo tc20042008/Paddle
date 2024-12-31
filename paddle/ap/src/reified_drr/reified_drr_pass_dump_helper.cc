@@ -201,7 +201,7 @@ struct ReifiedDrrPassDumpHelperImpl {
   }
 
   adt::Result<std::string> GetDumpDir() {
-    const char* dump_dir = std::getenv("AP_REIFIED_DRR_PASS_DUMP_DIR");
+    const char* dump_dir = std::getenv("AP_PACKAGE_DUMP_DIR");
     ADT_CHECK(dump_dir != nullptr);
     return std::string(dump_dir);
   }
@@ -263,7 +263,7 @@ struct ReifiedDrrPassDumpHelperImpl {
 };
 
 bool ReifiedDrrPassDumpHelper::DumpEnabled() {
-  return std::getenv("AP_REIFIED_DRR_PASS_DUMP_DIR") != nullptr;
+  return std::getenv("AP_PACKAGE_DUMP_DIR") != nullptr;
 }
 
 // Returns reified drr_pass_class lambda

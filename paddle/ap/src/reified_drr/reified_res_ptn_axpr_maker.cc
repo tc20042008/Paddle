@@ -136,8 +136,13 @@ adt::Result<axpr::AnfExpr> GenCodeGenLambda(
     ADT_LET_CONST_REF(code_module_anf_expr,
                       code_module::ModuleToAxprHelper{}.ConvertModuleToAnfExpr(
                           &ctx, code_gen_result->code_module));
-    const auto& kernel_dispatch_func_anf_expr = axpr::ConvertCoreExprToAnfExpr(
-        code_gen_result->kernel_dispatch_func->lambda);
+    const auto& kernel_dispatch_lambda_anf_expr =
+        axpr::ConvertCoreExprToAnfExpr(
+            code_gen_result->kernel_dispatch_func->lambda);
+    const auto& kernel_dispatch_func_name = ctx.NewTmpVarName();
+    ctx.Var(kernel_dispatch_func_name) = kernel_dispatch_lambda_anf_expr;
+    const auto& kernel_dispatch_func_anf_expr =
+        ctx.Var(kernel_dispatch_func_name).Attr("__function__");
     ADT_LET_CONST_REF(kernel_dispatch_const_data_anf_expr,
                       axpr::BuiltinSerializableAttrMapToAxprHelper{}.Convert(
                           &ctx, code_gen_result->kernel_dispatch_const_data));

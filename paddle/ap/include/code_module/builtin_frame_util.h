@@ -21,6 +21,7 @@
 #include "paddle/ap/include/code_module/directory_method_class.h"
 #include "paddle/ap/include/code_module/file_content_method_class.h"
 #include "paddle/ap/include/code_module/func_declare_method_class.h"
+#include "paddle/ap/include/code_module/package_method_class.h"
 #include "paddle/ap/include/code_module/project_method_class.h"
 #include "paddle/ap/include/code_module/soft_link_method_class.h"
 
@@ -32,6 +33,7 @@ void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
   DoEach(GetSoftLinkClass());
   DoEach(GetDirectoryClass());
   DoEach(GetProjectClass());
+  DoEach(GetPackageClass());
   DoEach(MakeFuncDeclareClass<ValueT>());
   DoEach(MakeCodeModuleClass<ValueT>());
 }

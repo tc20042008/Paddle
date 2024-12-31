@@ -79,11 +79,16 @@ struct NaiveModuleMaker {
     const auto& func_declares = code_module->func_declares.vector();
     ADT_LET_CONST_REF(package, GetPackage(code_module));
     std::string api_wrapper_so_path =
-        GetApiWrapperProjectDir() + "/" + package->api_wrapper_so_relative_path;
-    ADT_CHECK(FileExists(api_wrapper_so_path));
+        GetPackageDir() + "/" + package->api_wrapper_so_relative_path;
+    ADT_CHECK(FileExists(api_wrapper_so_path)) << adt::errors::TypeError{
+        std::string() +
+        "FileExists(api_wrapper_so_path) failed. api_wrapper_so_path: " +
+        api_wrapper_so_path};
     std::string main_so_path =
-        GetApiWrapperProjectDir() + "/" + package->main_so_relative_path;
-    ADT_CHECK(FileExists(main_so_path));
+        GetPackageDir() + "/" + package->main_so_relative_path;
+    ADT_CHECK(FileExists(main_so_path)) << adt::errors::TypeError{
+        std::string() +
+        "FileExists(main_so_path) failed. main_so_path: " + main_so_path};
     ADT_LET_CONST_REF(dl_handler,
                       NaiveDlHandle::DlOpen(main_so_path, api_wrapper_so_path));
     return NaiveModule::Make(func_declares, dl_handler);
@@ -126,9 +131,12 @@ struct NaiveModuleMaker {
       const code_module::CodeModule& code_module) const {
     return code_module->source_code.template TryGet<code_module::Package>();
   }
+
   std::string GetApiWrapperProjectDir() const {
     return workspace_dir + "/api_wrapper/";
   }
+
+  std::string GetPackageDir() const { return workspace_dir; }
 
   std::string GetMainProjectDir() const { return workspace_dir + "/main/"; }
 

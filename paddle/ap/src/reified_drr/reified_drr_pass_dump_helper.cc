@@ -57,7 +57,7 @@ struct ReifiedDrrPassDumpHelperImpl {
       ADT_RETURN_IF_ERR(DefineAxprModule(&ctx, dump_ctx));
       return ctx.None();
     };
-    return lmd.TryLambda({}, GetBody);
+    return lmd.TryLet(GetBody);
   }
 
   adt::Result<adt::Ok> DefineAxprModule(axpr::LetContext* ctx,
@@ -130,7 +130,7 @@ struct ReifiedDrrPassDumpHelperImpl {
         str_hash(src_ptn_func_json), str_hash(constraint_func_json));
     ADT_CHECK(abstract_drr_ctx_->pass_name.has_value());
     const std::string relative_dump_dir =
-        std::string("/") + abstract_drr_ctx_->pass_name.value() + "/" +
+        DecodeIntoDirectoryName(abstract_drr_ctx_->pass_name.value()) + "_" +
         std::to_string(pattern_hash_value);
     ADT_LET_CONST_REF(dump_root_dir, GetDumpDir());
     const std::string& src_ptn_func_json_path =
@@ -182,6 +182,22 @@ struct ReifiedDrrPassDumpHelperImpl {
           fs::WriteFileContent(res_ptn_func_json_path, res_ptn_func_json));
       return res_ptn_func;
     }
+  }
+
+  std::string DecodeIntoDirectoryName(std::string str) {
+    for (int i = 0; i < str.size(); ++i) {
+      if (str.at(i) >= 'A' && str.at(i) <= 'Z') {
+        continue;
+      }
+      if (str.at(i) >= 'a' && str.at(i) <= 'z') {
+        continue;
+      }
+      if (str.at(i) >= '0' && str.at(i) <= '9') {
+        continue;
+      }
+      str[i] = '_';
+    }
+    return str;
   }
 
   adt::Result<std::string> GetDumpDir() {

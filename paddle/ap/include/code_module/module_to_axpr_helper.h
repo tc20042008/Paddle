@@ -125,11 +125,11 @@ struct ModuleToAxprHelper {
     return file.Match(
         [&](const ap::code_module::FileContent& file_content) -> AnfExpr {
           const auto& str = file_content->file_content;
-          return ctx->Var("FileContent").Call(ctx->String(str));
+          return ctx->Var("Project").Attr("FileContent").Call(ctx->String(str));
         },
         [&](const ap::code_module::SoftLink& soft_link) -> AnfExpr {
           const auto& str = soft_link->target_relative_path;
-          return ctx->Var("SoftLink").Call(ctx->String(str));
+          return ctx->Var("Project").Attr("SoftLink").Call(ctx->String(str));
         },
         [&](const ap::code_module::Directory<ap::code_module::File>& dir)
             -> AnfExpr {
@@ -139,7 +139,7 @@ struct ModuleToAxprHelper {
             args.emplace_back(ctx->Call(
                 ap::axpr::kBuiltinList(), ctx->String(k), v_anf_expr));
           }
-          return ctx->Apply(ctx->Var("Directory"), args);
+          return ctx->Apply(ctx->Var("Project").Attr("Directory"), args);
         });
   }
 

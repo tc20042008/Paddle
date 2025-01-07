@@ -24,7 +24,7 @@
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
-#include "paddle/ap/include/paddle/cinn/ap_lower_fusion_op_pass.h"
+#include "paddle/ap/include/paddle/pass/ap_lower_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"

@@ -48,6 +48,18 @@ struct ResultPatternHelper {
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitResPtnInputIrValueByResPtnIrOp(
       const DrrPackedIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
+    return VisitResPtnInputIrValueByResPtnIrOpImpl(res_ptn_ir_op, DoEach);
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitResPtnInputIrValueByResPtnIrOp(
+      const DrrNativeIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
+    return VisitResPtnInputIrValueByResPtnIrOpImpl(res_ptn_ir_op, DoEach);
+  }
+
+  template <typename IrOpT, typename DoEachT>
+  adt::Result<adt::Ok> VisitResPtnInputIrValueByResPtnIrOpImpl(
+      const IrOpT& res_ptn_ir_op, const DoEachT& DoEach) const {
     auto VisitOpOperand =
         [&](const DrrGraphNode& op_operand) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(op_operand_downstreams, op_operand.UpstreamNodes());
@@ -66,6 +78,18 @@ struct ResultPatternHelper {
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitResPtnOutputIrValueByResPtnIrOp(
       const DrrPackedIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
+    return VisitResPtnOutputIrValueByResPtnIrOpImpl(res_ptn_ir_op, DoEach);
+  }
+
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitResPtnOutputIrValueByResPtnIrOp(
+      const DrrNativeIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
+    return VisitResPtnOutputIrValueByResPtnIrOpImpl(res_ptn_ir_op, DoEach);
+  }
+
+  template <typename IrOpT, typename DoEachT>
+  adt::Result<adt::Ok> VisitResPtnOutputIrValueByResPtnIrOpImpl(
+      const IrOpT& res_ptn_ir_op, const DoEachT& DoEach) const {
     auto VisitOpResult =
         [&](const DrrGraphNode& op_result) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(op_result_downstreams, op_result.DownstreamNodes());

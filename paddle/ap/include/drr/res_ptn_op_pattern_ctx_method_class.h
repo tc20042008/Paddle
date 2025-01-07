@@ -154,7 +154,7 @@ struct ResPtnOpPatternCtxMethodClass {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() +
-        "ResPtnOpPatternCtx.ap_pattern_fusion_op takes 2 arguments. but " +
+        "ResPtnOpPatternCtx.ap_pattern_fusion_op takes 1 arguments. but " +
         std::to_string(args.size()) + " were given."};
     ADT_LET_CONST_REF(kernel_define_lambda, CastToLambda(args.at(0)))
         << adt::errors::TypeError{std::string() +
@@ -164,6 +164,26 @@ struct ResPtnOpPatternCtxMethodClass {
         std::make_shared<ResPtnPackedIrOpDeclareData>(kernel_define_lambda);
     PackedIrOpDeclare<drr::Node> op_declare{
         "ap_pattern_fusion_op", self.value().shared_ptr(), data};
+    return DrrValueHelper{}.CastToAxprValue(ResPtn(op_declare));
+  }
+
+  static adt::Result<axpr::Value> StaticDeclareApNativeOp(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    return This{}.DeclareApNativeOp(self_val, args);
+  }
+
+  adt::Result<axpr::Value> DeclareApNativeOp(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() +
+        "ResPtnOpPatternCtx.ap_native_op takes 1 arguments. but " +
+        std::to_string(args.size()) + " were given."};
+    ADT_LET_CONST_REF(op_name, args.at(0).template CastTo<std::string>())
+        << adt::errors::TypeError{std::string() +
+                                  "argument 1 of o.ap_native_op should "
+                                  "be a str."};
+    NativeIrOpDeclare<drr::Node> op_declare{op_name, self.value().shared_ptr()};
     return DrrValueHelper{}.CastToAxprValue(ResPtn(op_declare));
   }
 
@@ -210,6 +230,7 @@ GetResPtnOpPatternCtxClass() {
         Define("__getattr__", &Impl::GetAttr);
         Define("__setattr__", &Impl::SetAttr);
         Define("ap_pattern_fusion_op", &Impl::StaticDeclareApPatternFusionOp);
+        Define("ap_native_op", &Impl::StaticDeclareApNativeOp);
       }));
   using Self = typename Impl::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

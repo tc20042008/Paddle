@@ -14,25 +14,23 @@
 
 #pragma once
 
-#include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/ir_match/graph_match_ctx.h"
-#include "paddle/ap/include/paddle/pir_node.h"
+#include <memory>
+#include <optional>
+#include "paddle/pir/include/pass/pass.h"
 
-namespace ap::drr {
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-struct SourcePatternCtx;
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateApLowerFusionOpAbstractDrrPass();
+std::optional<std::unique_ptr<::pir::Pass>>
+CreateApLowerFusionOpClassicDrrPass();
+std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass();
 
-}
+std::optional<std::unique_ptr<::pir::Pass>> CreateApDrrPass(
+    const std::string& drr_pass_tag);
 
-namespace ap::paddle {
-
-struct PackedIrOp;
-
-struct PackedIrOpInnerSourcePatternHelper {
-  adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>> Match(
-      const PackedIrOp& ir_op, const drr::SourcePatternCtx& src_ptn_ctx);
-  adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>> Match(
-      const pir::Block* block, const drr::SourcePatternCtx& src_ptn_ctx);
-};
-
-}  // namespace ap::paddle
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

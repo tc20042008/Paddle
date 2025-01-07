@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ap/include/paddle/cinn/ap_lower_fusion_op_pass.h"
+#include "paddle/ap/include/paddle/pass/ap_lower_fusion_op_pass.h"
 
 #include "paddle/ap/include/axpr/anf_expr_util.h"
 #include "paddle/ap/include/axpr/atomic.h"
@@ -36,10 +36,13 @@
 #include "paddle/ap/include/index_expr/valid_index_expr_builder.h"
 #include "paddle/ap/include/ir_match/graph_matcher.h"
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
-#include "paddle/ap/include/paddle/cinn/ap_drr_helper.h"
-#include "paddle/ap/include/paddle/cinn/ap_kernel_define_helper.h"
-#include "paddle/ap/include/paddle/cinn/ap_registry_helper.h"
+#include "paddle/ap/include/ir_match/op_match_ctx_method_class.h"
+#include "paddle/ap/include/ir_match/tensor_match_ctx_method_class.h"
 #include "paddle/ap/include/paddle/indexed_ir_graph_util.h"
+#include "paddle/ap/include/paddle/pass/ap_drr_helper.h"
+#include "paddle/ap/include/paddle/pass/ap_kernel_define_helper.h"
+#include "paddle/ap/include/paddle/pass/ap_registry_helper.h"
+#include "paddle/ap/include/paddle/pass/ir_helper_method_class.h"
 #include "paddle/ap/include/paddle/pir/pir_node_matched_src_ptn_ctx_helper.h"
 #include "paddle/ap/include/paddle/pir/pir_to_anf_expr_helper.h"
 #include "paddle/ap/include/paddle/pir_graph_descriptor.h"
@@ -50,6 +53,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -212,12 +216,14 @@ struct ApLowerFusionOpPatternCtx {
 template <typename DrrCtxHelper>
 struct ApRewriter {
   ApLowerFusionOpPatternCtx ctx_;
-  adt::Result<GraphMatchCtx> (*Match_)(const DrrCtx&, pir::Operation* op);
+  adt::Result<std::optional<GraphMatchCtx>> (*Match_)(const DrrCtx&,
+                                                      pir::Operation* op);
+  mutable ApDrrHelper ap_drr_helper_;
 
   ApRewriter(const ApLowerFusionOpPatternCtx& ctx,
-             adt::Result<GraphMatchCtx> (*Match)(const DrrCtx&,
-                                                 pir::Operation* op))
-      : ctx_(ctx), Match_(Match) {}
+             adt::Result<std::optional<GraphMatchCtx>> (*Match)(
+                 const DrrCtx&, pir::Operation* op))
+      : ctx_(ctx), Match_(Match), ap_drr_helper_() {}
 
   adt::Result<bool> Rewrite(const GraphMatchCtx& match_ctx,
                             pir::Operation* op,
@@ -503,13 +509,114 @@ struct ApRewriter {
       const CodeGenResultCollectT& CodeGenResultCollect) const {
     return res_ptn_op.Match(
         [&](const DrrNativeIrOp& ir_op) -> adt::Result<adt::Ok> {
-          return adt::errors::NotImplementedError{
-              "building native ir op is not supported now."};
+          return BuildNativeOp(
+              rewriter, ir_op, rewrite_ctx, match_ctx, CodeGenResultCollect);
         },
         [&](const DrrPackedIrOp& ir_op) -> adt::Result<adt::Ok> {
           return BuildPackedOp(
               rewriter, ir_op, rewrite_ctx, match_ctx, CodeGenResultCollect);
         });
+  }
+
+  adt::Result<adt::Ok> BuildNativeOp(
+      pir::PatternRewriter* rewriter,
+      const DrrNativeIrOp& res_ptn_ir_op,
+      RewriteCtx* rewrite_ctx,
+      const GraphMatchCtx& match_ctx,
+      const CodeGenResultCollectT& CodeGenResultCollect) const {
+    ADT_RETURN_IF_ERR(
+        InsertInputPirValueToReplaceCtx(res_ptn_ir_op, rewrite_ctx, match_ctx));
+    ADT_LET_CONST_REF(input_values,
+                      GetNativeOpInputValues(res_ptn_ir_op, *rewrite_ctx));
+    ADT_RETURN_IF_ERR(
+        TrySetInsertPointer(rewriter, *rewrite_ctx, res_ptn_ir_op, match_ctx));
+    ADT_LET_CONST_REF(attributes,
+                      GetResPtnOpAttributes(res_ptn_ir_op, match_ctx));
+    ADT_LET_CONST_REF(
+        output_values,
+        ConstructNativeOp(rewriter, res_ptn_ir_op, input_values, attributes));
+    ADT_RETURN_IF_ERR(UpdateConstructedOpOutputsInReplaceCtx(
+        match_ctx, output_values, res_ptn_ir_op, rewrite_ctx));
+    return adt::Ok{};
+  }
+
+  adt::Result<pir::AttributeMap> GetResPtnOpAttributes(
+      const DrrNativeIrOp& res_ptn_ir_op,
+      const GraphMatchCtx& match_ctx) const {
+    ADT_CHECK(ctx_.drr_ctx->source_pattern_ctx.has_value());
+    IrMatchCtx ir_match_ctx{ctx_.drr_ctx->source_pattern_ctx.value(),
+                            match_ctx};
+    const auto& args = GetResPtnAttrGetterArgs(ir_match_ctx);
+    pir::AttributeMap attrs;
+    auto* drr_interpreter = ap_drr_helper_.mut_drr_interpreter();
+    using Ok = adt::Result<adt::Ok>;
+    auto CollectAttr = [&](const auto& attr_name, const auto& getter) -> Ok {
+      ADT_LET_CONST_REF(attr_val, drr_interpreter->Interpret(getter, args))
+          << adt::errors::TypeError{
+                 std::string() + "Op attribute getter failed. drr_pass_name: " +
+                 ctx_.drr_ctx->pass_name.value() +
+                 ", op_name: " + res_ptn_ir_op->op_declare->op_name +
+                 ", op_unique_name: " + res_ptn_ir_op->name +
+                 ", attr_name: " + attr_name};
+      ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
+      ADT_LET_CONST_REF(attr, attr_val.template CastTo<pir::Attribute>())
+          << adt::errors::TypeError{
+                 std::string() +
+                 "Op attribute getters in result pattern should return "
+                 "Attribute typed object (not " +
+                 ap::axpr::GetTypeName(attr_val) +
+                 "). drr_pass_name: " + ctx_.drr_ctx->pass_name.value() +
+                 ", op_name: " + res_ptn_ir_op->op_declare->op_name +
+                 ", op_unique_name: " + res_ptn_ir_op->name +
+                 ", attr_name: " + attr_name};
+      ADT_CHECK(attrs.emplace(attr_name, attr).second);
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitResPtnOpAttr(res_ptn_ir_op, CollectAttr));
+    return attrs;
+  }
+
+  std::vector<ap::axpr::Value> GetResPtnAttrGetterArgs(
+      const IrMatchCtx& ir_match_ctx) const {
+    ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};
+    ap::ir_match::TensorMatchCtx<PirNode> tensor_match_ctx{
+        ir_match_ctx.shared_ptr()};
+    return std::vector<ap::axpr::Value>{
+        ap::ir_match::GetOpMatchCtxClass<ap::axpr::Value, PirNode>().New(
+            op_match_ctx),
+        ap::ir_match::GetTensorMatchCtxClass<ap::axpr::Value, PirNode>().New(
+            tensor_match_ctx),
+    };
+  }
+
+  template <typename YieldT>
+  adt::Result<adt::Ok> VisitResPtnOpAttr(const DrrNativeIrOp& res_ptn_ir_op,
+                                         const YieldT& Yield) const {
+    const auto& attr_map = res_ptn_ir_op->op_declare->attr_map;
+    using FuncT = ap::axpr::Function<ap::axpr::SerializableValue>;
+    for (const auto& [attr_name, attr_val] : attr_map->storage) {
+      ADT_LET_CONST_REF(getter, attr_val.template CastTo<FuncT>());
+      ADT_RETURN_IF_ERR(Yield(attr_name, getter));
+    }
+    return adt::Ok{};
+  }
+
+  adt::Result<std::vector<pir::Value>> ConstructNativeOp(
+      pir::PatternRewriter* rewriter,
+      const DrrNativeIrOp& res_ptn_ir_op,
+      const std::vector<pir::Value>& inputs,
+      const pir::AttributeMap& attrs) const {
+    try {
+      pir::Operation* op =
+          paddle::drr::OperationFactory::Instance().CreateOperation(
+              res_ptn_ir_op->op_declare->op_name, inputs, attrs, *rewriter);
+      return op->results();
+    } catch (const std::exception& e) {
+      return adt::errors::ValueError{
+          std::string() +
+          "OperationFactory::Instance().CreateOperation() failed. op_name: " +
+          res_ptn_ir_op->op_declare->op_name + ". what(): " + e.what()};
+    }
   }
 
   adt::Result<adt::Ok> BuildPackedOp(
@@ -558,7 +665,7 @@ struct ApRewriter {
     ADT_LET_CONST_REF(
         output_values,
         GetPackedOpOutputValues(rewriter, ap_pattern_fusion_combined_out));
-    ADT_RETURN_IF_ERR(UpdateApKernelOutputsInReplaceCtx(
+    ADT_RETURN_IF_ERR(UpdateConstructedOpOutputsInReplaceCtx(
         match_ctx, output_values, res_ptn_ir_op, rewrite_ctx));
     return adt::Ok{};
   }
@@ -885,10 +992,11 @@ struct ApRewriter {
     return split_op.outputs();
   }
 
-  adt::Result<adt::Ok> UpdateApKernelOutputsInReplaceCtx(
+  template <typename IrOpT>
+  adt::Result<adt::Ok> UpdateConstructedOpOutputsInReplaceCtx(
       const GraphMatchCtx& match_ctx,
       const std::vector<pir::Value>& output_values,
-      const DrrPackedIrOp& res_ptn_ir_op,
+      const IrOpT& res_ptn_ir_op,
       RewriteCtx* rewrite_ctx) const {
     auto UpdateRewriteCtx = [&](const DrrIrValue& ir_value,
                                 const std::vector<pir::Value>& output_slice)
@@ -913,11 +1021,11 @@ struct ApRewriter {
     return adt::Ok{};
   }
 
-  template <typename DoEachT>
+  template <typename IrOpT, typename DoEachT>
   adt::Result<adt::Ok> VisitEachMatchedDrrIrValueAndOutputSlice(
       const GraphMatchCtx& match_ctx,
       const std::vector<pir::Value>& output_values,
-      const DrrPackedIrOp& res_ptn_ir_op,
+      const IrOpT& res_ptn_ir_op,
       const DoEachT& DoEach) const {
     ap::code_gen::MatchedResultPatternHelper<PirNode> helper{match_ctx,
                                                              ctx_.drr_ctx};
@@ -1025,10 +1133,11 @@ struct ApRewriter {
     return combined_op.out();
   }
 
+  template <typename IrOpT>
   adt::Result<adt::Ok> TrySetInsertPointer(
       pir::PatternRewriter* rewriter,
       const RewriteCtx& rewrite_ctx,
-      const DrrPackedIrOp& res_ptn_ir_op,
+      const IrOpT& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
     ADT_LET_CONST_REF(
         opt_last_pir_op,
@@ -1039,9 +1148,10 @@ struct ApRewriter {
     return adt::Ok{};
   }
 
+  template <typename IrOpT>
   adt::Result<std::optional<pir::Operation*>> GetLastMatchedPirOp(
       const RewriteCtx& rewrite_ctx,
-      const DrrPackedIrOp& res_ptn_ir_op,
+      const IrOpT& res_ptn_ir_op,
       const GraphMatchCtx& match_ctx) const {
     std::optional<pir::Operation*> last_op;
     std::optional<std::size_t> op_order_value;
@@ -1082,16 +1192,16 @@ struct ApRewriter {
     return last_op;
   }
 
-  template <typename DoEachT>
+  template <typename IrOpT, typename DoEachT>
   adt::Result<adt::Ok> VisitResPtnInputIrValueByResPtnIrOp(
-      const DrrPackedIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
+      const IrOpT& res_ptn_ir_op, const DoEachT& DoEach) const {
     ap::drr::ResultPatternHelper helper{ctx_.drr_ctx};
     return helper.VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, DoEach);
   }
 
-  template <typename DoEachT>
+  template <typename IrOpT, typename DoEachT>
   adt::Result<adt::Ok> VisitResPtnOutputIrValueByResPtnIrOp(
-      const DrrPackedIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
+      const IrOpT& res_ptn_ir_op, const DoEachT& DoEach) const {
     ap::drr::ResultPatternHelper helper{ctx_.drr_ctx};
     return helper.VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEach);
   }
@@ -1102,8 +1212,9 @@ struct ApRewriter {
     return helper.SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
   }
 
+  template <typename IrOpT>
   adt::Result<adt::Ok> InsertInputPirValueToReplaceCtx(
-      const DrrPackedIrOp& res_ptn_ir_op,
+      const IrOpT& res_ptn_ir_op,
       RewriteCtx* rewrite_ctx,
       const GraphMatchCtx& match_ctx) const {
     using Ok = adt::Result<adt::Ok>;
@@ -1243,6 +1354,22 @@ struct ApRewriter {
                                                            DoEach);
   }
 
+  adt::Result<std::vector<pir::Value>> GetNativeOpInputValues(
+      const DrrNativeIrOp& res_ptn_ir_op, const RewriteCtx& rewrite_ctx) const {
+    std::vector<pir::Value> ret;
+    auto CollectValues = [&](pir::Value value) -> adt::Result<adt::Ok> {
+      ret.push_back(value);
+      return adt::Ok{};
+    };
+    auto VisitAndCollect =
+        [&](const DrrIrValue& drr_ir_value) -> adt::Result<adt::Ok> {
+      return VisitPirValueByIrValue(drr_ir_value, rewrite_ctx, CollectValues);
+    };
+    ADT_RETURN_IF_ERR(
+        VisitResPtnInputIrValueByResPtnIrOp(res_ptn_ir_op, VisitAndCollect));
+    return ret;
+  }
+
   adt::Result<std::vector<pir::Value>> GetPackedOpInputValues(
       const DrrPackedIrOp& res_ptn_ir_op, const RewriteCtx& rewrite_ctx) const {
     std::vector<pir::Value> ret;
@@ -1283,20 +1410,61 @@ struct ApRewriter {
   }
 };
 
+struct ConstraintApplier {
+  adt::Result<bool> Match(const DrrCtx& drr_ctx,
+                          const GraphMatchCtx& graph_match_ctx) {
+    if (!drr_ctx->constraint_func.has_value()) {
+      return true;
+    }
+    const auto& constraint_func = drr_ctx->constraint_func.value();
+    ADT_CHECK(drr_ctx->source_pattern_ctx.has_value());
+    IrMatchCtx ir_match_ctx{drr_ctx->source_pattern_ctx.value(),
+                            graph_match_ctx};
+    const auto& args = GetConstraintFuncArgs(ir_match_ctx);
+    ApDrrHelper ap_drr_helper{};
+    ADT_LET_CONST_REF(is_match_val,
+                      ap_drr_helper.Interpret(constraint_func, args));
+    ADT_CHECK(drr_ctx->pass_name.has_value());
+    ADT_LET_CONST_REF(is_match, is_match_val.template CastTo<bool>())
+        << adt::errors::TypeError{
+               std::string() +
+               "constraint function should return a bool (not " +
+               ap::axpr::GetTypeName(is_match_val) +
+               "). pass_name: " + drr_ctx->pass_name.value()};
+    return is_match;
+  }
+
+  std::vector<ap::axpr::Value> GetConstraintFuncArgs(
+      const IrMatchCtx& ir_match_ctx) {
+    ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};
+    ap::ir_match::TensorMatchCtx<PirNode> tensor_match_ctx{
+        ir_match_ctx.shared_ptr()};
+    ap::paddle::IrHelper ir_helper{};
+    return std::vector<ap::axpr::Value>{
+        ap::ir_match::GetOpMatchCtxClass<ap::axpr::Value, PirNode>().New(
+            op_match_ctx),
+        ap::ir_match::GetTensorMatchCtxClass<ap::axpr::Value, PirNode>().New(
+            tensor_match_ctx),
+        ap::paddle::GetPirHelperClass().New(ir_helper),
+    };
+  }
+};
+
 struct NativeOpAnchorApLowerFusionOpPatternMatcher {
   const ApLowerFusionOpPatternCtx& ctx_;
 
   using Self = NativeOpAnchorApLowerFusionOpPatternMatcher;
 
-  static adt::Result<GraphMatchCtx> Match(const DrrCtx& drr_ctx,
-                                          pir::Operation* op) {
+  static adt::Result<std::optional<GraphMatchCtx>> Match(const DrrCtx& drr_ctx,
+                                                         pir::Operation* op) {
     ADT_LET_CONST_REF(pattern_ctx,
                       ApLowerFusionOpPatternCtx::MakeFromDrrCtx(drr_ctx));
     Self matcher{pattern_ctx};
     return matcher.GetMatchCtx(op);
   }
 
-  adt::Result<GraphMatchCtx> GetMatchCtx(pir::Operation* op) const {
+  adt::Result<std::optional<GraphMatchCtx>> GetMatchCtx(
+      pir::Operation* op) const {
     DefaultGraph<DrrGraphNode> drr_graph{};
     DefaultGraph<PirNode> pir_graph{};
     auto* parent_block = op->GetParent();
@@ -1383,7 +1551,16 @@ struct NativeOpAnchorApLowerFusionOpPatternMatcher {
                             opt_graph_match_ctx.value(), drr_op_result_anchor));
       ADT_CHECK(graph_matched);
     }
-    return opt_graph_match_ctx.value();
+    if (!opt_graph_match_ctx.has_value()) {
+      return std::nullopt;
+    }
+    ADT_LET_CONST_REF(
+        match,
+        ConstraintApplier{}.Match(ctx_.drr_ctx, opt_graph_match_ctx.value()));
+    if (!match) {
+      return std::nullopt;
+    }
+    return opt_graph_match_ctx;
   }
 
   std::string DebugId(const PirNode& pir_node) const {
@@ -1790,14 +1967,19 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
 
   adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
                                        pir::PatternRewriter* rewriter) const {
-    ADT_LET_CONST_REF(match_ctx, GetMatchCtx(op));
+    ADT_LET_CONST_REF(opt_match_ctx, GetMatchCtx(op));
+    if (!opt_match_ctx.has_value()) {
+      return false;
+    }
     ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
     LOG(ERROR) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
-    ADT_LET_CONST_REF(success, ap_rewriter_.Rewrite(match_ctx, op, rewriter));
+    ADT_LET_CONST_REF(
+        success, ap_rewriter_.Rewrite(opt_match_ctx.value(), op, rewriter));
     return success;
   }
 
-  adt::Result<GraphMatchCtx> GetMatchCtx(pir::Operation* op) const {
+  adt::Result<std::optional<GraphMatchCtx>> GetMatchCtx(
+      pir::Operation* op) const {
     return NativeOpAnchorApLowerFusionOpPatternMatcher{ctx_}.GetMatchCtx(op);
   }
 };
@@ -1807,15 +1989,16 @@ struct DefaultAnchorApLowerFusionOpPatternMatcher {
 
   using Self = DefaultAnchorApLowerFusionOpPatternMatcher;
 
-  static adt::Result<GraphMatchCtx> Match(const DrrCtx& drr_ctx,
-                                          pir::Operation* op) {
+  static adt::Result<std::optional<GraphMatchCtx>> Match(const DrrCtx& drr_ctx,
+                                                         pir::Operation* op) {
     ADT_LET_CONST_REF(pattern_ctx,
                       ApLowerFusionOpPatternCtx::MakeFromDrrCtx(drr_ctx));
     Self matcher{pattern_ctx};
     return matcher.GetMatchCtx(op);
   }
 
-  adt::Result<GraphMatchCtx> GetMatchCtx(pir::Operation* op) const {
+  adt::Result<std::optional<GraphMatchCtx>> GetMatchCtx(
+      pir::Operation* op) const {
     auto* parent_block = op->GetParent();
     ADT_CHECK(parent_block != nullptr);
     auto* parent_op = parent_block->GetParentOp();
@@ -1843,13 +2026,20 @@ struct DefaultAnchorApLowerFusionOpPatternMatcher {
     ADT_CHECK(satisfy_constraint) << adt::errors::ValueError{
         "TopoSatisfy() or AttrsSatisfyIfBothAreOpsOrValues() test failed."};
     ADT_LET_CONST_REF(
-        graph_ctx,
+        graph_match_ctx,
         graph_matcher.MatchByAnchor(obj_node, default_anchor.node()));
     ADT_LET_CONST_REF(
         graph_matched,
-        graph_matcher.IsGraphMatched(graph_ctx, default_anchor.node()));
-    ADT_CHECK(graph_matched);
-    return graph_ctx;
+        graph_matcher.IsGraphMatched(graph_match_ctx, default_anchor.node()));
+    if (!graph_matched) {
+      return std::nullopt;
+    }
+    ADT_LET_CONST_REF(constraint_matched,
+                      ConstraintApplier{}.Match(ctx_.drr_ctx, graph_match_ctx));
+    if (!constraint_matched) {
+      return std::nullopt;
+    }
+    return graph_match_ctx;
   }
 
   PirNode CastToPirNode(pir::Operation* op) const {
@@ -1898,14 +2088,19 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
 
   adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
                                        pir::PatternRewriter* rewriter) const {
-    ADT_LET_CONST_REF(match_ctx, GetMatchCtx(op));
+    ADT_LET_CONST_REF(opt_match_ctx, GetMatchCtx(op));
+    if (!opt_match_ctx.has_value()) {
+      return false;
+    }
     ADT_CHECK(ctx_.drr_ctx->pass_name.has_value());
     LOG(ERROR) << "drr: " << ctx_.drr_ctx->pass_name.value() << " matched.";
-    ADT_LET_CONST_REF(success, ap_rewriter_.Rewrite(match_ctx, op, rewriter));
+    ADT_LET_CONST_REF(
+        success, ap_rewriter_.Rewrite(opt_match_ctx.value(), op, rewriter));
     return success;
   }
 
-  adt::Result<GraphMatchCtx> GetMatchCtx(pir::Operation* op) const {
+  adt::Result<std::optional<GraphMatchCtx>> GetMatchCtx(
+      pir::Operation* op) const {
     return DefaultAnchorApLowerFusionOpPatternMatcher{ctx_}.GetMatchCtx(op);
   }
 };
@@ -1983,7 +2178,8 @@ class AbstractDrrCtxHelper {
   }
 
   adt::Result<adt::Ok> DumpReifiedDrrPass(
-      adt::Result<GraphMatchCtx> (*Match)(const DrrCtx&, pir::Operation* op),
+      adt::Result<std::optional<GraphMatchCtx>> (*Match)(const DrrCtx&,
+                                                         pir::Operation* op),
       const DrrCtx& drr_ctx,
       pir::Operation* op,
       const GraphMatchCtx& match_ctx,
@@ -2008,7 +2204,8 @@ class AbstractDrrCtxHelper {
             /*nice=*/0));
     ADT_LET_CONST_REF(reified_drr_ctx,
                       GetReifiedDrrCtx(reified_drr_pass_class_lambda_anf_expr));
-    ADT_RETURN_IF_ERR(Match(reified_drr_ctx, op));
+    ADT_LET_CONST_REF(opt_match_ctx, Match(reified_drr_ctx, op));
+    ADT_CHECK(opt_match_ctx.has_value());
     return adt::Ok{};
   }
 
@@ -2105,7 +2302,8 @@ class ClassicDrrCtxHelper {
   }
 
   adt::Result<adt::Ok> DumpReifiedDrrPass(
-      adt::Result<GraphMatchCtx> (*Match)(const DrrCtx&, pir::Operation* op),
+      adt::Result<std::optional<GraphMatchCtx>> (*Match)(const DrrCtx&,
+                                                         pir::Operation* op),
       const DrrCtx& drr_ctx,
       pir::Operation* op,
       const GraphMatchCtx& match_ctx,
@@ -2157,6 +2355,94 @@ class ClassicDrrCtxHelper {
     if (!drr_ctx->pass_name.has_value()) {
       drr_ctx.shared_ptr()->pass_name =
           classic_drr_pass_item->classic_drr_pass_name;
+    }
+    return drr_ctx;
+  }
+};
+
+class AccessTopoDrrCtxHelper {
+ public:
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitEachDrrCtx(const DoEachT& DoEach) {
+    ADT_LET_CONST_REF(drr_ctx_list, this->GetDrrCtxList());
+    for (const auto& drr_ctx : *drr_ctx_list) {
+      ADT_RETURN_IF_ERR(DoEach(drr_ctx));
+    }
+    return adt::Ok{};
+  }
+
+  adt::Result<adt::List<DrrCtx>> GetDrrCtxList() {
+    static adt::Result<adt::List<DrrCtx>> drr_ctx_list(MakeDrrCtxList());
+    return drr_ctx_list;
+  }
+
+  adt::Result<adt::List<DrrCtx>> MakeDrrCtxList() {
+    adt::List<DrrCtx> ret{};
+    auto Collect = [&](const auto& drr_ctx) -> adt::Result<adt::Ok> {
+      ret->emplace_back(drr_ctx);
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(VisitEachDrrCtxByAccessTopoDrrPassRegistryItems(Collect));
+    return ret;
+  }
+
+  adt::Result<adt::Ok> DumpReifiedDrrPass(
+      adt::Result<std::optional<GraphMatchCtx>> (*Match)(const DrrCtx&,
+                                                         pir::Operation* op),
+      const DrrCtx& drr_ctx,
+      pir::Operation* op,
+      const GraphMatchCtx& match_ctx,
+      const std::function<adt::Result<CodeGenResult>(const std::string&)>&
+          CodeGenResult4FusedOpName) const {
+    // Do nothing.
+    return adt::Ok{};
+  }
+
+ private:
+  template <typename DoEachT>
+  adt::Result<adt::Ok> VisitEachDrrCtxByAccessTopoDrrPassRegistryItems(
+      const DoEachT& DoEach) {
+    ADT_LET_CONST_REF(registry, ApRegistryHelper{}.SingltonRegistry());
+    const auto& access_topo_drr_pass_registry_items =
+        registry->access_topo_drr_pass_registry_items;
+    for (const auto& [access_topo_drr_pass_name,
+                      nice2access_topo_drr_pass_items] :
+         access_topo_drr_pass_registry_items) {
+      std::optional<DrrCtx> opt_drr_ctx;
+      for (const auto& [nice, access_topo_drr_pass_items] :
+           nice2access_topo_drr_pass_items) {
+        if (opt_drr_ctx.has_value()) {
+          break;
+        }
+        for (const auto& access_topo_drr_pass_item :
+             access_topo_drr_pass_items) {
+          const auto& drr_ctx = GetDrrCtx(access_topo_drr_pass_item);
+          if (drr_ctx.HasOkValue()) {
+            ADT_RETURN_IF_ERR(DoEach(drr_ctx.GetOkValue()));
+            opt_drr_ctx = drr_ctx.GetOkValue();
+            break;
+          } else {
+            LOG(ERROR) << "\nTraceback (most recent call last):\n"
+                       << drr_ctx.GetError().CallStackToString() << "\n"
+                       << drr_ctx.GetError().class_name()
+                       << ": access_topo_drr_pass_name: "
+                       << access_topo_drr_pass_name << " nice: " << nice
+                       << " msg: " << drr_ctx.GetError().msg();
+          }
+        }
+      }
+    }
+    return adt::Ok{};
+  }
+
+  adt::Result<DrrCtx> GetDrrCtx(
+      const ap::registry::AccessTopoDrrPassRegistryItem&
+          access_topo_drr_pass_item) {
+    ADT_LET_CONST_REF(drr_ctx,
+                      ApDrrHelper{}.Interpret(access_topo_drr_pass_item->cls));
+    if (!drr_ctx->pass_name.has_value()) {
+      drr_ctx.shared_ptr()->pass_name =
+          access_topo_drr_pass_item->access_topo_drr_pass_name;
     }
     return drr_ctx;
   }
@@ -2222,6 +2508,35 @@ CreateApLowerFusionOpClassicDrrPass() {
   std::unique_ptr<::pir::Pass> pass =
       std::make_unique<ApLowerFusionOpPass<ClassicDrrCtxHelper>>("classic");
   return std::move(pass);
+}
+
+std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass() {
+  if (!GetRegistrySingleton().has_value()) {
+    return std::nullopt;
+  }
+  const auto& drr_ctx_list = AccessTopoDrrCtxHelper{}.GetDrrCtxList();
+  if (drr_ctx_list.HasError()) {
+    LOG(ERROR) << "\nTraceback (most recent call last):\n"
+               << drr_ctx_list.GetError().CallStackToString() << "\n"
+               << drr_ctx_list.GetError().class_name() << ": "
+               << drr_ctx_list.GetError().msg();
+    return std::nullopt;
+  }
+  if (drr_ctx_list.GetOkValue()->empty()) {
+    return std::nullopt;
+  }
+  std::unique_ptr<::pir::Pass> pass =
+      std::make_unique<ApLowerFusionOpPass<AccessTopoDrrCtxHelper>>(
+          "access_topo");
+  return std::move(pass);
+}
+
+std::optional<std::unique_ptr<::pir::Pass>> CreateApDrrPass(
+    const std::string& drr_pass_tag) {
+  if (drr_pass_tag == "access_topo_pass") {
+    return CreateAccessTopoDrrPass();
+  }
+  return std::nullopt;
 }
 
 }  // namespace cinn::dialect::ir

@@ -67,11 +67,10 @@ adt::Result<drr::Node> GetDrrYieldNode(
   return yield_node.value();
 }
 
-adt::Result<PirNode> GetPirYieldNode(const PackedIrOp& ir_op) {
-  auto* block = ir_op.fusion_op.block();
-  for (auto& op : *block) {
+adt::Result<PirNode> GetPirYieldNode(const pir::Block* block) {
+  for (const auto& op : *block) {
     if (op.template isa<pir::YieldOp>()) {
-      return NativeIrOp{&op};
+      return NativeIrOp{const_cast<pir::Operation*>(&op)};
     }
   }
   return adt::errors::ValueError{"no yield op found in fusion_op block"};
@@ -82,13 +81,19 @@ adt::Result<PirNode> GetPirYieldNode(const PackedIrOp& ir_op) {
 adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>>
 PackedIrOpInnerSourcePatternHelper::Match(
     const PackedIrOp& ir_op, const drr::SourcePatternCtx& src_ptn_ctx) {
+  return Match(ir_op.fusion_op.block(), src_ptn_ctx);
+}
+
+adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>>
+PackedIrOpInnerSourcePatternHelper::Match(
+    const pir::Block* block, const drr::SourcePatternCtx& src_ptn_ctx) {
   auto BelongToThisBlockOrNotOp =
       [&](const PirNode& node) -> adt::Result<bool> {
     const auto& opt_block = GetPirNodeBlock(node);
     if (!opt_block.has_value()) {
       return true;
     }
-    return opt_block.value() == ir_op.fusion_op.block();
+    return opt_block.value() == block;
   };
   using Default = drr::topo_kind::Default;
   using BlockBound = drr::topo_kind::BlockBound;
@@ -99,7 +104,7 @@ PackedIrOpInnerSourcePatternHelper::Match(
   ap::ir_match::GraphMatcher<PirNode, BlockBound, Default> graph_matcher(
       pir_graph, src_ptn_graph);
   ADT_LET_CONST_REF(drr_yield_node, GetDrrYieldNode(src_ptn_ctx));
-  ADT_LET_CONST_REF(pir_yield_node, GetPirYieldNode(ir_op));
+  ADT_LET_CONST_REF(pir_yield_node, GetPirYieldNode(block));
   ADT_LET_CONST_REF(
       graph_ctx,
       graph_matcher.MatchByAnchor(pir_yield_node, drr_yield_node.node()));

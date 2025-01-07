@@ -36,15 +36,15 @@ using DrrCtx = ap::drr::DrrCtx;
 
 }  // namespace
 
-adt::Result<DrrCtx> DrrInterpreter::Interpret(
+DrrInterpreter::DrrInterpreter(
     const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-        backend_ir_ctx,
-    const Function& lambda,
-    const std::string& drr_pass_name) {
-  const auto& builtin_frame = ap::drr::MakeBuiltinFrameAttrMap(
-      [&](const auto& Insert) { Insert(backend_ir_ctx); });
-  ap::axpr::Interpreter interpreter(builtin_frame);
-  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {}));
+        backend_ir_ctx)
+    : interpreter_(ap::drr::MakeBuiltinFrameAttrMap(
+          [&](const auto& Insert) { Insert(backend_ir_ctx); })) {}
+
+adt::Result<DrrCtx> DrrInterpreter::InterpretDrrCtxMaker(
+    const Function& lambda, const std::vector<axpr::Value>& args) {
+  ADT_LET_CONST_REF(drr_ctx_val, interpreter_.Interpret(lambda, args));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
       << adt::errors::TypeError{
              std::string() +
@@ -53,9 +53,18 @@ adt::Result<DrrCtx> DrrInterpreter::Interpret(
   return drr_ctx;
 }
 
-adt::Result<DrrCtx> DrrInterpreter::Interpret(
-    const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-        backend_ir_ctx,
+adt::Result<DrrCtx> DrrInterpreter::InterpretPass(
+    const Function& lambda, const std::string& drr_pass_name) {
+  ADT_LET_CONST_REF(drr_ctx_val, interpreter_.Interpret(lambda, {}));
+  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
+      << adt::errors::TypeError{
+             std::string() +
+             "drr function should return a 'DrrCtx' object but '" +
+             ap::axpr::GetTypeName(drr_ctx_val) + "' were given."};
+  return drr_ctx;
+}
+
+adt::Result<DrrCtx> DrrInterpreter::InterpretPass(
     const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls) {
   static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
     ap::axpr::LambdaExprBuilder lmd;
@@ -69,12 +78,9 @@ adt::Result<DrrCtx> DrrInterpreter::Interpret(
     const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
     return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
   }());
-  const auto& builtin_frame = ap::drr::MakeBuiltinFrameAttrMap(
-      [&](const auto& Insert) { Insert(backend_ir_ctx); });
-  ap::axpr::Interpreter interpreter(builtin_frame);
   ap::axpr::Value cls_val{
       ap::axpr::TypeImpl<ap::axpr::ClassInstance<ap::axpr::Value>>(cls)};
-  ADT_LET_CONST_REF(drr_ctx_val, interpreter.Interpret(lambda, {cls_val}));
+  ADT_LET_CONST_REF(drr_ctx_val, interpreter_.Interpret(lambda, {cls_val}));
   ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
       << adt::errors::TypeError{
              std::string() +

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ap/include/paddle/cinn/ap_registry_helper.h"
+#include "paddle/ap/include/paddle/pass/ap_registry_helper.h"
 #include "paddle/ap/include/registry/registry_mgr.h"
 
 namespace cinn::dialect::ir {

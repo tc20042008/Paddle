@@ -46,10 +46,10 @@ cc_library(
   SRCS ${ap_reified_drr_srcs}
   DEPS ${ap_reified_drr_deps})
 
-file(GLOB_RECURSE ap_cinn_srcs "src/paddle/cinn/*.cc")
-set(ap_cinn_deps axpr ap_pir index_expr ap_drr ap_reified_drr)
+file(GLOB_RECURSE ap_pass_srcs "src/paddle/pass/*.cc")
+set(ap_pass_deps axpr ap_pir index_expr ap_drr ap_reified_drr)
 
 cc_library(
-  ap_cinn
-  SRCS ${ap_cinn_srcs}
-  DEPS ${ap_cinn_deps})
+  ap_pass
+  SRCS ${ap_pass_srcs}
+  DEPS ${ap_pass_deps})

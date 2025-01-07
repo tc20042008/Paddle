@@ -170,10 +170,10 @@ struct MatchedResultPatternHelper {
     return num_outputs;
   }
 
-  template <typename T, typename DoEachT>
+  template <typename T, typename IrOpT, typename DoEachT>
   adt::Result<adt::Ok> VisitEachMatchedDrrIrValueAndOutputSlice(
       const std::vector<T>& output_values,
-      const DrrPackedIrOp& res_ptn_ir_op,
+      const IrOpT& res_ptn_ir_op,
       const DoEachT& DoEach) const {
     std::size_t offset = 0;
     auto DoEachSlice =
@@ -187,9 +187,9 @@ struct MatchedResultPatternHelper {
     return VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachSlice);
   }
 
-  template <typename DoEachT>
+  template <typename IrOpT, typename DoEachT>
   adt::Result<adt::Ok> VisitResPtnOutputIrValueByResPtnIrOp(
-      const DrrPackedIrOp& res_ptn_ir_op, const DoEachT& DoEach) const {
+      const IrOpT& res_ptn_ir_op, const DoEachT& DoEach) const {
     drr::ResultPatternHelper helper{drr_ctx_};
     return helper.VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEach);
   }

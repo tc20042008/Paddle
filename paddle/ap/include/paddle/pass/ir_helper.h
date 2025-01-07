@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,14 @@
 
 #pragma once
 
-#include <memory>
-#include <optional>
-#include "paddle/pir/include/pass/pass.h"
+#include "paddle/ap/include/adt/adt.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace ap::paddle {
 
-std::optional<std::unique_ptr<::pir::Pass>>
-CreateApLowerFusionOpAbstractDrrPass();
-std::optional<std::unique_ptr<::pir::Pass>>
-CreateApLowerFusionOpClassicDrrPass();
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+struct IrHelperImpl {
+  bool operator==(const IrHelperImpl& other) const { return this == &other; }
+};
+
+ADT_DEFINE_RC(IrHelper, IrHelperImpl);
+
+}  // namespace ap::paddle

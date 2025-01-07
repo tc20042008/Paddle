@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ap/include/paddle/cinn/ap_drr_helper.h"
+#include "paddle/ap/include/paddle/pass/ap_drr_helper.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/lambda_expr_builder.h"
@@ -37,17 +37,21 @@ using DrrCtx = ap::drr::DrrCtx;
 
 }  // namespace
 
+ApDrrHelper::ApDrrHelper() : drr_interpreter_(ap::paddle::GetPirClass()) {}
+
+adt::Result<DrrCtx> ApDrrHelper::InterpretDrrCtxMaker(
+    const Function& lambda, const std::vector<ap::axpr::Value>& args) {
+  return drr_interpreter_.InterpretDrrCtxMaker(lambda, args);
+}
+
 adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
                                            const std::string& drr_pass_name) {
-  ap::drr::DrrInterpreter drr_interpreter{};
-  return drr_interpreter.Interpret(
-      ap::paddle::GetPirClass(), lambda, drr_pass_name);
+  return drr_interpreter_.InterpretPass(lambda, drr_pass_name);
 }
 
 adt::Result<DrrCtx> ApDrrHelper::Interpret(
     const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls) {
-  ap::drr::DrrInterpreter drr_interpreter{};
-  return drr_interpreter.Interpret(ap::paddle::GetPirClass(), cls);
+  return drr_interpreter_.InterpretPass(cls);
 }
 
 }  // namespace cinn::dialect::ir

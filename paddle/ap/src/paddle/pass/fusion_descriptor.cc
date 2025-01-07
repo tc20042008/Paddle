@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ap/include/paddle/cinn/fusion_descriptor.h"
+#include "paddle/ap/include/paddle/pass/fusion_descriptor.h"
 #include <functional>
 #include "paddle/ap/include/index_expr/index_expr_interpreter.h"
 #include "paddle/ap/include/index_expr/op_index_tuple_expr_signature.h"

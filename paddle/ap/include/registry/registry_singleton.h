@@ -47,6 +47,16 @@ struct RegistrySingleton {
         .emplace_back(item);
   }
 
+  static void Add(const AccessTopoDrrPassRegistryItem& item) {
+    auto registry = MutSingleton();
+    const auto& access_topo_drr_pass_name = item->access_topo_drr_pass_name;
+    int64_t nice = item->nice;
+    std::unique_lock<std::mutex> lock(*SingletonMutex());
+    registry
+        ->access_topo_drr_pass_registry_items[access_topo_drr_pass_name][nice]
+        .emplace_back(item);
+  }
+
   static std::mutex* SingletonMutex() {
     static std::mutex mutex;
     return &mutex;

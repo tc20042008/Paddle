@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,24 +15,16 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/ir_match/graph_match_ctx.h"
-#include "paddle/ap/include/paddle/pir_node.h"
-
-namespace ap::drr {
-
-struct SourcePatternCtx;
-
-}
+#include "paddle/pir/include/pass/pass_manager.h"
 
 namespace ap::paddle {
 
-struct PackedIrOp;
+struct PassManagerImpl {
+  std::shared_ptr<pir::PassManager> pir_pass_manager;
 
-struct PackedIrOpInnerSourcePatternHelper {
-  adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>> Match(
-      const PackedIrOp& ir_op, const drr::SourcePatternCtx& src_ptn_ctx);
-  adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>> Match(
-      const pir::Block* block, const drr::SourcePatternCtx& src_ptn_ctx);
+  bool operator==(const PassManagerImpl& other) const { return this == &other; }
 };
+
+ADT_DEFINE_RC(PassManager, PassManagerImpl);
 
 }  // namespace ap::paddle

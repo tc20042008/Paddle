@@ -15,26 +15,38 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/drr/value.h"
 #include "paddle/ap/include/registry/abstract_drr_pass_registry_item.h"
 
 namespace ap::drr {
 
-struct DrrInterpreter {
+class DrrInterpreter {
+ public:
+  explicit DrrInterpreter(
+      const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
+          backend_ir_ctx);
+
   using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
 
   using DrrNode = ap::drr::Node;
   using DrrCtx = ap::drr::DrrCtx;
 
-  ap::adt::Result<DrrCtx> Interpret(
-      const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-          backend_ir_ctx,
-      const Function& lambda,
-      const std::string& abstract_drr_pass_name);
-  ap::adt::Result<DrrCtx> Interpret(
-      const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-          backend_ir_ctx,
+  ap::adt::Result<axpr::Value> Interpret(const Function& function,
+                                         const std::vector<axpr::Value>& args) {
+    return interpreter_.Interpret(function, args);
+  }
+
+  ap::adt::Result<DrrCtx> InterpretDrrCtxMaker(
+      const Function& lambda, const std::vector<axpr::Value>& args);
+
+  ap::adt::Result<DrrCtx> InterpretPass(
+      const Function& function, const std::string& abstract_drr_pass_name);
+  ap::adt::Result<DrrCtx> InterpretPass(
       const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls);
+
+ private:
+  axpr::Interpreter interpreter_;
 };
 
 }  // namespace ap::drr

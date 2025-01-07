@@ -45,6 +45,9 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
         [&](BuiltinHighOrderFuncType<ValueT> unary_func) -> RetT {
           return unary_func(interpreter, self, empty_args);
         },
+        [&](const axpr::Method<ValueT>& method) -> RetT {
+          return interpreter->InterpretCall(method, {});
+        },
         [&](const auto&) -> RetT {
           return adt::errors::TypeError{
               std::string() + "casting to builtin function (not " +
@@ -66,6 +69,9 @@ struct MethodClassImpl<ValueT, BuiltinClassInstance<ValueT>> {
         },
         [&](BuiltinHighOrderFuncType<ValueT> unary_func) -> RetT {
           return unary_func(interpreter, self, empty_args);
+        },
+        [&](const axpr::Method<ValueT>& method) -> RetT {
+          return interpreter->InterpretCall(method, {});
         },
         [&](const auto&) -> RetT {
           return adt::errors::TypeError{

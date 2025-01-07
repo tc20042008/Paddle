@@ -14,25 +14,19 @@
 
 #pragma once
 
+#include <vector>
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/ir_match/graph_match_ctx.h"
-#include "paddle/ap/include/paddle/pir_node.h"
+#include "paddle/ap/include/axpr/function.h"
+#include "paddle/ap/include/axpr/serializable_value.h"
 
-namespace ap::drr {
+namespace ap::registry {
 
-struct SourcePatternCtx;
-
-}
-
-namespace ap::paddle {
-
-struct PackedIrOp;
-
-struct PackedIrOpInnerSourcePatternHelper {
-  adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>> Match(
-      const PackedIrOp& ir_op, const drr::SourcePatternCtx& src_ptn_ctx);
-  adt::Result<std::optional<ir_match::GraphMatchCtx<PirNode>>> Match(
-      const pir::Block* block, const drr::SourcePatternCtx& src_ptn_ctx);
+struct AccessTopoDrrPassRegistryItemImpl {
+  std::string access_topo_drr_pass_name;
+  int64_t nice;
+  axpr::ClassAttrs<axpr::SerializableValue> cls;
 };
 
-}  // namespace ap::paddle
+ADT_DEFINE_RC(AccessTopoDrrPassRegistryItem, AccessTopoDrrPassRegistryItemImpl);
+
+}  // namespace ap::registry

@@ -119,6 +119,22 @@ struct ResPtnUnboundNativeIrOpMethodClass {
     }
     return adt::Ok{};
   }
+
+  static adt::Result<axpr::Value> SetAttr(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 2);
+    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+    const auto& attr_val = args.at(1);
+    ADT_RETURN_IF_ERR(
+        attr_val.template CastTo<axpr::Function<axpr::SerializableValue>>())
+        << adt::errors::TypeError{
+               std::string() +
+               "Type of ResPtnNativeIrOp attribute should  Function"};
+    auto* attr_map = self.value()->op_declare->attr_map.shared_ptr().get();
+    attr_map->Set(attr_name, attr_val);
+    return adt::Nothing{};
+  }
 };
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
@@ -130,6 +146,7 @@ GetResPtnUnboundNativeIrOpClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__call__", &Impl::StaticCall);
+        Define("__setattr__", &Impl::SetAttr);
       }));
   using Self = typename Impl::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

@@ -19,6 +19,7 @@
 #include "paddle/ap/include/paddle/pass/ap_drr_helper.h"
 #include "paddle/ap/include/paddle/pass/ap_lower_fusion_op_pass.h"
 #include "paddle/ap/include/paddle/pass/ir_helper.h"
+#include "paddle/ap/include/paddle/pir/op_dialect.h"
 #include "paddle/ap/include/paddle/pir/packed_ir_op_inner_source_pattern_helper.h"
 #include "paddle/ap/include/paddle/pir/pass_manager_method_class.h"
 #include "paddle/ap/include/paddle/pir/pass_method_class.h"
@@ -48,8 +49,9 @@ struct PirHelperMethodClass {
   static adt::Result<axpr::Value> CreatePassManager(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 0);
-    PassManager pass_manager{
-        std::make_shared<::pir::PassManager>(::pir::IrContext::Instance(), 3)};
+    auto* ctx = ::pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
+    PassManager pass_manager{std::make_shared<::pir::PassManager>(ctx, 3)};
     return GetPirPassManagerClass().New(pass_manager);
   }
 

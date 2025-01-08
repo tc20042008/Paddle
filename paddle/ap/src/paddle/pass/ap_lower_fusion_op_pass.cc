@@ -195,30 +195,38 @@ struct ApLowerFusionOpPatternCtx {
     ADT_LET_CONST_REF(default_anchor, GetApDrrDefaultAnchor(drr_ctx));
     ADT_LET_CONST_REF(opt_native_ir_op_anchor,
                       GetApDrrNativeIrOpAnchor(drr_ctx));
-    ADT_LET_CONST_REF(
-        anchor_op_name,
-        default_anchor.Match(
-            [&](const DrrNativeIrOp& ir_op) -> adt::Result<std::string> {
-              return ir_op->op_declare->op_name;
-            },
-            [&](const DrrPackedIrOp& ir_op) -> adt::Result<std::string> {
-              return PirNode::GetOpNameFromDrrPackedOpName(
-                  ir_op->op_declare->op_name);
-            },
-            [&](const DrrOptPackedIrOp& ir_op) -> adt::Result<std::string> {
-              return PirNode::GetOpNameFromDrrPackedOpName(
-                  ir_op->op_declare->op_name);
-            },
-            [&](const auto&) -> adt::Result<std::string> {
-              return adt::errors::TypeError{
-                  "default_anchor drr node should be a op node but value node "
-                  "found."};
-            }));
+    ADT_LET_CONST_REF(anchor_op_name,
+                      GetAnchorOpName(opt_native_ir_op_anchor, default_anchor));
     return ApLowerFusionOpPatternCtx{drr_ctx,
                                      res_ptn_outputs,
                                      default_anchor,
                                      opt_native_ir_op_anchor,
                                      anchor_op_name};
+  }
+
+  static adt::Result<std::string> GetAnchorOpName(
+      const std::optional<DrrNativeIrOp>& native_op_anchor,
+      const DrrNode& default_anchor) {
+    if (native_op_anchor.has_value()) {
+      return native_op_anchor.value()->op_declare->op_name;
+    }
+    return default_anchor.Match(
+        [&](const DrrNativeIrOp& ir_op) -> adt::Result<std::string> {
+          return ir_op->op_declare->op_name;
+        },
+        [&](const DrrPackedIrOp& ir_op) -> adt::Result<std::string> {
+          return PirNode::GetOpNameFromDrrPackedOpName(
+              ir_op->op_declare->op_name);
+        },
+        [&](const DrrOptPackedIrOp& ir_op) -> adt::Result<std::string> {
+          return PirNode::GetOpNameFromDrrPackedOpName(
+              ir_op->op_declare->op_name);
+        },
+        [&](const auto&) -> adt::Result<std::string> {
+          return adt::errors::TypeError{
+              "default_anchor drr node should be a op node but value node "
+              "found."};
+        });
   }
 };
 
@@ -618,6 +626,9 @@ struct ApRewriter {
     if (res_ptn_ir_op->op_declare->op_name == "ap_op.index_expr_tie") {
       return ConstructIndexExprTieOp(rewriter, inputs);
     }
+    if (res_ptn_ir_op->op_declare->op_name == "cf.yield") {
+      return ConstructYieldOp(rewriter, inputs);
+    }
     try {
       pir::Operation* op =
           paddle::drr::OperationFactory::Instance().CreateOperation(
@@ -639,6 +650,13 @@ struct ApRewriter {
         std::to_string(inputs.size()) + " were given"};
     pir::Operation* op = rewriter->Build<ap::dialect::IndexExprTieOp>(
         inputs.at(0), inputs.at(1));
+    return op->results();
+  }
+
+  adt::Result<std::vector<pir::Value>> ConstructYieldOp(
+      pir::PatternRewriter* rewriter,
+      const std::vector<pir::Value>& inputs) const {
+    pir::Operation* op = rewriter->Build<pir::YieldOp>(inputs);
     return op->results();
   }
 

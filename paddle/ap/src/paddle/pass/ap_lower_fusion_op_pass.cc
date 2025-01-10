@@ -261,12 +261,11 @@ struct ApRewriter {
   }
 
   struct RewriteCtx {
-    const std::unordered_map<pir::Operation*, std::size_t>
-        matched_op2order_value;
+    const std::unordered_map<pir::Operation*, int64_t> matched_op2order_value;
     std::unordered_map<std::string, pir::Value> name2native_value;
     std::unordered_map<std::string, std::vector<pir::Value>> name2packed_values;
 
-    adt::Result<std::size_t> GetMatchedOpOrderValue(pir::Operation* op) const {
+    adt::Result<int64_t> GetMatchedOpOrderValue(pir::Operation* op) const {
       const auto iter = this->matched_op2order_value.find(op);
       if (iter == this->matched_op2order_value.end()) {
         return adt::errors::IndexError{
@@ -334,11 +333,19 @@ struct ApRewriter {
           return std::nullopt;
         });
   }
-
-  adt::Result<std::unordered_map<pir::Operation*, std::size_t>>
+  adt::Result<std::unordered_map<pir::Operation*, int64_t>>
   MakeMatchedOp2OrderValue(const GraphMatchCtx& match_ctx) const {
     ADT_LET_CONST_REF(ops, GetMatchedOps(match_ctx));
-    std::unordered_map<pir::Operation*, std::size_t> ret;
+    return MakeMatchedOp2OrderValue(ops);
+  }
+
+  adt::Result<std::unordered_map<pir::Operation*, int64_t>>
+  MakeMatchedOp2OrderValue(
+      const std::unordered_set<pir::Operation*>& ops) const {
+    std::unordered_map<pir::Operation*, int64_t> ret;
+    if (ops.empty()) {
+      return ret;
+    }
     pir::Operation* start = *ops.begin();
     auto* block = start->GetParent();
     pir::Block::Iterator left_iter = *start;
@@ -488,22 +495,38 @@ struct ApRewriter {
   template <typename YieldT>
   adt::Result<adt::Ok> VisitEachResPtnOp(const YieldT& Yield) const {
     auto DoEachResPtnOp =
-        [&](const auto& res_ptn_node) -> adt::Result<adt::Ok> {
+        [&](const auto& res_ptn_graph_node) -> adt::Result<adt::Ok> {
+      ADT_LET_CONST_REF(res_ptn_node, res_ptn_graph_node.Get());
       const auto& opt_res_ptn_op = ConvertToResPtnOp(res_ptn_node);
       if (opt_res_ptn_op.has_value()) {
         ADT_RETURN_IF_ERR(Yield(opt_res_ptn_op.value()));
       }
       return adt::Ok{};
     };
-    return VisitEachResPtnNode(DoEachResPtnOp);
+    return VisitEachResPtnGraphNode(DoEachResPtnOp);
   }
 
   template <typename YieldT>
-  adt::Result<adt::Ok> VisitEachResPtnNode(const YieldT& Yield) const {
+  adt::Result<adt::Ok> VisitEachResPtnGraphNode(const YieldT& Yield) const {
     ADT_LET_CONST_REF(res_ptn_ctx, ctx_.drr_ctx->GetResultPatternCtx());
+    std::list<DrrGraphNode> sources;
     for (const auto& drr_node : res_ptn_ctx->node_arena->nodes()) {
-      ADT_RETURN_IF_ERR(Yield(drr_node));
+      const auto& drr_graph_node = drr_node.node();
+      ADT_LET_CONST_REF(upstreams, drr_graph_node.UpstreamNodes());
+      if (upstreams.size() == 0) {
+        sources.push_back(drr_graph_node);
+      }
     }
+    using Ok = adt::Result<adt::Ok>;
+    ap::drr::DefaultDrrGraphDescriptor graph{};
+    auto VisitPrev = [&](const DrrGraphNode& node, const auto& Yield) -> Ok {
+      return graph.VisitUpstreamNodes(node, Yield);
+    };
+    auto VisitNext = [&](const DrrGraphNode& node, const auto& Yield) -> Ok {
+      return graph.VisitDownstreamNodes(node, Yield);
+    };
+    ap::adt::TopoWalker<DrrGraphNode> walker{VisitPrev, VisitNext};
+    ADT_RETURN_IF_ERR(walker(sources.begin(), sources.end(), Yield));
     return adt::Ok{};
   }
 
@@ -546,7 +569,7 @@ struct ApRewriter {
     ADT_LET_CONST_REF(input_values,
                       GetNativeOpInputValues(res_ptn_ir_op, *rewrite_ctx));
     ADT_RETURN_IF_ERR(
-        TrySetInsertPointer(rewriter, *rewrite_ctx, res_ptn_ir_op, match_ctx));
+        TrySetInsertPointer(rewriter, *rewrite_ctx, input_values, match_ctx));
     ADT_LET_CONST_REF(attributes,
                       GetResPtnOpAttributes(res_ptn_ir_op, match_ctx));
     ADT_LET_CONST_REF(
@@ -624,15 +647,18 @@ struct ApRewriter {
       const std::vector<pir::Value>& inputs,
       const pir::AttributeMap& attrs) const {
     if (res_ptn_ir_op->op_declare->op_name == "ap_op.index_expr_tie") {
-      return ConstructIndexExprTieOp(rewriter, inputs);
+      return ConstructIndexExprTieOp(rewriter, inputs, attrs);
     }
     if (res_ptn_ir_op->op_declare->op_name == "cf.yield") {
-      return ConstructYieldOp(rewriter, inputs);
+      return ConstructYieldOp(rewriter, inputs, attrs);
     }
     try {
       pir::Operation* op =
           paddle::drr::OperationFactory::Instance().CreateOperation(
               res_ptn_ir_op->op_declare->op_name, inputs, attrs, *rewriter);
+      for (const auto& [attr_name, attr_val] : attrs) {
+        op->set_attribute(attr_name, attr_val);
+      }
       return op->results();
     } catch (const std::exception& e) {
       return adt::errors::ValueError{
@@ -644,19 +670,27 @@ struct ApRewriter {
 
   adt::Result<std::vector<pir::Value>> ConstructIndexExprTieOp(
       pir::PatternRewriter* rewriter,
-      const std::vector<pir::Value>& inputs) const {
+      const std::vector<pir::Value>& inputs,
+      const pir::AttributeMap& attrs) const {
     ADT_CHECK(inputs.size() == 2) << adt::errors::TypeError{
         std::string() + "'ap_op.index_expr_tie' op takes 2 arguments, but " +
         std::to_string(inputs.size()) + " were given"};
     pir::Operation* op = rewriter->Build<ap::dialect::IndexExprTieOp>(
         inputs.at(0), inputs.at(1));
+    for (const auto& [attr_name, attr_val] : attrs) {
+      op->set_attribute(attr_name, attr_val);
+    }
     return op->results();
   }
 
   adt::Result<std::vector<pir::Value>> ConstructYieldOp(
       pir::PatternRewriter* rewriter,
-      const std::vector<pir::Value>& inputs) const {
+      const std::vector<pir::Value>& inputs,
+      const pir::AttributeMap& attrs) const {
     pir::Operation* op = rewriter->Build<pir::YieldOp>(inputs);
+    for (const auto& [attr_name, attr_val] : attrs) {
+      op->set_attribute(attr_name, attr_val);
+    }
     return op->results();
   }
 
@@ -672,7 +706,7 @@ struct ApRewriter {
     ADT_LET_CONST_REF(input_values,
                       GetPackedOpInputValues(res_ptn_ir_op, *rewrite_ctx));
     ADT_RETURN_IF_ERR(
-        TrySetInsertPointer(rewriter, *rewrite_ctx, res_ptn_ir_op, match_ctx));
+        TrySetInsertPointer(rewriter, *rewrite_ctx, input_values, match_ctx));
     ADT_LET_CONST_REF(combined_value, InsertCombinedOp(rewriter, input_values));
     ADT_LET_CONST_REF(code_gen_result, CodeGen(res_ptn_ir_op, match_ctx));
     ADT_RETURN_IF_ERR(
@@ -1174,28 +1208,74 @@ struct ApRewriter {
     return combined_op.out();
   }
 
-  template <typename IrOpT>
   adt::Result<adt::Ok> TrySetInsertPointer(
       pir::PatternRewriter* rewriter,
       const RewriteCtx& rewrite_ctx,
-      const IrOpT& res_ptn_ir_op,
+      const std::vector<pir::Value>& input_values,
       const GraphMatchCtx& match_ctx) const {
-    ADT_LET_CONST_REF(
-        opt_last_pir_op,
-        GetLastMatchedPirOp(rewrite_ctx, res_ptn_ir_op, match_ctx));
+    ADT_LET_CONST_REF(opt_last_pir_op,
+                      GetLastInputPirOp(rewriter->block(), input_values));
     if (opt_last_pir_op.has_value()) {
       rewriter->SetInsertionPointAfter(opt_last_pir_op.value());
+    } else {
+      ADT_RETURN_IF_ERR(
+          SetDefaultInsertPointer(rewriter, rewrite_ctx, match_ctx));
     }
     return adt::Ok{};
   }
 
-  template <typename IrOpT>
-  adt::Result<std::optional<pir::Operation*>> GetLastMatchedPirOp(
-      const RewriteCtx& rewrite_ctx,
-      const IrOpT& res_ptn_ir_op,
-      const GraphMatchCtx& match_ctx) const {
+  adt::Result<std::optional<pir::Operation*>> GetLastInputPirOp(
+      pir::Block* block, const std::vector<pir::Value>& input_values) const {
+    const auto& ops = [&] {
+      std::unordered_set<pir::Operation*> ret;
+      for (const auto& value : input_values) {
+        if (!value) {
+          continue;
+        }
+        if (value.defining_op() != nullptr &&
+            value.defining_op()->GetParent() == block) {
+          ret.insert(value.defining_op());
+        }
+      }
+      return ret;
+    }();
+    ADT_LET_CONST_REF(input_op2order_value, MakeMatchedOp2OrderValue(ops));
+    auto OptOrderValue4Op = [&](pir::Operation* op) -> std::optional<int64_t> {
+      const auto iter = input_op2order_value.find(op);
+      if (iter == input_op2order_value.end()) {
+        return std::nullopt;
+      }
+      return iter->second;
+    };
     std::optional<pir::Operation*> last_op;
-    std::optional<std::size_t> op_order_value;
+    std::optional<int64_t> op_order_value;
+    for (auto* op : ops) {
+      const auto& order_value = OptOrderValue4Op(op);
+      if (!order_value.has_value()) {
+        continue;
+      }
+      if (!op_order_value.has_value() ||
+          op_order_value.value() < order_value.value()) {
+        op_order_value = order_value.value();
+        last_op = op;
+      }
+    }
+    return last_op;
+  }
+
+  adt::Result<adt::Ok> SetDefaultInsertPointer(
+      pir::PatternRewriter* rewriter,
+      const RewriteCtx& rewrite_ctx,
+      const GraphMatchCtx& match_ctx) const {
+    ADT_LET_CONST_REF(last_pir_op, GetLastMatchedPirOp(rewrite_ctx, match_ctx));
+    rewriter->SetInsertionPointAfter(last_pir_op);
+    return adt::Ok{};
+  }
+
+  adt::Result<pir::Operation*> GetLastMatchedPirOp(
+      const RewriteCtx& rewrite_ctx, const GraphMatchCtx& match_ctx) const {
+    std::optional<pir::Operation*> last_op;
+    std::optional<int64_t> op_order_value;
     auto UpdatePirOp = [&](pir::Operation* op) -> adt::Result<adt::Ok> {
       ADT_LET_CONST_REF(order_value, rewrite_ctx.GetMatchedOpOrderValue(op));
       if (!op_order_value.has_value() || op_order_value.value() < order_value) {
@@ -1215,22 +1295,9 @@ struct ApRewriter {
           },
           [](const auto&) -> adt::Result<adt::Ok> { return adt::Ok{}; });
     };
-    auto DoEachOutput = [&](const DrrIrValue& output) -> adt::Result<adt::Ok> {
-      const auto& opt_src_ptn_ir_value = SrcPtnIrValue4ResPtnIrValue(output);
-      if (!opt_src_ptn_ir_value.has_value()) {
-        return adt::Ok{};
-      }
-      const auto& src_ptn_output = opt_src_ptn_ir_value.value();
-      ADT_LET_CONST_REF(output_upstreams,
-                        src_ptn_output.node().UpstreamNodes());
-      ADT_LET_CONST_REF(op_result, output_upstreams.Sole());
-      ADT_LET_CONST_REF(op_result_upstreams, op_result.UpstreamNodes());
-      ADT_LET_CONST_REF(ir_op, op_result_upstreams.Sole());
-      return UpdateLastOp(ir_op);
-    };
-    ADT_RETURN_IF_ERR(
-        VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachOutput));
-    return last_op;
+    ADT_RETURN_IF_ERR(match_ctx->VisitSmallGraphNode(UpdateLastOp));
+    ADT_CHECK(last_op.has_value());
+    return last_op.value();
   }
 
   template <typename IrOpT, typename YieldT>
@@ -2103,15 +2170,11 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
                  << "\npass_name: " << ctx_.drr_ctx->pass_name.value();
       return false;
     }
-    LOG(ERROR) << "MatchAndRewrite: op: " << op
-               << ", ret: " << ret.GetOkValue();
     return ret.GetOkValue();
   }
 
   adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
                                        pir::PatternRewriter* rewriter) const {
-    LOG(ERROR) << "TryMatchAndRewrite(). op_name: " << op->name()
-               << ", drr_pass: " << ctx_.drr_ctx->pass_name.value();
     ADT_LET_CONST_REF(opt_match_ctx, GetMatchCtx(op));
     if (!opt_match_ctx.has_value()) {
       return false;
@@ -2228,15 +2291,11 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
                  << "\npass_name: " << ctx_.drr_ctx->pass_name.value();
       return false;
     }
-    LOG(ERROR) << "MatchAndRewrite: op: " << op
-               << ", ret: " << ret.GetOkValue();
     return ret.GetOkValue();
   }
 
   adt::Result<bool> TryMatchAndRewrite(pir::Operation* op,
                                        pir::PatternRewriter* rewriter) const {
-    LOG(ERROR) << "TryMatchAndRewrite(). op_name: " << op->name()
-               << ", drr_pass: " << ctx_.drr_ctx->pass_name.value();
     ADT_LET_CONST_REF(opt_match_ctx, GetMatchCtx(op));
     if (!opt_match_ctx.has_value()) {
       return false;

@@ -106,15 +106,30 @@ PackedIrOpInnerSourcePatternHelper::Match(
   ADT_LET_CONST_REF(drr_yield_node, GetDrrYieldNode(src_ptn_ctx));
   ADT_LET_CONST_REF(pir_yield_node, GetPirYieldNode(block));
   ADT_LET_CONST_REF(
-      graph_ctx,
+      graph_match_ctx,
       graph_matcher.MatchByAnchor(pir_yield_node, drr_yield_node.node()));
   ADT_LET_CONST_REF(
       graph_matched,
-      graph_matcher.IsGraphMatched(graph_ctx, drr_yield_node.node()));
+      graph_matcher.IsGraphMatched(graph_match_ctx, drr_yield_node.node()));
   if (!graph_matched) {
     return std::nullopt;
   }
-  return graph_ctx;
+  auto GetPirNode = [](const pir::Operation* op) -> PirNode {
+    auto* mut_op = const_cast<pir::Operation*>(op);
+    if (mut_op->isa<::cinn::dialect::FusionOp>()) {
+      return PackedIrOp{mut_op->dyn_cast<::cinn::dialect::FusionOp>()};
+    } else {
+      return NativeIrOp{mut_op};
+    }
+  };
+  for (const auto& op : *block) {
+    const auto& opt_drr_node =
+        graph_match_ctx->GetOptMatchedSmallGraphNode(GetPirNode(&op));
+    if (!opt_drr_node.has_value()) {
+      return std::nullopt;
+    }
+  }
+  return graph_match_ctx;
 }
 
 }  // namespace ap::paddle

@@ -194,6 +194,14 @@ struct TopoMatchCtxImpl {
     return std::nullopt;
   }
 
+  template <typename YieldT>
+  adt::Result<adt::Ok> VisitSmallGraphNode(const YieldT& Yield) const {
+    for (const auto& [sg_node, _] : sg_node2bg_nodes_) {
+      ADT_RETURN_IF_ERR(Yield(sg_node));
+    }
+    return adt::Ok{};
+  }
+
  private:
   SgNode2BgNodes sg_node2bg_nodes_;
   std::unordered_map<bg_node_t, sg_node_t> matched_bg_node2sg_node_;

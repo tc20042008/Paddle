@@ -82,6 +82,11 @@ struct GraphMatchCtxImpl {
     return topo_match_ctx->GetSoleBigGraphNode(node);
   }
 
+  std::optional<sg_node_t> GetOptMatchedSmallGraphNode(
+      const bg_node_t& bg_node) const {
+    return topo_match_ctx->GetMatchedSmallGraphNode(bg_node);
+  }
+
   using DefaultDrrGraph =
       graph::GraphDescriptor<sg_node_t, drr::topo_kind::Default>;
 
@@ -260,6 +265,11 @@ struct GraphMatchCtxImpl {
     const auto& sg_node = topo_match_ctx->GetMatchedSmallGraphNode(bg_node);
     ADT_CHECK(sg_node.has_value());
     return sg_node.value();
+  }
+
+  template <typename YieldT>
+  adt::Result<adt::Ok> VisitSmallGraphNode(const YieldT& Yield) const {
+    return topo_match_ctx->VisitSmallGraphNode(Yield);
   }
 };
 

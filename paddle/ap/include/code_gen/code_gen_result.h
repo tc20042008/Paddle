@@ -37,7 +37,4 @@ struct CodeGenResultImpl {
 template <typename ValueT>
 ADT_DEFINE_RC(CodeGenResult, CodeGenResultImpl<ValueT>);
 
-template <typename ValueT>
-axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetCodeGenResultClass();
-
 }  // namespace ap::code_gen

@@ -14,14 +14,7 @@
 
 #pragma once
 
-#include "paddle/ap/include/axpr/method_class.h"
-#include "paddle/ap/include/axpr/naive_class_ops.h"
-#include "paddle/ap/include/axpr/value.h"
-#include "paddle/ap/include/code_module/directory.h"
-#include "paddle/ap/include/code_module/directory_method_class.h"
-#include "paddle/ap/include/code_module/file.h"
-#include "paddle/ap/include/code_module/file_content_method_class.h"
-#include "paddle/ap/include/code_module/soft_link_method_class.h"
+#include "paddle/ap/include/code_module/project_method_class.h"
 
 namespace ap::code_module {
 
@@ -90,8 +83,7 @@ struct TypeProjectClassMethodClass {
   }
 };
 
-inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
-GetProjectClass() {
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetProjectClass() {
   static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>("Project", [&](const auto& DoEach) {
         DoEach("__init__", &TypeProjectClassMethodClass::New);

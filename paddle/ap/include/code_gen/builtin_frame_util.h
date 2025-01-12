@@ -32,13 +32,13 @@ template <typename ValueT, typename DoEachT>
 void VisitEachBuiltinFrameClass(const DoEachT& DoEach) {
   DoEach(code_module::GetProjectClass());
   DoEach(code_module::GetPackageClass());
-  DoEach(code_module::MakeFuncDeclareClass<ValueT>());
-  DoEach(code_module::MakeCodeModuleClass<ValueT>());
+  DoEach(code_module::GetFuncDeclareClass());
+  DoEach(code_module::GetCodeModuleClass());
   DoEach(axpr::GetDimExprClass<ValueT>());
   DoEach(index_expr::GetSliceClass<ValueT>());
   DoEach(index_expr::GetIndexExprClass<ValueT>());
   DoEach(index_expr::GetIndexTupleExprClass<ValueT>());
-  DoEach(GetCodeGenResultClass<ValueT>());
+  DoEach(GetCodeGenResultClass());
 }
 
 template <typename ValueT>

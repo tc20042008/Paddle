@@ -34,8 +34,8 @@ void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
   DoEach(GetDirectoryClass());
   DoEach(GetProjectClass());
   DoEach(GetPackageClass());
-  DoEach(MakeFuncDeclareClass<ValueT>());
-  DoEach(MakeCodeModuleClass<ValueT>());
+  DoEach(GetFuncDeclareClass());
+  DoEach(GetCodeModuleClass());
 }
 
 template <typename ValueT>

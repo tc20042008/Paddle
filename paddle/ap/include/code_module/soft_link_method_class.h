@@ -23,29 +23,4 @@ namespace ap::code_module {
 
 axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetSoftLinkClass();
 
-struct TypeSoftLinkMethodClass {
-  static adt::Result<axpr::Value> New(const axpr::Value&,
-                                      const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
-        std::string() + "SoftLink() takes 1 argument, but " +
-        std::to_string(args.size()) + " were given."};
-    ADT_LET_CONST_REF(target_relative_path,
-                      args.at(0).template CastTo<std::string>())
-        << adt::errors::TypeError{
-               std::string() +
-               "the argument 1 of SoftLink() should a a str, but " +
-               axpr::GetTypeName(args.at(0)) + " were given"};
-    return GetSoftLinkClass().New(SoftLink{target_relative_path});
-  }
-};
-
-inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
-GetSoftLinkClass() {
-  static auto cls(
-      axpr::MakeBuiltinClass<axpr::Value>("SoftLink", [&](const auto& DoEach) {
-        DoEach("__init__", &TypeSoftLinkMethodClass::New);
-      }));
-  return axpr::MakeGlobalNaiveClassOps<SoftLink>(cls);
-}
-
 }  // namespace ap::code_module

@@ -24,7 +24,10 @@ OperatorDialect::OperatorDialect(::pir::IrContext *context)
   this->initialize();
 }
 
-void OperatorDialect::initialize() { RegisterOp<IndexExprTieOp>(); }
+void OperatorDialect::initialize() {
+  RegisterOp<IdUpSpider>();
+  RegisterOp<IdDownSpider>();
+}
 
 }  // namespace dialect
 }  // namespace ap

@@ -21,14 +21,30 @@
 
 namespace ap::dialect {
 
-void IndexExprTieOp::Build(pir::Builder &builder,             // NOLINT
-                           pir::OperationArgument &argument,  // NOLINT
-                           pir::Value lhs,
-                           pir::Value rhs) {
+void IdUpSpider::Build(pir::Builder& builder,             // NOLINT
+                       pir::OperationArgument& argument,  // NOLINT
+                       pir::Value lhs,
+                       pir::Value rhs) {
   argument.AddInput(lhs);
   argument.AddInput(rhs);
 }
 
+void IdDownSpider::Build(pir::Builder& builder,
+                         pir::OperationArgument& argument,
+                         pir::Value x,
+                         pir::Type output_type) {
+  argument.inputs = {x};
+  argument.output_types = {output_type};
+}
+
+bool IdDownSpider::InferSymbolicShape(
+    pir::InferSymbolicShapeContext* infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      result(0), infer_context->GetShapeOrDataForValue(operand_source(0)));
+  return true;
+}
+
 }  // namespace ap::dialect
 
-IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::IndexExprTieOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::IdUpSpider)
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::IdDownSpider)

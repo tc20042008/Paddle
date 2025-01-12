@@ -21,6 +21,7 @@
 #include "paddle/ap/include/drr/drr_value.h"
 #include "paddle/ap/include/drr/native_ir_value.h"
 #include "paddle/ap/include/drr/op_tensor_pattern_ctx_helper.h"
+#include "paddle/ap/include/drr/res_ptn_valid_out_ir_value.h"
 #include "paddle/ap/include/drr/tags.h"
 #include "paddle/ap/include/drr/unbound_ir_value.h"
 #include "paddle/ap/include/drr/unbound_native_ir_op.h"
@@ -88,15 +89,24 @@ struct ResPtnUnboundNativeIrOpMethodClass {
     adt::List<NativeIrValue<drr::Node>> outputs;
     outputs->reserve(output_vals->size());
     for (const auto& output_val : *output_vals) {
-      ADT_LET_CONST_REF(
-          output,
-          output_val.template CastTo<tResPtn<NativeIrValue<drr::Node>>>())
+      ADT_LET_CONST_REF(valid_output,
+                        ResPtnValidOutIrValue::CastFromAxprValue(output_val))
           << adt::errors::TypeError{
                  std::string() +
                  "unsupported operand types for "
                  "ResPtnUnboundNativeIrOp.__call__ outputs: '" +
                  axpr::GetTypeName(output_val) + "'."};
-      outputs->emplace_back(output.value());
+      using RetT = adt::Result<NativeIrValue<drr::Node>>;
+      ADT_LET_CONST_REF(
+          output,
+          valid_output.Match(
+              [&](const UnboundIrValue<drr::Node>& impl) -> RetT {
+                return Helper{}.GetNativeIrValueByUnboundIrValue(impl);
+              },
+              [&](const tResPtn<NativeIrValue<drr::Node>>& impl) -> RetT {
+                return impl.value();
+              }));
+      outputs->emplace_back(output);
     }
     ADT_RETURN_IF_ERR(CheckNoRedundentTensorNames(inputs, outputs));
     ADT_LET_CONST_REF(native_op,

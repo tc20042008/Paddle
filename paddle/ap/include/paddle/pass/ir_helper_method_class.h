@@ -25,8 +25,11 @@
 #include "paddle/ap/include/paddle/pir/pass_method_class.h"
 #include "paddle/ap/include/paddle/pir/program_method_class.h"
 #include "paddle/ap/include/paddle/pir_node_helper.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -55,13 +58,31 @@ struct PirHelperMethodClass {
     return GetPirPassManagerClass().New(pass_manager);
   }
 
-  static adt::Result<axpr::Value> CreateApDrrPass(
+  static adt::Result<axpr::Value> CreateAccessTopoDrrPass(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "create_ap_drr_pass() takes 1 arguments, but " +
         std::to_string(args.size()) + " were given"};
-    ADT_LET_CONST_REF(drr_pass_tag, args.at(0).template CastTo<std::string>());
-    auto opt_pass = cinn::dialect::ir::CreateApDrrPass(drr_pass_tag);
+    ADT_LET_CONST_REF(drr_pass_tag_name,
+                      args.at(0).template CastTo<std::string>());
+    auto opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
+        drr_pass_tag_name, /*steps_limit=*/std::nullopt);
+    if (!opt_pass.has_value()) {
+      return adt::Nothing{};
+    }
+    Pass pass{std::move(opt_pass.value())};
+    return GetPirPassClass().New(pass);
+  }
+
+  static adt::Result<axpr::Value> CreateAccessTopoDrrOneStepPass(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "create_ap_drr_pass() takes 1 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(drr_pass_tag_name,
+                      args.at(0).template CastTo<std::string>());
+    auto opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
+        drr_pass_tag_name, /*steps_limit=*/1);
     if (!opt_pass.has_value()) {
       return adt::Nothing{};
     }
@@ -123,8 +144,17 @@ struct PirHelperMethodClass {
   adt::Result<adt::Ok> InitIrMapping(const std::vector<pir::Value>& free_values,
                                      pir::IrMapping* ir_mapping,
                                      pir::Block* block) {
+    int i = 0;
+    pir::Builder builder(pir::IrContext::Instance(), block);
     for (const auto& free_value : free_values) {
-      ir_mapping->Add(free_value, block->AddArg(free_value.type()));
+      std::string name = std::string("in") + std::to_string(i++);
+      ADT_CHECK(free_value.type().isa<pir::DenseTensorType>());
+      const auto& type = free_value.type().dyn_cast<pir::DenseTensorType>();
+      const auto& dims = ::common::vectorize(type.dims());
+      auto phi_type = ::paddle::dialect::TransToPhiDataType(type.dtype());
+      auto op = builder.Build<::paddle::dialect::DataOp>(
+          name, dims, phi_type, phi::Place());
+      ir_mapping->Add(free_value, op->result(0));
     }
     return adt::Ok{};
   }
@@ -190,7 +220,9 @@ GetPirHelperClass() {
       axpr::MakeBuiltinClass<axpr::Value>("PirHelper", [&](const auto& Yield) {
         Yield("__str__", &Impl::ToString);
         Yield("create_pass_manager", &Impl::CreatePassManager);
-        Yield("create_ap_drr_pass", &Impl::CreateApDrrPass);
+        Yield("create_access_topo_drr_pass", &Impl::CreateAccessTopoDrrPass);
+        Yield("create_access_topo_drr_one_step_pass",
+              &Impl::CreateAccessTopoDrrOneStepPass);
         Yield("create_dce_pass", &Impl::CreateDeadCodeEliminationPass);
         Yield("copy_fused_ops_to_program", &Impl::CopyFusedOpsToProgram);
         Yield("match", &Impl::Match);

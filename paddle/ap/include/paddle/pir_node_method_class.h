@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/axpr/dim_expr_method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
+#include "paddle/ap/include/paddle/pir/attribute_method_class.h"
 #include "paddle/ap/include/paddle/pir_node.h"
 
 namespace ap::paddle {
@@ -208,6 +209,22 @@ struct NativeIrOpMethodClass {
     const pir::Operation* ptr = self.op;
     return reinterpret_cast<int64_t>(ptr);
   }
+
+  static adt::Result<ValueT> GetAttr(const ValueT& self_val,
+                                     const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
+    const pir::Operation* ptr = self.op;
+    const auto& attrs = ptr->attributes();
+    const auto& iter = attrs.find(attr_name);
+    if (iter == attrs.end()) {
+      return adt::errors::KeyError{
+          "NativeIrOp.__getattr__() failed. can not found attribute '" +
+          attr_name + "'"};
+    }
+    return GetPirAttributeClass().New(iter->second);
+  }
 };
 
 template <typename ValueT>
@@ -217,6 +234,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrOpClass() {
       axpr::MakeBuiltinClass<ValueT>("NativeIrOp", [&](const auto& Define) {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
+        Define("__getattr__", &Impl::GetAttr);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }

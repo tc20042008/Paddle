@@ -26,10 +26,9 @@ std::optional<std::unique_ptr<::pir::Pass>>
 CreateApLowerFusionOpAbstractDrrPass();
 std::optional<std::unique_ptr<::pir::Pass>>
 CreateApLowerFusionOpClassicDrrPass();
-std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass();
 
-std::optional<std::unique_ptr<::pir::Pass>> CreateApDrrPass(
-    const std::string& drr_pass_tag);
+std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass(
+    const std::string& drr_pass_tag, std::optional<int64_t> steps_limit);
 
 }  // namespace ir
 }  // namespace dialect

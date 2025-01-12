@@ -61,6 +61,17 @@ struct ResPtnTensorPatternCtx {
       return DrrValueHelper{}.CastToAxprValue(drr_value);
     }
     ADT_LET_CONST_REF(drr_ctx_ptr, adt::WeakPtrLock(self.value()->drr_ctx));
+    {
+      ADT_CHECK(drr_ctx_ptr->result_pattern_ctx.has_value());
+      const auto& result_pattern_ctx = drr_ctx_ptr->result_pattern_ctx.value();
+      const auto& internal_names =
+          result_pattern_ctx->internal_native_ir_value_names;
+      if (internal_names.count(tensor_name)) {
+        UnboundIrValue<drr::Node> unbound_ir_value{tensor_name,
+                                                   self.value().shared_ptr()};
+        return DrrValueHelper{}.CastToAxprValue(unbound_ir_value);
+      }
+    }
     const auto& src_tensor_ctx =
         drr_ctx_ptr->source_pattern_ctx.value()->tensor_pattern_ctx;
     ADT_LET_CONST_REF(src_ir_value,
@@ -87,6 +98,20 @@ struct ResPtnTensorPatternCtx {
     ADT_LET_CONST_REF(drr_value, match_result);
     return DrrValueHelper{}.CastToAxprValue(drr_value);
   }
+
+  static adt::Result<axpr::Value> DeclareInternalNativeIrValue(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 1);
+    const auto& arg = args.at(0);
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_LET_CONST_REF(ir_value_name, arg.template CastTo<std::string>());
+    ADT_LET_CONST_REF(drr_ctx, adt::WeakPtrLock(self.value()->drr_ctx));
+    ADT_CHECK(drr_ctx->result_pattern_ctx.has_value());
+    auto* result_pattern_ctx =
+        drr_ctx->result_pattern_ctx.value().shared_ptr().get();
+    result_pattern_ctx->internal_native_ir_value_names.insert(ir_value_name);
+    return adt::Nothing{};
+  }
 };
 
 inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
@@ -98,6 +123,8 @@ GetResPtnTensorPatternCtxClass() {
         Define("__str__", &Impl::ToString);
         Define("__hash__", &Impl::Hash);
         Define("__getattr__", &Impl::GetAttr);
+        Define("declare_internal_native_ir_value",
+               &Impl::DeclareInternalNativeIrValue);
       }));
   using Self = typename Impl::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

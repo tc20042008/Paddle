@@ -106,13 +106,12 @@ adt::Result<ValueT> RegisterAccessTopoDrrPass(const ValueT&,
              "argument 1 of 'Registry.access_topo_drr_pass()' "
              "should be string, but '" +
              axpr::GetTypeName(drr_name_val) + "' were given."};
-  const auto& nice_val = args.at(1);
-  ADT_LET_CONST_REF(nice, axpr::TryGetImpl<int64_t>(nice_val))
+  ADT_LET_CONST_REF(pass_tag_name, axpr::TryGetImpl<std::string>(args.at(1)))
       << adt::errors::TypeError{
              std::string() +
              "argument 2 of 'Registry.access_topo_drr_pass()' "
              "should be int, but '" +
-             axpr::GetTypeName(nice_val) + "' were given."};
+             axpr::GetTypeName(args.at(1)) + "' were given."};
   const auto& cls_val = args.at(2);
   ADT_LET_CONST_REF(
       type_impl,
@@ -123,7 +122,8 @@ adt::Result<ValueT> RegisterAccessTopoDrrPass(const ValueT&,
              "argument 3 of 'Registry.access_topo_drr_pass()' should "
              "be non-builtin class, but '" +
              axpr::GetTypeName(cls_val) + "' were given."};
-  AccessTopoDrrPassRegistryItem item{drr_name, nice, type_impl.class_attrs};
+  AccessTopoDrrPassRegistryItem item{
+      drr_name, pass_tag_name, 0, type_impl.class_attrs};
   RegistrySingleton::Add(item);
   return adt::Nothing{};
 }

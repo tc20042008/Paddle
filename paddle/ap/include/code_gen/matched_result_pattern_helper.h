@@ -198,7 +198,10 @@ struct MatchedResultPatternHelper {
       const DrrIrValue& res_ptn_ir_value) const {
     const auto& opt_src_ptn_ir_value =
         SrcPtnIrValue4ResPtnIrValue(res_ptn_ir_value);
-    ADT_CHECK(opt_src_ptn_ir_value.has_value());
+    if (!opt_src_ptn_ir_value.has_value()) {
+      // internal ir value in result pattern.
+      return 1;
+    }
     return match_ctx_->GetNumBigGraphIrValueNodes(
         opt_src_ptn_ir_value.value().node());
   }

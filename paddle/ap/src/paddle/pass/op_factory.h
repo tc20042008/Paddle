@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
 
 #pragma once
 
+#include <optional>
 #include <vector>
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/function.h"
-#include "paddle/ap/include/axpr/serializable_value.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/type.h"
 
-namespace ap::registry {
+namespace ap::paddle {
 
-struct AccessTopoDrrPassRegistryItemImpl {
-  std::string access_topo_drr_pass_name;
-  std::string pass_tag_name;
-  int64_t nice;
-  axpr::ClassAttrs<axpr::SerializableValue> cls;
-};
+// Returns nullopt if op_name not supported.
+adt::Result<std::optional<std::vector<pir::Value>>> CreateOperation(
+    pir::Builder* builder,
+    const std::string& op_name,
+    const std::vector<pir::Value>& inputs,
+    const pir::AttributeMap& attributes);
 
-ADT_DEFINE_RC(AccessTopoDrrPassRegistryItem, AccessTopoDrrPassRegistryItemImpl);
-
-}  // namespace ap::registry
+}  // namespace ap::paddle

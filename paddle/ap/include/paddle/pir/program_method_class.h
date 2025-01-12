@@ -14,32 +14,14 @@
 
 #pragma once
 
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/paddle/pir/program.h"
 #include "paddle/pir/include/core/ir_printer.h"
 
 namespace ap::paddle {
 
-struct PirProgramMethodClass {
-  using Self = Program;
-
-  static adt::Result<axpr::Value> ToString(
-      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    std::ostringstream ss;
-    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
-    pir::IrPrinter(ss).PrintProgram(self->pir_program.get());
-    return ss.str();
-  }
-};
-
-inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
-GetPirProgramClass() {
-  using Impl = PirProgramMethodClass;
-  static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
-      "PirProgram",
-      [&](const auto& Yield) { Yield("__str__", &Impl::ToString); }));
-  return axpr::MakeGlobalNaiveClassOps<Program>(cls);
-}
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirProgramClass();
 
 }  // namespace ap::paddle

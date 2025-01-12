@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
+#include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/paddle/pir/type.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -24,281 +27,168 @@
 
 namespace ap::paddle {
 
-inline adt::Result<axpr::Value> PirTypeString(
-    const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
-  ADT_LET_CONST_REF(self, self_val.template CastTo<pir::Type>());
-  std::ostringstream ss;
-  ss << self;
-  return ss.str();
-}
-
-inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
-GetPirTypeClass() {
-  static auto cls(axpr::MakeBuiltinClass<axpr::Value>(
-      "PirType",
-      [&](const auto& DoEach) { DoEach("__str__", &PirTypeString); }));
-  return axpr::MakeGlobalNaiveClassOps<pir::Type>(cls);
-}
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirTypeClass();
 
 template <typename T>
 struct MakePirTypeImpl;
 
-template <>
-struct MakePirTypeImpl<NullType> {
+struct MakePirTypeImplNullType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    pir::Type type;
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
+};
+template <>
+struct MakePirTypeImpl<NullType> : public MakePirTypeImplNullType {};
+
+struct MakePirTypeImplVectorType {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args);
+};
+template <>
+struct MakePirTypeImpl<::pir::VectorType> : public MakePirTypeImplVectorType {};
+
+struct MakePirTypeImplDenseTensorType {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args);
+};
+template <>
+struct MakePirTypeImpl<::pir::DenseTensorType>
+    : public MakePirTypeImplDenseTensorType {};
+
+struct MakePirTypeImplBFloat16Type {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args);
+};
+template <>
+struct MakePirTypeImpl<::pir::BFloat16Type>
+    : public MakePirTypeImplBFloat16Type {};
+
+struct MakePirTypeImplFloat16Type {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args);
+};
+template <>
+struct MakePirTypeImpl<::pir::Float16Type> : public MakePirTypeImplFloat16Type {
 };
 
-template <>
-struct MakePirTypeImpl<::pir::VectorType> {
+struct MakePirTypeImplFloat32Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    std::vector<pir::Type> types;
-    for (const auto& arg : args) {
-      ADT_LET_CONST_REF(elt, arg.template CastTo<pir::Type>());
-      types.emplace_back(elt);
-    }
-    const pir::Type type{
-        pir::VectorType::get(pir::IrContext::Instance(), types)};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
+};
+template <>
+struct MakePirTypeImpl<::pir::Float32Type> : public MakePirTypeImplFloat32Type {
 };
 
-template <>
-struct MakePirTypeImpl<::pir::DenseTensorType> {
+struct MakePirTypeImplFloat64Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 3);
-    ADT_LET_CONST_REF(type, args.at(0).template CastTo<pir::Type>());
-    ADT_LET_CONST_REF(int_list,
-                      args.at(1).template CastTo<adt::List<axpr::Value>>());
-    std::vector<int64_t> dims;
-    dims.reserve(int_list->size());
-    for (const auto& int_val : *int_list) {
-      ADT_LET_CONST_REF(elt, int_val.template CastTo<int64_t>());
-      dims.emplace_back(elt);
-    }
-    ::common::DDim ddim(dims.data(), dims.size());
-    ADT_LET_CONST_REF(data_layout_str,
-                      args.at(2).template CastTo<std::string>());
-    std::optional<::common::DataLayout> data_layout;
-    try {
-      data_layout = ::common::StringToDataLayout(data_layout_str);
-    } catch (const std::exception&) {
-      return adt::errors::ValueError{"StringToDataLayout('" + data_layout_str +
-                                     "') failed"};
-    }
-    ADT_CHECK(data_layout.has_value());
-    const pir::Type dense_tensor_type{pir::DenseTensorType::get(
-        pir::IrContext::Instance(), type, ddim, data_layout.value())};
-    return GetPirTypeClass().New(dense_tensor_type);
-  }
+                                       const std::vector<axpr::Value>& args);
+};
+template <>
+struct MakePirTypeImpl<::pir::Float64Type> : public MakePirTypeImplFloat64Type {
 };
 
-template <>
-struct MakePirTypeImpl<::pir::BFloat16Type> {
+struct MakePirTypeImplInt8Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::BFloat16Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::Int8Type> : public MakePirTypeImplInt8Type {};
 
-template <>
-struct MakePirTypeImpl<::pir::Float16Type> {
+struct MakePirTypeImplUInt8Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Float16Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::UInt8Type> : public MakePirTypeImplUInt8Type {};
 
-template <>
-struct MakePirTypeImpl<::pir::Float32Type> {
+struct MakePirTypeImplInt16Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Float32Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::Int16Type> : public MakePirTypeImplInt16Type {};
 
-template <>
-struct MakePirTypeImpl<::pir::Float64Type> {
+struct MakePirTypeImplInt32Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Float64Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::Int32Type> : public MakePirTypeImplInt32Type {};
 
-template <>
-struct MakePirTypeImpl<::pir::Int8Type> {
+struct MakePirTypeImplInt64Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Int8Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::Int64Type> : public MakePirTypeImplInt64Type {};
 
-template <>
-struct MakePirTypeImpl<::pir::UInt8Type> {
+struct MakePirTypeImplIndexType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::UInt8Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::IndexType> : public MakePirTypeImplIndexType {};
 
-template <>
-struct MakePirTypeImpl<::pir::Int16Type> {
+struct MakePirTypeImplBoolType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Int16Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::BoolType> : public MakePirTypeImplBoolType {};
 
-template <>
-struct MakePirTypeImpl<::pir::Int32Type> {
+struct MakePirTypeImplComplex64Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Int32Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::Complex64Type>
+    : public MakePirTypeImplComplex64Type {};
 
-template <>
-struct MakePirTypeImpl<::pir::Int64Type> {
+struct MakePirTypeImplComplex128Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Int64Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::pir::Complex128Type>
+    : public MakePirTypeImplComplex128Type {};
 
-template <>
-struct MakePirTypeImpl<::pir::IndexType> {
+struct MakePirTypeImplSelectedRowsType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::IndexType::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::paddle::dialect::SelectedRowsType>
+    : public MakePirTypeImplSelectedRowsType {};
 
-template <>
-struct MakePirTypeImpl<::pir::BoolType> {
+struct MakePirTypeImplDenseTensorArrayType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::BoolType::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::paddle::dialect::DenseTensorArrayType>
+    : public MakePirTypeImplDenseTensorArrayType {};
 
-template <>
-struct MakePirTypeImpl<::pir::Complex64Type> {
+struct MakePirTypeImplSparseCooTensorType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Complex64Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::paddle::dialect::SparseCooTensorType>
+    : public MakePirTypeImplSparseCooTensorType {};
 
-template <>
-struct MakePirTypeImpl<::pir::Complex128Type> {
+struct MakePirTypeImplSparseCsrTensorType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{pir::Complex128Type::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
+template <>
+struct MakePirTypeImpl<::paddle::dialect::SparseCsrTensorType>
+    : public MakePirTypeImplSparseCsrTensorType {};
 
-template <>
-struct MakePirTypeImpl<::paddle::dialect::SelectedRowsType> {
+struct MakePirTypeImplUnclassifiedType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    const pir::Type type{
-        ::paddle::dialect::SelectedRowsType::get(pir::IrContext::Instance())};
-    return GetPirTypeClass().New(type);
-  }
+                                       const std::vector<axpr::Value>& args);
 };
-
 template <>
-struct MakePirTypeImpl<::paddle::dialect::DenseTensorArrayType> {
-  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 3);
-    ADT_LET_CONST_REF(type, args.at(0).template CastTo<pir::Type>());
-    ADT_LET_CONST_REF(int_list,
-                      args.at(1).template CastTo<adt::List<axpr::Value>>());
-    std::vector<int64_t> dims;
-    dims.reserve(int_list->size());
-    for (const auto& int_val : *int_list) {
-      ADT_LET_CONST_REF(elt, int_val.template CastTo<int64_t>());
-      dims.emplace_back(elt);
-    }
-    ::common::DDim ddim(dims.data(), dims.size());
-    ADT_LET_CONST_REF(data_layout_str,
-                      args.at(2).template CastTo<std::string>());
-    std::optional<::common::DataLayout> data_layout;
-    try {
-      data_layout = ::common::StringToDataLayout(data_layout_str);
-    } catch (const std::exception&) {
-      return adt::errors::ValueError{"StringToDataLayout('" + data_layout_str +
-                                     "') failed"};
-    }
-    ADT_CHECK(data_layout.has_value());
-    const pir::Type dense_tensor_type{
-        ::paddle::dialect::DenseTensorArrayType::get(
-            pir::IrContext::Instance(), type, ddim, data_layout.value())};
-    return GetPirTypeClass().New(dense_tensor_type);
-  }
-};
-
-template <>
-struct MakePirTypeImpl<::paddle::dialect::SparseCooTensorType> {
-  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    return adt::errors::NotImplementedError{
-        std::string() + ::paddle::dialect::SparseCooTensorType::name() +
-        "() is not implemented"};
-  }
-};
-
-template <>
-struct MakePirTypeImpl<::paddle::dialect::SparseCsrTensorType> {
-  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    return adt::errors::NotImplementedError{
-        std::string() + ::paddle::dialect::SparseCsrTensorType::name() +
-        "() is not implemented"};
-  }
-};
-
-template <>
-struct MakePirTypeImpl<UnclassifiedType> {
-  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    return adt::errors::NotImplementedError{
-        std::string() + UnclassifiedType::name() + "() is not implemented"};
-  }
-};
+struct MakePirTypeImpl<UnclassifiedType>
+    : public MakePirTypeImplUnclassifiedType {};
 
 }  // namespace ap::paddle

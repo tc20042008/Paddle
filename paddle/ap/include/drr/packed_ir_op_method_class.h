@@ -23,37 +23,6 @@
 
 namespace ap::drr {
 
-struct PackedIrOpMethodClass {
-  using Self = drr::PackedIrOp<drr::Node>;
-
-  static adt::Result<axpr::Value> ToString(
-      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
-    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
-    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
-    std::ostringstream ss;
-    ss << "<" << drr::Type<Self>{}.Name() << " object at " << ptr << ">";
-    return ss.str();
-  }
-
-  static adt::Result<axpr::Value> Hash(const axpr::Value& self_val,
-                                       const std::vector<axpr::Value>& args) {
-    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
-    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
-    return reinterpret_cast<int64_t>(ptr);
-  }
-};
-
-inline axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
-GetPackedIrOpClass() {
-  using Impl = PackedIrOpMethodClass;
-  using TT = drr::Type<drr::PackedIrOp<drr::Node>>;
-  static auto cls(
-      axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
-        Define("__str__", &Impl::ToString);
-        Define("__hash__", &Impl::Hash);
-      }));
-  using Self = typename Impl::Self;
-  return axpr::MakeGlobalNaiveClassOps<Self>(cls);
-}
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPackedIrOpClass();
 
 }  // namespace ap::drr

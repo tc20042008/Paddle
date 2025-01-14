@@ -25,6 +25,7 @@
 #include "paddle/phi/kernels/impl/activation_impl.h"
 
 #include "paddle/ap/include/kernel_dispatch/ap_unary_kernel.h"
+#include "paddle/ap/include/paddle/phi/device_ctx.h"
 
 namespace phi {
 
@@ -52,8 +53,12 @@ void ApUnaryKernel(const Context& dev_ctx,
   for (auto* out : outs) {
     dev_ctx.template Alloc<T>(out);
   }
+  std::shared_ptr<ap::kernel_dispatch::DeviceCtxImpl> impl =
+      std::make_shared<ap::paddle::DeviceCtx<Context>>(&dev_ctx);
+  ap::kernel_dispatch::DeviceCtx ap_device_ctx{impl};
   const auto& ret =
-      ap::kernel_dispatch::ApUnaryKernel(xs,
+      ap::kernel_dispatch::ApUnaryKernel(ap_device_ctx,
+                                         xs,
                                          num_outputs,
                                          code_module_lambda,
                                          infer_meta_lambda,

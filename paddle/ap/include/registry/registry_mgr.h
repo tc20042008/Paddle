@@ -24,6 +24,8 @@
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/module_mgr.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
+#include "paddle/ap/include/env/ap_path.h"
+#include "paddle/ap/include/fs/fs.h"
 #include "paddle/ap/include/registry/builtin_frame_util.h"
 #include "paddle/ap/include/registry/value.h"
 
@@ -37,15 +39,24 @@ struct RegistryMgr {
 
   adt::Result<adt::Ok> LoadAllOnce() {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (!load_result_.has_value()) {
-      ADT_LET_CONST_REF(filepath, GetApEntryFilePath());
-      load_result_ = Load(filepath);
+    if (!first_load_result_.has_value()) {
+      using Ok = adt::Result<adt::Ok>;
+      ADT_RETURN_IF_ERR(VisitApEntryFilePath([&](const auto& filepath) -> Ok {
+        const Ok& cur_result = Load(filepath);
+        if (!first_load_result_.has_value() && cur_result.HasError()) {
+          first_load_result_ = cur_result;
+        }
+        return adt::Ok{};
+      }));
+      if (!first_load_result_.has_value()) {
+        first_load_result_ = adt::Ok{};
+      }
     }
-    return load_result_.value();
+    return first_load_result_.value();
   }
 
  private:
-  std::optional<adt::Result<adt::Ok>> load_result_;
+  std::optional<adt::Result<adt::Ok>> first_load_result_;
   std::mutex mutex_;
 
   adt::Result<adt::Ok> Load(const std::string& filepath) {
@@ -73,23 +84,17 @@ struct RegistryMgr {
     return content;
   }
 
-  adt::Result<std::string> GetApEntryFilePath() {
-    const char* ap_entry_chars = std::getenv("AP_ENTRY");
-    ADT_CHECK(ap_entry_chars != nullptr);
-    std::string ap_path(ap_entry_chars);
-    ADT_CHECK(FileExists(ap_path));
-    return ap_path;
-  }
-
-  bool FileExists(const std::string& filepath) {
-    std::fstream fp;
-    fp.open(filepath, std::fstream::in);
-    if (fp.is_open()) {
-      fp.close();
-      return true;
-    } else {
-      return false;
-    }
+  template <typename YieldT>
+  adt::Result<adt::Ok> VisitApEntryFilePath(const YieldT& Yield) {
+    using Ctrl = adt::Result<adt::LoopCtrl>;
+    ADT_RETURN_IF_ERR(env::VisitEachApPath([&](const auto& dir_path) -> Ctrl {
+      const std::string file_path = std::string(dir_path) + "/__main__.py.json";
+      if (fs::FileExists(file_path)) {
+        ADT_RETURN_IF_ERR(Yield(file_path));
+      }
+      return adt::Continue{};
+    }));
+    return adt::Ok{};
   }
 };
 

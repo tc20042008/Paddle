@@ -33,8 +33,15 @@ cc_library(
   SRCS ${ap_code_gen_srcs}
   DEPS ${ap_code_gen_deps})
 
+file(GLOB_RECURSE ap_kernel_dispatch_srcs "src/kernel_dispatch/*.cc")
+set(ap_kernel_dispatch_deps axpr ap_code_module ap_code_gen)
+cc_library(
+  ap_kernel_dispatch
+  SRCS ${ap_kernel_dispatch_srcs}
+  DEPS ${ap_kernel_dispatch_deps})
+
 file(GLOB_RECURSE ap_phi_srcs "src/paddle/phi/*.cc")
-set(ap_phi_deps axpr ap_code_module ap_code_gen)
+set(ap_phi_deps axpr ap_code_module ap_code_gen ap_kernel_dispatch)
 cc_library(
   ap_phi
   SRCS ${ap_phi_srcs}

@@ -102,7 +102,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetMutableTensorClass() {
   using Methods = MutableTensorMethodClass<ValueT>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "MutableTensor",
-      [&](const auto& DoEach) { DoEach("__getattr__", &Methods::GetAttr); }));
+      [&](const auto& Yield) { Yield("__getattr__", &Methods::GetAttr); }));
   using Self = typename Methods::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);
 }

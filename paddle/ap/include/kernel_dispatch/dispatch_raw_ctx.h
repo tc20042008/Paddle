@@ -17,6 +17,7 @@
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/code_module/data_type.h"
 #include "paddle/ap/include/kernel_dispatch/arg_value.h"
+#include "paddle/ap/include/kernel_dispatch/device_ctx.h"
 #include "paddle/ap/include/kernel_dispatch/typed_buffer.h"
 #include "paddle/ap/include/rt_module/module.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -38,6 +39,7 @@ struct RtModule : public RtModuleImpl {
 
 template <typename ValueT>
 struct DispatchRawCtxImpl {
+  DeviceCtx device_ctx;
   adt::List<ValueT> inputs;
   adt::List<ValueT> outputs;
   RtModule rt_module;

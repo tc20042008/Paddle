@@ -22,7 +22,7 @@
 
 namespace ap::fs {
 
-bool FileExists(const std::string& filepath) {
+inline bool FileExists(const std::string& filepath) {
   std::fstream fp;
   fp.open(filepath, std::fstream::in);
   if (fp.is_open()) {
@@ -35,8 +35,8 @@ bool FileExists(const std::string& filepath) {
 
 // reference:
 // https://stackoverflow.com/questions/2602013/read-whole-ascii-file-into-c-stdstring
-adt::Result<adt::Ok> ReadFileContent(const std::string& file_path,
-                                     std::string* content) {
+inline adt::Result<adt::Ok> ReadFileContent(const std::string& file_path,
+                                            std::string* content) {
   std::ifstream ifs(file_path);
 
   ADT_CHECK(ifs.is_open()) << adt::errors::RuntimeError{
@@ -51,8 +51,8 @@ adt::Result<adt::Ok> ReadFileContent(const std::string& file_path,
   return adt::Ok{};
 }
 
-adt::Result<adt::Ok> WriteFileContent(const std::string& file_path,
-                                      const std::string& content) {
+inline adt::Result<adt::Ok> WriteFileContent(const std::string& file_path,
+                                             const std::string& content) {
   std::ofstream ofs{file_path};
   ADT_CHECK(ofs.is_open()) << adt::errors::RuntimeError{
       std::string() + "file open faild. file_path: " + file_path};

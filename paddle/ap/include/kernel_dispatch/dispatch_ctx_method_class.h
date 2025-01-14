@@ -17,7 +17,9 @@
 #include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
+#include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/axpr/value_method_class.h"
+#include "paddle/ap/include/kernel_dispatch/device_ctx_method_class.h"
 #include "paddle/ap/include/kernel_dispatch/dispatch_ctx.h"
 #include "paddle/ap/include/rt_module/function_method_class.h"
 
@@ -46,6 +48,12 @@ template <typename Val>
 Result<Val> DispatchCtxGetOutputs(const DispatchCtx<Val>& ctx,
                                   const std::string& attr_name) {
   return ctx->raw_ctx->outputs;
+}
+
+template <typename Val>
+Result<Val> DispatchCtxGetDeviceCtx(const DispatchCtx<Val>& ctx,
+                                    const std::string& attr_name) {
+  return GetDeviceCtxClass().New(ctx->raw_ctx->device_ctx);
 }
 
 template <typename Val>
@@ -102,6 +110,7 @@ Result<Val> DispatchCtxGetAttr(const DispatchCtx<Val>& ctx,
        &DispatchCtxType<Val, ap::axpr::DataValue>},
       {"inputs", &DispatchCtxGetInputs<Val>},
       {"outputs", &DispatchCtxGetOutputs<Val>},
+      {"device_ctx", &DispatchCtxGetDeviceCtx},
   };
   const auto& iter = map.find(name);
   if (iter == map.end()) {
@@ -117,6 +126,15 @@ template <typename ValueT>
 struct DispatchCtxMethodClass {
   using This = DispatchCtxMethodClass;
   using Self = DispatchCtx<ValueT>;
+
+  static adt::Result<axpr::Value> ToString(
+      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
+    std::ostringstream ss;
+    ss << "<DispatchCtx object at " << ptr << ">";
+    return ss.str();
+  }
 
   static adt::Result<ValueT> GetAttr(const ValueT& self_val,
                                      const std::vector<ValueT>& args) {
@@ -214,12 +232,12 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetDispatchCtxClass() {
   using Methods = DispatchCtxMethodClass<ValueT>;
   static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("DispatchCtx", [&](const auto& DoEach) {
-        DoEach("__getattr__", &Methods::GetAttr);
-        DoEach("get_input_index_by_name", &Methods::StaticGetInputIndexByName);
-        DoEach("get_output_index_by_name",
-               &Methods::StaticGetOutputIndexByName);
-        DoEach("get_so_function", &Methods::StaticGetSoFunction);
+      axpr::MakeBuiltinClass<ValueT>("DispatchCtx", [&](const auto& Yield) {
+        Yield("__str__", &Methods::ToString);
+        Yield("__getattr__", &Methods::GetAttr);
+        Yield("get_input_index_by_name", &Methods::StaticGetInputIndexByName);
+        Yield("get_output_index_by_name", &Methods::StaticGetOutputIndexByName);
+        Yield("get_so_function", &Methods::StaticGetSoFunction);
       }));
   using Self = typename Methods::Self;
   return axpr::MakeGlobalNaiveClassOps<Self>(cls);

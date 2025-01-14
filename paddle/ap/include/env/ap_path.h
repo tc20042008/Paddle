@@ -19,8 +19,8 @@
 
 namespace ap::env {
 
-template <typename DoEachT>
-adt::Result<adt::Ok> VisitEachApPath(const DoEachT& DoEach) {
+template <typename YieldT>
+adt::Result<adt::Ok> VisitEachApPath(const YieldT& Yield) {
   const char* ap_path_chars = std::getenv("AP_PATH");
   if (ap_path_chars == nullptr) {
     return adt::Ok{};
@@ -30,7 +30,7 @@ adt::Result<adt::Ok> VisitEachApPath(const DoEachT& DoEach) {
   std::istringstream ss(ap_path);
   while (std::getline(ss, path, ':')) {
     if (!path.empty()) {
-      ADT_LET_CONST_REF(loop_ctr, DoEach(path));
+      ADT_LET_CONST_REF(loop_ctr, Yield(path));
       if (loop_ctr.template Has<adt::Break>()) {
         break;
       }

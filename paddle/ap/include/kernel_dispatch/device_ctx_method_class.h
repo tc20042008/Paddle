@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,28 +14,12 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-
-#include "paddle/ap/include/adt/adt.h"
+#include "paddle/ap/include/axpr/naive_class_ops.h"
+#include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/kernel_dispatch/device_ctx.h"
-
-namespace phi {
-
-class DenseTensor;
-
-}
 
 namespace ap::kernel_dispatch {
 
-adt::Result<adt::Ok> ApUnaryKernel(
-    const DeviceCtx& device_ctx,
-    const std::vector<const phi::DenseTensor*>& xs,
-    int num_outputs,
-    const std::string& kernel_define_lambda,
-    const std::string& infer_meta_lambda,
-    const std::string& kernel_dispatch_lambda,
-    const std::string& kernel_dispatch_const_data_lambda,
-    std::vector<phi::DenseTensor*> outs);
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDeviceCtxClass();
 
-}  // namespace ap::kernel_dispatch
+}

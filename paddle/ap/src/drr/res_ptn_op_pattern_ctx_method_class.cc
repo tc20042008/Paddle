@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/drr/res_ptn_op_pattern_ctx_method_class.h"
+#include "paddle/ap/include/axpr/callable_helper.h"
 
 namespace ap::drr {
 
@@ -140,7 +141,7 @@ struct ResPtnOpPatternCtxMethodClass {
         std::string() +
         "ResPtnOpPatternCtx.ap_pattern_fusion_op takes 1 arguments. but " +
         std::to_string(args.size()) + " were given."};
-    ADT_LET_CONST_REF(kernel_define_lambda, CastToLambda(args.at(0)))
+    ADT_LET_CONST_REF(kernel_define_lambda, CheckCallable(args.at(0)))
         << adt::errors::TypeError{std::string() +
                                   "argument 1 of o.ap_pattern_fusion_op should "
                                   "be a function_code object."};
@@ -171,11 +172,12 @@ struct ResPtnOpPatternCtxMethodClass {
     return DrrValueHelper{}.CastToAxprValue(ResPtn(op_declare));
   }
 
-  adt::Result<axpr::Function<axpr::SerializableValue>> CastToLambda(
-      const axpr::Value& val) {
-    ADT_LET_CONST_REF(
-        lambda, val.template CastTo<axpr::Function<axpr::SerializableValue>>());
-    return lambda;
+  adt::Result<axpr::Value> CheckCallable(const axpr::Value& val) {
+    ADT_CHECK(axpr::CallableHelper{}.IsCallable(val)) << adt::errors::TypeError{
+        std::string() +
+        "the argument 1 of ResPtnOpPatternCtx.ap_pattern_fusion_op() should be "
+        "callable"};
+    return val;
   }
 
   static adt::Result<axpr::Value> DeclareNativeIrOp(

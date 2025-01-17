@@ -15,6 +15,8 @@
 #pragma once
 
 #include "paddle/ap/include/drr/res_ptn_unbound_native_ir_op_method_class.h"
+#include "paddle/ap/include/axpr/callable_helper.h"
+#include "paddle/ap/include/drr/drr_pass_type_helper.h"
 
 namespace ap::drr {
 
@@ -123,14 +125,36 @@ struct ResPtnUnboundNativeIrOpMethodClass {
     ADT_CHECK(args.size() == 2);
     ADT_LET_CONST_REF(attr_name, args.at(0).template CastTo<std::string>());
     const auto& attr_val = args.at(1);
-    ADT_RETURN_IF_ERR(
-        attr_val.template CastTo<axpr::Function<axpr::SerializableValue>>())
-        << adt::errors::TypeError{
-               std::string() +
-               "Type of ResPtnNativeIrOp attribute should  Function"};
+    ADT_LET_CONST_REF(support_reifying, This{}.SupportReifying(self));
+    if (support_reifying) {
+      ADT_RETURN_IF_ERR(
+          attr_val.template CastTo<axpr::Function<axpr::SerializableValue>>())
+          << adt::errors::TypeError{
+                 std::string() +
+                 "an attribute of ResPtnNativeIrOp of abstract_drr_pass_type "
+                 "should be a serializable `Function`(not a " +
+                 axpr::GetTypeName(attr_val) +
+                 "). op_name: " + self.value()->op_declare->op_name +
+                 ", attr_name: " + attr_name};
+    } else {
+      ADT_CHECK(axpr::CallableHelper{}.IsCallable(attr_val))
+          << adt::errors::TypeError{std::string() +
+                                    "an attribute of ResPtnNativeIrOp should "
+                                    "be a callable getter. op_name: " +
+                                    self.value()->op_declare->op_name +
+                                    ", attr_name: " + attr_name};
+    }
     auto* attr_map = self.value()->op_declare->attr_map.shared_ptr().get();
     attr_map->Set(attr_name, attr_val);
     return adt::Nothing{};
+  }
+
+  adt::Result<bool> SupportReifying(const Self& self) const {
+    ADT_LET_CONST_REF(
+        op_pattern_ctx,
+        adt::WeakPtrLock(self.value()->op_declare->op_pattern_ctx));
+    ADT_LET_CONST_REF(drr_ctx, adt::WeakPtrLock(op_pattern_ctx->drr_ctx));
+    return DrrPassTypeHelper{}.SupportReifying(drr_ctx->drr_pass_type);
   }
 };
 

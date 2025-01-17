@@ -30,7 +30,7 @@ struct ApKernelDefineHelper {
       const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
       : circlable_ref_list_(circlable_ref_list) {}
 
-  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
+  using Function = ap::axpr::Value;
   using CodeModule = ap::code_module::CodeModule;
   using PirNode = ap::paddle::PirNode;
   using CGValue = ap::code_gen::Value;

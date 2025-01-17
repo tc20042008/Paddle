@@ -168,7 +168,7 @@ adt::Result<adt::Ok> GenAnfExprForOpImpl(
   auto* ctx = op_pattern_ctx->ctx();
   const std::string& lambda_name = ctx->NewTmpVarName();
   ctx->Var(lambda_name) = code_gen_lambda;
-  const auto& code_gen_func = ctx->Var(lambda_name).Attr("__function__");
+  const auto& code_gen_func = ctx->Var(lambda_name);
   const auto& op =
       op_pattern_ctx->Attr("ap_pattern_fusion_op").Call(code_gen_func);
   op_pattern_ctx->SetAttr(op_unique_name, op);

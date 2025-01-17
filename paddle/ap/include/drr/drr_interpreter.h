@@ -44,8 +44,12 @@ class DrrInterpreter {
 
   ap::adt::Result<DrrCtx> InterpretPass(
       const Function& function, const std::string& abstract_drr_pass_name);
+
   ap::adt::Result<DrrCtx> InterpretPass(
       const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls);
+
+  ap::adt::Result<DrrCtx> CreateDrrCtxByDrrPassObj(
+      const ap::axpr::Value& drr_pass_obj);
 
  private:
   axpr::Interpreter interpreter_;

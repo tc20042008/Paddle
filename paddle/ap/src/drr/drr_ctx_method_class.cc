@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/drr/drr_ctx_method_class.h"
+#include "paddle/ap/include/axpr/callable_helper.h"
 
 namespace ap::drr {
 
@@ -52,6 +53,32 @@ struct DrrCtxMethodClass {
     return adt::Nothing{};
   }
 
+  static adt::Result<axpr::Value> StaticSetDrrPassType(
+      axpr::InterpreterBase<axpr::Value>* interpreter,
+      const axpr::Value& self_val,
+      const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1);
+    ADT_LET_CONST_REF(drr_pass_type, args.at(0).template CastTo<std::string>())
+        << adt::errors::TypeError{
+               std::string() +
+               "DrrCtx.set_drr_pass_type() missing str typed argument 1"};
+    if (drr_pass_type == "abstract_drr_pass_type") {
+      self.shared_ptr()->drr_pass_type = drr::AbstractDrrPassType{};
+    } else if (drr_pass_type == "reified_drr_pass_type") {
+      self.shared_ptr()->drr_pass_type = drr::ReifiedDrrPassType{};
+    } else if (drr_pass_type == "access_topo_drr_pass_type") {
+      self.shared_ptr()->drr_pass_type = drr::AccessTopoDrrPassType{};
+    } else {
+      return adt::errors::TypeError{
+          std::string() + "invalid drr_pass_type '" + drr_pass_type +
+          "'. valid drr pass types "
+          "abstract_drr_pass_type/reified_drr_pass_type/"
+          "access_topo_drr_pass_type "};
+    }
+    return adt::Nothing{};
+  }
+
   static adt::Result<axpr::Value> StaticInitSourcePattern(
       axpr::InterpreterBase<axpr::Value>* interpreter,
       const axpr::Value& self_val,
@@ -83,6 +110,11 @@ struct DrrCtxMethodClass {
       const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 1);
+    ADT_CHECK(axpr::CallableHelper{}.IsCallable(args.at(0)))
+        << adt::errors::TypeError{
+               std::string() +
+               "the argument 1 of DrrCtx.init_constaint_func() should be a "
+               "callable object"};
     self.shared_ptr()->constraint_func = args.at(0);
     return adt::Nothing{};
   }
@@ -186,6 +218,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetDrrCtxClass() {
   static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>(TT{}.Name(), [&](const auto& Define) {
         Define("__init__", &TImpl::StaticConstruct);
+        Define("set_drr_pass_type", &Impl::StaticSetDrrPassType);
         Define("init_pass_name", &Impl::StaticInitPassName);
         Define("init_source_pattern", &Impl::StaticInitSourcePattern);
         Define("init_constraint_func", &Impl::StaticInitConstraintFunc);

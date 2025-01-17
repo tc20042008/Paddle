@@ -40,8 +40,12 @@ struct ApDrrHelper {
 
   ap::adt::Result<DrrCtx> Interpret(const Function& lambda,
                                     const std::string& abstract_drr_pass_name);
+
   ap::adt::Result<DrrCtx> Interpret(
       const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls);
+
+  ap::adt::Result<DrrCtx> CreateDrrCtxByDrrPassObj(
+      const ap::axpr::Value& drr_pass_obj);
 
   ap::drr::DrrInterpreter* mut_drr_interpreter() { return &drr_interpreter_; }
 

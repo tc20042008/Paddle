@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/anf_expr_util.h"
+#include "paddle/ap/include/axpr/callable_helper.h"
 #include "paddle/ap/include/axpr/lambda_expr_builder.h"
 #include "paddle/ap/include/paddle/pass/ap_drr_helper.h"
 #include "paddle/ap/include/paddle/pass/ap_lower_fusion_op_pass.h"
@@ -65,12 +66,20 @@ struct PirHelperMethodClass {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "create_ap_drr_pass() takes 1 arguments, but " +
         std::to_string(args.size()) + " were given"};
-    ADT_LET_CONST_REF(drr_pass_tag_name,
-                      args.at(0).template CastTo<std::string>());
-    auto opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
-        interpreter->circlable_ref_list(),
-        drr_pass_tag_name,
-        /*steps_limit=*/std::nullopt);
+    std::optional<std::unique_ptr<pir::Pass>> opt_pass;
+    if (args.at(0).template CastableTo<std::string>()) {
+      ADT_LET_CONST_REF(drr_pass_tag_name,
+                        args.at(0).template CastTo<std::string>());
+      opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
+          interpreter->circlable_ref_list(),
+          drr_pass_tag_name,
+          /*steps_limit=*/std::nullopt);
+    } else {
+      opt_pass = cinn::dialect::ir::CreateCustomAccessTopoDrrPass(
+          interpreter->circlable_ref_list(),
+          args.at(0),
+          /*steps_limit=*/std::nullopt);
+    }
     if (!opt_pass.has_value()) {
       return adt::Nothing{};
     }
@@ -85,12 +94,20 @@ struct PirHelperMethodClass {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "create_ap_drr_pass() takes 1 arguments, but " +
         std::to_string(args.size()) + " were given"};
-    ADT_LET_CONST_REF(drr_pass_tag_name,
-                      args.at(0).template CastTo<std::string>());
-    auto opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
-        interpreter->circlable_ref_list(),
-        drr_pass_tag_name,
-        /*steps_limit=*/1);
+    std::optional<std::unique_ptr<pir::Pass>> opt_pass;
+    if (args.at(0).template CastableTo<std::string>()) {
+      ADT_LET_CONST_REF(drr_pass_tag_name,
+                        args.at(0).template CastTo<std::string>());
+      opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
+          interpreter->circlable_ref_list(),
+          drr_pass_tag_name,
+          /*steps_limit=*/1);
+    } else {
+      opt_pass = cinn::dialect::ir::CreateCustomAccessTopoDrrPass(
+          interpreter->circlable_ref_list(),
+          args.at(0),
+          /*steps_limit=*/1);
+    }
     if (!opt_pass.has_value()) {
       return adt::Nothing{};
     }
@@ -179,15 +196,13 @@ struct PirHelperMethodClass {
                                   "the argument 1 of PirHelper.match() should "
                                   "b a PirProgram (not " +
                                   axpr::GetTypeName(args.at(0)) + ")"};
-    ADT_LET_CONST_REF(
-        src_ptn_func,
-        args.at(1).template CastTo<axpr::Function<axpr::SerializableValue>>())
-        << adt::errors::TypeError{
-               std::string() +
-               "the argument 2 of PirHelper.match() should b a function (not " +
-               axpr::GetTypeName(args.at(1)) + ")"};
+    ADT_CHECK(axpr::CallableHelper{}.IsCallable(args.at(1)))
+        << adt::errors::TypeError{std::string() +
+                                  "the argument 2 of PirHelper.match() should "
+                                  "be callable object (not " +
+                                  axpr::GetTypeName(args.at(1)) + ")"};
     std::vector<axpr::Value> src_ptn_func_args{std::string("fake_pass"),
-                                               src_ptn_func};
+                                               args.at(1)};
     ADT_LET_CONST_REF(lambda, This{}.GetDrrCtxMaker());
     axpr::Function<axpr::SerializableValue> function{lambda, std::nullopt};
     ADT_LET_CONST_REF(

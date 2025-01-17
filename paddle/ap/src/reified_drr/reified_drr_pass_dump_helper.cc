@@ -83,6 +83,8 @@ struct ReifiedDrrPassDumpHelperImpl {
       ADT_LET_CONST_REF(res_ptn_func,
                         DefineOrGetResultPatternFunc(
                             src_ptn_func, constraint_lambda, dump_ctx));
+      drr_ctx.Attr("set_drr_pass_type")
+          .Call(ctx.String("reified_drr_pass_type"));
       drr_ctx.Attr("init_source_pattern").Call(src_ptn_func);
       const auto& constaint_func_name = ctx.NewTmpVarName();
       ctx.Var(constaint_func_name) = constraint_lambda;

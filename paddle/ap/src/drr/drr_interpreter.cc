@@ -91,4 +91,29 @@ adt::Result<DrrCtx> DrrInterpreter::InterpretPass(
   return drr_ctx;
 }
 
+ap::adt::Result<DrrCtx> DrrInterpreter::CreateDrrCtxByDrrPassObj(
+    const ap::axpr::Value& drr_pass_obj) {
+  static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
+    ap::axpr::LambdaExprBuilder lmd;
+    const ap::axpr::AnfExpr anf_expr =
+        lmd.Lambda({"drr_pass_obj"}, [](auto& ctx) {
+          auto& obj = ctx.Var("drr_pass_obj");
+          auto& method = obj.Attr("make_drr_ctx");
+          auto& ret = method.Call();
+          return ret;
+        });
+    const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+    return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
+  }());
+  ADT_LET_CONST_REF(drr_ctx_val,
+                    interpreter_.Interpret(lambda, {drr_pass_obj}));
+  ADT_LET_CONST_REF(drr_ctx, drr_ctx_val.template CastTo<DrrCtx>())
+      << adt::errors::TypeError{
+             std::string() +
+             "drr function should return a 'DrrCtx' object but '" +
+             ap::axpr::GetTypeName(drr_ctx_val) + "' were given."};
+  return drr_ctx;
+}
+
 }  // namespace ap::drr

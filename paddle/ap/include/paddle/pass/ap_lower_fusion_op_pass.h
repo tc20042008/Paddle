@@ -24,6 +24,12 @@ class CirclableRefListBase;
 
 }
 
+namespace ap::axpr {
+
+struct Value;
+
+}
+
 namespace cinn {
 namespace dialect {
 namespace ir {
@@ -37,6 +43,11 @@ std::optional<std::unique_ptr<::pir::Pass>> CreateApLowerFusionOpClassicDrrPass(
 std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass(
     const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list,
     const std::string& drr_pass_tag,
+    std::optional<int64_t> steps_limit);
+
+std::optional<std::unique_ptr<::pir::Pass>> CreateCustomAccessTopoDrrPass(
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list,
+    const ap::axpr::Value& drr_pass,
     std::optional<int64_t> steps_limit);
 
 }  // namespace ir

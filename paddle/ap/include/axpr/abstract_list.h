@@ -48,6 +48,15 @@ struct AbstractList : public AbstractListImpl<ValueT> {
         });
   }
 
+  static bool CastableFrom(const ValueT& value) {
+    using RetT = bool;
+    return value.Match(
+        [&](const adt::List<ValueT>& impl) -> RetT { return true; },
+        [&](const adt::List<SerializableValue>& impl) -> RetT { return true; },
+        [&](const axpr::MutableList<ValueT>& impl) -> RetT { return true; },
+        [&](const auto&) -> RetT { return false; });
+  }
+
   adt::Result<std::size_t> size() const {
     using RetT = adt::Result<std::size_t>;
     return Match(

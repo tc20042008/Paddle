@@ -17,6 +17,7 @@
 #include "paddle/ap/include/axpr/function.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/drr/drr_pass_type.h"
 #include "paddle/ap/include/drr/result_pattern_ctx.h"
 #include "paddle/ap/include/drr/source_pattern_ctx.h"
 #include "paddle/ap/include/drr/tags.h"
@@ -31,6 +32,7 @@ struct DrrCtxImpl {
   std::optional<SourcePatternCtx> source_pattern_ctx;
   std::optional<ResultPatternCtx> result_pattern_ctx;
   std::optional<axpr::Value> constraint_func;
+  std::optional<drr::DrrPassType> drr_pass_type;
 
   adt::Result<SourcePatternCtx> GetSourcePatternCtx() const {
     ADT_CHECK(this->source_pattern_ctx.has_value());

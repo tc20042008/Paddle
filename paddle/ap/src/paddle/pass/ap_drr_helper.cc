@@ -51,6 +51,11 @@ adt::Result<DrrCtx> ApDrrHelper::Interpret(const Function& lambda,
   return drr_interpreter_.InterpretPass(lambda, drr_pass_name);
 }
 
+adt::Result<DrrCtx> ApDrrHelper::CreateDrrCtxByDrrPassObj(
+    const ap::axpr::Value& obj) {
+  return drr_interpreter_.CreateDrrCtxByDrrPassObj(obj);
+}
+
 adt::Result<DrrCtx> ApDrrHelper::Interpret(
     const ap::axpr::ClassAttrs<ap::axpr::SerializableValue>& cls) {
   return drr_interpreter_.InterpretPass(cls);

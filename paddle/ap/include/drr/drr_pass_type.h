@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,26 @@
 
 #pragma once
 
-#include "paddle/ap/include/axpr/core_expr.h"
-#include "paddle/ap/include/axpr/function.h"
-#include "paddle/ap/include/axpr/serializable_value.h"
-#include "paddle/ap/include/drr/packed_ir_op_declare_data.h"
+#include "paddle/ap/include/adt/adt.h"
 
 namespace ap::drr {
 
-class ResPtnPackedIrOpDeclareData : public PackedIrOpDeclareData {
- public:
-  explicit ResPtnPackedIrOpDeclareData(const axpr::Value& code_gen_func)
-      : PackedIrOpDeclareData(), code_gen_func_(code_gen_func) {}
+struct AbstractDrrPassType : public std::monostate {
+  using std::monostate::monostate;
+};
+struct ReifiedDrrPassType : public std::monostate {
+  using std::monostate::monostate;
+};
+struct AccessTopoDrrPassType : public std::monostate {
+  using std::monostate::monostate;
+};
 
-  const axpr::Value& code_gen_func() const { return code_gen_func_; }
+using DrrPassTypeImpl = std::
+    variant<AbstractDrrPassType, ReifiedDrrPassType, AccessTopoDrrPassType>;
 
- private:
-  axpr::Value code_gen_func_;
+struct DrrPassType : public DrrPassTypeImpl {
+  using DrrPassTypeImpl::DrrPassTypeImpl;
+  ADT_DEFINE_VARIANT_METHODS(DrrPassTypeImpl);
 };
 
 }  // namespace ap::drr

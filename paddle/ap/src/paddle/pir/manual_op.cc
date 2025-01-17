@@ -21,22 +21,22 @@
 
 namespace ap::dialect {
 
-void IdUpSpiderOp::Build(pir::Builder& builder,             // NOLINT
-                         pir::OperationArgument& argument,  // NOLINT
-                         pir::Value lhs,
-                         pir::Value rhs) {
+void UpSpiderOp::Build(pir::Builder& builder,             // NOLINT
+                       pir::OperationArgument& argument,  // NOLINT
+                       pir::Value lhs,
+                       pir::Value rhs) {
   argument.AddInput(lhs);
   argument.AddInput(rhs);
 }
 
-void IdDownSpiderOp::Build(pir::Builder& builder,
-                           pir::OperationArgument& argument,
-                           pir::Value x) {
+void DownSpiderOp::Build(pir::Builder& builder,
+                         pir::OperationArgument& argument,
+                         pir::Value x) {
   argument.inputs = {x};
   argument.output_types = {x.type()};
 }
 
-bool IdDownSpiderOp::InferSymbolicShape(
+bool DownSpiderOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext* infer_context) {
   infer_context->SetShapeOrDataForValue(
       result(0), infer_context->GetShapeOrDataForValue(operand_source(0)));
@@ -128,8 +128,8 @@ bool StoreOp::InferSymbolicShape(
 
 }  // namespace ap::dialect
 
-IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::IdUpSpiderOp);
-IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::IdDownSpiderOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::LoadPlaceholderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::StorePlaceholderOp);
 IR_DEFINE_EXPLICIT_TYPE_ID(ap::dialect::LoadOp);

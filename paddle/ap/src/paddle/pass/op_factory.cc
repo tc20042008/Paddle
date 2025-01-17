@@ -35,15 +35,14 @@ adt::Result<pir::Operation*> ConstructPdOpSum(
   return op;
 }
 
-adt::Result<pir::Operation*> ConstructIdUpSpiderOp(
+adt::Result<pir::Operation*> ConstructUpSpiderOp(
     pir::Builder* builder,
     const std::vector<pir::Value>& inputs,
     const pir::AttributeMap& attrs) {
   ADT_CHECK(inputs.size() == 2) << adt::errors::TypeError{
-      std::string() + "'ap_op.id_up_spider' op takes 2 arguments, but " +
+      std::string() + "'ap_op.up_spider' op takes 2 arguments, but " +
       std::to_string(inputs.size()) + " were given"};
-  auto op =
-      builder->Build<ap::dialect::IdUpSpiderOp>(inputs.at(0), inputs.at(1));
+  auto op = builder->Build<ap::dialect::UpSpiderOp>(inputs.at(0), inputs.at(1));
   return op;
 }
 
@@ -69,12 +68,12 @@ adt::Result<pir::Operation*> ConstructShadowOutputOp(
   return op;
 }
 
-adt::Result<pir::Operation*> ConstructIdDownSpiderOp(
+adt::Result<pir::Operation*> ConstructDownSpiderOp(
     pir::Builder* builder,
     const std::vector<pir::Value>& inputs,
     const pir::AttributeMap& attrs) {
   ADT_CHECK(inputs.size() == 1);
-  auto op = builder->Build<ap::dialect::IdDownSpiderOp>(inputs.at(0));
+  auto op = builder->Build<ap::dialect::DownSpiderOp>(inputs.at(0));
   return op;
 }
 
@@ -97,12 +96,12 @@ adt::Result<std::optional<pir::Operation*>> CreateOperation(
     ADT_LET_CONST_REF(ret, ConstructShadowOutputOp(builder, inputs, attrs));
     return ret;
   }
-  if (op_name == "ap_op.id_up_spider") {
-    ADT_LET_CONST_REF(ret, ConstructIdUpSpiderOp(builder, inputs, attrs));
+  if (op_name == "ap_op.up_spider") {
+    ADT_LET_CONST_REF(ret, ConstructUpSpiderOp(builder, inputs, attrs));
     return ret;
   }
-  if (op_name == "ap_op.id_down_spider") {
-    ADT_LET_CONST_REF(ret, ConstructIdDownSpiderOp(builder, inputs, attrs));
+  if (op_name == "ap_op.down_spider") {
+    ADT_LET_CONST_REF(ret, ConstructDownSpiderOp(builder, inputs, attrs));
     return ret;
   }
   return std::nullopt;

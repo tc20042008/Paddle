@@ -25,12 +25,12 @@
 
 namespace ap::dialect {
 
-class IR_API IdUpSpiderOp : public pir::Op<IdUpSpiderOp,
-                                           pir::SideEffectTrait,
-                                           pir::ImmutableLayoutTrait> {
+class IR_API UpSpiderOp : public pir::Op<UpSpiderOp,
+                                         pir::SideEffectTrait,
+                                         pir::ImmutableLayoutTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "ap_op.id_up_spider"; }
+  static const char *name() { return "ap_op.up_spider"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -40,12 +40,12 @@ class IR_API IdUpSpiderOp : public pir::Op<IdUpSpiderOp,
   void VerifySig() const {}
 };
 
-class IR_API IdDownSpiderOp
-    : public pir::Op<IdDownSpiderOp,
+class IR_API DownSpiderOp
+    : public pir::Op<DownSpiderOp,
                      ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "ap_op.id_down_spider"; }
+  static const char *name() { return "ap_op.down_spider"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
@@ -119,8 +119,8 @@ class IR_API StoreOp
 
 }  // namespace ap::dialect
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::IdUpSpiderOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::IdDownSpiderOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadPlaceholderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::StorePlaceholderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadOp);

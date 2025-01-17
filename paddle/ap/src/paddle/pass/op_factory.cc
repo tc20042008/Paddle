@@ -14,6 +14,8 @@
 
 #include "paddle/ap/src/paddle/pass/op_factory.h"
 #include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -22,26 +24,38 @@ namespace ap::paddle {
 
 namespace {
 
-adt::Result<std::vector<pir::Value>> ConstructIdUpSpiderOp(
+adt::Result<pir::Operation*> ConstructPdOpSum(
+    pir::Builder* builder,
+    const std::vector<pir::Value>& inputs,
+    pir::AttributeMap attrs) {
+  ADT_CHECK(inputs.size() == 1);
+  attrs["dtype"] = ::paddle::dialect::DataTypeAttribute::get(
+      pir::IrContext::Instance(), phi::DataType::UNDEFINED);
+  auto op = builder->Build<::paddle::dialect::SumOp>(inputs.at(0), attrs);
+  return op;
+}
+
+adt::Result<pir::Operation*> ConstructIdUpSpiderOp(
     pir::Builder* builder,
     const std::vector<pir::Value>& inputs,
     const pir::AttributeMap& attrs) {
   ADT_CHECK(inputs.size() == 2) << adt::errors::TypeError{
       std::string() + "'ap_op.id_up_spider' op takes 2 arguments, but " +
       std::to_string(inputs.size()) + " were given"};
-  auto op = builder->Build<ap::dialect::IdUpSpider>(inputs.at(0), inputs.at(1));
-  return op->results();
+  auto op =
+      builder->Build<ap::dialect::IdUpSpiderOp>(inputs.at(0), inputs.at(1));
+  return op;
 }
 
-adt::Result<std::vector<pir::Value>> ConstructYieldOp(
+adt::Result<pir::Operation*> ConstructYieldOp(
     pir::Builder* builder,
     const std::vector<pir::Value>& inputs,
     const pir::AttributeMap& attrs) {
   auto op = builder->Build<pir::YieldOp>(inputs);
-  return op->results();
+  return op;
 }
 
-adt::Result<std::vector<pir::Value>> ConstructShadowOutputOp(
+adt::Result<pir::Operation*> ConstructShadowOutputOp(
     pir::Builder* builder,
     const std::vector<pir::Value>& inputs,
     const pir::AttributeMap& attrs) {
@@ -52,26 +66,29 @@ adt::Result<std::vector<pir::Value>> ConstructShadowOutputOp(
   const std::string& output_name =
       iter->second.dyn_cast<pir::StrAttribute>().AsString();
   auto op = builder->Build<pir::ShadowOutputOp>(inputs.at(0), output_name);
-  return op->results();
+  return op;
 }
 
-adt::Result<std::vector<pir::Value>> ConstructIdDownSpiderOp(
+adt::Result<pir::Operation*> ConstructIdDownSpiderOp(
     pir::Builder* builder,
     const std::vector<pir::Value>& inputs,
     const pir::AttributeMap& attrs) {
   ADT_CHECK(inputs.size() == 1);
-  auto op = builder->Build<ap::dialect::IdDownSpider>(inputs.at(0),
-                                                      inputs.at(0).type());
-  return op->results();
+  auto op = builder->Build<ap::dialect::IdDownSpiderOp>(inputs.at(0));
+  return op;
 }
 
 }  // namespace
 
-adt::Result<std::optional<std::vector<pir::Value>>> CreateOperation(
+adt::Result<std::optional<pir::Operation*>> CreateOperation(
     pir::Builder* builder,
     const std::string& op_name,
     const std::vector<pir::Value>& inputs,
     const pir::AttributeMap& attrs) {
+  if (op_name == "pd_op.sum") {
+    ADT_LET_CONST_REF(ret, ConstructPdOpSum(builder, inputs, attrs));
+    return ret;
+  }
   if (op_name == "cf.yield") {
     ADT_LET_CONST_REF(ret, ConstructYieldOp(builder, inputs, attrs));
     return ret;

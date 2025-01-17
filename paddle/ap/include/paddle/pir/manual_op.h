@@ -25,9 +25,9 @@
 
 namespace ap::dialect {
 
-class IR_API IdUpSpider : public pir::Op<IdUpSpider,
-                                         pir::SideEffectTrait,
-                                         pir::ImmutableLayoutTrait> {
+class IR_API IdUpSpiderOp : public pir::Op<IdUpSpiderOp,
+                                           pir::SideEffectTrait,
+                                           pir::ImmutableLayoutTrait> {
  public:
   using Op::Op;
   static const char *name() { return "ap_op.id_up_spider"; }
@@ -40,8 +40,8 @@ class IR_API IdUpSpider : public pir::Op<IdUpSpider,
   void VerifySig() const {}
 };
 
-class IR_API IdDownSpider
-    : public pir::Op<IdDownSpider,
+class IR_API IdDownSpiderOp
+    : public pir::Op<IdDownSpiderOp,
                      ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
@@ -50,13 +50,78 @@ class IR_API IdDownSpider
   static constexpr const char **attributes_name = nullptr;
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input);
+  void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+};
+
+class IR_API LoadPlaceholderOp
+    : public pir::Op<LoadPlaceholderOp,
+                     ::paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "ap_op.load_placeholder"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
                     pir::Value input,
-                    pir::Type output_type);
+                    const std::string &name);
+  void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+};
+
+class IR_API StorePlaceholderOp
+    : public pir::Op<StorePlaceholderOp,
+                     ::paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "ap_op.store_placeholder"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    const std::string &name);
+  void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+};
+
+class IR_API LoadOp
+    : public pir::Op<LoadOp, ::paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "ap_op.load"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    const std::string &serialized_index_function);
+  void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+};
+
+class IR_API StoreOp
+    : public pir::Op<StoreOp, ::paddle::dialect::InferSymbolicShapeInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "ap_op.store"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value input,
+                    const std::string &serialized_index_function);
   void VerifySig() const {}
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 }  // namespace ap::dialect
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::IdUpSpider)
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::IdDownSpider)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::IdUpSpiderOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::IdDownSpiderOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadPlaceholderOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::StorePlaceholderOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::StoreOp);

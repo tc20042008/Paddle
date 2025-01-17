@@ -333,6 +333,50 @@ Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
   return ret;
 }
 
+Result<axpr::Value> Length(axpr::InterpreterBase<axpr::Value>* interpreter,
+                           const axpr::Value&,
+                           const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1)
+      << adt::errors::TypeError{std::string() + "len() takes 1 arguments but " +
+                                std::to_string(args.size()) + " were given."};
+  axpr::Value len_symbol{builtin_symbol::Symbol{builtin_symbol::Length{}}};
+  return interpreter->InterpretCall(len_symbol, args);
+}
+
+Result<axpr::Value> FlatMap(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+      std::string() + "flat_map() takes 2 arguments but " +
+      std::to_string(args.size()) + " were given."};
+
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<axpr::Value>::CastFrom(args.at(1)));
+  ADT_LET_CONST_REF(lst_size, lst.size());
+  adt::List<axpr::Value> ret;
+  ret->reserve(lst_size);
+  auto Collect = [&](const auto& sub_elt) -> adt::Result<adt::LoopCtrl> {
+    ret->emplace_back(sub_elt);
+    return adt::Continue{};
+  };
+  const auto& f = args.at(0);
+  ADT_RETURN_IF_ERR(
+      lst.Visit([&](const auto& elt) -> adt::Result<adt::LoopCtrl> {
+        ADT_LET_CONST_REF(
+            converted_elt,
+            interpreter->InterpretCall(f, std::vector<axpr::Value>{elt}));
+        ADT_LET_CONST_REF(a_list,
+                          AbstractList<axpr::Value>::CastFrom(converted_elt))
+            << adt::errors::TypeError{
+                   std::string() +
+                   "the argument 1 of flat_map() should be a function "
+                   "returning a list/SerializableList/MutableList (not a " +
+                   axpr::GetTypeName(converted_elt) + ")"};
+        ADT_RETURN_IF_ERR(a_list.Visit(Collect));
+        return adt::Continue{};
+      }));
+  return ret;
+}
+
 Result<axpr::Value> Filter(axpr::InterpreterBase<axpr::Value>* interpreter,
                            const axpr::Value&,
                            const std::vector<axpr::Value>& args) {

@@ -70,6 +70,26 @@ struct GraphMatcher {
     return topo_matcher_.IsGraphMatched(ctx->topo_match_ctx, anchor_node);
   }
 
+  adt::Result<bool> HasUndetermined(const GraphMatchCtx<bg_node_t>& ctx) const {
+    return topo_matcher_.HasUndetermined(ctx);
+  }
+
+  template <typename ReMatchT>
+  adt::Result<adt::Ok> InplaceForcePickOneLastUndetermined(
+      GraphMatchCtx<bg_node_t>* ctx, const ReMatchT& ReMatch) const {
+    return InplaceForcePickOneLastUndetermined(
+        ctx, ReMatch, /*loop_limit=*/9999);
+  }
+
+  template <typename ReMatchT>
+  adt::Result<adt::Ok> InplaceForcePickOneLastUndetermined(
+      GraphMatchCtx<bg_node_t>* ctx,
+      const ReMatchT& ReMatch,
+      int loop_limit) const {
+    return topo_matcher_.InplaceForcePickOneLastUndetermined(
+        ctx, ReMatch, loop_limit);
+  }
+
  private:
   using TopoMatchCtxT = TopoMatchCtx<bg_node_t, sg_node_t>;
 

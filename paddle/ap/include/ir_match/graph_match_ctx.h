@@ -36,6 +36,7 @@ struct GraphMatchCtxImpl {
   bool operator==(const GraphMatchCtxImpl& other) const {
     return this == &other;
   }
+
   std::size_t num_matched_bg_nodes() const {
     return topo_match_ctx->num_matched_bg_nodes();
   }

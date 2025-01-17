@@ -72,6 +72,17 @@ struct TopoMatchCtxImpl {
     return &iter->second;
   }
 
+  adt::Result<std::list<bg_node_t>*> MutBigGraphNodes(
+      const sg_node_t& node) const {
+    const auto& iter = this->sg_node2bg_nodes_.find(node);
+    if (iter == this->sg_node2bg_nodes_.end()) {
+      return adt::errors::KeyError{
+          std::string() + "no node_id " +
+          graph::NodeDescriptor<sg_node_t>{}.DebugId(node) + " found."};
+    }
+    return const_cast<std::list<bg_node_t>*>(&iter->second);
+  }
+
   adt::Result<adt::Ok> InitBigGraphNodes(const sg_node_t& sg_node,
                                          const std::list<bg_node_t>& val) {
     VLOG(0) << "InitBigGraphNodes. sg_node: "
@@ -198,6 +209,17 @@ struct TopoMatchCtxImpl {
   adt::Result<adt::Ok> VisitSmallGraphNode(const YieldT& Yield) const {
     for (const auto& [sg_node, _] : sg_node2bg_nodes_) {
       ADT_RETURN_IF_ERR(Yield(sg_node));
+    }
+    return adt::Ok{};
+  }
+
+  template <typename YieldT>
+  adt::Result<adt::Ok> LoopMutBigGraphNode(const YieldT& Yield) {
+    for (auto& [_, bg_nodes] : sg_node2bg_nodes_) {
+      ADT_LET_CONST_REF(ctrl, Yield(&bg_nodes));
+      if (ctrl.template Has<adt::Break>()) {
+        break;
+      }
     }
     return adt::Ok{};
   }

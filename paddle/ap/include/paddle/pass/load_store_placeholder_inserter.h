@@ -14,26 +14,21 @@
 
 #pragma once
 
-#include <optional>
-#include <vector>
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/pir/include/core/attribute.h"
-#include "paddle/pir/include/core/builder.h"
-#include "paddle/pir/include/core/type.h"
 
 namespace pir {
 
-class Operation;
+class Program;
 
 }
 
 namespace ap::paddle {
 
-// Returns nullopt if op_name not supported.
-adt::Result<std::optional<pir::Operation*>> CreateOperation(
-    pir::Builder* builder,
-    const std::string& op_name,
-    const std::vector<pir::Value>& inputs,
-    const pir::AttributeMap& attributes);
+class LoadStorePlaceholderInserter {
+ public:
+  LoadStorePlaceholderInserter() {}
+
+  adt::Result<adt::Ok> Insert(pir::Program* program);
+};
 
 }  // namespace ap::paddle

@@ -109,9 +109,6 @@ struct ResPtnUnboundNativeIrOpMethodClass {
       const adt::List<NativeIrValue<drr::Node>>& inputs,
       const adt::List<NativeIrValue<drr::Node>>& outputs) {
     std::unordered_set<std::string> existed_names;
-    for (const auto& input : *inputs) {
-      existed_names.insert(input->name);
-    }
     for (const auto& output : *outputs) {
       ADT_CHECK(existed_names.emplace(output->name).second)
           << adt::errors::TypeError{std::string() + "redundant tensor name '" +

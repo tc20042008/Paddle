@@ -49,12 +49,17 @@ struct NativeIrValueMethodClass {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "dtype") {
       return This{}.GetDataType(self);
-    } else if (attr_name == "shape") {
-      return This{}.GetShape(self);
     }
     return adt::errors::TypeError{std::string() +
                                   "NativeIrValue instance has no attribute '" +
                                   attr_name + "'."};
+  }
+
+  static adt::Result<ValueT> SymbolicShapeToList(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 0);
+    return This{}.GetShape(self);
   }
 
   adt::Result<ValueT> GetShape(const Self& self) {
@@ -79,10 +84,11 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrValueClass() {
   using ImplMethods = NativeIrValueMethodClass<ValueT>;
   static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("NativeIrValue", [&](const auto& Define) {
-        Define("__getattr__", &ImplMethods::GetAttr);
-        Define("__str__", &ImplMethods::ToString);
-        Define("__hash__", &ImplMethods::Hash);
+      axpr::MakeBuiltinClass<ValueT>("NativeIrValue", [&](const auto& Yield) {
+        Yield("__getattr__", &ImplMethods::GetAttr);
+        Yield("__str__", &ImplMethods::ToString);
+        Yield("__hash__", &ImplMethods::Hash);
+        Yield("symbolic_shape_to_list", &ImplMethods::SymbolicShapeToList);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }
@@ -113,9 +119,9 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrValueClass() {
   using ImplMethods = PackedIrValueMethodClass<ValueT>;
   static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("PackedIrValue", [&](const auto& Define) {
-        Define("__str__", &ImplMethods::ToString);
-        Define("__hash__", &ImplMethods::Hash);
+      axpr::MakeBuiltinClass<ValueT>("PackedIrValue", [&](const auto& Yield) {
+        Yield("__str__", &ImplMethods::ToString);
+        Yield("__hash__", &ImplMethods::Hash);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }
@@ -149,12 +155,17 @@ struct RefIrValueMethodClass {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "dtype") {
       return This{}.GetDataType(self);
-    } else if (attr_name == "shape") {
-      return This{}.GetShape(self);
     }
     return adt::errors::TypeError{std::string() +
                                   "NativeIrValue instance has no attribute '" +
                                   attr_name + "'."};
+  }
+
+  static adt::Result<ValueT> SymbolicShapeToList(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 0);
+    return This{}.GetShape(self);
   }
 
   adt::Result<ValueT> GetShape(const Self& self) {
@@ -181,10 +192,11 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrValueClass() {
   using ImplMethods = RefIrValueMethodClass<ValueT>;
   static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("RefIrValue", [&](const auto& Define) {
-        Define("__getattr__", &ImplMethods::GetAttr);
-        Define("__str__", &ImplMethods::ToString);
-        Define("__hash__", &ImplMethods::Hash);
+      axpr::MakeBuiltinClass<ValueT>("RefIrValue", [&](const auto& Yield) {
+        Yield("__getattr__", &ImplMethods::GetAttr);
+        Yield("__str__", &ImplMethods::ToString);
+        Yield("__hash__", &ImplMethods::Hash);
+        Yield("symbolic_shape_to_list", &ImplMethods::SymbolicShapeToList);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }
@@ -231,10 +243,10 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrOpClass() {
   using Impl = NativeIrOpMethodClass<ValueT>;
   static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("NativeIrOp", [&](const auto& Define) {
-        Define("__str__", &Impl::ToString);
-        Define("__hash__", &Impl::Hash);
-        Define("__getattr__", &Impl::GetAttr);
+      axpr::MakeBuiltinClass<ValueT>("NativeIrOp", [&](const auto& Yield) {
+        Yield("__str__", &Impl::ToString);
+        Yield("__hash__", &Impl::Hash);
+        Yield("__getattr__", &Impl::GetAttr);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
@@ -265,9 +277,9 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetPackedIrOpClass() {
   using Impl = PackedIrOpMethodClass<ValueT>;
   static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("PackedIrOp", [&](const auto& Define) {
-        Define("__str__", &Impl::ToString);
-        Define("__hash__", &Impl::Hash);
+      axpr::MakeBuiltinClass<ValueT>("PackedIrOp", [&](const auto& Yield) {
+        Yield("__str__", &Impl::ToString);
+        Yield("__hash__", &Impl::Hash);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }
@@ -298,9 +310,9 @@ template <typename ValueT>
 axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetRefIrOpClass() {
   using Impl = RefIrOpMethodClass<ValueT>;
   static auto cls(
-      axpr::MakeBuiltinClass<ValueT>("RefIrOp", [&](const auto& Define) {
-        Define("__str__", &Impl::ToString);
-        Define("__hash__", &Impl::Hash);
+      axpr::MakeBuiltinClass<ValueT>("RefIrOp", [&](const auto& Yield) {
+        Yield("__str__", &Impl::ToString);
+        Yield("__hash__", &Impl::Hash);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }

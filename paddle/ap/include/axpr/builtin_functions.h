@@ -43,9 +43,17 @@ adt::Result<axpr::Value> ReplaceOrTrimLeftComma(
 adt::Result<axpr::Value> MakeRange(const axpr::Value&,
                                    const std::vector<axpr::Value>& args);
 
+Result<axpr::Value> FlatMap(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args);
+
 Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
                         const axpr::Value&,
                         const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> Length(axpr::InterpreterBase<axpr::Value>* interpreter,
+                           const axpr::Value&,
+                           const std::vector<axpr::Value>& args);
 
 Result<axpr::Value> Filter(axpr::InterpreterBase<axpr::Value>* interpreter,
                            const axpr::Value&,

@@ -31,12 +31,14 @@ void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
   DoEach("print", &Print);
   DoEach("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma);
   DoEach("range", &MakeRange);
+  DoEach("flat_map", &FlatMap);
   DoEach("map", &Map);
   DoEach("filter", &Filter);
   DoEach("reduce", &Reduce);
   DoEach("zip", &Zip);
   DoEach("max", &Max);
   DoEach("min", &Min);
+  DoEach("len", &Length);
 }
 
 template <typename ValueT>

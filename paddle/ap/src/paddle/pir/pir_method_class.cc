@@ -15,25 +15,26 @@
 #pragma once
 
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
+#include "paddle/ap/include/paddle/pir_node.h"
 
 namespace ap::paddle {
 
 axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirClass() {
   static auto cls(
-      axpr::MakeBuiltinClass<axpr::Value>("pir", [&](const auto& DoEach) {
-        DoEach("UndefinedPlace", &CreateUndefinedPlace);
-        DoEach("CPUPlace", &CreateCPUPlace);
-        DoEach("GPUPlace", &CreateGPUPlace);
-        DoEach("GPUPinnedPlace", &CreateGPUPinnedPlace);
-        DoEach("XPUPlace", &CreateXPUPlace);
-        DoEach("IPUPlace", &CreateIPUPlace);
-        DoEach("CustomPlace", &CreateCustomPlace);
+      axpr::MakeBuiltinClass<axpr::Value>("pir", [&](const auto& Yield) {
+        Yield("UndefinedPlace", &CreateUndefinedPlace);
+        Yield("CPUPlace", &CreateCPUPlace);
+        Yield("GPUPlace", &CreateGPUPlace);
+        Yield("GPUPinnedPlace", &CreateGPUPinnedPlace);
+        Yield("XPUPlace", &CreateXPUPlace);
+        Yield("IPUPlace", &CreateIPUPlace);
+        Yield("CustomPlace", &CreateCustomPlace);
 #define YIELD_MAKE_ATTRIBUTE(attr_type) \
-  DoEach(attr_type::name(), &MakePirAttributeImpl<attr_type>::Call);
+  Yield(attr_type::name(), &MakePirAttributeImpl<attr_type>::Call);
         FOR_EACH_PIR_ATTRIBUTE_TYPE(YIELD_MAKE_ATTRIBUTE);
 #undef YIELD_MAKE_ATTRIBUTE
 
-#define YIELD_MAKE_TYPE(cls) DoEach(cls::name(), &MakePirTypeImpl<cls>::Call);
+#define YIELD_MAKE_TYPE(cls) Yield(cls::name(), &MakePirTypeImpl<cls>::Call);
         FOR_EACH_PIR_ALTERNATIVE_TYPLE(YIELD_MAKE_TYPE);
 #undef YIELD_MAKE_TYPE
       }));

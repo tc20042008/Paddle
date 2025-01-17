@@ -107,6 +107,76 @@ struct TopoMatcher {
     return num_sg_nodes == ctx->num_matched_bg_nodes();
   }
 
+  adt::Result<std::size_t> NumUndeterminedNodes(
+      const GraphMatchCtx<bg_node_t>& ctx) const {
+    std::size_t num_undetermined_nodes = 0;
+    using LoopCtrl = adt::Result<adt::LoopCtrl>;
+    auto Acc = [&](auto* lst) -> LoopCtrl {
+      num_undetermined_nodes += (lst->size() > 1);
+      return adt::Continue{};
+    };
+    ADT_RETURN_IF_ERR(
+        ctx->topo_match_ctx.shared_ptr()->LoopMutBigGraphNode(Acc));
+    return num_undetermined_nodes;
+  }
+
+  adt::Result<std::optional<std::list<bg_node_t>*>>
+  MutFirstUndeterminedBigGraphNodes(GraphMatchCtx<bg_node_t>* ctx) const {
+    std::optional<std::list<bg_node_t>*> ret;
+    using LoopCtrl = adt::Result<adt::LoopCtrl>;
+    auto Find = [&](auto* lst) -> LoopCtrl {
+      if (lst->size() > 1) {
+        ret = lst;
+        return adt::Break{};
+      }
+      return adt::Continue{};
+    };
+    ADT_RETURN_IF_ERR(
+        (*ctx)->topo_match_ctx.shared_ptr()->LoopMutBigGraphNode(Find));
+    return ret;
+  }
+
+  template <typename RematchT>
+  adt::Result<adt::Ok> InplaceForcePickOneLastUndetermined(
+      GraphMatchCtx<bg_node_t>* ctx,
+      const RematchT& Rematch,
+      int loop_limit) const {
+    while (true) {
+      if (--loop_limit < 0) {
+        return adt::errors::TypeError{
+            "dead loop detected in InplaceForcePickOneLastUndetermined()"};
+      }
+      ADT_LET_CONST_REF(num_undetermined_nodes, NumUndeterminedNodes(*ctx));
+      if (num_undetermined_nodes == 0) {
+        return adt::Ok{};
+      }
+      if (num_undetermined_nodes == 1) {
+        break;
+      }
+      ADT_LET_CONST_REF(opt_lst, MutFirstUndeterminedBigGraphNodes(ctx));
+      ADT_CHECK(opt_lst.has_value());
+      ADT_CHECK(opt_lst.value()->size() > 1);
+      opt_lst.value()->resize(1);
+      ADT_LET_CONST_REF(ctrl, Rematch(ctx));
+      if (ctrl.template Has<adt::Break>()) {
+        return adt::Ok{};
+      }
+    }
+    ADT_LET_CONST_REF(opt_lst, MutFirstUndeterminedBigGraphNodes(ctx));
+    ADT_CHECK(opt_lst.has_value());
+    ADT_CHECK(opt_lst.value()->size() > 1);
+    std::list<bg_node_t> candidate_lst(*opt_lst.value());
+    opt_lst.value()->resize(1);
+    for (const auto& node : candidate_lst) {
+      *opt_lst.value()->begin() = node;
+      ADT_LET_CONST_REF(ctrl, Rematch(ctx));
+      if (ctrl.template Has<adt::Break>()) {
+        return adt::Ok{};
+      }
+    }
+    return adt::Ok{};
+  }
+
  private:
   adt::Result<TopoMatchCtx<bg_node_t, sg_node_t>> MakeTopoMatchCtxFromAnchor(
       const bg_node_t& bg_node, const sg_node_t& anchor_node) {

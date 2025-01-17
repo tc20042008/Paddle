@@ -238,12 +238,14 @@ struct ApRewriter {
   ApLowerFusionOpPatternCtx ctx_;
   adt::Result<std::optional<GraphMatchCtx>> (*Match_)(const DrrCtx&,
                                                       pir::Operation* op);
+  mutable std::unordered_map<pir::Operation*, std::size_t>* times_;
   mutable ApDrrHelper ap_drr_helper_;
 
   ApRewriter(const ApLowerFusionOpPatternCtx& ctx,
              adt::Result<std::optional<GraphMatchCtx>> (*Match)(
-                 const DrrCtx&, pir::Operation* op))
-      : ctx_(ctx), Match_(Match), ap_drr_helper_() {}
+                 const DrrCtx&, pir::Operation* op),
+             std::unordered_map<pir::Operation*, std::size_t>* times)
+      : ctx_(ctx), Match_(Match), times_(times), ap_drr_helper_() {}
 
   adt::Result<bool> Rewrite(const GraphMatchCtx& match_ctx,
                             pir::Operation* op,
@@ -263,8 +265,12 @@ struct ApRewriter {
     return rewrited;
   }
 
+  using IrValue2UseIterators =
+      std::unordered_map<pir::Value, std::list<pir::Value::UseIterator>>;
+
   struct RewriteCtx {
-    const std::unordered_map<pir::Operation*, int64_t> matched_op2order_value;
+    std::unordered_map<pir::Operation*, int64_t> matched_op2order_value;
+    IrValue2UseIterators output2original_uses;
     std::unordered_map<std::string, pir::Value> name2native_value;
     std::unordered_map<std::string, std::vector<pir::Value>> name2packed_values;
 
@@ -336,6 +342,31 @@ struct ApRewriter {
           return std::nullopt;
         });
   }
+
+  adt::Result<adt::Ok> InitRewriteCtx(
+      RewriteCtx* rewrite_ctx, const GraphMatchCtx& graph_match_ctx) const {
+    ADT_LET_CONST_REF(matched_op2order_value_map,
+                      MakeMatchedOp2OrderValue(graph_match_ctx));
+    rewrite_ctx->matched_op2order_value = matched_op2order_value_map;
+    auto* map = &rewrite_ctx->output2original_uses;
+    ADT_RETURN_IF_ERR(InitResPtnOutput2UseIterators(map, graph_match_ctx));
+    return adt::Ok{};
+  }
+
+  adt::Result<adt::Ok> InitResPtnOutput2UseIterators(
+      IrValue2UseIterators* map, const GraphMatchCtx& graph_match_ctx) const {
+    auto UpdateValue2Use = [&](pir::Value output) -> adt::Result<adt::Ok> {
+      auto* lst = &(*map)[output];
+      for (auto iter = output.use_begin(); iter != output.use_end(); ++iter) {
+        lst->emplace_back(iter);
+      }
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(
+        VisitResPtnOutputPirValue(graph_match_ctx, UpdateValue2Use));
+    return adt::Ok{};
+  }
+
   adt::Result<std::unordered_map<pir::Operation*, int64_t>>
   MakeMatchedOp2OrderValue(const GraphMatchCtx& match_ctx) const {
     ADT_LET_CONST_REF(ops, GetMatchedOps(match_ctx));
@@ -382,9 +413,8 @@ struct ApRewriter {
         match_ctx,
         op,
         [&](const auto& CodeGenResultCollect) -> adt::Result<adt::Ok> {
-          ADT_LET_CONST_REF(matched_op2order_value,
-                            MakeMatchedOp2OrderValue(match_ctx));
-          RewriteCtx rewrite_ctx{matched_op2order_value, {}, {}};
+          RewriteCtx rewrite_ctx;
+          ADT_RETURN_IF_ERR(InitRewriteCtx(&rewrite_ctx, match_ctx));
           auto Build = [&](const auto& res_ptn_op) -> adt::Result<adt::Ok> {
             return BuildNewOp(rewriter,
                               res_ptn_op,
@@ -437,10 +467,58 @@ struct ApRewriter {
       const RewriteCtx& rewrite_ctx,
       pir::PatternRewriter* rewriter) const {
     auto Replace = [&](pir::Value from, pir::Value to) -> adt::Result<adt::Ok> {
-      rewriter->ReplaceAllUsesWith(from, to);
+      // Reason for no use of `rewriter->ReplaceAllUsesWith(from, to)`:
+      // AP drr machanism support result pattern like:
+      //   o.foo_op(
+      //     [o.bar_value],
+      //     [o.bar_value]
+      //   )
+      // It will insert `foo_op` between pir::Value named `bar_value` and its
+      // consumer ops except the newly inserted `foo_op`.
+      auto iter = rewrite_ctx.output2original_uses.find(from);
+      ADT_CHECK(iter != rewrite_ctx.output2original_uses.end());
+      for (auto use_iter : iter->second) {
+        use_iter->set_source(to);
+      }
       return adt::Ok{};
     };
     return VisitOutputPirValueReplacementPair(match_ctx, rewrite_ctx, Replace);
+  }
+
+  template <typename YieldT>
+  adt::Result<adt::Ok> VisitResPtnOutputPirValue(const GraphMatchCtx& match_ctx,
+                                                 const YieldT& Yield) const {
+    for (const auto& res_ptn_drr_ir_value : ctx_.res_ptn_outputs) {
+      const auto& opt_drr_ir_value =
+          SrcPtnIrValue4ResPtnIrValue(res_ptn_drr_ir_value);
+      ADT_CHECK(opt_drr_ir_value.has_value());
+      const auto& drr_ir_value = opt_drr_ir_value.value();
+      const auto& ret = drr_ir_value.Match(
+          [&](const DrrNativeIrValue& native_ir_value) -> adt::Result<adt::Ok> {
+            ADT_LET_CONST_REF(
+                pir_node,
+                match_ctx->GetSoleBigGraphNode(native_ir_value->node));
+            ADT_LET_CONST_REF(
+                pir_value,
+                pir_node.template TryGet<ap::paddle::NativeIrValue>());
+            return Yield(pir_value.value);
+          },
+          [&](const DrrPackedIrValue& packed_ir_value) -> adt::Result<adt::Ok> {
+            ADT_LET_CONST_REF(from_nodes,
+                              match_ctx->GetPackedBigGraphIrValueNodes(
+                                  packed_ir_value->node));
+            for (int i = 0; i < from_nodes->size(); ++i) {
+              const auto& from_node = from_nodes->at(i);
+              ADT_LET_CONST_REF(
+                  pir_value,
+                  from_node.template TryGet<ap::paddle::NativeIrValue>());
+              ADT_RETURN_IF_ERR(Yield(pir_value.value));
+            }
+            return adt::Ok{};
+          });
+      ADT_RETURN_IF_ERR(ret);
+    }
+    return adt::Ok{};
   }
 
   template <typename DoEachPairT>
@@ -640,17 +718,23 @@ struct ApRewriter {
       const DrrNativeIrOp& res_ptn_ir_op,
       const std::vector<pir::Value>& inputs,
       const pir::AttributeMap& attrs) const {
-    ADT_LET_CONST_REF(
-        opt_ret,
-        ap::paddle::CreateOperation(
-            rewriter, res_ptn_ir_op->op_declare->op_name, inputs, attrs));
-    if (opt_ret.has_value()) {
-      return opt_ret.value();
+    {
+      ADT_LET_CONST_REF(
+          opt_op,
+          ap::paddle::CreateOperation(
+              rewriter, res_ptn_ir_op->op_declare->op_name, inputs, attrs));
+      if (opt_op.has_value()) {
+        // disable rematching once.
+        ++(*times_)[opt_op.value()];
+        return opt_op.value()->results();
+      }
     }
     try {
       pir::Operation* op =
           paddle::drr::OperationFactory::Instance().CreateOperation(
               res_ptn_ir_op->op_declare->op_name, inputs, attrs, *rewriter);
+      // disable rematching once.
+      ++(*times_)[op];
       return op->results();
     } catch (const std::exception& e) {
       return adt::errors::ValueError{
@@ -1024,6 +1108,7 @@ struct ApRewriter {
         infer_meta_lambda_str,
         kernel_dispatch_lambda_str,
         kernel_dispatch_const_data_lambda_str);
+    ++(*times_)[ap_unary];
     return ap_unary.out();
   }
 
@@ -1640,10 +1725,26 @@ struct NativeOpAnchorApLowerFusionOpPatternMatcher {
           pir_augmented_graph, drr_graph);
       ADT_RETURN_IF_ERR(graph_matcher.UpdateByConnectionsUntilDone(
           &opt_graph_match_ctx.value(), drr_op_result_anchor));
+      auto UpdateUntilDone = [&](auto* ctx) -> adt::Result<adt::LoopCtrl> {
+        ADT_RETURN_IF_ERR(graph_matcher.UpdateByConnectionsUntilDone(
+            ctx, drr_op_result_anchor));
+        ADT_LET_CONST_REF(
+            graph_matched,
+            graph_matcher.IsGraphMatched(*ctx, drr_op_result_anchor));
+        if (graph_matched) {
+          return adt::Break{};
+        } else {
+          return adt::Continue{};
+        }
+      };
+      ADT_RETURN_IF_ERR(graph_matcher.InplaceForcePickOneLastUndetermined(
+          &opt_graph_match_ctx.value(), UpdateUntilDone));
       ADT_LET_CONST_REF(graph_matched,
                         graph_matcher.IsGraphMatched(
                             opt_graph_match_ctx.value(), drr_op_result_anchor));
-      ADT_CHECK(graph_matched);
+      if (!graph_matched) {
+        opt_graph_match_ctx = std::nullopt;
+      }
     }
     if (!opt_graph_match_ctx.has_value()) {
       return std::nullopt;
@@ -2117,21 +2218,23 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
  private:
   ApLowerFusionOpPatternCtx ctx_;
   ApRewriter<DrrCtxHelper> ap_rewriter_;
-  mutable int64_t times_;
+  mutable std::unordered_map<pir::Operation*, std::size_t> times_;
 
  public:
   NativeOpAnchorApLowerFusionOpPattern(pir::IrContext* ir_context,
                                        const ApLowerFusionOpPatternCtx& ctx)
       : pir::RewritePattern(ctx.anchor_op_name, 1, ir_context, {}),
         ctx_(ctx),
-        ap_rewriter_(ctx, &NativeOpAnchorApLowerFusionOpPatternMatcher::Match),
-        times_(0) {}
+        times_{},
+        ap_rewriter_(
+            ctx, &NativeOpAnchorApLowerFusionOpPatternMatcher::Match, &times_) {
+  }
 
   bool MatchAndRewrite(
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const override {  // // NOLINT
     if (ctx_.steps_limit.has_value()) {
-      if (times_ >= ctx_.steps_limit.value()) {
+      if (times_[op] >= ctx_.steps_limit.value()) {
         return false;
       }
     }
@@ -2145,7 +2248,7 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     }
     bool success = ret.GetOkValue();
     if (success) {
-      ++times_;
+      ++times_[op];
     }
     return success;
   }
@@ -2249,22 +2352,23 @@ template <typename DrrCtxHelper>
 class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
  private:
   ApLowerFusionOpPatternCtx ctx_;
+  mutable std::unordered_map<pir::Operation*, std::size_t> times_;
   ApRewriter<DrrCtxHelper> ap_rewriter_;
-  mutable int64_t times_;
 
  public:
   DefaultAnchorApLowerFusionOpPattern(pir::IrContext* ir_context,
                                       const ApLowerFusionOpPatternCtx& ctx)
       : pir::RewritePattern(ctx.anchor_op_name, 1, ir_context, {}),
         ctx_(ctx),
-        ap_rewriter_(ctx, &DefaultAnchorApLowerFusionOpPatternMatcher::Match),
-        times_(0) {}
+        times_{},
+        ap_rewriter_(
+            ctx, &DefaultAnchorApLowerFusionOpPatternMatcher::Match, &times_) {}
 
   bool MatchAndRewrite(
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const override {  // // NOLINT
     if (ctx_.steps_limit.has_value()) {
-      if (times_ >= ctx_.steps_limit.value()) {
+      if (times_[op] >= ctx_.steps_limit.value()) {
         return false;
       }
     }
@@ -2278,7 +2382,7 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     }
     bool success = ret.GetOkValue();
     if (success) {
-      ++times_;
+      ++times_[op];
     }
     return success;
   }

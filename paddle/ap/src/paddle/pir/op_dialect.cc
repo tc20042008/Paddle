@@ -25,8 +25,12 @@ OperatorDialect::OperatorDialect(::pir::IrContext *context)
 }
 
 void OperatorDialect::initialize() {
-  RegisterOp<IdUpSpider>();
-  RegisterOp<IdDownSpider>();
+  RegisterOp<IdUpSpiderOp>();
+  RegisterOp<IdDownSpiderOp>();
+  RegisterOp<LoadPlaceholderOp>();
+  RegisterOp<StorePlaceholderOp>();
+  RegisterOp<LoadOp>();
+  RegisterOp<StoreOp>();
 }
 
 }  // namespace dialect

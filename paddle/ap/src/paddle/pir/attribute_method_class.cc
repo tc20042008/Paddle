@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/paddle/pir/attribute_method_class.h"
+#include "paddle/ap/include/axpr/abstract_list.h"
 
 namespace ap::paddle {
 
@@ -37,8 +38,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirAttributeClass() {
 adt::Result<axpr::Value> MakePirAttributeImplBoolAttribute::Call(
     const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
   ADT_CHECK(args.size() == 1);
-  ADT_LET_CONST_REF(data_val, args.at(0).template CastTo<axpr::DataValue>());
-  ADT_LET_CONST_REF(bool_val, data_val.template TryGet<bool>());
+  ADT_LET_CONST_REF(bool_val, args.at(0).template CastTo<bool>());
   pir::Attribute attr{
       pir::BoolAttribute::get(pir::IrContext::Instance(), bool_val)};
   return GetPirAttributeClass().New(attr);
@@ -179,12 +179,25 @@ adt::Result<axpr::Value> MakePirAttributeImplKernelAttribute::Call(
 
 adt::Result<axpr::Value> MakePirAttributeImplIntArrayAttribute::Call(
     const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+      std::string() + ::paddle::dialect::IntArrayAttribute::name() +
+      "() takes 1 argument, but " + std::to_string(args.size()) +
+      " were given"};
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<axpr::Value>::CastFrom(args.at(0)))
+      << adt::errors::TypeError{
+             std::string() + "the argument 1 of" +
+             ::paddle::dialect::IntArrayAttribute::name() +
+             "() should be a list/SerializableList/MutableList (not " +
+             axpr::GetTypeName(args.at(0)) + ")"};
   std::vector<int64_t> int_array;
-  int_array.reserve(args.size());
-  for (const auto& arg : args) {
-    ADT_LET_CONST_REF(elt, arg.template CastTo<int64_t>());
-    int_array.emplace_back(elt);
-  }
+  ADT_LET_CONST_REF(lst_size, lst.size());
+  int_array.reserve(lst_size);
+  ADT_RETURN_IF_ERR(
+      lst.Visit([&](const auto& arg) -> adt::Result<adt::LoopCtrl> {
+        ADT_LET_CONST_REF(elt, arg.template CastTo<int64_t>());
+        int_array.emplace_back(elt);
+        return adt::Continue{};
+      }));
   pir::Attribute attr{::paddle::dialect::IntArrayAttribute::get(
       pir::IrContext::Instance(), int_array)};
   return GetPirAttributeClass().New(attr);

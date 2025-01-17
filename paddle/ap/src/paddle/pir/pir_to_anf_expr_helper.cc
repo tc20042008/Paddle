@@ -273,9 +273,7 @@ struct AttrToAnfExprConverter<pir::BoolAttribute> {
                                          pir::Attribute attr) {
     ADT_CHECK(attr.template isa<pir::BoolAttribute>());
     const auto& attr_impl = attr.template dyn_cast<pir::BoolAttribute>();
-    const auto& attr_str = ctx->String(std::to_string(attr_impl.data()));
-    const auto& attr_data_val =
-        ctx->Var("DataValue").Attr("bool").Call(attr_str);
+    const auto& attr_data_val = ctx->Bool(attr_impl.data());
     return ctx->Var("pir").Attr(pir::BoolAttribute::name()).Call(attr_data_val);
   }
 };
@@ -523,7 +521,7 @@ struct AttrToAnfExprConverter<::paddle::dialect::IntArrayAttribute> {
     }
     return ctx->Var("pir")
         .Attr(::paddle::dialect::IntArrayAttribute::name())
-        .Apply(elts_anf_exprs);
+        .Call(ctx->Var(axpr::kBuiltinList()).Call(elts_anf_exprs));
   }
 };
 

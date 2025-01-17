@@ -18,17 +18,26 @@
 #include <optional>
 #include "paddle/pir/include/pass/pass.h"
 
+namespace ap::memory {
+
+class CirclableRefListBase;
+
+}
+
 namespace cinn {
 namespace dialect {
 namespace ir {
 
 std::optional<std::unique_ptr<::pir::Pass>>
-CreateApLowerFusionOpAbstractDrrPass();
-std::optional<std::unique_ptr<::pir::Pass>>
-CreateApLowerFusionOpClassicDrrPass();
+CreateApLowerFusionOpAbstractDrrPass(
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list);
+std::optional<std::unique_ptr<::pir::Pass>> CreateApLowerFusionOpClassicDrrPass(
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list);
 
 std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass(
-    const std::string& drr_pass_tag, std::optional<int64_t> steps_limit);
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list,
+    const std::string& drr_pass_tag,
+    std::optional<int64_t> steps_limit);
 
 }  // namespace ir
 }  // namespace dialect

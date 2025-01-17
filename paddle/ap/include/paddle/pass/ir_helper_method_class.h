@@ -59,14 +59,18 @@ struct PirHelperMethodClass {
   }
 
   static adt::Result<axpr::Value> CreateAccessTopoDrrPass(
-      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+      axpr::InterpreterBase<axpr::Value>* interpreter,
+      const axpr::Value& self_val,
+      const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "create_ap_drr_pass() takes 1 arguments, but " +
         std::to_string(args.size()) + " were given"};
     ADT_LET_CONST_REF(drr_pass_tag_name,
                       args.at(0).template CastTo<std::string>());
     auto opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
-        drr_pass_tag_name, /*steps_limit=*/std::nullopt);
+        interpreter->circlable_ref_list(),
+        drr_pass_tag_name,
+        /*steps_limit=*/std::nullopt);
     if (!opt_pass.has_value()) {
       return adt::Nothing{};
     }
@@ -75,14 +79,18 @@ struct PirHelperMethodClass {
   }
 
   static adt::Result<axpr::Value> CreateAccessTopoDrrOneStepPass(
-      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
+      axpr::InterpreterBase<axpr::Value>* interpreter,
+      const axpr::Value& self_val,
+      const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "create_ap_drr_pass() takes 1 arguments, but " +
         std::to_string(args.size()) + " were given"};
     ADT_LET_CONST_REF(drr_pass_tag_name,
                       args.at(0).template CastTo<std::string>());
     auto opt_pass = cinn::dialect::ir::CreateAccessTopoDrrPass(
-        drr_pass_tag_name, /*steps_limit=*/1);
+        interpreter->circlable_ref_list(),
+        drr_pass_tag_name,
+        /*steps_limit=*/1);
     if (!opt_pass.has_value()) {
       return adt::Nothing{};
     }
@@ -159,8 +167,10 @@ struct PirHelperMethodClass {
     return adt::Ok{};
   }
 
-  static adt::Result<axpr::Value> Match(const axpr::Value& self_val,
-                                        const std::vector<axpr::Value>& args) {
+  static adt::Result<axpr::Value> Match(
+      axpr::InterpreterBase<axpr::Value>* interpreter,
+      const axpr::Value& self_val,
+      const std::vector<axpr::Value>& args) {
     ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
         std::string() + "PirHelper.match() takes 2 arguments, but " +
         std::to_string(args.size()) + " were given"};
@@ -180,9 +190,10 @@ struct PirHelperMethodClass {
                                                src_ptn_func};
     ADT_LET_CONST_REF(lambda, This{}.GetDrrCtxMaker());
     axpr::Function<axpr::SerializableValue> function{lambda, std::nullopt};
-    ADT_LET_CONST_REF(drr_ctx,
-                      cinn::dialect::ir::ApDrrHelper{}.InterpretDrrCtxMaker(
-                          function, src_ptn_func_args));
+    ADT_LET_CONST_REF(
+        drr_ctx,
+        cinn::dialect::ir::ApDrrHelper{interpreter->circlable_ref_list()}
+            .InterpretDrrCtxMaker(function, src_ptn_func_args));
     ADT_CHECK(drr_ctx->source_pattern_ctx.has_value());
     ap::paddle::PackedIrOpInnerSourcePatternHelper src_pattern_helper{};
     ADT_LET_CONST_REF(

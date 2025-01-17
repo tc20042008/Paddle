@@ -41,8 +41,10 @@ adt::Result<adt::Ok> InferMetaByLambda(
     const Lambda& lambda,
     const std::vector<const MetaTensor*>* inputs,
     std::vector<MetaTensor*>* outputs) {
+  ap::memory::Guard guard{};
   ap::axpr::Interpreter interpreter(
-      ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>());
+      ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>(),
+      guard.circlable_ref_list());
   ADT_RETURN_IF_ERR(interpreter.Interpret(
       lambda,
       {ap::paddle::GetConstStdVectorConstMetaTensorPtrPtrClass().New(inputs),

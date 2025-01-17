@@ -176,10 +176,11 @@ struct MethodClassImpl<ValueT, TypeImpl<ClassInstance<ValueT>>> {
                                 const Self& self,
                                 const std::vector<ValueT>& args) {
     const auto& class_attrs = self.class_attrs;
+    ADT_LET_CONST_REF(ref_lst,
+                      adt::WeakPtrLock(interpreter->circlable_ref_list()));
     const auto& instance = [&] {
       const auto& instance_attrs = InstanceAttrs<ValueT>::Make(
-          interpreter->circlable_ref_list(),
-          std::make_shared<AttributeImpl<ValueT>>());
+          ref_lst, std::make_shared<AttributeImpl<ValueT>>());
       TypeImpl<ClassInstance<ValueT>> type(class_attrs);
       return ClassInstance<ValueT>{type, instance_attrs};
     }();

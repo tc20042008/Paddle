@@ -167,9 +167,10 @@ struct MethodClassImpl<ValueT, TypeImpl<MutableList<ValueT>>> {
 
   adt::Result<ValueT> Construct(axpr::InterpreterBase<ValueT>* interpreter,
                                 const std::vector<ValueT>& args) {
-    const auto& mut_list =
-        MutableList<ValueT>::Make(interpreter->circlable_ref_list(),
-                                  std::make_shared<std::vector<ValueT>>());
+    ADT_LET_CONST_REF(ref_lst,
+                      adt::WeakPtrLock(interpreter->circlable_ref_list()));
+    const auto& mut_list = MutableList<ValueT>::Make(
+        ref_lst, std::make_shared<std::vector<ValueT>>());
     ADT_LET_CONST_REF(ptr, mut_list.Mut());
     *ptr = args;
     return mut_list;

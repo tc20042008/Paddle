@@ -83,13 +83,7 @@ struct DrrCtxMethodClass {
       const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 1);
-    ADT_LET_CONST_REF(
-        constraint_func,
-        args.at(0).template CastTo<axpr::Function<axpr::SerializableValue>>())
-        << adt::errors::TypeError{std::string() +
-                                  "DrrCtx.init_constraint_func() missing "
-                                  "function typed argument 1"};
-    self.shared_ptr()->constraint_func = constraint_func;
+    self.shared_ptr()->constraint_func = args.at(0);
     return adt::Nothing{};
   }
 
@@ -139,7 +133,7 @@ struct TypeImplDrrCtxMethodClass {
         empty_self,
         instance_val
             .template CastTo<axpr::BuiltinClassInstance<axpr::Value>>());
-    DrrCtx self{};
+    DrrCtx self{interpreter->circlable_ref_list()};
     if (packed_args_val.size() == 0) {
       return empty_self.type.New(self);
     }

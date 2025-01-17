@@ -114,9 +114,9 @@ struct ReifiedDrrPassDumpHelperImpl {
   }
 
   adt::Result<axpr::AnfExpr> DefineConstraintLambda() {
-    ADT_CHECK(abstract_drr_ctx_->constraint_func.has_value());
-    const auto& core_expr = abstract_drr_ctx_->constraint_func.value()->lambda;
-    return axpr::ConvertCoreExprToAnfExpr(core_expr);
+    axpr::LambdaExprBuilder lmbd;
+    return lmbd.Lambda({"o", "t", "ir_helper"},
+                       [&](auto& ctx) { return ctx.Bool(true); });
   }
 
   adt::Result<axpr::AnfExpr> DefineOrGetResultPatternFunc(

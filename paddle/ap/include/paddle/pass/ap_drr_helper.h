@@ -23,8 +23,9 @@ namespace cinn::dialect::ir {
 
 struct ApDrrHelper {
  public:
-  ApDrrHelper();
-  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
+  explicit ApDrrHelper(const std::weak_ptr<ap::memory::CirclableRefListBase>&
+                           circlable_ref_list);
+  using Function = ap::axpr::Value;
 
   using DrrNode = ap::drr::Node;
   using DrrCtx = ap::drr::DrrCtx;

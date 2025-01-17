@@ -39,9 +39,11 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
  public:
   using This = CpsInterpreter;
   using Env = Environment<axpr::Value>;
-  explicit CpsInterpreter(const AttrMap<axpr::Value>& builtin_frame_attr_map)
+  explicit CpsInterpreter(
+      const AttrMap<axpr::Value>& builtin_frame_attr_map,
+      const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
       : builtin_env_(GetBuiltinEnvironment(builtin_frame_attr_map)),
-        circlable_ref_list_(std::make_shared<memory::CirclableRefList>()) {}
+        circlable_ref_list_(circlable_ref_list) {}
   CpsInterpreter(const CpsInterpreter&) = delete;
   CpsInterpreter(CpsInterpreter&&) = delete;
 
@@ -55,10 +57,9 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
     return Interpret(function, args);
   }
 
-  Result<axpr::Value> Interpret(const Function<SerializableValue>& function,
+  Result<axpr::Value> Interpret(const axpr::Value& function,
                                 const std::vector<axpr::Value>& args) {
-    ADT_LET_CONST_REF(closure, ConvertFunctionToClosure(function));
-    return InterpretCall(closure, args);
+    return InterpretCall(function, args);
   }
 
   Result<axpr::Value> InterpretCall(
@@ -78,9 +79,9 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
       const Lambda<CoreExpr>& lambda) override {
     std::optional<std::shared_ptr<Environment<axpr::Value>>> env;
     {
+      ADT_LET_CONST_REF(ref_lst, adt::WeakPtrLock(circlable_ref_list_));
       auto tmp_frame_object = std::make_shared<AttributeImpl<axpr::Value>>();
-      auto tmp_frame =
-          Frame<axpr::Value>::Make(circlable_ref_list_, tmp_frame_object);
+      auto tmp_frame = Frame<axpr::Value>::Make(ref_lst, tmp_frame_object);
       const auto& mut_global_env = MakeMutableGlobalEnvironment(
           builtin_env(), const_global_frame, tmp_frame);
       env = mut_global_env;
@@ -381,7 +382,7 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
                           const Closure<axpr::Value>& closure,
                           const std::vector<axpr::Value>& args,
                           ComposedCallImpl<axpr::Value>* ret_composed_call) {
-    const auto& new_env = MakeCallEnvironment(closure->environment);
+    ADT_LET_CONST_REF(new_env, MakeCallEnvironment(closure->environment));
     ADT_RETURN_IF_ERR(new_env->Set(kBuiltinReturn(), continuation));
     return InterpretLambdaCall(
         new_env, continuation, closure->lambda, args, ret_composed_call);
@@ -580,13 +581,13 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
     return adt::Ok{};
   }
 
-  std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list()
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list()
       const override {
     return circlable_ref_list_;
   }
 
   std::shared_ptr<Env> builtin_env_;
-  std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list_;
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
 
  private:
   Result<Closure<axpr::Value>> ConvertFunctionToClosure(
@@ -621,11 +622,11 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
         parent, const_frame, temp_frame);
   }
 
-  std::shared_ptr<Environment<axpr::Value>> MakeCallEnvironment(
+  adt::Result<std::shared_ptr<Environment<axpr::Value>>> MakeCallEnvironment(
       const std::shared_ptr<Environment<axpr::Value>>& parent) {
     auto builtin_obj = std::make_shared<AttributeImpl<axpr::Value>>();
-    const auto& frame =
-        Frame<axpr::Value>::Make(circlable_ref_list_, builtin_obj);
+    ADT_LET_CONST_REF(ref_lst, adt::WeakPtrLock(circlable_ref_list()));
+    const auto& frame = Frame<axpr::Value>::Make(ref_lst, builtin_obj);
     return std::make_shared<CallEnvironment<axpr::Value>>(parent, frame);
   }
 };

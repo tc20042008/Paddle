@@ -25,9 +25,11 @@ class DrrInterpreter {
  public:
   explicit DrrInterpreter(
       const axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>&
-          backend_ir_ctx);
+          backend_ir_ctx,
+      const std::weak_ptr<ap::memory::CirclableRefListBase>&
+          circlable_ref_list);
 
-  using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
+  using Function = ap::axpr::Value;
 
   using DrrNode = ap::drr::Node;
   using DrrCtx = ap::drr::DrrCtx;

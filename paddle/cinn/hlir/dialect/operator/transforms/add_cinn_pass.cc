@@ -24,6 +24,7 @@
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
+#include "paddle/ap/include/memory/guard.h"
 #include "paddle/ap/include/paddle/pass/ap_lower_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
@@ -212,7 +213,9 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
   }
   if (FLAGS_enable_ap) {
-    if (auto pass = CreateApLowerFusionOpClassicDrrPass()) {
+    ap::memory::Guard guard{};
+    if (auto pass =
+            CreateApLowerFusionOpClassicDrrPass(guard.circlable_ref_list())) {
       pass_manager->AddPass(std::move(pass.value()));
       pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
       pir::IrPrinter(LOG(ERROR) << "before ApLowerFusionOpClassicDrrPass:\n")
@@ -221,7 +224,8 @@ void ApplyCinnLowerPass(
       pir::IrPrinter(LOG(ERROR) << "after ApLowerFusionOpClassicDrrPass:\n")
           .PrintProgram(program);
     }
-    if (auto pass = CreateApLowerFusionOpAbstractDrrPass()) {
+    if (auto pass =
+            CreateApLowerFusionOpAbstractDrrPass(guard.circlable_ref_list())) {
       pass_manager->AddPass(std::move(pass.value()));
       pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
       pir::IrPrinter(LOG(ERROR) << "before ApLowerFusionOpAbstractDrrPass:\n")

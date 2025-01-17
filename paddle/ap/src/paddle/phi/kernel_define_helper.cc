@@ -17,6 +17,7 @@
 #include "paddle/ap/include/code_module/builtin_frame_util.h"
 #include "paddle/ap/include/code_module/value.h"
 #include "paddle/ap/include/code_module/value_method_class.h"
+#include "paddle/ap/include/memory/guard.h"
 
 namespace phi {
 
@@ -34,8 +35,10 @@ using Val = ap::code_module::Value;
 
 adt::Result<CodeModule> KernelDefineHelper::InterpretKernelDefineLambda(
     const Lambda& lambda) {
+  ap::memory::Guard guard{};
   ap::axpr::Interpreter cps_interpreter(
-      ap::code_module::MakeBuiltinFrameAttrMap<Val>());
+      ap::code_module::MakeBuiltinFrameAttrMap<Val>(),
+      guard.circlable_ref_list());
   ADT_LET_CONST_REF(interpret_ret, cps_interpreter.Interpret(lambda, {}));
   ADT_LET_CONST_REF(m, ap::axpr::Get<CodeModule>(interpret_ret));
   return m;

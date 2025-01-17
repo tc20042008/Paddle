@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ap/include/paddle/pass/ap_lower_fusion_op_pass.h"
+#include "paddle/ap/include/memory/circlable_ref_list_base.h"
 
 #include "paddle/ap/include/adt/topo_walker.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
@@ -245,7 +246,10 @@ struct ApRewriter {
              adt::Result<std::optional<GraphMatchCtx>> (*Match)(
                  const DrrCtx&, pir::Operation* op),
              std::unordered_map<pir::Operation*, std::size_t>* times)
-      : ctx_(ctx), Match_(Match), times_(times), ap_drr_helper_() {}
+      : ctx_(ctx),
+        Match_(Match),
+        times_(times),
+        ap_drr_helper_(ctx_.drr_ctx->circlable_ref_list) {}
 
   adt::Result<bool> Rewrite(const GraphMatchCtx& match_ctx,
                             pir::Operation* op,
@@ -457,8 +461,9 @@ struct ApRewriter {
       ADT_CHECK(iter != fused_op_name2code_gen_result.end());
       return iter->second;
     };
-    ADT_RETURN_IF_ERR(DrrCtxHelper{}.DumpReifiedDrrPass(
-        Match_, ctx_.drr_ctx, op, match_ctx, CodeGenResult4FusedOpName));
+    ADT_RETURN_IF_ERR(
+        DrrCtxHelper{ctx_.drr_ctx->circlable_ref_list}.DumpReifiedDrrPass(
+            Match_, ctx_.drr_ctx, op, match_ctx, CodeGenResult4FusedOpName));
     return adt::Ok{};
   }
 
@@ -705,9 +710,7 @@ struct ApRewriter {
   adt::Result<adt::Ok> VisitResPtnOpAttr(const DrrNativeIrOp& res_ptn_ir_op,
                                          const YieldT& Yield) const {
     const auto& attr_map = res_ptn_ir_op->op_declare->attr_map;
-    using FuncT = ap::axpr::Function<ap::axpr::SerializableValue>;
-    for (const auto& [attr_name, attr_val] : attr_map->storage) {
-      ADT_LET_CONST_REF(getter, attr_val.template CastTo<FuncT>());
+    for (const auto& [attr_name, getter] : attr_map->storage) {
       ADT_RETURN_IF_ERR(Yield(attr_name, getter));
     }
     return adt::Ok{};
@@ -1065,7 +1068,7 @@ struct ApRewriter {
     ADT_LET_CONST_REF(arg_source_ctx,
                       MakeArgSourceCtx(match_ctx, res_ptn_ir_op));
     CodeGenCtx code_gen_ctx{ir_match_ctx, res_ptn_ir_op, arg_source_ctx};
-    ApKernelDefineHelper helper{};
+    ApKernelDefineHelper helper{ctx_.drr_ctx->circlable_ref_list};
     ADT_LET_CONST_REF(result, helper.Interpret(lambda, code_gen_ctx));
     return result;
   }
@@ -1579,7 +1582,7 @@ struct ConstraintApplier {
     IrMatchCtx ir_match_ctx{drr_ctx->source_pattern_ctx.value(),
                             graph_match_ctx};
     const auto& args = GetConstraintFuncArgs(ir_match_ctx);
-    ApDrrHelper ap_drr_helper{};
+    ApDrrHelper ap_drr_helper{drr_ctx->circlable_ref_list};
     ADT_LET_CONST_REF(is_match_val,
                       ap_drr_helper.Interpret(constraint_func, args));
     ADT_CHECK(drr_ctx->pass_name.has_value());
@@ -2415,15 +2418,19 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
 template <typename DrrCtxHelper>
 class ApLowerFusionOpPass : public pir::PatternRewritePass {
  private:
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
   std::string pass_tag_name_;
   std::optional<int64_t> steps_limit_;
 
  public:
-  explicit ApLowerFusionOpPass(const std::string& name,
-                               const std::string& pass_tag_name,
-                               std::optional<int64_t> steps_limit)
+  explicit ApLowerFusionOpPass(
+      const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list,
+      const std::string& name,
+      const std::string& pass_tag_name,
+      std::optional<int64_t> steps_limit)
       : pir::PatternRewritePass(
             std::string() + "ap_lower_fusion_op_" + name + "_pass", 2),
+        circlable_ref_list_(circlable_ref_list),
         pass_tag_name_(pass_tag_name),
         steps_limit_(steps_limit) {}
 
@@ -2462,13 +2469,20 @@ class ApLowerFusionOpPass : public pir::PatternRewritePass {
 
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachDrrCtx(const DoEachT& DoEach) {
-    ADT_RETURN_IF_ERR(DrrCtxHelper{}.VisitEachDrrCtx(pass_tag_name_, DoEach));
+    ADT_RETURN_IF_ERR(DrrCtxHelper{circlable_ref_list_}.VisitEachDrrCtx(
+        pass_tag_name_, DoEach));
     return adt::Ok{};
   }
 };
 
 class AbstractDrrCtxHelper {
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
+
  public:
+  explicit AbstractDrrCtxHelper(
+      const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
+      : circlable_ref_list_(circlable_ref_list) {}
+
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachDrrCtx(const std::string& pass_tag_name,
                                        const DoEachT& DoEach) {
@@ -2537,13 +2551,14 @@ class AbstractDrrCtxHelper {
     ADT_LET_CONST_REF(lambda,
                       atomic.template TryGet<ap::axpr::Lambda<CoreExpr>>());
     const auto& frames = ap::axpr::MakeBuiltinFrameAttrMap<ap::axpr::Value>();
-    ap::axpr::CpsInterpreter interpreter{frames};
+    ap::axpr::CpsInterpreter interpreter{frames, circlable_ref_list_};
     ADT_LET_CONST_REF(drr_pass_class_val, interpreter.Interpret(lambda, {}));
     ADT_LET_CONST_REF(
         drr_pass_class,
         drr_pass_class_val.template CastTo<
             ap::axpr::TypeImpl<ap::axpr::ClassInstance<ap::axpr::Value>>>());
-    return ApDrrHelper{}.Interpret(drr_pass_class.class_attrs);
+    return ApDrrHelper{circlable_ref_list_}.Interpret(
+        drr_pass_class.class_attrs);
   }
 
   template <typename YieldT>
@@ -2583,7 +2598,8 @@ class AbstractDrrCtxHelper {
   adt::Result<DrrCtx> GetDrrCtx(
       const ap::registry::AbstractDrrPassRegistryItem& abstract_drr_pass_item) {
     ADT_LET_CONST_REF(drr_ctx,
-                      ApDrrHelper{}.Interpret(abstract_drr_pass_item->cls));
+                      ApDrrHelper{circlable_ref_list_}.Interpret(
+                          abstract_drr_pass_item->cls));
     if (!drr_ctx->pass_name.has_value()) {
       drr_ctx.shared_ptr()->pass_name =
           abstract_drr_pass_item->abstract_drr_pass_name;
@@ -2593,7 +2609,13 @@ class AbstractDrrCtxHelper {
 };
 
 class ClassicDrrCtxHelper {
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
+
  public:
+  explicit ClassicDrrCtxHelper(
+      const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
+      : circlable_ref_list_(circlable_ref_list) {}
+
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachDrrCtx(const std::string& pass_tag_name,
                                        const DoEachT& DoEach) {
@@ -2668,8 +2690,9 @@ class ClassicDrrCtxHelper {
 
   adt::Result<DrrCtx> GetDrrCtx(
       const ap::registry::ClassicDrrPassRegistryItem& classic_drr_pass_item) {
-    ADT_LET_CONST_REF(drr_ctx,
-                      ApDrrHelper{}.Interpret(classic_drr_pass_item->cls));
+    ADT_LET_CONST_REF(
+        drr_ctx,
+        ApDrrHelper{circlable_ref_list_}.Interpret(classic_drr_pass_item->cls));
     if (!drr_ctx->pass_name.has_value()) {
       drr_ctx.shared_ptr()->pass_name =
           classic_drr_pass_item->classic_drr_pass_name;
@@ -2679,7 +2702,13 @@ class ClassicDrrCtxHelper {
 };
 
 class AccessTopoDrrCtxHelper {
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
+
  public:
+  explicit AccessTopoDrrCtxHelper(
+      const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
+      : circlable_ref_list_(circlable_ref_list) {}
+
   template <typename DoEachT>
   adt::Result<adt::Ok> VisitEachDrrCtx(const std::string& pass_tag_name,
                                        const DoEachT& DoEach) {
@@ -2764,7 +2793,8 @@ class AccessTopoDrrCtxHelper {
       const ap::registry::AccessTopoDrrPassRegistryItem&
           access_topo_drr_pass_item) {
     ADT_LET_CONST_REF(drr_ctx,
-                      ApDrrHelper{}.Interpret(access_topo_drr_pass_item->cls));
+                      ApDrrHelper{circlable_ref_list_}.Interpret(
+                          access_topo_drr_pass_item->cls));
     if (!drr_ctx->pass_name.has_value()) {
       drr_ctx.shared_ptr()->pass_name =
           access_topo_drr_pass_item->access_topo_drr_pass_name;
@@ -2794,11 +2824,13 @@ std::optional<ap::registry::Registry> GetRegistrySingleton() {
 }  // namespace
 
 std::optional<std::unique_ptr<::pir::Pass>>
-CreateApLowerFusionOpAbstractDrrPass() {
+CreateApLowerFusionOpAbstractDrrPass(
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list) {
   if (!GetRegistrySingleton().has_value()) {
     return std::nullopt;
   }
-  const auto& drr_ctx_list = AbstractDrrCtxHelper{}.GetDrrCtxList();
+  const auto& drr_ctx_list =
+      AbstractDrrCtxHelper{circlable_ref_list}.GetDrrCtxList();
   if (drr_ctx_list.HasError()) {
     LOG(ERROR) << "\nTraceback (most recent call last):\n"
                << drr_ctx_list.GetError().CallStackToString() << "\n"
@@ -2811,18 +2843,20 @@ CreateApLowerFusionOpAbstractDrrPass() {
   }
   std::unique_ptr<::pir::Pass> pass =
       std::make_unique<ApLowerFusionOpPass<AbstractDrrCtxHelper>>(
+          circlable_ref_list,
           /*name=*/"abstract",
           /*pass_tag_name=*/"",
           /*steps_limit=*/std::nullopt);
   return std::move(pass);
 }
 
-std::optional<std::unique_ptr<::pir::Pass>>
-CreateApLowerFusionOpClassicDrrPass() {
+std::optional<std::unique_ptr<::pir::Pass>> CreateApLowerFusionOpClassicDrrPass(
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list) {
   if (!GetRegistrySingleton().has_value()) {
     return std::nullopt;
   }
-  const auto& drr_ctx_list = ClassicDrrCtxHelper{}.GetDrrCtxList();
+  const auto& drr_ctx_list =
+      ClassicDrrCtxHelper{circlable_ref_list}.GetDrrCtxList();
   if (drr_ctx_list.HasError()) {
     LOG(ERROR) << "\nTraceback (most recent call last):\n"
                << drr_ctx_list.GetError().CallStackToString() << "\n"
@@ -2835,6 +2869,7 @@ CreateApLowerFusionOpClassicDrrPass() {
   }
   std::unique_ptr<::pir::Pass> pass =
       std::make_unique<ApLowerFusionOpPass<ClassicDrrCtxHelper>>(
+          circlable_ref_list,
           /*name=*/"classic",
           /*pass_tag_name=*/"",
           /*steps_limit=*/std::nullopt);
@@ -2842,12 +2877,14 @@ CreateApLowerFusionOpClassicDrrPass() {
 }
 
 std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass(
-    const std::string& drr_pass_tag, std::optional<int64_t> steps_limit) {
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list,
+    const std::string& drr_pass_tag,
+    std::optional<int64_t> steps_limit) {
   if (!GetRegistrySingleton().has_value()) {
     return std::nullopt;
   }
   const auto& drr_ctx_list =
-      AccessTopoDrrCtxHelper{}.GetDrrCtxList(drr_pass_tag);
+      AccessTopoDrrCtxHelper{circlable_ref_list}.GetDrrCtxList(drr_pass_tag);
   if (drr_ctx_list.HasError()) {
     LOG(ERROR) << "\nTraceback (most recent call last):\n"
                << drr_ctx_list.GetError().CallStackToString() << "\n"
@@ -2860,6 +2897,7 @@ std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass(
   }
   std::unique_ptr<::pir::Pass> pass =
       std::make_unique<ApLowerFusionOpPass<AccessTopoDrrCtxHelper>>(
+          circlable_ref_list,
           /*name=*/"access_topo",
           /*pass_tag_name=*/drr_pass_tag,
           /*steps_limit=*/steps_limit);

@@ -30,14 +30,16 @@ namespace adt = ap::adt;
 
 namespace {
 
-using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
+using Function = ap::axpr::Value;
 
 using DrrNode = ap::drr::Node;
 using DrrCtx = ap::drr::DrrCtx;
 
 }  // namespace
 
-ApDrrHelper::ApDrrHelper() : drr_interpreter_(ap::paddle::GetPirClass()) {}
+ApDrrHelper::ApDrrHelper(
+    const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
+    : drr_interpreter_(ap::paddle::GetPirClass(), circlable_ref_list) {}
 
 adt::Result<DrrCtx> ApDrrHelper::InterpretDrrCtxMaker(
     const Function& lambda, const std::vector<ap::axpr::Value>& args) {

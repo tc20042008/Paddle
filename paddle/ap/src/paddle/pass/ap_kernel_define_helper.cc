@@ -42,7 +42,7 @@ adt::Result<CodeGenResult> ApKernelDefineHelper::Interpret(
   ap::axpr::BuiltinClassInstance<CGValue> code_gen_ctx_instance{
       ap::code_gen::GetCodeGenCtxClass<CGValue, PirNode>(), code_gen_ctx};
   ap::axpr::Interpreter interpreter(
-      ap::code_gen::MakeBuiltinFrameAttrMap<Val>());
+      ap::code_gen::MakeBuiltinFrameAttrMap<Val>(), circlable_ref_list_);
   ADT_CHECK(code_gen_ctx->ir_match_ctx.has_value());
   const auto& ir_match_ctx = code_gen_ctx->ir_match_ctx.value();
   ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};

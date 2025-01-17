@@ -280,7 +280,8 @@ std::unique_ptr<SourcePatternCtxBuilder> MakeSourcePatternCtxBuilder(
           node_arena, std::map<std::string, drr::IrValue>{}, drr_ctx}};
   const auto& builtin_frame =
       ap::drr::MakeBuiltinFrameAttrMap([&](const auto&) {});
-  auto interpreter = std::make_unique<axpr::CpsInterpreter>(builtin_frame);
+  auto interpreter = std::make_unique<axpr::CpsInterpreter>(
+      builtin_frame, drr_ctx->circlable_ref_list);
   return std::make_unique<SourcePatternCtxBuilder>(src_ptn_ctx,
                                                    std::move(interpreter));
 }

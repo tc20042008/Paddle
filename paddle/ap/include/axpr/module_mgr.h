@@ -22,14 +22,14 @@
 #include "paddle/ap/include/axpr/frame.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/env/ap_path.h"
-#include "paddle/ap/include/memory/circlable_ref_list.h"
+#include "paddle/ap/include/memory/guard.h"
 
 namespace ap::axpr {
 
 class ModuleMgr {
  public:
   ModuleMgr()
-      : circlable_ref_list_(std::make_shared<memory::CirclableRefList>()),
+      : memory_guard_(),
         file_path2const_global_frame_(),
         module_name2const_global_frame_() {}
 
@@ -66,16 +66,16 @@ class ModuleMgr {
     }
     auto frame_object = std::make_shared<AttributeImpl<SerializableValue>>();
     const auto& frame =
-        Frame<SerializableValue>::Make(circlable_ref_list_, frame_object);
+        Frame<SerializableValue>::Make(circlable_ref_list(), frame_object);
     ADT_LET_CONST_REF(lambda, GetLambdaByFilePath(file_path));
     ADT_CHECK(file_path2const_global_frame_.emplace(file_path, frame).second);
     ADT_RETURN_IF_ERR(Init(frame, lambda));
     return frame;
   }
 
-  const std::shared_ptr<memory::CirclableRefListBase>& circlable_ref_list()
+  const std::shared_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list()
       const {
-    return circlable_ref_list_;
+    return memory_guard_.circlable_ref_list();
   }
 
  private:
@@ -132,8 +132,7 @@ class ModuleMgr {
     return ap::env::VisitEachApPath(DoEach);
   }
 
-  std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list_;
-
+  memory::Guard memory_guard_;
   std::unordered_map<std::string, Frame<SerializableValue>>
       file_path2const_global_frame_;
   std::unordered_map<std::string, Frame<SerializableValue>>

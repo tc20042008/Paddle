@@ -38,7 +38,7 @@ class InterpreterBase {
       const Frame<SerializableValue>& const_global_frame,
       const Lambda<CoreExpr>& lambda) = 0;
 
-  virtual std::shared_ptr<memory::CirclableRefListBase> circlable_ref_list()
+  virtual std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list()
       const = 0;
 
   virtual Result<adt::Ok> InterpretLambdaCall(

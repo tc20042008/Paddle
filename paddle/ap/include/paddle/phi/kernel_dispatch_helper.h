@@ -16,12 +16,18 @@
 
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/kernel_dispatch/value.h"
+#include "paddle/ap/include/memory/circlable_ref_list_base.h"
 
 namespace phi {
 
 namespace adt = ap::adt;
 
-struct KernelDispatchHelper {
+class KernelDispatchHelper {
+  std::shared_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
+
+ public:
+  KernelDispatchHelper();
+
   using CoreExpr = ap::axpr::CoreExpr;
   using Lambda = ap::axpr::Lambda<CoreExpr>;
   using Val = ap::kernel_dispatch::Val;

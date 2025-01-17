@@ -18,25 +18,18 @@
 
 namespace ap::memory {
 
-template <typename T>
-class CirclableRefGuarded final {
+class Guard final {
  public:
-  CirclableRefGuarded(const CirclableRefGuarded&) = default;
-  CirclableRefGuarded(CirclableRefGuarded&&) = default;
-  CirclableRefGuarded(
-      const std::shared_ptr<CirclableRefList>& circlable_ref_list,
-      const T& value)
-      : circlable_ref_list_(circlable_ref_list), value_(value) {}
+  Guard(const Guard&) = delete;
+  Guard(Guard&&) = delete;
+  Guard() : circlable_ref_list_(std::make_shared<CirclableRefList>()) {}
 
-  const std::shared_ptr<CirclableRefList>& circlable_ref_list() const {
+  const std::shared_ptr<CirclableRefListBase>& circlable_ref_list() const {
     return circlable_ref_list_;
   }
 
-  const T& value() const { return value_; }
-
  private:
-  std::shared_ptr<CirclableRefList> circlable_ref_list_;
-  T value_;
+  std::shared_ptr<CirclableRefListBase> circlable_ref_list_;
 };
 
 }  // namespace ap::memory

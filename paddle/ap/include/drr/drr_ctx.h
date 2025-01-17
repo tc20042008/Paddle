@@ -21,14 +21,16 @@
 #include "paddle/ap/include/drr/source_pattern_ctx.h"
 #include "paddle/ap/include/drr/tags.h"
 #include "paddle/ap/include/drr/type.h"
+#include "paddle/ap/include/memory/circlable_ref_list_base.h"
 
 namespace ap::drr {
 
 struct DrrCtxImpl {
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list;
   std::optional<std::string> pass_name;
   std::optional<SourcePatternCtx> source_pattern_ctx;
   std::optional<ResultPatternCtx> result_pattern_ctx;
-  std::optional<axpr::Function<axpr::SerializableValue>> constraint_func;
+  std::optional<axpr::Value> constraint_func;
 
   adt::Result<SourcePatternCtx> GetSourcePatternCtx() const {
     ADT_CHECK(this->source_pattern_ctx.has_value());

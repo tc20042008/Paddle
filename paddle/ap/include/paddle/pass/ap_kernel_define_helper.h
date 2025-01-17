@@ -24,6 +24,12 @@
 namespace cinn::dialect::ir {
 
 struct ApKernelDefineHelper {
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
+
+  explicit ApKernelDefineHelper(
+      const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
+      : circlable_ref_list_(circlable_ref_list) {}
+
   using Function = ap::axpr::Function<ap::axpr::SerializableValue>;
   using CodeModule = ap::code_module::CodeModule;
   using PirNode = ap::paddle::PirNode;

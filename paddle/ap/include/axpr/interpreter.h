@@ -20,14 +20,16 @@ namespace ap::axpr {
 
 class Interpreter {
  public:
-  explicit Interpreter(const axpr::AttrMap<axpr::Value>& builtin_frame_attr_map)
-      : builtin_frame_attr_map_(builtin_frame_attr_map) {}
+  explicit Interpreter(
+      const axpr::AttrMap<axpr::Value>& builtin_frame_attr_map,
+      const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list)
+      : builtin_frame_attr_map_(builtin_frame_attr_map),
+        circlable_ref_list_(circlable_ref_list) {}
 
   adt::Result<axpr::Value> Interpret(const Lambda<CoreExpr>& lambda,
                                      const std::vector<axpr::Value>& args);
-  adt::Result<axpr::Value> Interpret(
-      const Function<SerializableValue>& function,
-      const std::vector<axpr::Value>& args);
+  adt::Result<axpr::Value> Interpret(const axpr::Value& function,
+                                     const std::vector<axpr::Value>& args);
 
   adt::Result<axpr::Value> InterpretModule(
       const Frame<SerializableValue>& const_global_frame,
@@ -35,6 +37,7 @@ class Interpreter {
 
  private:
   axpr::AttrMap<axpr::Value> builtin_frame_attr_map_;
+  std::weak_ptr<ap::memory::CirclableRefListBase> circlable_ref_list_;
 };
 
 }  // namespace ap::axpr

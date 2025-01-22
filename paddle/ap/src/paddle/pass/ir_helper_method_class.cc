@@ -25,18 +25,7 @@ namespace ap::paddle {
 
 struct PirHelperMethodClass {
   using This = PirHelperMethodClass;
-  using Self = ap::paddle::IrHelper;
   using GraphMatchCtx = ir_match::GraphMatchCtx<PirNode>;
-
-  static adt::Result<axpr::Value> ToString(
-      const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
-    ADT_CHECK(args.size() == 0);
-    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
-    const void* ptr = self.shared_ptr().get();
-    std::ostringstream ss;
-    ss << "<PirHelper object at " << ptr << ">";
-    return ss.str();
-  }
 
   static adt::Result<axpr::Value> CreatePassManager(
       const axpr::Value&, const std::vector<axpr::Value>& args) {
@@ -363,23 +352,12 @@ struct PirHelperMethodClass {
   }
 };
 
-axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirHelperClass() {
-  using Impl = PirHelperMethodClass;
-  static auto cls(
-      axpr::MakeBuiltinClass<axpr::Value>("PirHelper", [&](const auto& Yield) {
-        Yield("__str__", &Impl::ToString);
-        Yield("create_pass_manager", &Impl::CreatePassManager);
-        Yield("create_access_topo_drr_pass", &Impl::CreateAccessTopoDrrPass);
-        Yield("create_access_topo_drr_one_step_pass",
-              &Impl::CreateAccessTopoDrrOneStepPass);
-        Yield("create_dce_pass", &Impl::CreateDeadCodeEliminationPass);
-        Yield("copy_fused_ops_to_program", &Impl::CopyFusedOpsToProgram);
-        Yield("match", &Impl::Match);
-      }));
-  return axpr::MakeGlobalNaiveClassOps<ap::paddle::IrHelper>(cls);
+void ForceLinkIrTools() {
+  // Do nothing.
 }
 
 REGISTER_AP_BUILTIN_MODULE("ir_tools", [](auto* m) {
+  LOG(ERROR) << "REGISTER_AP_BUILTIN_MODULE ir_tools";
   using Impl = PirHelperMethodClass;
   m->Def("create_pass_manager", &Impl::CreatePassManager);
   m->Def("create_access_topo_drr_pass", &Impl::CreateAccessTopoDrrPass);

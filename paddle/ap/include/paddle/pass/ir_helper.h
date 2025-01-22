@@ -17,23 +17,3 @@
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/ir_match/ir_match_ctx.h"
 #include "paddle/ap/include/paddle/pir_node.h"
-
-namespace ap::paddle {
-
-struct IrHelperImpl {
-  ir_match::IrMatchCtx<PirNode> ir_match_ctx_;
-
-  const ir_match::IrMatchCtx<PirNode>& ir_match_ctx() const {
-    return ir_match_ctx_;
-  }
-
-  const ir_match::GraphMatchCtx<PirNode>& graph_match_ctx() const {
-    return ir_match_ctx_->graph_match_ctx;
-  }
-
-  bool operator==(const IrHelperImpl& other) const { return this == &other; }
-};
-
-ADT_DEFINE_RC(IrHelper, IrHelperImpl);
-
-}  // namespace ap::paddle

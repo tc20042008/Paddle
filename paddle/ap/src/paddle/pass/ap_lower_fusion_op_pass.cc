@@ -287,16 +287,13 @@ struct ApRewriter {
   ApLowerFusionOpPatternCtx ctx_;
   adt::Result<std::optional<GraphMatchCtx>> (*Match_)(const DrrCtx&,
                                                       pir::Operation* op);
-  mutable std::unordered_map<pir::Operation*, std::size_t>* times_;
   mutable ApDrrHelper ap_drr_helper_;
 
   ApRewriter(const ApLowerFusionOpPatternCtx& ctx,
              adt::Result<std::optional<GraphMatchCtx>> (*Match)(
-                 const DrrCtx&, pir::Operation* op),
-             std::unordered_map<pir::Operation*, std::size_t>* times)
+                 const DrrCtx&, pir::Operation* op))
       : ctx_(ctx),
         Match_(Match),
-        times_(times),
         ap_drr_helper_(ctx_.drr_ctx->circlable_ref_list) {}
 
   adt::Result<bool> Rewrite(const GraphMatchCtx& match_ctx,
@@ -768,8 +765,6 @@ struct ApRewriter {
           ap::paddle::CreateOperation(
               rewriter, res_ptn_ir_op->op_declare->op_name, inputs, attrs));
       if (opt_op.has_value()) {
-        // disable rematching once.
-        ++(*times_)[opt_op.value()];
         return opt_op.value()->results();
       }
     }
@@ -777,8 +772,6 @@ struct ApRewriter {
       pir::Operation* op =
           paddle::drr::OperationFactory::Instance().CreateOperation(
               res_ptn_ir_op->op_declare->op_name, inputs, attrs, *rewriter);
-      // disable rematching once.
-      ++(*times_)[op];
       return op->results();
     } catch (const std::exception& e) {
       return adt::errors::ValueError{
@@ -1152,7 +1145,6 @@ struct ApRewriter {
         infer_meta_lambda_str,
         kernel_dispatch_lambda_str,
         kernel_dispatch_const_data_lambda_str);
-    ++(*times_)[ap_unary];
     return ap_unary.out();
   }
 
@@ -1641,13 +1633,11 @@ struct ConstraintApplier {
     ap::ir_match::OpMatchCtx<PirNode> op_match_ctx{ir_match_ctx.shared_ptr()};
     ap::ir_match::TensorMatchCtx<PirNode> tensor_match_ctx{
         ir_match_ctx.shared_ptr()};
-    ap::paddle::IrHelper ir_helper{ir_match_ctx};
     return std::vector<ap::axpr::Value>{
         ap::ir_match::GetOpMatchCtxClass<ap::axpr::Value, PirNode>().New(
             op_match_ctx),
         ap::ir_match::GetTensorMatchCtxClass<ap::axpr::Value, PirNode>().New(
             tensor_match_ctx),
-        ap::paddle::GetPirHelperClass().New(ir_helper),
     };
   }
 };
@@ -2263,23 +2253,22 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
  private:
   ApLowerFusionOpPatternCtx ctx_;
   ApRewriter ap_rewriter_;
-  mutable std::unordered_map<pir::Operation*, std::size_t> times_;
+  mutable std::size_t times_;
 
  public:
   NativeOpAnchorApLowerFusionOpPattern(pir::IrContext* ir_context,
                                        const ApLowerFusionOpPatternCtx& ctx)
       : pir::RewritePattern(ctx.anchor_op_name, 1, ir_context, {}),
         ctx_(ctx),
-        times_{},
-        ap_rewriter_(
-            ctx, &NativeOpAnchorApLowerFusionOpPatternMatcher::Match, &times_) {
+        times_(0),
+        ap_rewriter_(ctx, &NativeOpAnchorApLowerFusionOpPatternMatcher::Match) {
   }
 
   bool MatchAndRewrite(
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const override {  // // NOLINT
     if (ctx_.steps_limit.has_value()) {
-      if (times_[op] >= ctx_.steps_limit.value()) {
+      if (times_ >= ctx_.steps_limit.value()) {
         return false;
       }
     }
@@ -2293,7 +2282,7 @@ class NativeOpAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     }
     bool success = ret.GetOkValue();
     if (success) {
-      ++times_[op];
+      ++times_;
     }
     return success;
   }
@@ -2398,7 +2387,7 @@ struct DefaultAnchorApLowerFusionOpPatternMatcher {
 class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
  private:
   ApLowerFusionOpPatternCtx ctx_;
-  mutable std::unordered_map<pir::Operation*, std::size_t> times_;
+  mutable std::size_t times_;
   ApRewriter ap_rewriter_;
 
  public:
@@ -2406,15 +2395,14 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
                                       const ApLowerFusionOpPatternCtx& ctx)
       : pir::RewritePattern(ctx.anchor_op_name, 1, ir_context, {}),
         ctx_(ctx),
-        times_{},
-        ap_rewriter_(
-            ctx, &DefaultAnchorApLowerFusionOpPatternMatcher::Match, &times_) {}
+        times_(0),
+        ap_rewriter_(ctx, &DefaultAnchorApLowerFusionOpPatternMatcher::Match) {}
 
   bool MatchAndRewrite(
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const override {  // // NOLINT
     if (ctx_.steps_limit.has_value()) {
-      if (times_[op] >= ctx_.steps_limit.value()) {
+      if (times_ >= ctx_.steps_limit.value()) {
         return false;
       }
     }
@@ -2428,7 +2416,7 @@ class DefaultAnchorApLowerFusionOpPattern : public pir::RewritePattern {
     }
     bool success = ret.GetOkValue();
     if (success) {
-      ++times_[op];
+      ++times_;
     }
     return success;
   }
@@ -3067,6 +3055,7 @@ class CustomAccessTopoDrrCtxProvider : public DrrCtxProvider {
 };
 
 adt::Result<ap::registry::Registry> TryGetRegistrySingleton() {
+  ap::paddle::ForceLinkIrTools();
   ADT_LET_CONST_REF(registry, ApRegistryHelper{}.SingltonRegistry());
   return registry;
 }

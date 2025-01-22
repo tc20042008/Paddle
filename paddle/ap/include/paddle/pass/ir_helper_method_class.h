@@ -37,6 +37,6 @@
 
 namespace ap::paddle {
 
-axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirHelperClass();
+void ForceLinkIrTools();
 
 }  // namespace ap::paddle

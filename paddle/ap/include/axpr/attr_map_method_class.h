@@ -17,13 +17,30 @@
 #include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/constants.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/to_string.h"
 
 namespace ap::axpr {
 
 template <typename ValueT>
-struct ObjectMethodClass {
-  using This = ObjectMethodClass;
+struct AttrMapMethodClass {
+  using This = AttrMapMethodClass;
   using Self = AttrMap<ValueT>;
+
+  adt::Result<ValueT> ToString(axpr::InterpreterBase<ValueT>* interpreter,
+                               const Self& self) {
+    std::ostringstream ss;
+    ss << "AttrMap(";
+    int i = 0;
+    for (const auto& [k, v] : self->storage) {
+      if (i++ > 0) {
+        ss << ", ";
+      }
+      ADT_LET_CONST_REF(value_str, axpr::ToString(interpreter, v));
+      ss << k << "=" << value_str;
+    }
+    ss << ")";
+    return ss.str();
+  }
 
   adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
@@ -35,7 +52,7 @@ struct ObjectMethodClass {
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, AttrMap<ValueT>>
-    : public ObjectMethodClass<ValueT> {};
+    : public AttrMapMethodClass<ValueT> {};
 
 template <typename ValueT>
 struct MethodClassImpl<ValueT, TypeImpl<AttrMap<ValueT>>>

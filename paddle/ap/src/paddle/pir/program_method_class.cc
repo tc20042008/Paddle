@@ -93,6 +93,7 @@ struct PirProgramMethodClass {
       const std::unordered_map<pir::Value, int64_t>& value2index) {
     axpr::AttrMap<axpr::Value> attr_map;
     attr_map->Set("op_index", op_index);
+    attr_map->Set("op_name", op->name());
     {
       adt::List<axpr::Value> input_indexes;
       input_indexes->reserve(op->num_operands());

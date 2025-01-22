@@ -180,7 +180,7 @@ struct MethodClassImpl<ValueT, TypeImpl<ClassInstance<ValueT>>> {
                       adt::WeakPtrLock(interpreter->circlable_ref_list()));
     const auto& instance = [&] {
       const auto& instance_attrs = InstanceAttrs<ValueT>::Make(
-          ref_lst, std::make_shared<AttributeImpl<ValueT>>());
+          ref_lst, std::make_shared<AttrMapImpl<ValueT>>());
       TypeImpl<ClassInstance<ValueT>> type(class_attrs);
       return ClassInstance<ValueT>{type, instance_attrs};
     }();

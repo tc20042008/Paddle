@@ -39,6 +39,8 @@ void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
   DoEach("max", &Max);
   DoEach("min", &Min);
   DoEach("len", &Length);
+  DoEach("getattr", &GetAttr);
+  DoEach("setattr", &SetAttr);
 }
 
 template <typename ValueT>

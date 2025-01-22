@@ -68,7 +68,7 @@ struct RegistryMgr {
     const auto& core_expr = axpr::ConvertAnfExprToCoreExpr(anf_expr);
     const auto& frame = axpr::Frame<axpr::SerializableValue>::Make(
         axpr::ModuleMgr::Singleton()->circlable_ref_list(),
-        std::make_shared<axpr::AttributeImpl<axpr::SerializableValue>>());
+        std::make_shared<axpr::AttrMapImpl<axpr::SerializableValue>>());
     std::vector<axpr::tVar<std::string>> args{};
     axpr::Lambda<axpr::CoreExpr> lambda{args, core_expr};
     memory::Guard guard{};

@@ -60,6 +60,16 @@ struct SerializableValueHelper {
         [&](const AttrMap<ValueT>& object) -> RetT {
           return CastObjectFrom(object);
         },
+        [&](const BuiltinFuncType<ValueT>& func) -> RetT {
+          auto* func_ptr = reinterpret_cast<void*>(func);
+          ADT_CHECK(BuiltinFuncNameMgr::Singleton()->Has(func_ptr));
+          return BuiltinFuncVoidPtr{func_ptr};
+        },
+        [&](const BuiltinHighOrderFuncType<ValueT>& func) -> RetT {
+          auto* func_ptr = reinterpret_cast<void*>(func);
+          ADT_CHECK(BuiltinFuncNameMgr::Singleton()->Has(func_ptr));
+          return BuiltinHighOrderFuncVoidPtr{func_ptr};
+        },
         [&](const auto&) -> RetT {
           std::ostringstream ss;
           ss << "Builtin serializable types are: ";
@@ -117,6 +127,12 @@ struct SerializableValueHelper {
         },
         [&](const axpr::AttrMap<SerializableValue>& obj) -> RetT {
           return HashImpl(obj);
+        },
+        [&](const BuiltinFuncVoidPtr& func) -> RetT {
+          return reinterpret_cast<int64_t>(func.func_ptr);
+        },
+        [&](const BuiltinHighOrderFuncVoidPtr& func) -> RetT {
+          return reinterpret_cast<int64_t>(func.func_ptr);
         });
   }
 
@@ -179,6 +195,18 @@ struct SerializableValueHelper {
         },
         [&](const axpr::AttrMap<SerializableValue>& obj) -> RetT {
           return ToStringImpl(obj);
+        },
+        [&](const BuiltinFuncVoidPtr& func) -> RetT {
+          const auto& name_info =
+              BuiltinFuncNameMgr::Singleton()->OptGet(func.func_ptr);
+          ADT_CHECK(name_info.has_value());
+          return name_info.value().ToString();
+        },
+        [&](const BuiltinHighOrderFuncVoidPtr& func) -> RetT {
+          const auto& name_info =
+              BuiltinFuncNameMgr::Singleton()->OptGet(func.func_ptr);
+          ADT_CHECK(name_info.has_value());
+          return name_info.value().ToString();
         });
   }
 

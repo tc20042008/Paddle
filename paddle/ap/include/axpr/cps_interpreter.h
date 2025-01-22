@@ -80,7 +80,7 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
     std::optional<std::shared_ptr<Environment<axpr::Value>>> env;
     {
       ADT_LET_CONST_REF(ref_lst, adt::WeakPtrLock(circlable_ref_list_));
-      auto tmp_frame_object = std::make_shared<AttributeImpl<axpr::Value>>();
+      auto tmp_frame_object = std::make_shared<AttrMapImpl<axpr::Value>>();
       auto tmp_frame = Frame<axpr::Value>::Make(ref_lst, tmp_frame_object);
       const auto& mut_global_env = MakeMutableGlobalEnvironment(
           builtin_env(), const_global_frame, tmp_frame);
@@ -624,7 +624,7 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
 
   adt::Result<std::shared_ptr<Environment<axpr::Value>>> MakeCallEnvironment(
       const std::shared_ptr<Environment<axpr::Value>>& parent) {
-    auto builtin_obj = std::make_shared<AttributeImpl<axpr::Value>>();
+    auto builtin_obj = std::make_shared<AttrMapImpl<axpr::Value>>();
     ADT_LET_CONST_REF(ref_lst, adt::WeakPtrLock(circlable_ref_list()));
     const auto& frame = Frame<axpr::Value>::Make(ref_lst, builtin_obj);
     return std::make_shared<CallEnvironment<axpr::Value>>(parent, frame);

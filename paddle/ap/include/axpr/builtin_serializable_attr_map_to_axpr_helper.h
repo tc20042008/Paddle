@@ -92,6 +92,35 @@ struct BuiltinSerializableAttrMapToAxprHelper {
           return adt::errors::NotImplementedError{
               "serialization of axpr::ClassAttrs<SerializableValueT> not "
               "implemented"};
+        },
+        [&](const axpr::BuiltinFuncVoidPtr& func) -> adt::Result<AnfExpr> {
+          const auto& name_info =
+              axpr::BuiltinFuncNameMgr::Singleton()->OptGet(func.func_ptr);
+          ADT_CHECK(name_info.has_value());
+          if (name_info.value().module_name.has_value()) {
+            const auto& module_name =
+                ctx->String(name_info.value().module_name.value());
+            const auto& func_name = name_info.value().func_name;
+            return ctx->Var("import").Call(module_name).Attr(func_name);
+          } else {
+            const auto& func_name = name_info.value().func_name;
+            return ctx->Var(func_name);
+          }
+        },
+        [&](const axpr::BuiltinHighOrderFuncVoidPtr& func)
+            -> adt::Result<AnfExpr> {
+          const auto& name_info =
+              axpr::BuiltinFuncNameMgr::Singleton()->OptGet(func.func_ptr);
+          ADT_CHECK(name_info.has_value());
+          if (name_info.value().module_name.has_value()) {
+            const auto& module_name =
+                ctx->String(name_info.value().module_name.value());
+            const auto& func_name = name_info.value().func_name;
+            return ctx->Var("import").Call(module_name).Attr(func_name);
+          } else {
+            const auto& func_name = name_info.value().func_name;
+            return ctx->Var(func_name);
+          }
         });
   }
 

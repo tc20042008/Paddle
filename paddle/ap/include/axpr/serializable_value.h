@@ -17,6 +17,8 @@
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/bool.h"
+#include "paddle/ap/include/axpr/builtin_func_name_mgr.h"
+#include "paddle/ap/include/axpr/builtin_func_type.h"
 #include "paddle/ap/include/axpr/class_attrs.h"
 #include "paddle/ap/include/axpr/float.h"
 #include "paddle/ap/include/axpr/function.h"
@@ -26,6 +28,22 @@
 #include "paddle/ap/include/axpr/type.h"
 
 namespace ap::axpr {
+
+struct BuiltinFuncVoidPtr {
+  void* func_ptr;
+
+  bool operator==(const BuiltinFuncVoidPtr& other) const {
+    return this->func_ptr == other.func_ptr;
+  }
+};
+
+struct BuiltinHighOrderFuncVoidPtr {
+  void* func_ptr;
+
+  bool operator==(const BuiltinHighOrderFuncVoidPtr& other) const {
+    return this->func_ptr == other.func_ptr;
+  }
+};
 
 template <typename SerializableValueT>
 using SerializableValueImpl = std::variant<TypeImpl<adt::Nothing>,
@@ -41,7 +59,9 @@ using SerializableValueImpl = std::variant<TypeImpl<adt::Nothing>,
                                            std::string,
                                            Function<SerializableValueT>,
                                            adt::List<SerializableValueT>,
-                                           AttrMap<SerializableValueT>>;
+                                           AttrMap<SerializableValueT>,
+                                           BuiltinFuncVoidPtr,
+                                           BuiltinHighOrderFuncVoidPtr>;
 
 template <typename ValueT>
 struct ClassInstance;
@@ -54,6 +74,13 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
   template <typename ValueT>
   ValueT CastTo() const {
     return Match(
+        [&](const BuiltinFuncVoidPtr& func) -> ValueT {
+          return reinterpret_cast<BuiltinFuncType<ValueT>>(func.func_ptr);
+        },
+        [&](const BuiltinHighOrderFuncVoidPtr& func) -> ValueT {
+          return reinterpret_cast<BuiltinHighOrderFuncType<ValueT>>(
+              func.func_ptr);
+        },
         [&](const ClassAttrs<SerializableValue>& class_attrs) -> ValueT {
           return TypeImpl<ClassInstance<ValueT>>(class_attrs);
         },
@@ -99,6 +126,14 @@ struct SerializableValue : public SerializableValueImpl<SerializableValue> {
             }
           }
           return true;
+        },
+        [&](const BuiltinFuncType<ValueT>& func) -> bool {
+          void* func_ptr = reinterpret_cast<void*>(func);
+          return BuiltinFuncNameMgr::Singleton()->Has(func_ptr);
+        },
+        [&](const BuiltinHighOrderFuncType<ValueT>& func) -> bool {
+          void* func_ptr = reinterpret_cast<void*>(func);
+          return BuiltinFuncNameMgr::Singleton()->Has(func_ptr);
         },
         [&](const auto&) -> bool { return false; });
   }

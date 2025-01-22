@@ -19,7 +19,6 @@
 #include "paddle/ap/include/axpr/core_expr.h"
 #include "paddle/ap/include/axpr/error.h"
 #include "paddle/ap/include/axpr/frame.h"
-#include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/memory/circlable_ref_list_base.h"
 
@@ -27,6 +26,8 @@ namespace ap::axpr {
 
 template <typename ValueT>
 class Environment;
+
+struct SerializableValue;
 
 template <typename ValueT>
 class InterpreterBase {

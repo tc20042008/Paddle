@@ -511,4 +511,29 @@ Result<axpr::Value> Min(const axpr::Value&,
   return cmp ? args.at(0) : args.at(1);
 }
 
+Result<axpr::Value> GetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+      std::string() + "getattr() takes 2 arguments, but " +
+      std::to_string(args.size()) + " were given"};
+  ADT_LET_CONST_REF(
+      ret, interpreter->InterpretCall(builtin_symbol::GetAttr{}, args));
+  return ret;
+}
+
+Result<axpr::Value> SetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 3) << adt::errors::TypeError{
+      std::string() + "setattr() takes 3 arguments, but " +
+      std::to_string(args.size()) + " were given"};
+  ADT_LET_CONST_REF(func,
+                    interpreter->InterpretCall(builtin_symbol::SetAttr{},
+                                               {args.at(0), args.at(1)}));
+  ADT_LET_CONST_REF(ret,
+                    interpreter->InterpretCall(func, {args.at(1), args.at(2)}));
+  return ret;
+}
+
 }  // namespace ap::axpr

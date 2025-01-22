@@ -34,6 +34,8 @@ struct MakePirAttributeImpl;
 struct MakePirAttributeImplBoolAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::BoolAttribute>
@@ -42,6 +44,8 @@ struct MakePirAttributeImpl<pir::BoolAttribute>
 struct MakePirAttributeImplComplex64Attribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::Complex64Attribute>
@@ -50,6 +54,8 @@ struct MakePirAttributeImpl<pir::Complex64Attribute>
 struct MakePirAttributeImplComplex128Attribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::Complex128Attribute>
@@ -58,6 +64,8 @@ struct MakePirAttributeImpl<pir::Complex128Attribute>
 struct MakePirAttributeImplFloatAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::FloatAttribute>
@@ -66,6 +74,8 @@ struct MakePirAttributeImpl<pir::FloatAttribute>
 struct MakePirAttributeImplDoubleAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::DoubleAttribute>
@@ -74,6 +84,8 @@ struct MakePirAttributeImpl<pir::DoubleAttribute>
 struct MakePirAttributeImplInt32Attribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::Int32Attribute>
@@ -82,6 +94,8 @@ struct MakePirAttributeImpl<pir::Int32Attribute>
 struct MakePirAttributeImplIndexAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::IndexAttribute>
@@ -90,6 +104,8 @@ struct MakePirAttributeImpl<pir::IndexAttribute>
 struct MakePirAttributeImplInt64Attribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::Int64Attribute>
@@ -98,6 +114,8 @@ struct MakePirAttributeImpl<pir::Int64Attribute>
 struct MakePirAttributeImplPointerAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::PointerAttribute>
@@ -106,6 +124,8 @@ struct MakePirAttributeImpl<pir::PointerAttribute>
 struct MakePirAttributeImplTypeAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::TypeAttribute>
@@ -114,6 +134,8 @@ struct MakePirAttributeImpl<pir::TypeAttribute>
 struct MakePirAttributeImplStrAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::StrAttribute>
@@ -122,6 +144,8 @@ struct MakePirAttributeImpl<pir::StrAttribute>
 struct MakePirAttributeImplArrayAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::ArrayAttribute>
@@ -130,6 +154,8 @@ struct MakePirAttributeImpl<pir::ArrayAttribute>
 struct MakePirAttributeImplTensorNameAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::TensorNameAttribute>
@@ -138,6 +164,8 @@ struct MakePirAttributeImpl<pir::TensorNameAttribute>
 struct MakePirAttributeImplSymbolAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<pir::shape::SymbolAttribute>
@@ -146,6 +174,8 @@ struct MakePirAttributeImpl<pir::shape::SymbolAttribute>
 struct MakePirAttributeImplKernelAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::KernelAttribute>
@@ -154,6 +184,8 @@ struct MakePirAttributeImpl<::paddle::dialect::KernelAttribute>
 struct MakePirAttributeImplIntArrayAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::IntArrayAttribute>
@@ -162,6 +194,8 @@ struct MakePirAttributeImpl<::paddle::dialect::IntArrayAttribute>
 struct MakePirAttributeImplScalarAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::ScalarAttribute>
@@ -170,6 +204,8 @@ struct MakePirAttributeImpl<::paddle::dialect::ScalarAttribute>
 struct MakePirAttributeImplDataTypeAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::DataTypeAttribute>
@@ -178,6 +214,8 @@ struct MakePirAttributeImpl<::paddle::dialect::DataTypeAttribute>
 struct MakePirAttributeImplPlaceAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::PlaceAttribute>
@@ -186,6 +224,8 @@ struct MakePirAttributeImpl<::paddle::dialect::PlaceAttribute>
 struct MakePirAttributeImplDataLayoutAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::paddle::dialect::DataLayoutAttribute>
@@ -194,6 +234,8 @@ struct MakePirAttributeImpl<::paddle::dialect::DataLayoutAttribute>
 struct MakePirAttributeImplGroupInfoAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::cinn::dialect::GroupInfoAttribute>
@@ -202,6 +244,8 @@ struct MakePirAttributeImpl<::cinn::dialect::GroupInfoAttribute>
 struct MakePirAttributeImplCINNKernelInfoAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<::cinn::dialect::CINNKernelInfoAttribute>
@@ -210,6 +254,8 @@ struct MakePirAttributeImpl<::cinn::dialect::CINNKernelInfoAttribute>
 struct MakePirAttributeImplUnclassifiedAttribute {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirAttributeImpl<UnclassifiedAttribute>

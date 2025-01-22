@@ -35,6 +35,8 @@ struct MakePirTypeImpl;
 struct MakePirTypeImplNullType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<NullType> : public MakePirTypeImplNullType {};
@@ -42,6 +44,8 @@ struct MakePirTypeImpl<NullType> : public MakePirTypeImplNullType {};
 struct MakePirTypeImplVectorType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::VectorType> : public MakePirTypeImplVectorType {};
@@ -49,6 +53,8 @@ struct MakePirTypeImpl<::pir::VectorType> : public MakePirTypeImplVectorType {};
 struct MakePirTypeImplDenseTensorType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::DenseTensorType>
@@ -57,6 +63,8 @@ struct MakePirTypeImpl<::pir::DenseTensorType>
 struct MakePirTypeImplBFloat16Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::BFloat16Type>
@@ -65,6 +73,8 @@ struct MakePirTypeImpl<::pir::BFloat16Type>
 struct MakePirTypeImplFloat16Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Float16Type> : public MakePirTypeImplFloat16Type {
@@ -73,6 +83,8 @@ struct MakePirTypeImpl<::pir::Float16Type> : public MakePirTypeImplFloat16Type {
 struct MakePirTypeImplFloat32Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Float32Type> : public MakePirTypeImplFloat32Type {
@@ -81,6 +93,8 @@ struct MakePirTypeImpl<::pir::Float32Type> : public MakePirTypeImplFloat32Type {
 struct MakePirTypeImplFloat64Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Float64Type> : public MakePirTypeImplFloat64Type {
@@ -89,6 +103,8 @@ struct MakePirTypeImpl<::pir::Float64Type> : public MakePirTypeImplFloat64Type {
 struct MakePirTypeImplInt8Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Int8Type> : public MakePirTypeImplInt8Type {};
@@ -96,6 +112,8 @@ struct MakePirTypeImpl<::pir::Int8Type> : public MakePirTypeImplInt8Type {};
 struct MakePirTypeImplUInt8Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::UInt8Type> : public MakePirTypeImplUInt8Type {};
@@ -103,6 +121,8 @@ struct MakePirTypeImpl<::pir::UInt8Type> : public MakePirTypeImplUInt8Type {};
 struct MakePirTypeImplInt16Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Int16Type> : public MakePirTypeImplInt16Type {};
@@ -110,6 +130,8 @@ struct MakePirTypeImpl<::pir::Int16Type> : public MakePirTypeImplInt16Type {};
 struct MakePirTypeImplInt32Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Int32Type> : public MakePirTypeImplInt32Type {};
@@ -117,6 +139,8 @@ struct MakePirTypeImpl<::pir::Int32Type> : public MakePirTypeImplInt32Type {};
 struct MakePirTypeImplInt64Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Int64Type> : public MakePirTypeImplInt64Type {};
@@ -124,6 +148,8 @@ struct MakePirTypeImpl<::pir::Int64Type> : public MakePirTypeImplInt64Type {};
 struct MakePirTypeImplIndexType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::IndexType> : public MakePirTypeImplIndexType {};
@@ -131,6 +157,8 @@ struct MakePirTypeImpl<::pir::IndexType> : public MakePirTypeImplIndexType {};
 struct MakePirTypeImplBoolType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::BoolType> : public MakePirTypeImplBoolType {};
@@ -138,6 +166,8 @@ struct MakePirTypeImpl<::pir::BoolType> : public MakePirTypeImplBoolType {};
 struct MakePirTypeImplComplex64Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Complex64Type>
@@ -146,6 +176,8 @@ struct MakePirTypeImpl<::pir::Complex64Type>
 struct MakePirTypeImplComplex128Type {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::pir::Complex128Type>
@@ -154,6 +186,8 @@ struct MakePirTypeImpl<::pir::Complex128Type>
 struct MakePirTypeImplSelectedRowsType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::paddle::dialect::SelectedRowsType>
@@ -162,6 +196,8 @@ struct MakePirTypeImpl<::paddle::dialect::SelectedRowsType>
 struct MakePirTypeImplDenseTensorArrayType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::paddle::dialect::DenseTensorArrayType>
@@ -170,6 +206,8 @@ struct MakePirTypeImpl<::paddle::dialect::DenseTensorArrayType>
 struct MakePirTypeImplSparseCooTensorType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::paddle::dialect::SparseCooTensorType>
@@ -178,6 +216,8 @@ struct MakePirTypeImpl<::paddle::dialect::SparseCooTensorType>
 struct MakePirTypeImplSparseCsrTensorType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<::paddle::dialect::SparseCsrTensorType>
@@ -186,6 +226,8 @@ struct MakePirTypeImpl<::paddle::dialect::SparseCsrTensorType>
 struct MakePirTypeImplUnclassifiedType {
   static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
                                        const std::vector<axpr::Value>& args);
+  static adt::Result<adt::List<axpr::Value>> GetCallArgs(
+      const axpr::Value& self_val);
 };
 template <>
 struct MakePirTypeImpl<UnclassifiedType>

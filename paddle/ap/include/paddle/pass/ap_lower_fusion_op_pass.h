@@ -48,7 +48,8 @@ std::optional<std::unique_ptr<::pir::Pass>> CreateAccessTopoDrrPass(
 std::optional<std::unique_ptr<::pir::Pass>> CreateCustomAccessTopoDrrPass(
     const std::weak_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list,
     const ap::axpr::Value& drr_pass,
-    std::optional<int64_t> steps_limit);
+    std::optional<int64_t> steps_limit,
+    const ap::axpr::Value& mut_matched_pattern_as_programs);
 
 }  // namespace ir
 }  // namespace dialect

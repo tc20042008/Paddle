@@ -17,7 +17,7 @@
 #include "paddle/ap/include/axpr/dim_expr_method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/paddle/pir/attribute_method_class.h"
-#include "paddle/ap/include/paddle/pir_node.h"
+#include "paddle/ap/include/paddle/pir/type_method_class.h"
 
 namespace ap::paddle {
 
@@ -49,6 +49,9 @@ struct NativeIrValueMethodClass {
     ADT_LET_CONST_REF(attr_name, attr_name_val.template TryGet<std::string>());
     if (attr_name == "dtype") {
       return This{}.GetDataType(self);
+    }
+    if (attr_name == "type") {
+      return GetPirTypeClass().New(self.value.type());
     }
     return adt::errors::TypeError{std::string() +
                                   "NativeIrValue instance has no attribute '" +
@@ -237,6 +240,56 @@ struct NativeIrOpMethodClass {
     }
     return GetPirAttributeClass().New(iter->second);
   }
+
+  static adt::Result<ValueT> NumOperands(const ValueT& self_val,
+                                         const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
+        std::string() + "NativeIrOp.num_operands() takes 0 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    const pir::Operation* op = self.op;
+    int64_t num_operands = op->num_operands();
+    return num_operands;
+  }
+
+  static adt::Result<ValueT> OperandSource(const ValueT& self_val,
+                                           const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "NativeIrOp.operand_source() takes 1 argument, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(i, args.at(0).template CastTo<int64_t>());
+    const pir::Operation* op = self.op;
+    ADT_CHECK(i >= 0);
+    ADT_CHECK(i < op->num_operands());
+    pir::Value value = op->operand_source(i);
+    return GetNativeIrValueClass<axpr::Value>().New(NativeIrValue{value});
+  }
+
+  static adt::Result<ValueT> NumResults(const ValueT& self_val,
+                                        const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
+        std::string() + "NativeIrOp.num_results() takes 0 arguments, but " +
+        std::to_string(args.size()) + " were given"};
+    const pir::Operation* op = self.op;
+    int64_t num_results = op->num_results();
+    return num_results;
+  }
+
+  static adt::Result<ValueT> Result(const ValueT& self_val,
+                                    const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "NativeIrOp.result() takes 1 argument, but " +
+        std::to_string(args.size()) + " were given"};
+    ADT_LET_CONST_REF(i, args.at(0).template CastTo<int64_t>());
+    const pir::Operation* op = self.op;
+    ADT_CHECK(i >= 0);
+    ADT_CHECK(i < op->num_results());
+    pir::Value value = op->result(i);
+    return GetNativeIrValueClass<axpr::Value>().New(NativeIrValue{value});
+  }
 };
 
 template <typename ValueT>
@@ -247,6 +300,10 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrOpClass() {
         Yield("__str__", &Impl::ToString);
         Yield("__hash__", &Impl::Hash);
         Yield("__getattr__", &Impl::GetAttr);
+        Yield("num_operands", &Impl::NumOperands);
+        Yield("operand_source", &Impl::OperandSource);
+        Yield("num_results", &Impl::NumResults);
+        Yield("result", &Impl::Result);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename Impl::Self>(cls);
 }

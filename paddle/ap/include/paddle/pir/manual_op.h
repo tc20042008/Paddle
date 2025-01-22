@@ -55,12 +55,12 @@ class IR_API DownSpiderOp
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class IR_API LoadPlaceholderOp
-    : public pir::Op<LoadPlaceholderOp,
+class IR_API LoadFromRegisterOp
+    : public pir::Op<LoadFromRegisterOp,
                      ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "ap_op.load_placeholder"; }
+  static const char *name() { return "ap_op.load_from_register"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
@@ -71,12 +71,12 @@ class IR_API LoadPlaceholderOp
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class IR_API StorePlaceholderOp
-    : public pir::Op<StorePlaceholderOp,
+class IR_API StoreToRegisterOp
+    : public pir::Op<StoreToRegisterOp,
                      ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "ap_op.store_placeholder"; }
+  static const char *name() { return "ap_op.store_to_register"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
@@ -87,23 +87,25 @@ class IR_API StorePlaceholderOp
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class IR_API LoadOp
-    : public pir::Op<LoadOp, ::paddle::dialect::InferSymbolicShapeInterface> {
+class IR_API LoadFromGlobalOp
+    : public pir::Op<LoadFromGlobalOp,
+                     ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "ap_op.load"; }
+  static const char *name() { return "ap_op.load_from_global"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value input,
-                    const std::string &serialized_index_function);
+                    const std::string &index_func_unique_id);
   void VerifySig() const {}
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class IR_API StoreOp
-    : public pir::Op<StoreOp, ::paddle::dialect::InferSymbolicShapeInterface> {
+class IR_API StoreToGlobalOp
+    : public pir::Op<StoreToGlobalOp,
+                     ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "ap_op.store"; }
@@ -112,7 +114,7 @@ class IR_API StoreOp
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value input,
-                    const std::string &serialized_index_function);
+                    const std::string &index_func_unique_id);
   void VerifySig() const {}
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
@@ -121,7 +123,7 @@ class IR_API StoreOp
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::UpSpiderOp);
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::DownSpiderOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadPlaceholderOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::StorePlaceholderOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::StoreOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadFromRegisterOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::StoreToRegisterOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::LoadFromGlobalOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ap::dialect::StoreToGlobalOp);

@@ -46,7 +46,9 @@ struct TypeToAnfExprConverter<::pir::VectorType> {
           PirToAnfExprHelper{}.ConvertPirTypeToAnfExpr(ctx, elt_type));
       args.emplace_back(elt_anf_expr);
     }
-    return ctx->Var("pir").Attr(::pir::VectorType::name()).Apply(args);
+    return ctx->Var("pir")
+        .Attr(::pir::VectorType::name())
+        .Call(ctx->Var(axpr::kBuiltinList()).Apply(args));
   }
 };
 
@@ -468,7 +470,7 @@ struct AttrToAnfExprConverter<pir::ArrayAttribute> {
     }
     return ctx->Var("pir")
         .Attr(pir::ArrayAttribute::name())
-        .Apply(elts_anf_exprs);
+        .Call(ctx->Var(axpr::kBuiltinList()).Apply(elts_anf_exprs));
   }
 };
 
@@ -521,7 +523,7 @@ struct AttrToAnfExprConverter<::paddle::dialect::IntArrayAttribute> {
     }
     return ctx->Var("pir")
         .Attr(::paddle::dialect::IntArrayAttribute::name())
-        .Call(ctx->Var(axpr::kBuiltinList()).Call(elts_anf_exprs));
+        .Call(ctx->Var(axpr::kBuiltinList()).Apply(elts_anf_exprs));
   }
 };
 

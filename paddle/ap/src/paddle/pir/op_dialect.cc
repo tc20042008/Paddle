@@ -27,10 +27,10 @@ OperatorDialect::OperatorDialect(::pir::IrContext *context)
 void OperatorDialect::initialize() {
   RegisterOp<UpSpiderOp>();
   RegisterOp<DownSpiderOp>();
-  RegisterOp<LoadPlaceholderOp>();
-  RegisterOp<StorePlaceholderOp>();
-  RegisterOp<LoadOp>();
-  RegisterOp<StoreOp>();
+  RegisterOp<LoadFromRegisterOp>();
+  RegisterOp<StoreToRegisterOp>();
+  RegisterOp<LoadFromGlobalOp>();
+  RegisterOp<StoreToGlobalOp>();
 }
 
 }  // namespace dialect

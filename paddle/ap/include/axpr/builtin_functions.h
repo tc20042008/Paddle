@@ -72,4 +72,14 @@ Result<axpr::Value> Max(const axpr::Value&,
 Result<axpr::Value> Min(const axpr::Value&,
                         const std::vector<axpr::Value>& args);
 
+Result<axpr::Value> Min(const axpr::Value&,
+                        const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> GetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> SetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args);
 }  // namespace ap::axpr

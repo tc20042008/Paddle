@@ -35,6 +35,11 @@ struct ModuleMgrHelper {
     ADT_CHECK(args.size() == 1);
     ADT_LET_CONST_REF(module_name, args.at(0).template TryGet<std::string>());
     auto* module_mgr = ModuleMgr::Singleton();
+    const auto& opt_builtin_module =
+        module_mgr->OptGetBuiltinModule(module_name);
+    if (opt_builtin_module.has_value()) {
+      return opt_builtin_module.value();
+    }
     auto Init = [&](const Frame<SerializableValue>& frame,
                     const axpr::Lambda<axpr::CoreExpr>& lambda)
         -> adt::Result<adt::Ok> {

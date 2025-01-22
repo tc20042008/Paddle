@@ -72,6 +72,12 @@ struct MethodClassImpl<ValueT, adt::List<ValueT>> {
     return ss.str();
   }
 
+  static Result<ValueT> EQ(const ValueT& lhs_val, const ValueT& rhs_val) {
+    ADT_LET_CONST_REF(lhs, lhs_val.template TryGet<Self>());
+    ADT_LET_CONST_REF(rhs, rhs_val.template TryGet<Self>());
+    return lhs == rhs;
+  }
+
   adt::Result<ValueT> Hash(axpr::InterpreterBase<ValueT>* interpreter,
                            const Self& self) {
     int64_t hash_value = 0;

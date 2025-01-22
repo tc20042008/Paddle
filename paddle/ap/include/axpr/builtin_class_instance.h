@@ -22,7 +22,6 @@
 #include "paddle/ap/include/axpr/class_attrs.h"
 #include "paddle/ap/include/axpr/class_ops.h"
 #include "paddle/ap/include/axpr/error.h"
-#include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/axpr/type.h"
 
 namespace ap::axpr {

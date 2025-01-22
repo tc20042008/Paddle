@@ -14,21 +14,5 @@
 
 #pragma once
 
-#include "paddle/ap/include/adt/adt.h"
-
-namespace pir {
-
-class Program;
-
-}
-
-namespace ap::paddle {
-
-class LoadStorePlaceholderInserter {
- public:
-  LoadStorePlaceholderInserter() {}
-
-  adt::Result<adt::Ok> Insert(pir::Program* program);
-};
-
-}  // namespace ap::paddle
+#define AP_CONCAT(a, b) AP_CONCAT_I(a, b)
+#define AP_CONCAT_I(a, b) a##b

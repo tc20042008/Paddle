@@ -20,10 +20,8 @@
 namespace ap::axpr {
 
 template <typename ValueT>
-struct Frame
-    : public memory::CirclableRef<Frame<ValueT>, AttributeImpl<ValueT>> {
-  using memory::CirclableRef<Frame<ValueT>,
-                             AttributeImpl<ValueT>>::CirclableRef;
+struct Frame : public memory::CirclableRef<Frame<ValueT>, AttrMapImpl<ValueT>> {
+  using memory::CirclableRef<Frame<ValueT>, AttrMapImpl<ValueT>>::CirclableRef;
 };
 
 }  // namespace ap::axpr

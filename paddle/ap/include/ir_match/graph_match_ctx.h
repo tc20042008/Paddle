@@ -56,18 +56,18 @@ struct GraphMatchCtxImpl {
     return num;
   }
 
-  template <typename DoEachT>
+  template <typename YieldT>
   adt::Result<adt::Ok> VisitBigGraphIrValueNode(const sg_node_t& node,
-                                                const DoEachT& DoEach) const {
+                                                const YieldT& Yield) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
     using Ok = adt::Result<adt::Ok>;
     return drr_node.Match(
         [&](const DrrNativeIrValue&) -> Ok {
           ADT_LET_CONST_REF(bir_node, GetSoleBigGraphNode(node));
-          return DoEach(bir_node);
+          return Yield(bir_node);
         },
         [&](const DrrPackedIrValue&) -> Ok {
-          return VisitPackedBigGraphIrValueNode(node, DoEach);
+          return VisitPackedBigGraphIrValueNode(node, Yield);
         },
         [&](const auto& impl) -> Ok {
           using T = std::decay_t<decltype(impl)>;
@@ -103,9 +103,9 @@ struct GraphMatchCtxImpl {
     return ret;
   }
 
-  template <typename DoEachT>
+  template <typename YieldT>
   adt::Result<adt::Ok> VisitPackedBigGraphIrValueNode(
-      const sg_node_t& node, const DoEachT& DoEach) const {
+      const sg_node_t& node, const YieldT& Yield) const {
     ADT_LET_CONST_REF(drr_node, node.Get());
     ADT_CHECK(drr_node.template Has<DrrPackedIrValue>());
     DefaultDrrGraph drr_graph{};
@@ -114,10 +114,10 @@ struct GraphMatchCtxImpl {
     ADT_LET_CONST_REF(num_inputs, drr_graph.GetNumInputs(drr_node));
     ADT_LET_CONST_REF(num_outputs, drr_graph.GetNumOutputs(drr_node));
     if (num_inputs == 0 && num_outputs == 1) {
-      return VisitPackedInputBigGraphNode(node, DoEach);
+      return VisitPackedInputBigGraphNode(node, Yield);
     }
     if (num_inputs == 1 && num_outputs == 0) {
-      return VisitPackedOutputBigGraphNode(node, DoEach);
+      return VisitPackedOutputBigGraphNode(node, Yield);
     }
     return adt::errors::TypeError{
         std::string() +
@@ -126,9 +126,9 @@ struct GraphMatchCtxImpl {
         ", num_outputs: " + std::to_string(num_outputs)};
   }
 
-  template <typename DoEachT>
+  template <typename YieldT>
   adt::Result<adt::Ok> VisitPackedInputBigGraphNode(
-      const sg_node_t& packed_ir_value_node, const DoEachT& DoEach) const {
+      const sg_node_t& packed_ir_value_node, const YieldT& Yield) const {
     ADT_LET_CONST_REF(packed_ir_value_drr_node, packed_ir_value_node.Get());
     DefaultDrrGraph drr_graph{};
     ADT_LET_CONST_REF(drr_packed_ir_op_operand_node,
@@ -139,20 +139,20 @@ struct GraphMatchCtxImpl {
         exclude_bir_native_ir_values,
         GetBirNativeIrInputsOfPackedIrOp(drr_packed_ir_op_node.node()));
     using Ok = adt::Result<adt::Ok>;
-    auto DoEachIgnored = [&](const bg_node_t& node) -> Ok {
+    auto YieldIgnored = [&](const bg_node_t& node) -> Ok {
       if (exclude_bir_native_ir_values.count(node) == 0) {
-        return DoEach(node);
+        return Yield(node);
       }
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitBirIrInputOfPackedIrOp(drr_packed_ir_op_node.node(),
-                                                  DoEachIgnored));
+                                                  YieldIgnored));
     return adt::Ok{};
   }
 
-  template <typename DoEachT>
+  template <typename YieldT>
   adt::Result<adt::Ok> VisitPackedOutputBigGraphNode(
-      const sg_node_t& packed_ir_value_node, const DoEachT& DoEach) const {
+      const sg_node_t& packed_ir_value_node, const YieldT& Yield) const {
     ADT_LET_CONST_REF(packed_ir_value_drr_node, packed_ir_value_node.Get());
     DefaultDrrGraph drr_graph{};
     ADT_LET_CONST_REF(drr_packed_ir_op_result_node,
@@ -163,44 +163,44 @@ struct GraphMatchCtxImpl {
         exclude_bir_native_ir_values,
         GetBirNativeIrOutputsOfPackedIrOp(drr_packed_ir_op_node.node()));
     using Ok = adt::Result<adt::Ok>;
-    auto DoEachIgnored = [&](const bg_node_t& node) -> Ok {
+    auto YieldIgnored = [&](const bg_node_t& node) -> Ok {
       if (exclude_bir_native_ir_values.count(node) == 0) {
-        return DoEach(node);
+        return Yield(node);
       }
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitBirIrOutputOfPackedIrOp(drr_packed_ir_op_node.node(),
-                                                   DoEachIgnored));
+                                                   YieldIgnored));
     return adt::Ok{};
   }
 
   using DefaultBirGraph =
       graph::GraphDescriptor<bg_node_t, drr::topo_kind::Default>;
 
-  template <typename DoEachT>
+  template <typename YieldT>
   adt::Result<adt::Ok> VisitBirIrInputOfPackedIrOp(
-      const sg_node_t& drr_packed_ir_op_node, const DoEachT& DoEach) const {
+      const sg_node_t& drr_packed_ir_op_node, const YieldT& Yield) const {
     DefaultBirGraph bir_graph{};
     ADT_LET_CONST_REF(bir_packed_or_ref_ir_op_node,
                       GetSoleBigGraphNode(drr_packed_ir_op_node));
     using Ok = adt::Result<adt::Ok>;
     auto VisitIrOpOperand = [&](const bg_node_t& node) -> Ok {
-      return bir_graph.VisitUpstreamNodes(node, DoEach);
+      return bir_graph.VisitUpstreamNodes(node, Yield);
     };
     ADT_RETURN_IF_ERR(bir_graph.VisitUpstreamNodes(bir_packed_or_ref_ir_op_node,
                                                    VisitIrOpOperand));
     return adt::Ok{};
   }
 
-  template <typename DoEachT>
+  template <typename YieldT>
   adt::Result<adt::Ok> VisitBirIrOutputOfPackedIrOp(
-      const sg_node_t& drr_packed_ir_op_node, const DoEachT& DoEach) const {
+      const sg_node_t& drr_packed_ir_op_node, const YieldT& Yield) const {
     DefaultBirGraph bir_graph{};
     ADT_LET_CONST_REF(bir_packed_or_ref_ir_op_node,
                       GetSoleBigGraphNode(drr_packed_ir_op_node));
     using Ok = adt::Result<adt::Ok>;
     auto VisitIrOpResult = [&](const bg_node_t& node) -> Ok {
-      return bir_graph.VisitDownstreamNodes(node, DoEach);
+      return bir_graph.VisitDownstreamNodes(node, Yield);
     };
     ADT_RETURN_IF_ERR(bir_graph.VisitDownstreamNodes(
         bir_packed_or_ref_ir_op_node, VisitIrOpResult));

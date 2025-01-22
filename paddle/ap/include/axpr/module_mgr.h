@@ -18,11 +18,14 @@
 #include <fstream>
 #include <mutex>
 #include <sstream>
+#include "glog/logging.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
+#include "paddle/ap/include/axpr/builtin_func_name_mgr.h"
 #include "paddle/ap/include/axpr/frame.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/env/ap_path.h"
 #include "paddle/ap/include/memory/guard.h"
+#include "paddle/ap/include/preprocessor/preprocessor.h"
 
 namespace ap::axpr {
 
@@ -41,12 +44,21 @@ class ModuleMgr {
     return &module_mgr;
   }
 
+  std::optional<axpr::AttrMap<SerializableValue>> OptGetBuiltinModule(
+      const std::string& module_name) {
+    const auto iter = module_name2builtin_module_.find(module_name);
+    if (iter == module_name2builtin_module_.end()) return std::nullopt;
+    return iter->second;
+  }
+
   template <typename InitT>
   adt::Result<Frame<SerializableValue>> GetOrCreateByModuleName(
       const std::string& module_name, const InitT& Init) {
-    const auto& iter = module_name2const_global_frame_.find(module_name);
-    if (iter != module_name2const_global_frame_.end()) {
-      return iter->second;
+    {
+      const auto& iter = module_name2const_global_frame_.find(module_name);
+      if (iter != module_name2const_global_frame_.end()) {
+        return iter->second;
+      }
     }
     ADT_LET_CONST_REF(file_path, GetFilePathByModuleName(module_name))
         << adt::errors::ModuleNotFoundError{
@@ -64,7 +76,7 @@ class ModuleMgr {
     if (iter != file_path2const_global_frame_.end()) {
       return iter->second;
     }
-    auto frame_object = std::make_shared<AttributeImpl<SerializableValue>>();
+    auto frame_object = std::make_shared<AttrMapImpl<SerializableValue>>();
     const auto& frame =
         Frame<SerializableValue>::Make(circlable_ref_list(), frame_object);
     ADT_LET_CONST_REF(lambda, GetLambdaByFilePath(file_path));
@@ -76,6 +88,11 @@ class ModuleMgr {
   const std::shared_ptr<ap::memory::CirclableRefListBase>& circlable_ref_list()
       const {
     return memory_guard_.circlable_ref_list();
+  }
+
+  void RegisterBuiltinFrame(const std::string& name,
+                            const axpr::AttrMap<SerializableValue>& attr_map) {
+    CHECK(module_name2builtin_module_.emplace(name, attr_map).second);
   }
 
  private:
@@ -133,10 +150,50 @@ class ModuleMgr {
   }
 
   memory::Guard memory_guard_;
+
   std::unordered_map<std::string, Frame<SerializableValue>>
       file_path2const_global_frame_;
+
   std::unordered_map<std::string, Frame<SerializableValue>>
       module_name2const_global_frame_;
+
+  std::unordered_map<std::string, axpr::AttrMap<SerializableValue>>
+      module_name2builtin_module_;
 };
+
+struct ApBuiltinModuleBuilder {
+  std::string module_name;
+  axpr::AttrMap<SerializableValue> attr_map;
+
+  void Def(const std::string& name,
+           const axpr::BuiltinFuncType<axpr::Value>& func) {
+    void* func_ptr = reinterpret_cast<void*>(func);
+    attr_map->Set(name, BuiltinFuncVoidPtr{func_ptr});
+    BuiltinFuncNameMgr::Singleton()->Register(module_name, name, func_ptr);
+  }
+
+  void Def(const std::string& name,
+           const axpr::BuiltinHighOrderFuncType<axpr::Value>& func) {
+    void* func_ptr = reinterpret_cast<void*>(func);
+    attr_map->Set(name, BuiltinHighOrderFuncVoidPtr{func_ptr});
+    BuiltinFuncNameMgr::Singleton()->Register(module_name, name, func_ptr);
+  }
+};
+
+struct ApBuiltinModuleRegistryHelper {
+  ApBuiltinModuleRegistryHelper(
+      const std::string& name,
+      const std::function<void(ApBuiltinModuleBuilder*)>& func) {
+    ApBuiltinModuleBuilder builder{name};
+    func(&builder);
+    ModuleMgr::Singleton()->RegisterBuiltinFrame(name, builder.attr_map);
+  }
+};
+
+#define REGISTER_AP_BUILTIN_MODULE(name, ...)                          \
+  namespace {                                                          \
+  ::ap::axpr::ApBuiltinModuleRegistryHelper AP_CONCAT(                 \
+      ap_builtin_module_registry_helper, __LINE__)(name, __VA_ARGS__); \
+  }
 
 }  // namespace ap::axpr

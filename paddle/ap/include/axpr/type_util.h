@@ -18,6 +18,7 @@
 #include "paddle/ap/include/axpr/data_type.h"
 #include "paddle/ap/include/axpr/data_value.h"
 #include "paddle/ap/include/axpr/mutable_list.h"
+#include "paddle/ap/include/axpr/mutable_ordered_dict.h"
 #include "paddle/ap/include/axpr/ordered_dict.h"
 #include "paddle/ap/include/axpr/packed_args.h"
 #include "paddle/ap/include/axpr/pointer_type.h"
@@ -64,6 +65,7 @@ AttrMap<ValueT> GetObjectTypeName2Type() {
                                  PointerValue,
                                  MutableList<ValueT>,
                                  OrderedDict<ValueT>,
+                                 MutableOrderedDict<ValueT>,
                                  PackedArgs<ValueT>,
                                  AttrMap<axpr::SerializableValue>,
                                  ValueImplTypes...>::Call(&object);

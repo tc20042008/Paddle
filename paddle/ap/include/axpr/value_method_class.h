@@ -32,6 +32,7 @@
 #include "paddle/ap/include/axpr/list_method_class.h"
 #include "paddle/ap/include/axpr/method_method_class.h"
 #include "paddle/ap/include/axpr/mutable_list_method_class.h"
+#include "paddle/ap/include/axpr/mutable_ordered_dict_method_class.h"
 #include "paddle/ap/include/axpr/nothing_method_class.h"
 #include "paddle/ap/include/axpr/ordered_dict_method_class.h"
 #include "paddle/ap/include/axpr/packed_args_method_class.h"

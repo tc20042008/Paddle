@@ -112,10 +112,11 @@ const char* StoreToGlobalOp::attributes_name[StoreToGlobalOp::attributes_num] =
 
 void StoreToGlobalOp::Build(pir::Builder& builder,
                             pir::OperationArgument& argument,
-                            pir::Value input,
+                            pir::Value var,
+                            pir::Value val,
                             const std::string& index_func_unique_id) {
-  argument.inputs = {input};
-  argument.output_types = {input.type()};
+  argument.inputs = {var, val};
+  argument.output_types = {};
   argument.AddAttribute(
       "index_func_unique_id",
       pir::StrAttribute::get(pir::IrContext::Instance(), index_func_unique_id));
@@ -123,8 +124,6 @@ void StoreToGlobalOp::Build(pir::Builder& builder,
 
 bool StoreToGlobalOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext* infer_context) {
-  infer_context->SetShapeOrDataForValue(
-      result(0), infer_context->GetShapeOrDataForValue(operand_source(0)));
   return true;
 }
 

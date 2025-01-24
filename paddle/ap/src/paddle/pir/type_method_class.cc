@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/paddle/pir/type_method_class.h"
 #include "paddle/ap/include/axpr/callable_helper.h"
+#include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/paddle/pir/type_adt_type_id.h"
 
 namespace ap::paddle {
@@ -37,6 +38,20 @@ struct PirTypeGetType {
       using T = typename std::decay_t<decltype(impl)>::type;
       return T::name();
     });
+  }
+};
+
+struct ConvertToDtype {
+  static adt::Result<axpr::Value> Call(const axpr::Value& self_val,
+                                       const std::vector<axpr::Value>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<pir::Type>());
+    try {
+      auto phi_type = ::paddle::dialect::TransToPhiDataType(self);
+      ADT_LET_CONST_REF(dtype, axpr::GetDataTypeFromPhiDataType(phi_type));
+      return dtype;
+    } catch (const std::exception& e) {
+      return adt::errors::ValueError{e.what()};
+    }
   }
 };
 
@@ -90,7 +105,8 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirTypeClass() {
   static auto cls(
       axpr::MakeBuiltinClass<axpr::Value>("PirType", [&](const auto& Yield) {
         Yield("__str__", &PirTypeString);
-        Yield("get_type", &PirTypeGetType::Call);
+        Yield("get_type_name", &PirTypeGetType::Call);
+        Yield("convert_to_dtype", &ConvertToDtype::Call);
         Yield("match", &PirTypeMatch::Call);
       }));
   return axpr::MakeGlobalNaiveClassOps<pir::Type>(cls);

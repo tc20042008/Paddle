@@ -25,9 +25,11 @@
 
 namespace ap::dialect {
 
-class IR_API UpSpiderOp : public pir::Op<UpSpiderOp,
-                                         pir::SideEffectTrait,
-                                         pir::ImmutableLayoutTrait> {
+class IR_API UpSpiderOp
+    : public pir::Op<UpSpiderOp,
+                     pir::SideEffectTrait,
+                     pir::ImmutableLayoutTrait,
+                     ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "ap_op.up_spider"; }
@@ -38,6 +40,9 @@ class IR_API UpSpiderOp : public pir::Op<UpSpiderOp,
                     pir::Value lhs,
                     pir::Value rhs);
   void VerifySig() const {}
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
+    return true;
+  }
 };
 
 class IR_API DownSpiderOp
@@ -73,6 +78,8 @@ class IR_API LoadFromRegisterOp
 
 class IR_API StoreToRegisterOp
     : public pir::Op<StoreToRegisterOp,
+                     pir::SideEffectTrait,
+                     pir::ImmutableLayoutTrait,
                      ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
@@ -105,6 +112,8 @@ class IR_API LoadFromGlobalOp
 
 class IR_API StoreToGlobalOp
     : public pir::Op<StoreToGlobalOp,
+                     pir::SideEffectTrait,
+                     pir::ImmutableLayoutTrait,
                      ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
@@ -113,7 +122,8 @@ class IR_API StoreToGlobalOp
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value input,
+                    pir::Value var,
+                    pir::Value val,
                     const std::string &index_func_unique_id);
   void VerifySig() const {}
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);

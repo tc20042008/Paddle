@@ -74,6 +74,24 @@ struct PirProgramMethodClass {
     return attr_map;
   }
 
+  static adt::Result<axpr::Value> Clone(const axpr::Value& self_val,
+                                        const std::vector<axpr::Value>& args) {
+    ADT_CHECK(args.size() == 0);
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    pir::IrMapping ir_mapping;
+    auto new_program = self->pir_program->Clone(ir_mapping);
+    ADT_RETURN_IF_ERR(This{}.CloneSymbolicShapes(
+        new_program.get(), self->pir_program.get(), ir_mapping));
+    Program ap_program{new_program};
+    return GetPirProgramClass().New(ap_program);
+  }
+
+  adt::Result<adt::Ok> CloneSymbolicShape(pir::Program* new_program,
+                                          pir::Program* old_program,
+                                          const pir::IrMapping& ir_mapping) {
+    TODO return adt::Ok{};
+  }
+
   adt::Result<adt::List<axpr::Value>> ConvertToOps(
       const std::vector<const pir::Operation*>& ops,
       const std::unordered_map<pir::Value, int64_t>& value2index) {
@@ -176,6 +194,7 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirProgramClass() {
         Yield("__str__", &Impl::ToString);
         Yield("empty", &Impl::Empty);
         Yield("copy_to_const_program_data", &Impl::CopyToConstProgramData);
+        Yield("clone", &Impl::Clone);
       }));
   return axpr::MakeGlobalNaiveClassOps<Program>(cls);
 }

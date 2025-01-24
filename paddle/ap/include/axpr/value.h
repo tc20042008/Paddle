@@ -34,6 +34,7 @@
 #include "paddle/ap/include/axpr/list.h"
 #include "paddle/ap/include/axpr/method.h"
 #include "paddle/ap/include/axpr/mutable_list.h"
+#include "paddle/ap/include/axpr/mutable_ordered_dict.h"
 #include "paddle/ap/include/axpr/nothing.h"
 #include "paddle/ap/include/axpr/ordered_dict.h"
 #include "paddle/ap/include/axpr/packed_args.h"
@@ -66,6 +67,7 @@ using ValueBase = std::variant<Type<Nothing,
                                     AttrMap<ValueT>,
                                     AttrMap<SerializableValue>,
                                     OrderedDict<ValueT>,
+                                    MutableOrderedDict<ValueT>,
                                     BuiltinClassInstance<ValueT>,
                                     ClassInstance<ValueT>,
                                     PackedArgs<ValueT>,
@@ -93,6 +95,7 @@ using ValueBase = std::variant<Type<Nothing,
                                AttrMap<ValueT>,
                                AttrMap<SerializableValue>,
                                OrderedDict<ValueT>,
+                               MutableOrderedDict<ValueT>,
                                BuiltinClassInstance<ValueT>,
                                ClassInstance<ValueT>,
                                PackedArgs<ValueT>,

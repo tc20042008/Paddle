@@ -15,9 +15,35 @@
 #pragma once
 
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
+#include "paddle/ap/include/axpr/module_mgr.h"
 #include "paddle/ap/include/paddle/pir_node.h"
 
 namespace ap::paddle {
+
+void ForceLinkPir() {
+  // Do nothing.
+}
+
+template <typename Builder>
+void DefineMethods(Builder* m) {
+  m->Def("UndefinedPlace", &CreateUndefinedPlace);
+  m->Def("CPUPlace", &CreateCPUPlace);
+  m->Def("GPUPlace", &CreateGPUPlace);
+  m->Def("GPUPinnedPlace", &CreateGPUPinnedPlace);
+  m->Def("XPUPlace", &CreateXPUPlace);
+  m->Def("IPUPlace", &CreateIPUPlace);
+  m->Def("CustomPlace", &CreateCustomPlace);
+#define DEF_MAKE_ATTRIBUTE(attr_type) \
+  m->Def(attr_type::name(), &MakePirAttributeImpl<attr_type>::Call);
+  FOR_EACH_PIR_ATTRIBUTE_TYPE(DEF_MAKE_ATTRIBUTE);
+#undef DEF_MAKE_ATTRIBUTE
+
+#define DEF_MAKE_TYPE(cls) m->Def(cls::name(), &MakePirTypeImpl<cls>::Call);
+  FOR_EACH_PIR_ALTERNATIVE_TYPLE(DEF_MAKE_TYPE);
+#undef DEF_MAKE_TYPE
+}
+
+REGISTER_AP_BUILTIN_MODULE("pir", [](auto* m) { DefineMethods(m); });
 
 axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirClass() {
   static auto cls(

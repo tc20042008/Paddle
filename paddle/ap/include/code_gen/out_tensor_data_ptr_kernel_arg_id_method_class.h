@@ -26,6 +26,22 @@ struct OutTensorDataPtrKernelArgIdMethodClass {
   using This = OutTensorDataPtrKernelArgIdMethodClass;
   using Self = OutTensorDataPtrKernelArgId<BirNode>;
 
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    const void* ptr = self.__adt_rc_shared_ptr_raw_ptr();
+    std::ostringstream ss;
+    ss << "<OutTensorDataPtrKernelArgId object at " << ptr << ">";
+    return ss.str();
+  }
+
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    std::size_t hash_value = self->ir_value.GetHashValue();
+    return static_cast<int64_t>(hash_value);
+  }
+
   static adt::Result<ValueT> GetAttr(const ValueT& self_val,
                                      const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
@@ -59,6 +75,8 @@ GetOutTensorDataPtrKernelArgIdClass() {
   using ImplMethods = OutTensorDataPtrKernelArgIdMethodClass<ValueT, BirNode>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "OutTensorDataPtrKernelArgId", [&](const auto& Define) {
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
   using Self = typename ImplMethods::Self;

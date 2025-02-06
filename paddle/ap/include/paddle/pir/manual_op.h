@@ -66,12 +66,14 @@ class IR_API LoadFromRegisterOp
  public:
   using Op::Op;
   static const char *name() { return "ap_op.load_from_register"; }
-  static constexpr uint32_t attributes_num = 1;
+  static constexpr uint32_t attributes_num = 4;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value input,
-                    const std::string &name);
+                    pir::Type output_type,
+                    const symbol::ShapeOrDataDimExprs &shape_or_data,
+                    const std::string &name,
+                    const std::string &register_var_name);
   void VerifySig() const {}
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
@@ -84,12 +86,13 @@ class IR_API StoreToRegisterOp
  public:
   using Op::Op;
   static const char *name() { return "ap_op.store_to_register"; }
-  static constexpr uint32_t attributes_num = 1;
+  static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value input,
-                    const std::string &name);
+                    const std::string &name,
+                    const std::string &register_var_name);
   void VerifySig() const {}
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
@@ -117,7 +120,7 @@ class IR_API StoreToGlobalOp
                      ::paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "ap_op.store"; }
+  static const char *name() { return "ap_op.store_to_global"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT

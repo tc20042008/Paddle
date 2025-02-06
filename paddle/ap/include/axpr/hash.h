@@ -22,7 +22,8 @@ namespace ap::axpr {
 
 template <typename ValueT>
 struct Hash {
-  adt::Result<int64_t> operator()(const ValueT& val) const {
+  adt::Result<int64_t> operator()(InterpreterBase<ValueT>* interpreter,
+                                  const ValueT& val) const {
     const auto& func = MethodClass<ValueT>::Hash(val);
     using RetT = adt::Result<int64_t>;
     return func.Match(
@@ -37,9 +38,9 @@ struct Hash {
         },
         [&](adt::Result<ValueT> (*unary_func)(InterpreterBase<ValueT>*,
                                               const ValueT&)) -> RetT {
-          return adt::errors::TypeError{
-              GetTypeName(val) +
-              ".__hash__ is high order function, which is not supported yet."};
+          ADT_LET_CONST_REF(hash_val, unary_func(interpreter, val));
+          ADT_LET_CONST_REF(hash, hash_val.template TryGet<int64_t>());
+          return hash;
         });
   }
 };

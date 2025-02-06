@@ -86,10 +86,18 @@ struct PirProgramMethodClass {
     return GetPirProgramClass().New(ap_program);
   }
 
-  adt::Result<adt::Ok> CloneSymbolicShape(pir::Program* new_program,
-                                          pir::Program* old_program,
-                                          const pir::IrMapping& ir_mapping) {
-    TODO return adt::Ok{};
+  adt::Result<adt::Ok> CloneSymbolicShapes(pir::Program* new_program,
+                                           pir::Program* old_program,
+                                           const pir::IrMapping& ir_mapping) {
+    auto* new_shape_analysis =
+        &::pir::ShapeAnalysisManager::Instance().Get(new_program);
+    auto* old_shape_analysis =
+        &::pir::ShapeAnalysisManager::Instance().Get(old_program);
+    for (const auto& [old_value, new_value] : ir_mapping.GetMap<pir::Value>()) {
+      new_shape_analysis->SetShapeOrDataForValue(
+          new_value, old_shape_analysis->GetShapeOrDataForValue(old_value));
+    }
+    return adt::Ok{};
   }
 
   adt::Result<adt::List<axpr::Value>> ConvertToOps(
@@ -167,7 +175,7 @@ struct PirProgramMethodClass {
     const auto& index_iter = op2index.find(value.defining_op());
     ADT_CHECK(index_iter != op2index.end());
     attr_map->Set("defining_op_index", index_iter->second);
-    attr_map->Set("dtype", GetPirTypeClass().New(value.type()));
+    attr_map->Set("type", GetPirTypeClass().New(value.type()));
     ADT_LET_CONST_REF(symbolic_shape, GetShape(value));
     attr_map->Set("symbolic_shape", symbolic_shape);
     return attr_map;

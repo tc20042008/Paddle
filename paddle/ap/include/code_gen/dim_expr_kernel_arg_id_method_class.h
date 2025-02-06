@@ -27,6 +27,21 @@ struct DimExprKernelArgIdMethodClass {
   using This = DimExprKernelArgIdMethodClass;
   using Self = DimExprKernelArgId<BirNode>;
 
+  static adt::Result<ValueT> ToString(const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    std::ostringstream ss;
+    ss << self->dim_expr;
+    return ss.str();
+  }
+
+  static adt::Result<ValueT> Hash(const ValueT& self_val,
+                                  const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    std::size_t hash_value = std::hash<symbol::DimExpr>()(self->dim_expr);
+    return static_cast<int64_t>(hash_value);
+  }
+
   static adt::Result<ValueT> GetAttr(const ValueT& self_val,
                                      const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
@@ -62,6 +77,8 @@ GetDimExprKernelArgIdClass() {
   using ImplMethods = DimExprKernelArgIdMethodClass<ValueT, BirNode>;
   static auto cls(axpr::MakeBuiltinClass<ValueT>(
       "DimExprKernelArgId", [&](const auto& Define) {
+        Define("__str__", &ImplMethods::ToString);
+        Define("__hash__", &ImplMethods::Hash);
         Define("__getattr__", &ImplMethods::GetAttr);
       }));
   using Self = typename ImplMethods::Self;

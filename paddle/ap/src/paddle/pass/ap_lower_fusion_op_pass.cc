@@ -32,6 +32,7 @@
 #include "paddle/ap/include/code_module/module_to_axpr_helper.h"
 #include "paddle/ap/include/drr/drr_graph_descriptor.h"
 #include "paddle/ap/include/drr/drr_node_descriptor.h"
+#include "paddle/ap/include/drr/drr_pass_type_helper.h"
 #include "paddle/ap/include/drr/res_ptn_packed_ir_op_declare_data.h"
 #include "paddle/ap/include/drr/result_pattern_helper.h"
 #include "paddle/ap/include/drr/value.h"
@@ -47,6 +48,7 @@
 #include "paddle/ap/include/paddle/pass/ap_registry_helper.h"
 #include "paddle/ap/include/paddle/pass/ir_helper_method_class.h"
 #include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/ap/include/paddle/pir/pir_method_class.h"
 #include "paddle/ap/include/paddle/pir/pir_node_matched_src_ptn_ctx_helper.h"
 #include "paddle/ap/include/paddle/pir/pir_to_anf_expr_helper.h"
 #include "paddle/ap/include/paddle/pir/program_method_class.h"
@@ -244,15 +246,22 @@ struct ApLowerFusionOpPatternCtx {
       const std::shared_ptr<DrrCtxProvider>& drr_ctx_provider) {
     ADT_LET_CONST_REF(res_ptn_outputs, GetResPtnOutputs(drr_ctx));
     ADT_LET_CONST_REF(default_anchor, GetApDrrDefaultAnchor(drr_ctx));
-    ADT_LET_CONST_REF(opt_native_ir_op_anchor,
-                      GetApDrrNativeIrOpAnchor(drr_ctx));
+    std::optional<DrrNativeIrOp> opt_native_op_anchor;
+    if (ap::drr::DrrPassTypeHelper{}.SupportOptionalPackedOp(
+            drr_ctx->drr_pass_type)) {
+      ADT_LET_CONST_REF(opt_native_ir_op_anchor,
+                        GetApDrrNativeIrOpAnchor(drr_ctx));
+      opt_native_op_anchor = opt_native_ir_op_anchor;
+    } else {
+      opt_native_op_anchor = std::nullopt;
+    }
     ADT_LET_CONST_REF(anchor_op_name,
-                      GetAnchorOpName(opt_native_ir_op_anchor, default_anchor));
+                      GetAnchorOpName(opt_native_op_anchor, default_anchor));
     return ApLowerFusionOpPatternCtx{drr_ctx_provider,
                                      drr_ctx,
                                      res_ptn_outputs,
                                      default_anchor,
-                                     opt_native_ir_op_anchor,
+                                     opt_native_op_anchor,
                                      anchor_op_name,
                                      steps_limit};
   }
@@ -496,9 +505,6 @@ struct ApRewriter {
 
     ADT_RETURN_IF_ERR(DoWithCollector(CodeGenResultCollect));
 
-    if (fused_op_name2code_gen_result.empty()) {
-      return adt::Ok{};
-    }
     using RetT = adt::Result<CodeGenResult>;
     auto CodeGenResult4FusedOpName =
         [&](const std::string& fused_op_name) -> RetT {
@@ -2881,13 +2887,37 @@ class CustomAccessTopoDrrCtxProvider : public DrrCtxProvider {
     };
     ADT_RETURN_IF_ERR(
         VisitMatchedInput(source_pattern_ctx, match_ctx, DoEachInput));
+    std::optional<pir::Program*> old_program{};
     auto DoEachOp = [&](pir::Operation* op) -> adt::Result<adt::Ok> {
+      if (old_program.has_value()) {
+        ADT_CHECK(old_program.value() == op->GetParentProgram());
+      } else {
+        old_program = op->GetParentProgram();
+      }
       auto* new_op = op->Clone(ir_mapping, clone_options);
       new_program->block()->push_back(new_op);
       return adt::Ok{};
     };
     ADT_RETURN_IF_ERR(VisitMatchedOp(source_pattern_ctx, match_ctx, DoEachOp));
+    if (old_program.has_value()) {
+      ADT_RETURN_IF_ERR(CloneSymbolicShapes(
+          new_program.get(), old_program.value(), ir_mapping));
+    }
     return ap::paddle::Program{new_program};
+  }
+
+  adt::Result<adt::Ok> CloneSymbolicShapes(pir::Program* new_program,
+                                           pir::Program* old_program,
+                                           const pir::IrMapping& ir_mapping) {
+    auto* new_shape_analysis =
+        &::pir::ShapeAnalysisManager::Instance().Get(new_program);
+    auto* old_shape_analysis =
+        &::pir::ShapeAnalysisManager::Instance().Get(old_program);
+    for (const auto& [old_value, new_value] : ir_mapping.GetMap<pir::Value>()) {
+      new_shape_analysis->SetShapeOrDataForValue(
+          new_value, old_shape_analysis->GetShapeOrDataForValue(old_value));
+    }
+    return adt::Ok{};
   }
 
   template <typename YieldT>
@@ -3055,6 +3085,7 @@ class CustomAccessTopoDrrCtxProvider : public DrrCtxProvider {
 };
 
 adt::Result<ap::registry::Registry> TryGetRegistrySingleton() {
+  ap::paddle::ForceLinkPir();
   ap::paddle::ForceLinkIrTools();
   ADT_LET_CONST_REF(registry, ApRegistryHelper{}.SingltonRegistry());
   return registry;

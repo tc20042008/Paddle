@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/paddle/pass/ir_helper_method_class.h"
 #include "paddle/ap/include/axpr/module_mgr.h"
+#include "paddle/ap/include/axpr/to_string.h"
 #include "paddle/ap/include/drr/drr_graph_descriptor.h"
 #include "paddle/ap/include/drr/drr_node_descriptor.h"
 #include "paddle/ap/include/paddle/pir_graph_descriptor.h"
@@ -91,7 +92,7 @@ struct PirHelperMethodClass {
           interpreter->circlable_ref_list(),
           args->at(0),
           /*steps_limit=*/1,
-          /*mut_matched_pattern_as_programs*/ matched_pattern_mut_list.value());
+          /*mut_matched_pattern_as_programs=*/matched_pattern_mut_list.value());
     }
     if (!opt_pass.has_value()) {
       return adt::Nothing{};
@@ -273,8 +274,26 @@ struct PirHelperMethodClass {
       auto* new_op = op.Clone(ir_mapping, clone_options);
       new_program->block()->push_back(new_op);
     }
+    ADT_RETURN_IF_ERR(
+        CloneSymbolicShapes(packed_ir_op.fusion_op->GetParentProgram(),
+                            new_program.get(),
+                            ir_mapping));
     Program ap_program{new_program};
     return GetPirProgramClass().New(ap_program);
+  }
+
+  adt::Result<adt::Ok> CloneSymbolicShapes(pir::Program* new_program,
+                                           pir::Program* old_program,
+                                           const pir::IrMapping& ir_mapping) {
+    auto* new_shape_analysis =
+        &::pir::ShapeAnalysisManager::Instance().Get(new_program);
+    auto* old_shape_analysis =
+        &::pir::ShapeAnalysisManager::Instance().Get(old_program);
+    for (const auto& [old_value, new_value] : ir_mapping.GetMap<pir::Value>()) {
+      new_shape_analysis->SetShapeOrDataForValue(
+          new_value, old_shape_analysis->GetShapeOrDataForValue(old_value));
+    }
+    return adt::Ok{};
   }
 
   template <typename NameGetterT>

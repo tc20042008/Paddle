@@ -19,6 +19,7 @@
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace ap::paddle {
 
@@ -77,6 +78,95 @@ adt::Result<pir::Operation*> ConstructDownSpiderOp(
   return op;
 }
 
+adt::Result<pir::Operation*> ConstructLoadFromGlobalOp(
+    pir::Builder* builder,
+    const std::vector<pir::Value>& inputs,
+    const pir::AttributeMap& attrs) {
+  ADT_CHECK(inputs.size() == 1);
+  const auto& iter = attrs.find("index_func_unique_id");
+  ADT_CHECK(iter != attrs.end());
+  ADT_CHECK(iter->second.isa<pir::StrAttribute>());
+  const std::string& unique_id =
+      iter->second.dyn_cast<pir::StrAttribute>().AsString();
+  auto op =
+      builder->Build<ap::dialect::LoadFromGlobalOp>(inputs.at(0), unique_id);
+  return op;
+}
+
+adt::Result<pir::Operation*> ConstructStoreToGlobalOp(
+    pir::Builder* builder,
+    const std::vector<pir::Value>& inputs,
+    const pir::AttributeMap& attrs) {
+  ADT_CHECK(inputs.size() == 2);
+  const auto& iter = attrs.find("index_func_unique_id");
+  ADT_CHECK(iter != attrs.end());
+  ADT_CHECK(iter->second.isa<pir::StrAttribute>());
+  const std::string& unique_id =
+      iter->second.dyn_cast<pir::StrAttribute>().AsString();
+  auto op = builder->Build<ap::dialect::StoreToGlobalOp>(
+      inputs.at(0), inputs.at(1), unique_id);
+  return op;
+}
+
+adt::Result<pir::Operation*> ConstructLoadFromRegisterOp(
+    pir::Builder* builder,
+    const std::vector<pir::Value>& inputs,
+    const pir::AttributeMap& attrs) {
+  ADT_CHECK(inputs.size() == 0);
+  // type
+  const auto& type_iter = attrs.find("type");
+  ADT_CHECK(type_iter != attrs.end());
+  ADT_CHECK(type_iter->second.isa<pir::TypeAttribute>());
+  const auto& type = type_iter->second.dyn_cast<pir::TypeAttribute>().data();
+  // symbolic_shape_or_data
+  const auto& symbolic_shape_or_data_iter =
+      attrs.find("symbolic_shape_or_data");
+  ADT_CHECK(symbolic_shape_or_data_iter != attrs.end());
+  ADT_CHECK(
+      symbolic_shape_or_data_iter->second.isa<pir::shape::SymbolAttribute>());
+  const auto& symbolic_shape_or_data =
+      symbolic_shape_or_data_iter->second
+          .dyn_cast<pir::shape::SymbolAttribute>()
+          .data();
+  // name
+  const auto& name_iter = attrs.find("name");
+  ADT_CHECK(name_iter != attrs.end());
+  ADT_CHECK(name_iter->second.isa<pir::StrAttribute>());
+  const std::string& name =
+      name_iter->second.dyn_cast<pir::StrAttribute>().AsString();
+  // register_var_name
+  const auto& register_var_name_iter = attrs.find("register_var_name");
+  ADT_CHECK(register_var_name_iter != attrs.end());
+  ADT_CHECK(register_var_name_iter->second.isa<pir::StrAttribute>());
+  const std::string& register_var_name =
+      register_var_name_iter->second.dyn_cast<pir::StrAttribute>().AsString();
+  auto op = builder->Build<ap::dialect::LoadFromRegisterOp>(
+      type, symbolic_shape_or_data, name, register_var_name);
+  return op;
+}
+
+adt::Result<pir::Operation*> ConstructStoreToRegisterOp(
+    pir::Builder* builder,
+    const std::vector<pir::Value>& inputs,
+    const pir::AttributeMap& attrs) {
+  ADT_CHECK(inputs.size() == 1);
+  // name
+  const auto& name_iter = attrs.find("name");
+  ADT_CHECK(name_iter != attrs.end());
+  ADT_CHECK(name_iter->second.isa<pir::StrAttribute>());
+  const std::string& name =
+      name_iter->second.dyn_cast<pir::StrAttribute>().AsString();
+  // register_var_name
+  const auto& register_var_name_iter = attrs.find("register_var_name");
+  ADT_CHECK(register_var_name_iter != attrs.end());
+  ADT_CHECK(register_var_name_iter->second.isa<pir::StrAttribute>());
+  const std::string& register_var_name =
+      register_var_name_iter->second.dyn_cast<pir::StrAttribute>().AsString();
+  auto op = builder->Build<ap::dialect::StoreToRegisterOp>(
+      inputs.at(0), name, register_var_name);
+  return op;
+}
+
 }  // namespace
 
 adt::Result<std::optional<pir::Operation*>> CreateOperation(
@@ -102,6 +192,22 @@ adt::Result<std::optional<pir::Operation*>> CreateOperation(
   }
   if (op_name == "ap_op.down_spider") {
     ADT_LET_CONST_REF(ret, ConstructDownSpiderOp(builder, inputs, attrs));
+    return ret;
+  }
+  if (op_name == "ap_op.load_from_global") {
+    ADT_LET_CONST_REF(ret, ConstructLoadFromGlobalOp(builder, inputs, attrs));
+    return ret;
+  }
+  if (op_name == "ap_op.store_to_global") {
+    ADT_LET_CONST_REF(ret, ConstructStoreToGlobalOp(builder, inputs, attrs));
+    return ret;
+  }
+  if (op_name == "ap_op.load_from_register") {
+    ADT_LET_CONST_REF(ret, ConstructLoadFromRegisterOp(builder, inputs, attrs));
+    return ret;
+  }
+  if (op_name == "ap_op.store_to_register") {
+    ADT_LET_CONST_REF(ret, ConstructStoreToRegisterOp(builder, inputs, attrs));
     return ret;
   }
   return std::nullopt;

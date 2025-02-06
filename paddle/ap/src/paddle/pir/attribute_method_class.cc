@@ -18,6 +18,7 @@
 #include "paddle/ap/include/axpr/abstract_list.h"
 #include "paddle/ap/include/axpr/callable_helper.h"
 #include "paddle/ap/include/paddle/phi/place_method_class.h"
+#include "paddle/ap/include/paddle/pir/shape_or_data_method_class.h"
 #include "paddle/ap/include/paddle/pir/type_method_class.h"
 
 namespace ap::paddle {
@@ -361,14 +362,21 @@ MakePirAttributeImplTensorNameAttribute::GetCallArgs(
 
 adt::Result<axpr::Value> MakePirAttributeImplSymbolAttribute::Call(
     const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
-  return adt::errors::NotImplementedError{std::string() + "pir." +
-                                          pir::shape::SymbolAttribute::name() +
-                                          "() not implemented"};
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(shape_or_data,
+                    args.at(0).template CastTo<symbol::ShapeOrDataDimExprs>());
+  pir::Attribute attr{pir::shape::SymbolAttribute::get(
+      pir::IrContext::Instance(), shape_or_data)};
+  return GetPirAttributeClass().New(attr);
 }
 
 adt::Result<adt::List<axpr::Value>>
 MakePirAttributeImplSymbolAttribute::GetCallArgs(const axpr::Value& self_val) {
-  return adt::List<axpr::Value>{};
+  ADT_LET_CONST_REF(attribute, self_val.template CastTo<pir::Attribute>());
+  ADT_CHECK(attribute.isa<pir::shape::SymbolAttribute>());
+  const auto& attr = attribute.dyn_cast<pir::shape::SymbolAttribute>();
+  axpr::Value val{GetPirShapeOrDataClass().New(attr.data())};
+  return adt::List<axpr::Value>{val};
 }
 
 adt::Result<axpr::Value> MakePirAttributeImplKernelAttribute::Call(

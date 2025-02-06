@@ -50,12 +50,13 @@ struct MethodClassImpl<ValueT, MutableOrderedDict<ValueT>> {
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  adt::Result<ValueT> Hash(axpr::InterpreterBase<ValueT>* interpreter,
+                           const Self& self) {
     ADT_LET_CONST_REF(self_ptr, self.Get());
     int64_t hash_value = 0;
     for (const auto& [k, v] : self_ptr->items()) {
-      ADT_LET_CONST_REF(key_hash_value, axpr::Hash<ValueT>{}(k));
-      ADT_LET_CONST_REF(value_hash_value, axpr::Hash<ValueT>{}(v));
+      ADT_LET_CONST_REF(key_hash_value, axpr::Hash<ValueT>{}(interpreter, k));
+      ADT_LET_CONST_REF(value_hash_value, axpr::Hash<ValueT>{}(interpreter, v));
       hash_value = adt::hash_combine(hash_value, key_hash_value);
       hash_value = adt::hash_combine(hash_value, value_hash_value);
     }
@@ -66,7 +67,7 @@ struct MethodClassImpl<ValueT, MutableOrderedDict<ValueT>> {
                               const Self& self,
                               const ValueT& key) {
     ADT_LET_CONST_REF(self_ptr, self.Get());
-    ADT_LET_CONST_REF(val, self_ptr->At(key))
+    ADT_LET_CONST_REF(val, self_ptr->At(interpreter, key))
         << adt::errors::KeyError{axpr::ToDebugString(interpreter, key)};
     return val;
   }
@@ -78,8 +79,7 @@ struct MethodClassImpl<ValueT, MutableOrderedDict<ValueT>> {
           self, &axpr::WrapAsBuiltinFuncType<This, &This::Items>};
     }
     if (attr_name == "contains") {
-      return axpr::Method<ValueT>{
-          self, &axpr::WrapAsBuiltinFuncType<This, &This::Contains>};
+      return axpr::Method<ValueT>{self, &This::Contains};
     }
     if (attr_name == "get_or_create") {
       return axpr::Method<ValueT>{self, &This::GetOrCreate};
@@ -99,25 +99,27 @@ struct MethodClassImpl<ValueT, MutableOrderedDict<ValueT>> {
         "MutableOrderedDict.get_or_create() takes 2 argument, but " +
         std::to_string(args.size()) + " were given"};
     const auto& key = args.at(0);
-    ADT_LET_CONST_REF(has_key, self_ptr->Has(key));
+    ADT_LET_CONST_REF(has_key, self_ptr->Has(interpreter, key));
     if (!has_key) {
       ADT_LET_CONST_REF(val, interpreter->InterpretCall(args.at(1), {}));
-      ADT_RETURN_IF_ERR(self_ptr->Insert(key, val));
+      ADT_RETURN_IF_ERR(self_ptr->Insert(interpreter, key, val));
       return val;
     } else {
-      ADT_LET_CONST_REF(val, self_ptr->At(key))
+      ADT_LET_CONST_REF(val, self_ptr->At(interpreter, key))
           << adt::errors::KeyError{axpr::ToDebugString(interpreter, key)};
       return val;
     }
   }
 
-  adt::Result<ValueT> Contains(const Self& self,
-                               const std::vector<ValueT>& args) {
+  static adt::Result<ValueT> Contains(InterpreterBase<ValueT>* interpreter,
+                                      const ValueT& self_val,
+                                      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_LET_CONST_REF(self_ptr, self.Get());
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "MutableOrderedDict.contains() takes 1 argument, but " +
         std::to_string(args.size()) + " were given"};
-    ADT_LET_CONST_REF(has_elt, self_ptr->Has(args.at(0)));
+    ADT_LET_CONST_REF(has_elt, self_ptr->Has(interpreter, args.at(0)));
     return has_elt;
   }
 
@@ -172,7 +174,7 @@ struct MethodClassImpl<ValueT, TypeImpl<MutableOrderedDict<ValueT>>> {
           std::string() + "sequence item " + std::to_string(i) +
           " : expected 2-item list, " + std::to_string(pair->size()) +
           "-item list found."};
-      ADT_RETURN_IF_ERR(impl->Insert(pair->at(0), pair->at(1)));
+      ADT_RETURN_IF_ERR(impl->Insert(interpreter, pair->at(0), pair->at(1)));
       ++i;
     }
     return ordered_dict;

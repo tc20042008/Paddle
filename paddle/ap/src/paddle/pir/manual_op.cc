@@ -18,6 +18,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace ap::dialect {
 
@@ -45,43 +46,58 @@ bool DownSpiderOp::InferSymbolicShape(
 
 const char*
     LoadFromRegisterOp::attributes_name[LoadFromRegisterOp::attributes_num] = {
-        "unique_name"};
+        "type", "symbolic_shape_or_data", "name", "register_var_name"};
 
 void LoadFromRegisterOp::Build(pir::Builder& builder,
                                pir::OperationArgument& argument,
-                               pir::Value x,
-                               const std::string& name) {
-  argument.inputs = {x};
-  argument.output_types = {x.type()};
+                               pir::Type output_type,
+                               const symbol::ShapeOrDataDimExprs& shape_or_data,
+                               const std::string& name,
+                               const std::string& register_var_name) {
+  argument.inputs = {};
+  argument.output_types = {output_type};
   argument.AddAttribute(
-      "unique_name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
+      "type", pir::TypeAttribute::get(pir::IrContext::Instance(), output_type));
+  argument.AddAttribute("symbolic_shape_or_data",
+                        pir::shape::SymbolAttribute::get(
+                            pir::IrContext::Instance(), shape_or_data));
+  argument.AddAttribute(
+      "name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
+  argument.AddAttribute(
+      "register_var_name",
+      pir::StrAttribute::get(pir::IrContext::Instance(), register_var_name));
 }
 
 bool LoadFromRegisterOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext* infer_context) {
-  infer_context->SetShapeOrDataForValue(
-      result(0), infer_context->GetShapeOrDataForValue(operand_source(0)));
+  const auto& symbolic_shape_or_data =
+      this->attributes()
+          .at("symbolic_shape_or_data")
+          .dyn_cast<pir::shape::SymbolAttribute>()
+          .data();
+  infer_context->SetShapeOrDataForValue(result(0), symbolic_shape_or_data);
   return true;
 }
 
 const char*
     StoreToRegisterOp::attributes_name[StoreToRegisterOp::attributes_num] = {
-        "unique_name"};
+        "name", "register_var_name"};
 
 void StoreToRegisterOp::Build(pir::Builder& builder,
                               pir::OperationArgument& argument,
                               pir::Value x,
-                              const std::string& name) {
+                              const std::string& name,
+                              const std::string& register_var_name) {
   argument.inputs = {x};
-  argument.output_types = {x.type()};
   argument.AddAttribute(
-      "unique_name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
+      "name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
+  argument.AddAttribute(
+      "register_var_name",
+      pir::StrAttribute::get(pir::IrContext::Instance(), register_var_name));
 }
 
 bool StoreToRegisterOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext* infer_context) {
-  infer_context->SetShapeOrDataForValue(
-      result(0), infer_context->GetShapeOrDataForValue(operand_source(0)));
   return true;
 }
 

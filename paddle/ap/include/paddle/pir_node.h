@@ -74,15 +74,21 @@ struct NativeIrValue {
   }
 
   adt::Result<const std::vector<symbol::DimExpr>*> GetShapeDimExprsPtr() const {
+    ADT_LET_CONST_REF(shape_or_data, GetShapeOrDataDimExprsPtr());
+    return &shape_or_data->shape();
+  }
+
+  adt::Result<const symbol::ShapeOrDataDimExprs*> GetShapeOrDataDimExprsPtr()
+      const {
     auto* op = value.defining_op();
     ADT_CHECK(op != nullptr);
     auto* program = op->GetParentProgram();
     auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(program);
     const auto& shape_or_data = shape_analysis.GetShapeOrDataForValue(value);
-    using RetT = adt::Result<const std::vector<symbol::DimExpr>*>;
+    using RetT = adt::Result<const symbol::ShapeOrDataDimExprs*>;
     return shape_or_data.Match(
         [&](const symbol::TensorShapeOrDataDimExprs& impl) -> RetT {
-          return &impl.shape();
+          return &shape_or_data;
         },
         [&](const auto&) -> RetT {
           return adt::errors::TypeError{

@@ -15,18 +15,19 @@
 #pragma once
 
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
-#include "paddle/ap/include/axpr/type.h"
 #include "paddle/ap/include/axpr/value.h"
-#include "paddle/ap/include/paddle/phi/place_method_class.h"
-#include "paddle/ap/include/paddle/pir/attribute_method_class.h"
-#include "paddle/ap/include/paddle/pir/pir.h"
-#include "paddle/ap/include/paddle/pir/type_method_class.h"
+#include "paddle/ap/include/paddle/pir/type.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 namespace ap::paddle {
 
-void ForceLinkPir();
-axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>> GetPirClass();
+axpr::TypeImpl<axpr::BuiltinClassInstance<axpr::Value>>
+GetPirShapeOrDataClass();
 
 }  // namespace ap::paddle

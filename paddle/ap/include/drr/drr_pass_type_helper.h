@@ -28,6 +28,14 @@ struct DrrPassTypeHelper {
         [&](const ReifiedDrrPassType&) { return false; },
         [&](const AccessTopoDrrPassType&) { return false; });
   }
+
+  bool SupportOptionalPackedOp(const std::optional<DrrPassType>& type) const {
+    if (!type.has_value()) return false;
+    return type.value().Match(
+        [&](const AbstractDrrPassType&) { return true; },
+        [&](const ReifiedDrrPassType&) { return false; },
+        [&](const AccessTopoDrrPassType&) { return false; });
+  }
 };
 
 }  // namespace ap::drr

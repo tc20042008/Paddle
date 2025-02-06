@@ -16,6 +16,7 @@
 
 #include "paddle/ap/include/drr/src_ptn_op_pattern_ctx_method_class.h"
 #include <set>
+#include "paddle/ap/include/drr/drr_pass_type_helper.h"
 
 namespace ap::drr {
 
@@ -140,6 +141,9 @@ struct SrcPtnOpPatternCtxMethodClass {
   static adt::Result<axpr::Value> DeclareOptionalApTrivialFusionOp(
       const axpr::Value& self_val, const std::vector<axpr::Value>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_LET_CONST_REF(drr_ctx, adt::WeakPtrLock(self.value()->drr_ctx));
+    ADT_CHECK(
+        DrrPassTypeHelper{}.SupportOptionalPackedOp(drr_ctx->drr_pass_type));
     ADT_CHECK(args.size() == 0)
         << adt::errors::TypeError{std::string() +
                                   "SrcPtnOpPatternCtx.optional_ap_trivial_"

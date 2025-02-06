@@ -17,6 +17,7 @@
 #include "paddle/ap/include/axpr/dim_expr_method_class.h"
 #include "paddle/ap/include/axpr/naive_class_ops.h"
 #include "paddle/ap/include/paddle/pir/attribute_method_class.h"
+#include "paddle/ap/include/paddle/pir/shape_or_data_method_class.h"
 #include "paddle/ap/include/paddle/pir/type_method_class.h"
 
 namespace ap::paddle {
@@ -58,6 +59,14 @@ struct NativeIrValueMethodClass {
                                   attr_name + "'."};
   }
 
+  static adt::Result<ValueT> GetSymbolicShapeOrData(
+      const ValueT& self_val, const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
+    ADT_CHECK(args.size() == 0);
+    ADT_LET_CONST_REF(shape_or_data_ptr, self.GetShapeOrDataDimExprsPtr());
+    return ap::paddle::GetPirShapeOrDataClass().New(*shape_or_data_ptr);
+  }
+
   static adt::Result<ValueT> SymbolicShapeToList(
       const ValueT& self_val, const std::vector<ValueT>& args) {
     ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
@@ -92,6 +101,8 @@ axpr::TypeImpl<axpr::BuiltinClassInstance<ValueT>> GetNativeIrValueClass() {
         Yield("__str__", &ImplMethods::ToString);
         Yield("__hash__", &ImplMethods::Hash);
         Yield("symbolic_shape_to_list", &ImplMethods::SymbolicShapeToList);
+        Yield("get_symbolic_shape_or_data",
+              &ImplMethods::GetSymbolicShapeOrData);
       }));
   return axpr::MakeGlobalNaiveClassOps<typename ImplMethods::Self>(cls);
 }

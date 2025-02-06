@@ -19,6 +19,7 @@
 #include <utility>
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/hash.h"
+#include "paddle/ap/include/axpr/interpreter_base.h"
 #include "paddle/ap/include/axpr/type.h"
 
 namespace ap::axpr {
@@ -34,9 +35,10 @@ struct OrderedDictImpl {
 
   const std::list<ItemT>& items() const { return items_; }
 
-  adt::Result<bool> Has(const KeyT& key) const {
+  adt::Result<bool> Has(InterpreterBase<ValueT>* interpreter,
+                        const KeyT& key) const {
     Hasher hasher{};
-    ADT_LET_CONST_REF(hash_value, hasher(key));
+    ADT_LET_CONST_REF(hash_value, hasher(interpreter, key));
     const auto& iter_to_iters = this->hash_value2pair_iters_.find(hash_value);
     if (iter_to_iters == this->hash_value2pair_iters_.end()) {
       return false;
@@ -49,9 +51,10 @@ struct OrderedDictImpl {
     return false;
   }
 
-  adt::Result<ValueT> At(const KeyT& key) const {
+  adt::Result<ValueT> At(InterpreterBase<ValueT>* interpreter,
+                         const KeyT& key) const {
     Hasher hasher{};
-    ADT_LET_CONST_REF(hash_value, hasher(key));
+    ADT_LET_CONST_REF(hash_value, hasher(interpreter, key));
     const auto& iter_to_iters = this->hash_value2pair_iters_.find(hash_value);
     ADT_CHECK(iter_to_iters != this->hash_value2pair_iters_.end());
     for (auto iter : iter_to_iters->second) {
@@ -62,13 +65,16 @@ struct OrderedDictImpl {
     return adt::errors::KeyError{"OrderedDictImpl::At() failed."};
   }
 
-  adt::Result<adt::Ok> Insert(const ItemT& pair) {
-    return Insert(pair.first, pair.second);
+  adt::Result<adt::Ok> Insert(InterpreterBase<ValueT>* interpreter,
+                              const ItemT& pair) {
+    return Insert(interpreter, pair.first, pair.second);
   }
 
-  adt::Result<adt::Ok> Insert(const ValueT& key, const ValueT& val) {
+  adt::Result<adt::Ok> Insert(InterpreterBase<ValueT>* interpreter,
+                              const ValueT& key,
+                              const ValueT& val) {
     Hasher hasher{};
-    ADT_LET_CONST_REF(hash_value, hasher(key));
+    ADT_LET_CONST_REF(hash_value, hasher(interpreter, key));
     auto* lst = &this->hash_value2pair_iters_[hash_value];
     for (auto iter : *lst) {
       if (iter->first == key) {

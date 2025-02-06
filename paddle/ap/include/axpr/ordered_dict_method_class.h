@@ -48,11 +48,12 @@ struct MethodClassImpl<ValueT, OrderedDict<ValueT>> {
     return ss.str();
   }
 
-  adt::Result<ValueT> Hash(const Self& self) {
+  adt::Result<ValueT> Hash(axpr::InterpreterBase<ValueT>* interpreter,
+                           const Self& self) {
     int64_t hash_value = 0;
     for (const auto& [k, v] : self->items()) {
-      ADT_LET_CONST_REF(key_hash_value, axpr::Hash<ValueT>{}(k));
-      ADT_LET_CONST_REF(value_hash_value, axpr::Hash<ValueT>{}(v));
+      ADT_LET_CONST_REF(key_hash_value, axpr::Hash<ValueT>{}(interpreter, k));
+      ADT_LET_CONST_REF(value_hash_value, axpr::Hash<ValueT>{}(interpreter, v));
       hash_value = adt::hash_combine(hash_value, key_hash_value);
       hash_value = adt::hash_combine(hash_value, value_hash_value);
     }
@@ -62,7 +63,7 @@ struct MethodClassImpl<ValueT, OrderedDict<ValueT>> {
   adt::Result<ValueT> GetItem(axpr::InterpreterBase<ValueT>* interpreter,
                               const Self& self,
                               const ValueT& key) {
-    ADT_LET_CONST_REF(val, self->At(key))
+    ADT_LET_CONST_REF(val, self->At(interpreter, key))
         << adt::errors::KeyError{axpr::ToDebugString(interpreter, key)};
     return val;
   }
@@ -74,20 +75,22 @@ struct MethodClassImpl<ValueT, OrderedDict<ValueT>> {
           self, &axpr::WrapAsBuiltinFuncType<This, &This::Items>};
     }
     if (attr_name == "contains") {
-      return axpr::Method<ValueT>{
-          self, &axpr::WrapAsBuiltinFuncType<This, &This::Contains>};
+      return axpr::Method<ValueT>{self, &This::Contains};
     }
     return adt::errors::TypeError{std::string() +
                                   "OrderedDict object has no attribute '" +
                                   attr_name + "'"};
   }
 
-  adt::Result<ValueT> Contains(const Self& self,
-                               const std::vector<ValueT>& args) {
+  static adt::Result<ValueT> Contains(
+      axpr::InterpreterBase<ValueT>* interpreter,
+      const ValueT& self_val,
+      const std::vector<ValueT>& args) {
+    ADT_LET_CONST_REF(self, self_val.template CastTo<Self>());
     ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
         std::string() + "OrderedDict.contains() takes 1 argument, but " +
         std::to_string(args.size()) + " were given"};
-    ADT_LET_CONST_REF(has_elt, self->Has(args.at(0)));
+    ADT_LET_CONST_REF(has_elt, self->Has(interpreter, args.at(0)));
     return has_elt;
   }
 
@@ -111,8 +114,10 @@ struct MethodClassImpl<ValueT, TypeImpl<OrderedDict<ValueT>>> {
     return axpr::Method<ValueT>{self, &This::Construct};
   }
 
-  static adt::Result<ValueT> Construct(const ValueT&,
-                                       const std::vector<ValueT>& args) {
+  static adt::Result<ValueT> Construct(
+      axpr::InterpreterBase<ValueT>* interpreter,
+      const ValueT&,
+      const std::vector<ValueT>& args) {
     if (args.size() == 0) {
       return OrderedDict<ValueT>{};
     }
@@ -136,7 +141,8 @@ struct MethodClassImpl<ValueT, TypeImpl<OrderedDict<ValueT>>> {
           std::string() + "sequence item " + std::to_string(i) +
           " : expected 2-item list, " + std::to_string(pair->size()) +
           "-item list found."};
-      ADT_RETURN_IF_ERR(ordered_dict->Insert(pair->at(0), pair->at(1)));
+      ADT_RETURN_IF_ERR(
+          ordered_dict->Insert(interpreter, pair->at(0), pair->at(1)));
       ++i;
     }
     return ordered_dict;

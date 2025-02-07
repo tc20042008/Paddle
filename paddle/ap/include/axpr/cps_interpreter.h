@@ -246,10 +246,6 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
           ret_composed_call->inner_func = &CpsBuiltinIf;
           return adt::Ok{};
         },
-        [&](const builtin_symbol::Apply&) -> Ok {
-          ret_composed_call->inner_func = &CpsBuiltinApply;
-          return adt::Ok{};
-        },
         [&](const builtin_symbol::Id&) -> Ok {
           ret_composed_call->inner_func = &BuiltinIdentity;
           return adt::Ok{};

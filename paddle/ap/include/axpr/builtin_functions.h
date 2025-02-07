@@ -22,8 +22,6 @@ namespace ap::axpr {
 Result<adt::Ok> CpsBuiltinIf(InterpreterBase<axpr::Value>* interpreter,
                              ComposedCallImpl<axpr::Value>* composed_call);
 
-Result<adt::Ok> CpsBuiltinApply(ComposedCallImpl<axpr::Value>* composed_call);
-
 Result<axpr::Value> BuiltinIdentity(const axpr::Value&,
                                     const std::vector<axpr::Value>& args);
 
@@ -50,6 +48,10 @@ Result<axpr::Value> FlatMap(axpr::InterpreterBase<axpr::Value>* interpreter,
 Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
                         const axpr::Value&,
                         const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> Apply(axpr::InterpreterBase<axpr::Value>* interpreter,
+                          const axpr::Value&,
+                          const std::vector<axpr::Value>& args);
 
 Result<axpr::Value> Length(axpr::InterpreterBase<axpr::Value>* interpreter,
                            const axpr::Value&,

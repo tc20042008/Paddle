@@ -19,6 +19,7 @@
 #include "paddle/ap/include/axpr/abstract_list.h"
 #include "paddle/ap/include/axpr/bool_int_double_helper.h"
 #include "paddle/ap/include/axpr/builtin_high_order_func_type.h"
+#include "paddle/ap/include/axpr/callable_helper.h"
 #include "paddle/ap/include/axpr/data_value_util.h"
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/string_util.h"
@@ -89,24 +90,6 @@ Result<adt::Ok> CpsBuiltinIf(InterpreterBase<axpr::Value>* interpreter,
                                           closure->lambda,
                                           std::vector<axpr::Value>(),
                                           composed_call);
-}
-
-Result<adt::Ok> CpsBuiltinApply(ComposedCallImpl<axpr::Value>* composed_call) {
-  const auto& args = composed_call->args;
-  if (args.size() != 2) {
-    return TypeError{std::string(kBuiltinApply()) + "takes 2 arguments, but " +
-                     std::to_string(args.size()) + "were given."};
-  }
-  const auto& opt_arg_list =
-      args.at(1).template TryGet<adt::List<axpr::Value>>();
-  if (!opt_arg_list.HasOkValue()) {
-    return TypeError{std::string() + "the second arguments must be list, " +
-                     axpr::GetTypeName(args.at(1)) + " were given."};
-  }
-  const auto& arg_list = opt_arg_list.GetOkValue();
-  composed_call->inner_func = args.at(0);
-  composed_call->args = arg_list.vector();
-  return adt::Ok{};
 }
 
 Result<axpr::Value> BuiltinIdentity(const axpr::Value&,
@@ -260,16 +243,29 @@ adt::Result<axpr::Value> ReplaceOrTrimLeftComma(
         return true;
       };
   if (replacement.empty()) {
-    std::size_t comma_pos = self.rfind(',', pattern_pos);
-    if (EquivalentComma(self, comma_pos, pattern_pos)) {
-      std::string str = self;
-      return str.replace(comma_pos, pattern_pos + pattern.size(), "");
-    } else {
-      return self;
+    std::string str = self;
+    while (true) {
+      std::size_t pattern_pos = self.find(pattern);
+      if (pattern_pos == std::string::npos) {
+        break;
+      }
+      std::size_t comma_pos = str.rfind(',', pattern_pos);
+      if (!EquivalentComma(str, comma_pos, pattern_pos)) {
+        break;
+      }
+      str = str.replace(comma_pos, pattern_pos + pattern.size(), "");
     }
+    return str;
   } else {
     std::string str = self;
-    return str.replace(pattern_pos, pattern.size(), replacement);
+    while (true) {
+      std::size_t pos = str.find(pattern);
+      if (pos == std::string::npos) {
+        break;
+      }
+      str = str.replace(pos, pattern.size(), replacement);
+    }
+    return str;
   }
 }
 
@@ -331,6 +327,24 @@ Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
         return adt::Continue{};
       }));
   return ret;
+}
+
+Result<axpr::Value> Apply(axpr::InterpreterBase<axpr::Value>* interpreter,
+                          const axpr::Value&,
+                          const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+      std::string() + "apply() takes 2 arguments but " +
+      std::to_string(args.size()) + " were given."};
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<axpr::Value>::CastFrom(args.at(1)));
+  ADT_LET_CONST_REF(lst_size, lst.size());
+  std::vector<axpr::Value> func_args;
+  func_args.reserve(lst_size);
+  ADT_RETURN_IF_ERR(
+      lst.Visit([&](const auto& elt) -> adt::Result<adt::LoopCtrl> {
+        func_args.push_back(elt);
+        return adt::Continue{};
+      }));
+  return interpreter->InterpretCall(args.at(0), func_args);
 }
 
 Result<axpr::Value> Length(axpr::InterpreterBase<axpr::Value>* interpreter,

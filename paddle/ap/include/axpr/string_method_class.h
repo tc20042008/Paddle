@@ -92,11 +92,14 @@ struct StringMethodClass {
   std::string Replace(std::string self,
                       const std::string& pattern,
                       const std::string& replacement) {
-    std::size_t pos = self.find(pattern);
-    if (pos == std::string::npos) {
-      return self;
+    while (true) {
+      std::size_t pos = self.find(pattern);
+      if (pos == std::string::npos) {
+        break;
+      }
+      self = self.replace(pos, pattern.size(), replacement);
     }
-    return self.replace(pos, pattern.size(), replacement);
+    return self;
   }
 
   template <typename BultinBinarySymbol>

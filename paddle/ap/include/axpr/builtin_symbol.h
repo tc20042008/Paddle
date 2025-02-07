@@ -22,7 +22,6 @@
 namespace ap::axpr {
 
 inline constexpr const char* kBuiltinIf() { return "if"; }
-inline constexpr const char* kBuiltinApply() { return "__builtin_apply__"; }
 inline constexpr const char* kBuiltinIdentity() {
   return "__builtin_identity__";
 }
@@ -53,12 +52,6 @@ namespace builtin_symbol {
 struct If : public std::monostate {
   using std::monostate::monostate;
   static constexpr const char* Name() { return kBuiltinIf(); }
-  std::size_t GetHashValue() const { return 0; }
-};
-
-struct Apply : public std::monostate {
-  using std::monostate::monostate;
-  static constexpr const char* Name() { return kBuiltinApply(); }
   std::size_t GetHashValue() const { return 0; }
 };
 
@@ -204,7 +197,7 @@ struct Op : public OpImpl {
   }
 };
 
-using SymbolImpl = std::variant<If, Apply, Id, List, Op>;
+using SymbolImpl = std::variant<If, Id, List, Op>;
 
 struct Symbol : public SymbolImpl {
   using SymbolImpl::SymbolImpl;
@@ -224,7 +217,6 @@ struct Symbol : public SymbolImpl {
 inline adt::Maybe<Symbol> GetSymbolFromString(const std::string& name) {
   static const std::unordered_map<std::string, Symbol> map{
       {If::Name(), If{}},
-      {Apply::Name(), Apply{}},
       {Id::Name(), Id{}},
       {List::Name(), List{}},
       {Call::Name(), Op{Call{}}},

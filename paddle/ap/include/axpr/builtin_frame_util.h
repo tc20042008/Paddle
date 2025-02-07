@@ -17,30 +17,32 @@
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/builtin_functions.h"
+#include "paddle/ap/include/axpr/builtin_symbol.h"
 #include "paddle/ap/include/axpr/module_mgr_helper.h"
 
 namespace ap::axpr {
 
-template <typename ValueT, typename DoEachT>
-void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
+template <typename ValueT, typename YieldT>
+void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   AttrMap<ValueT> base{ValueT::GetExportedTypes()};
   for (const auto& [k, v] : base->storage) {
-    DoEach(k, v);
+    Yield(k, v);
   }
-  DoEach("import", &ModuleMgrHelper<ValueT>::ImportModule);
-  DoEach("print", &Print);
-  DoEach("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma);
-  DoEach("range", &MakeRange);
-  DoEach("flat_map", &FlatMap);
-  DoEach("map", &Map);
-  DoEach("filter", &Filter);
-  DoEach("reduce", &Reduce);
-  DoEach("zip", &Zip);
-  DoEach("max", &Max);
-  DoEach("min", &Min);
-  DoEach("len", &Length);
-  DoEach("getattr", &GetAttr);
-  DoEach("setattr", &SetAttr);
+  Yield("import", &ModuleMgrHelper<ValueT>::ImportModule);
+  Yield("apply", &Apply);
+  Yield("print", &Print);
+  Yield("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma);
+  Yield("range", &MakeRange);
+  Yield("flat_map", &FlatMap);
+  Yield("map", &Map);
+  Yield("filter", &Filter);
+  Yield("reduce", &Reduce);
+  Yield("zip", &Zip);
+  Yield("max", &Max);
+  Yield("min", &Min);
+  Yield("len", &Length);
+  Yield("getattr", &GetAttr);
+  Yield("setattr", &SetAttr);
 }
 
 template <typename ValueT>

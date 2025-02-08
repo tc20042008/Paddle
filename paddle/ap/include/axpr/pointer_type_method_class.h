@@ -15,9 +15,11 @@
 #pragma once
 
 #include "paddle/ap/include/axpr/constants.h"
+#include "paddle/ap/include/axpr/data_type.h"
 #include "paddle/ap/include/axpr/int_data_type.h"
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/pointer_type.h"
+#include "paddle/ap/include/axpr/pointer_type_util.h"
 
 namespace ap::axpr {
 
@@ -36,9 +38,17 @@ struct PointerTypeMethodClass {
     return hash_value;
   }
 
-  template <typename BuiltinUnarySymbol>
-  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
-    return adt::Nothing{};
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template CastTo<std::string>());
+    if (attr_name == "data_type") {
+      return GetDataType(self);
+    }
+    return adt::errors::AttributeError{
+        std::string() + "PointerType has no attribute '" + attr_name + "'"};
+  }
+
+  adt::Result<ValueT> GetDataType(const Self& self) {
+    return GetDataTypeTypeFromPointerType(self);
   }
 
   template <typename BultinBinarySymbol>

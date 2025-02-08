@@ -18,6 +18,7 @@
 #include "paddle/ap/include/axpr/data_type.h"
 #include "paddle/ap/include/axpr/int_data_type.h"
 #include "paddle/ap/include/axpr/method_class.h"
+#include "paddle/ap/include/axpr/pointer_type_util.h"
 
 namespace ap::axpr {
 
@@ -36,9 +37,24 @@ struct DataTypeMethodClass {
     return hash_value;
   }
 
-  template <typename BuiltinUnarySymbol>
-  static BuiltinUnaryFunc<ValueT> GetBuiltinUnaryFunc() {
-    return adt::Nothing{};
+  adt::Result<ValueT> GetAttr(const Self& self, const ValueT& attr_name_val) {
+    ADT_LET_CONST_REF(attr_name, attr_name_val.template CastTo<std::string>());
+    if (attr_name == "const_pointer_type") {
+      return GetConstPointerType(self);
+    }
+    if (attr_name == "mutable_pointer_type") {
+      return GetMutablePointerType(self);
+    }
+    return adt::errors::AttributeError{
+        std::string() + "DataType has no attribute '" + attr_name + "'"};
+  }
+
+  adt::Result<ValueT> GetConstPointerType(const Self& self) {
+    return GetConstPointerTypeFromDataType(self);
+  }
+
+  adt::Result<ValueT> GetMutablePointerType(const Self& self) {
+    return GetMutablePointerTypeFromDataType(self);
   }
 
   template <typename BultinBinarySymbol>

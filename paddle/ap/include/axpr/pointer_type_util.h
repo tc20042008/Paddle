@@ -22,6 +22,7 @@ namespace ap::axpr {
 PointerType RemoveConst(const PointerType& ptr_type);
 PointerType GetConstPointerTypeFromDataType(const DataType& data_type);
 PointerType GetMutablePointerTypeFromDataType(const DataType& data_type);
+DataType GetDataTypeTypeFromPointerType(const PointerType& pointer_type);
 
 namespace detail {
 
@@ -83,4 +84,19 @@ inline PointerType GetMutablePointerTypeFromDataType(
   });
 }
 
+inline DataType GetDataTypeTypeFromPointerType(
+    const PointerType& pointer_type) {
+  return pointer_type.Match(
+      [&](CppPointerType<const void*>) -> DataType {
+        return CppDataType<adt::Undefined>{};
+      },
+      [&](CppPointerType<void*>) -> DataType {
+        return CppDataType<adt::Undefined>{};
+      },
+      [&](const auto& impl) -> DataType {
+        using PtrT = typename std::decay_t<decltype(impl)>::type;
+        using T = std::remove_const_t<std::remove_pointer_t<PtrT>>;
+        return CppDataType<T>{};
+      });
+}
 }  // namespace ap::axpr

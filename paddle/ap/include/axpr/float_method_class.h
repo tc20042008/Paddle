@@ -94,7 +94,40 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, double> : public FloatMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<double>>
-    : public EmptyMethodClass<ValueT> {};
+struct MethodClassImpl<ValueT, TypeImpl<double>> {
+  using This = MethodClassImpl<ValueT, TypeImpl<double>>;
+
+  adt::Result<ValueT> Call(const TypeImpl<double>&) { return &This::Construct; }
+
+  static adt::Result<ValueT> Construct(const ValueT&,
+                                       const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "float() takes 1 argument, but " +
+        std::to_string(args.size()) + " were given"};
+    using T = double;
+    using RetT = adt::Result<ValueT>;
+    return args.at(0).Match(
+        [&](bool c) -> RetT { return static_cast<T>(c); },
+        [&](int64_t c) -> RetT { return static_cast<T>(c); },
+        [&](double c) -> RetT { return static_cast<T>(c); },
+        [&](DataValue data_value) -> RetT {
+          return data_value.Match(
+              [&](const axpr::pstring&) -> RetT {
+                return adt::errors::TypeError{
+                    "invalid convertion from type 'pstring' to 'float'"};
+              },
+              [&](const adt::Undefined&) -> RetT {
+                return adt::errors::TypeError{
+                    "invalid convertion from type 'void' to 'float'"};
+              },
+              [&](const auto& impl) -> RetT { return static_cast<T>(impl); });
+        },
+        [&](const auto&) -> adt::Result<ValueT> {
+          return adt::errors::TypeError{
+              std::string() +
+              "the argument 1 of float() should be bool/int/float/DataValue"};
+        });
+  }
+};
 
 }  // namespace ap::axpr

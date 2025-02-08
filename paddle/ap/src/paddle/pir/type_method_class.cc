@@ -153,7 +153,7 @@ adt::Result<adt::List<axpr::Value>> MakePirTypeImplVectorType::GetCallArgs(
   for (int i = 0; i < type_list.size(); ++i) {
     ret_list->emplace_back(GetPirTypeClass().New(type_list[i]));
   }
-  return adt::List<axpr::Value>{ret_list};
+  return adt::List<axpr::Value>{axpr::Value{ret_list}};
 }
 
 adt::Result<axpr::Value> MakePirTypeImplDenseTensorType::Call(

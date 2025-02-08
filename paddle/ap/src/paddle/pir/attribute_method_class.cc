@@ -338,7 +338,7 @@ MakePirAttributeImplArrayAttribute::GetCallArgs(const axpr::Value& self_val) {
   for (int i = 0; i < attr.size(); ++i) {
     lst->emplace_back(GetPirAttributeClass().New(attr.at(i)));
   }
-  return adt::List<axpr::Value>{lst};
+  return adt::List<axpr::Value>{axpr::Value{lst}};
 }
 
 adt::Result<axpr::Value> MakePirAttributeImplTensorNameAttribute::Call(
@@ -429,7 +429,7 @@ MakePirAttributeImplIntArrayAttribute::GetCallArgs(
     int64_t elt = data[i];
     lst->emplace_back(elt);
   }
-  return adt::List<axpr::Value>{lst};
+  return adt::List<axpr::Value>{axpr::Value{lst}};
 }
 
 inline adt::Result<phi::Scalar> ConvertDataValueToScalar(

@@ -17,6 +17,7 @@
 #include <cstdint>
 #include "paddle/ap/include/axpr/bool_int_double_arithmetic_util.h"
 #include "paddle/ap/include/axpr/constants.h"
+#include "paddle/ap/include/axpr/data_value.h"
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/type.h"
 
@@ -91,7 +92,42 @@ template <typename ValueT>
 struct MethodClassImpl<ValueT, int64_t> : public IntMethodClass<ValueT> {};
 
 template <typename ValueT>
-struct MethodClassImpl<ValueT, TypeImpl<int64_t>>
-    : public EmptyMethodClass<ValueT> {};
+struct MethodClassImpl<ValueT, TypeImpl<int64_t>> {
+  using This = MethodClassImpl<ValueT, TypeImpl<int64_t>>;
+
+  adt::Result<ValueT> Call(const TypeImpl<int64_t>&) {
+    return &This::Construct;
+  }
+
+  static adt::Result<ValueT> Construct(const ValueT&,
+                                       const std::vector<ValueT>& args) {
+    ADT_CHECK(args.size() == 1) << adt::errors::TypeError{
+        std::string() + "int() takes 1 argument, but " +
+        std::to_string(args.size()) + " were given"};
+    using T = int64_t;
+    using RetT = adt::Result<ValueT>;
+    return args.at(0).Match(
+        [&](bool c) -> RetT { return static_cast<T>(c); },
+        [&](int64_t c) -> RetT { return static_cast<T>(c); },
+        [&](double c) -> RetT { return static_cast<T>(c); },
+        [&](DataValue data_value) -> RetT {
+          return data_value.Match(
+              [&](const axpr::pstring&) -> RetT {
+                return adt::errors::TypeError{
+                    "invalid convertion from type 'pstring' to 'int'"};
+              },
+              [&](const adt::Undefined&) -> RetT {
+                return adt::errors::TypeError{
+                    "invalid convertion from type 'void' to 'int'"};
+              },
+              [&](const auto& impl) -> RetT { return static_cast<T>(impl); });
+        },
+        [&](const auto&) -> adt::Result<ValueT> {
+          return adt::errors::TypeError{
+              std::string() +
+              "the argument 1 of int() should be bool/int/float/DataValue"};
+        });
+  }
+};
 
 }  // namespace ap::axpr

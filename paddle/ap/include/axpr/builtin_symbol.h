@@ -21,7 +21,7 @@
 
 namespace ap::axpr {
 
-inline constexpr const char* kBuiltinIf() { return "if"; }
+inline constexpr const char* kBuiltinIf() { return "__builtin_if__"; }
 inline constexpr const char* kBuiltinIdentity() {
   return "__builtin_identity__";
 }

@@ -403,6 +403,17 @@ struct ModuleNotFoundError {
   const char* class_name() const { return "ModuleNotFoundError"; }
 };
 
+struct AssertionError {
+  std::string msg;
+  source_code::CallStack call_stack{};
+
+  bool operator==(const AssertionError& other) const {
+    return this->msg == other.msg && this->call_stack == other.call_stack;
+  }
+
+  const char* class_name() const { return "AssertionError"; }
+};
+
 using ErrorBase = std::variant<RuntimeError,
                                InvalidArgumentError,
                                AttributeError,
@@ -415,7 +426,8 @@ using ErrorBase = std::variant<RuntimeError,
                                MismatchError,
                                NotImplementedError,
                                SyntaxError,
-                               ModuleNotFoundError>;
+                               ModuleNotFoundError,
+                               AssertionError>;
 
 struct [[nodiscard]] Error : public ErrorBase {
   using ErrorBase::ErrorBase;

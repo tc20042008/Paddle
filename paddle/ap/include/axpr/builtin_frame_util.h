@@ -18,6 +18,7 @@
 #include "paddle/ap/include/axpr/attr_map.h"
 #include "paddle/ap/include/axpr/builtin_functions.h"
 #include "paddle/ap/include/axpr/builtin_symbol.h"
+#include "paddle/ap/include/axpr/exception_method_class.h"
 #include "paddle/ap/include/axpr/module_mgr_helper.h"
 
 namespace ap::axpr {
@@ -43,6 +44,9 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   Yield("len", &Length);
   Yield("getattr", &GetAttr);
   Yield("setattr", &SetAttr);
+  ForEachExceptionConstructor(Yield);
+  Yield("raise", &Raise);
+  Yield("__builtin_not__", &BuiltinNot);
 }
 
 template <typename ValueT>

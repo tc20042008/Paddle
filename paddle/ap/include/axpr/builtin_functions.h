@@ -19,11 +19,14 @@
 
 namespace ap::axpr {
 
-Result<adt::Ok> CpsBuiltinIf(InterpreterBase<axpr::Value>* interpreter,
-                             ComposedCallImpl<axpr::Value>* composed_call);
-
 Result<axpr::Value> BuiltinIdentity(const axpr::Value&,
                                     const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> BuiltinNot(const axpr::Value&,
+                               const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> Raise(const axpr::Value&,
+                          const std::vector<axpr::Value>& args);
 
 Result<axpr::Value> BuiltinList(const axpr::Value&,
                                 const std::vector<axpr::Value>& args);

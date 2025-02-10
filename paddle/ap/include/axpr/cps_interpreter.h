@@ -18,6 +18,7 @@
 #include <set>
 #include <utility>
 #include "paddle/ap/include/axpr/adt.h"
+#include "paddle/ap/include/axpr/bool_helper.h"
 #include "paddle/ap/include/axpr/builtin_classes.h"
 #include "paddle/ap/include/axpr/builtin_environment.h"
 #include "paddle/ap/include/axpr/builtin_frame_util.h"
@@ -243,7 +244,7 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
       ComposedCallImpl<axpr::Value>* ret_composed_call) {
     return symbol.Match(
         [&](const builtin_symbol::If&) -> Ok {
-          ret_composed_call->inner_func = &CpsBuiltinIf;
+          ADT_RETURN_IF_ERR(InterpretIf(ret_composed_call));
           return adt::Ok{};
         },
         [&](const builtin_symbol::Id&) -> Ok {
@@ -271,6 +272,24 @@ class CpsInterpreter : public InterpreterBase<axpr::Value> {
             }
           });
         });
+  }
+
+  Ok InterpretIf(ComposedCallImpl<axpr::Value>* composed_call) {
+    const auto args = composed_call->args;
+    ADT_CHECK(args.size() == 3)
+        << TypeError{std::string("`if` takes 3 arguments, but ") +
+                     std::to_string(args.size()) + "were given."};
+    const auto& cond = args.at(0);
+    ADT_LET_CONST_REF(select_true_branch, BoolHelper{}.ConvertToBool(cond));
+    ADT_LET_CONST_REF(true_closure,
+                      args.at(1).template TryGet<Closure<axpr::Value>>());
+    ADT_LET_CONST_REF(false_closure,
+                      args.at(2).template TryGet<Closure<axpr::Value>>());
+    Closure<axpr::Value> closure{select_true_branch ? true_closure
+                                                    : false_closure};
+    composed_call->inner_func = closure;
+    composed_call->args = std::vector<axpr::Value>{};
+    return adt::Ok{};
   }
 
   template <typename BuiltinSymbol>

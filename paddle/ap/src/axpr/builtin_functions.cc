@@ -17,80 +17,18 @@
 #include <functional>
 #include <sstream>
 #include "paddle/ap/include/axpr/abstract_list.h"
+#include "paddle/ap/include/axpr/bool_helper.h"
 #include "paddle/ap/include/axpr/bool_int_double_helper.h"
 #include "paddle/ap/include/axpr/builtin_high_order_func_type.h"
 #include "paddle/ap/include/axpr/callable_helper.h"
 #include "paddle/ap/include/axpr/data_value_util.h"
+#include "paddle/ap/include/axpr/exception_method_class.h"
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/string_util.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/axpr/value_method_class.h"
 
 namespace ap::axpr {
-
-namespace detail {
-
-adt::Result<bool> ConvertToBool(const axpr::Value& cond) {
-  using TypeT = typename TypeTrait<axpr::Value>::TypeT;
-  return cond.Match(
-      [](const TypeT&) -> Result<bool> { return true; },
-      [](const bool c) -> Result<bool> { return c; },
-      [](const int64_t c) -> Result<bool> { return c != 0; },
-      [](const double c) -> Result<bool> { return c != 0; },
-      [](const std::string& c) -> Result<bool> { return !c.empty(); },
-      [](const Nothing&) -> Result<bool> { return false; },
-      [](const adt::List<axpr::Value>& list) -> Result<bool> {
-        return list->size() > 0;
-      },
-      [](const MutableList<axpr::Value>& list) -> Result<bool> {
-        ADT_LET_CONST_REF(list_ptr, list.Get());
-        return list_ptr->size() > 0;
-      },
-      [](const AttrMap<axpr::Value>& obj) -> Result<bool> {
-        return obj->size() > 0;
-      },
-      [](const Lambda<CoreExpr>&) -> Result<bool> { return true; },
-      [](const Closure<axpr::Value>&) -> Result<bool> { return true; },
-      [](const Continuation<axpr::Value>&) -> Result<bool> { return true; },
-      [](const Method<axpr::Value>&) -> Result<bool> { return true; },
-      [](const builtin_symbol::Symbol&) -> Result<bool> { return true; },
-      [](const BuiltinFuncType<axpr::Value>&) -> Result<bool> { return true; },
-      [](const BuiltinHighOrderFuncType<axpr::Value>&) -> Result<bool> {
-        return true;
-      },
-      [&](const auto&) -> Result<bool> {
-        return TypeError{std::string() + "'" + axpr::GetTypeName(cond) +
-                         "' could not be convert to bool"};
-      });
-}
-
-}  // namespace detail
-
-Result<adt::Ok> CpsBuiltinIf(InterpreterBase<axpr::Value>* interpreter,
-                             ComposedCallImpl<axpr::Value>* composed_call) {
-  const auto args = composed_call->args;
-  if (args.size() != 3) {
-    return TypeError{std::string("`if` takes 3 arguments, but ") +
-                     std::to_string(args.size()) + "were given."};
-  }
-  const auto& cond = args.at(0);
-  ADT_LET_CONST_REF(select_true_branch, detail::ConvertToBool(cond));
-  const auto& opt_true_closure =
-      args.at(1).template TryGet<Closure<axpr::Value>>();
-  ADT_RETURN_IF_ERR(opt_true_closure);
-  const auto& true_closure = opt_true_closure.GetOkValue();
-  const auto& opt_false_closure =
-      args.at(2).template TryGet<Closure<axpr::Value>>();
-  ADT_RETURN_IF_ERR(opt_false_closure);
-  const auto& false_closure = opt_true_closure.GetOkValue();
-  Closure<axpr::Value> closure{select_true_branch ? true_closure
-                                                  : false_closure};
-  return interpreter->InterpretLambdaCall(closure->environment,
-                                          composed_call->outter_func,
-                                          closure->lambda,
-                                          std::vector<axpr::Value>(),
-                                          composed_call);
-}
 
 Result<axpr::Value> BuiltinIdentity(const axpr::Value&,
                                     const std::vector<axpr::Value>& args) {
@@ -100,6 +38,20 @@ Result<axpr::Value> BuiltinIdentity(const axpr::Value&,
                      "were given."};
   }
   return args.at(0);
+}
+
+Result<axpr::Value> BuiltinNot(const axpr::Value&,
+                               const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(bool_val, BoolHelper{}.ConvertToBool(args.at(0)));
+  return !bool_val;
+}
+
+Result<axpr::Value> Raise(const axpr::Value&,
+                          const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1);
+  ADT_LET_CONST_REF(exception, args.at(0).template CastTo<Exception>());
+  return exception.value();
 }
 
 Result<axpr::Value> BuiltinList(const axpr::Value&,
@@ -408,7 +360,7 @@ Result<axpr::Value> Filter(axpr::InterpreterBase<axpr::Value>* interpreter,
         ADT_LET_CONST_REF(
             filter_result,
             interpreter->InterpretCall(f, std::vector<axpr::Value>{elt}));
-        ADT_LET_CONST_REF(is_true, detail::ConvertToBool(filter_result));
+        ADT_LET_CONST_REF(is_true, BoolHelper{}.ConvertToBool(filter_result));
         if (is_true) {
           ret->emplace_back(elt);
         }
